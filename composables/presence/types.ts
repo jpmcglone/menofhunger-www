@@ -46,7 +46,9 @@ import type {
   WsAccountsBadgeUpdatedPayload,
   WsCallsIncomingPayload,
   WsCallsUpdatedPayload,
+  WsCallsSeatTakenPayload,
   WsRtcSignalPayload,
+  WsPresenceCallChangedPayload,
 } from '~/types/api'
 
 export type PresenceOnlinePayload = {
@@ -73,6 +75,8 @@ export type OnlineFeedCallback = {
   onSnapshot?: (payload: PresenceOnlineFeedSnapshotPayload) => void
   onPlatformsChanged?: (payload: WsPresencePlatformsChangedPayload) => void
   onAnonymousCount?: (payload: PresenceAnonymousCountPayload) => void
+  /** Someone on the list entered or left a voice/video call. */
+  onCallChanged?: (payload: WsPresenceCallChangedPayload) => void
 }
 
 export type RadioListenersPayload = { stationId: string; listeners: RadioListener[] }
@@ -133,6 +137,8 @@ export type CallsCallback = {
   onIncoming?: (payload: WsCallsIncomingPayload) => void
   onUpdated?: (payload: WsCallsUpdatedPayload) => void
   onSignal?: (payload: WsRtcSignalPayload) => void
+  /** Another tab/device of ours took the seat; `socketId` is the one that lost it. */
+  onSeatTaken?: (payload: WsCallsSeatTakenPayload) => void
 }
 
 export type WsNotificationsUpdatedPayload = {

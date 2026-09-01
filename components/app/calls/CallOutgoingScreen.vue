@@ -9,7 +9,6 @@
         label="You"
         :mic-enabled="isMicEnabled"
         :camera-enabled="isCameraEnabled"
-        muted
         :mirrored="facingMode === 'user'"
         class="!rounded-none"
       />

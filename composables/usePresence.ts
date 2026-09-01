@@ -193,6 +193,11 @@ export function usePresence() {
       online.userCurrentSpaceById.value = next
     },
     isSocketConnected: readonly(core.isSocketConnected),
+    /** This tab's current Socket.IO id (matches `client.id` server-side); null while disconnected. */
+    getSocketId(): string | null {
+      const s = core.socketRef.value
+      return s?.connected ? (s.id ?? null) : null
+    },
     isSocketConnecting: readonly(core.isSocketConnecting),
     disconnectedDueToIdle: readonly(core.disconnectedDueToIdle),
     wasSocketConnectedOnce: readonly(core.wasSocketConnectedOnce),

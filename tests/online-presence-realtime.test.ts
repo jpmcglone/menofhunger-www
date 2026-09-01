@@ -17,6 +17,20 @@ describe('online presence realtime wiring', () => {
     expect(presence).toContain('cb.onAnonymousCount?.(data)')
   })
 
+  it('shows a headset next to anyone in a call and keeps it live from presence:call-changed', () => {
+    const presence = readFileSync(resolve(root, 'composables/presence/usePresenceOnline.ts'), 'utf8')
+    expect(presence).toContain("socket.on('presence:call-changed'")
+    expect(presence).toContain('cb.onCallChanged?.(data)')
+
+    const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
+    expect(page).toContain(':in-call="u.inCall === true"')
+    expect(page).toContain('user.id === payload.userId ? { ...user, inCall: payload.inCall } : user')
+
+    const row = readFileSync(resolve(root, 'components/app/UserRow.vue'), 'utf8')
+    expect(row).toContain('v-if="inCall"')
+    expect(row).toContain('name="tabler:headset"')
+  })
+
   it('sends a stable anon id on logged-out socket connect', () => {
     const core = readFileSync(
       resolve(root, 'composables/presence/usePresenceSocketCore.ts'),

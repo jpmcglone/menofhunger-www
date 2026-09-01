@@ -45,8 +45,8 @@
             :mic-enabled="p.micEnabled"
             :camera-enabled="p.cameraEnabled"
             :connection-state="peerStates[p.userId] ?? 'connecting'"
-            :speaker-device-id="speakerDeviceId"
             :avatar-size-class="tiles.length > 1 ? 'h-16 w-16' : 'h-28 w-28'"
+            :speaking="speakingIds[p.userId] === true"
           />
         </div>
         <!-- 4-way: self joins the grid instead of floating -->
@@ -57,9 +57,9 @@
             label="You"
             :mic-enabled="isMicEnabled"
             :camera-enabled="isCameraEnabled"
-            muted
             :mirrored="facingMode === 'user'"
             avatar-size-class="h-16 w-16"
+            :speaking="selfSpeaking"
           />
         </div>
         <div v-if="tiles.length === 0" class="flex items-center justify-center text-white/70 text-sm">
@@ -84,9 +84,9 @@
           label="You"
           :mic-enabled="isMicEnabled"
           :camera-enabled="isCameraEnabled"
-          muted
           :mirrored="facingMode === 'user'"
           avatar-size-class="h-12 w-12"
+          :speaking="selfSpeaking"
         />
       </div>
     </div>
@@ -125,6 +125,7 @@ const {
   localStream,
   remoteStreams,
   peerStates,
+  speakingIds,
   isMicEnabled,
   isCameraEnabled,
   qualityBars,
@@ -148,6 +149,7 @@ const { user: me } = useAuth()
 const { elapsed } = useCallTimer(connectedAt)
 
 const selfUser = computed(() => (me.value?.id ? participantUser(me.value.id) : null))
+const selfSpeaking = computed(() => Boolean(me.value?.id && speakingIds.value[me.value.id]))
 const tiles = computed<CallParticipant[]>(() => props.call.participants.filter((p) => p.userId !== me.value?.id))
 const selfInGrid = computed(() => tiles.value.length >= 3)
 

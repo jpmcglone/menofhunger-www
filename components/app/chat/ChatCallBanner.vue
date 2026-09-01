@@ -28,14 +28,27 @@
         </div>
       </div>
       <Button
-        v-if="viewerInCall"
+        v-if="viewerInCall && inThisTab"
         size="small"
         severity="secondary"
         rounded
-        :label="inThisTab ? 'Show call' : 'In call'"
-        :disabled="!inThisTab"
+        label="Show call"
         @click="emit('show')"
       />
+      <!-- Seated server-side (reload, other device, dropped leave) but not live here: take the seat back. -->
+      <Button
+        v-else-if="viewerInCall"
+        size="small"
+        rounded
+        label="Rejoin"
+        :disabled="busy"
+        :loading="busy"
+        @click="emit('join', call)"
+      >
+        <template #icon>
+          <Icon :name="call.type === 'video' ? 'tabler:video' : 'tabler:phone'" aria-hidden="true" />
+        </template>
+      </Button>
       <Button
         v-else-if="isFull"
         size="small"
@@ -80,7 +93,7 @@ const emit = defineEmits<{
 }>()
 
 const { canJoin } = useCallGating()
-const { phase, call: engagedCall } = useCallSession()
+const { phase, call: engagedCall, isEngaged } = useCallSession()
 
 const participantUsers = computed<MessageUser[]>(() => {
   const c = props.call
@@ -97,7 +110,7 @@ const participantLabel = computed(() => {
 })
 
 const viewerInCall = computed(() => Boolean(props.call && props.meId && props.call.participants.some((p) => p.userId === props.meId)))
-const inThisTab = computed(() => Boolean(props.call && engagedCall.value?.id === props.call.id && phase.value === 'in_call'))
+const inThisTab = computed(() => Boolean(props.call && engagedCall.value?.id === props.call.id && isEngaged.value))
 const isFull = computed(() => Boolean(props.call && props.call.participants.length >= props.call.capacity))
 const canJoinCall = computed(() => Boolean(props.call && canJoin(props.call)))
 const busy = computed(() => phase.value === 'requesting_media' || phase.value === 'joining')

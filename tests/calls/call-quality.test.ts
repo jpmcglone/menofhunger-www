@@ -85,12 +85,25 @@ describe('hysteresis', () => {
 })
 
 describe('sampling', () => {
-  it('flags loss, latency, and bandwidth limitation', () => {
-    expect(isBadSample({ fractionLost: 0.1, rttSeconds: 0.05, limitation: null })).toBe(true)
-    expect(isBadSample({ fractionLost: 0, rttSeconds: 0.6, limitation: null })).toBe(true)
-    expect(isBadSample({ fractionLost: 0, rttSeconds: 0.05, limitation: 'bandwidth' })).toBe(true)
-    expect(isBadSample({ fractionLost: 0.01, rttSeconds: 0.08, limitation: 'cpu' })).toBe(false)
-    expect(isBadSample({ fractionLost: null, rttSeconds: null, limitation: null })).toBe(false)
+  const clean = { fractionLost: 0, rttSeconds: 0.05, limitation: null, targetBitrate: null }
+
+  it('flags loss and latency', () => {
+    expect(isBadSample({ ...clean, fractionLost: 0.1 })).toBe(true)
+    expect(isBadSample({ ...clean, rttSeconds: 0.6 })).toBe(true)
+    expect(isBadSample({ ...clean, fractionLost: 0.01, rttSeconds: 0.08, limitation: 'cpu' })).toBe(false)
+    expect(isBadSample({ fractionLost: null, rttSeconds: null, limitation: null, targetBitrate: null })).toBe(false)
+  })
+
+  it('only counts a bandwidth limitation when the target is well under our own cap', () => {
+    const cap = 900_000
+    // Encoder wants more than the cap we set: that is us, not the network.
+    expect(isBadSample({ ...clean, limitation: 'bandwidth', targetBitrate: 900_000 }, cap)).toBe(false)
+    expect(isBadSample({ ...clean, limitation: 'bandwidth', targetBitrate: 700_000 }, cap)).toBe(false)
+    // Congestion control has pulled the target far below the cap: genuinely constrained.
+    expect(isBadSample({ ...clean, limitation: 'bandwidth', targetBitrate: 300_000 }, cap)).toBe(true)
+    // No target (Firefox) or no cap: the reason alone is not evidence.
+    expect(isBadSample({ ...clean, limitation: 'bandwidth', targetBitrate: null }, cap)).toBe(false)
+    expect(isBadSample({ ...clean, limitation: 'bandwidth', targetBitrate: 300_000 })).toBe(false)
   })
 
   it('extracts the worst video loss / rtt from a stats report', () => {
@@ -99,9 +112,14 @@ describe('sampling', () => {
       { type: 'remote-inbound-rtp', kind: 'video', fractionLost: 0.08, roundTripTime: 0.3 },
       { type: 'remote-inbound-rtp', kind: 'audio', fractionLost: 0.5 },
       { type: 'candidate-pair', nominated: true, currentRoundTripTime: 0.45 },
-      { type: 'outbound-rtp', kind: 'video', qualityLimitationReason: 'bandwidth' },
+      { type: 'outbound-rtp', kind: 'video', qualityLimitationReason: 'bandwidth', targetBitrate: 420_000 },
     ]
-    expect(sampleFromStatsReport(report)).toEqual({ fractionLost: 0.08, rttSeconds: 0.45, limitation: 'bandwidth' })
+    expect(sampleFromStatsReport(report)).toEqual({
+      fractionLost: 0.08,
+      rttSeconds: 0.45,
+      limitation: 'bandwidth',
+      targetBitrate: 420_000,
+    })
   })
 
   it('maps tiers to a 0–3 indicator', () => {

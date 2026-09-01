@@ -39,6 +39,7 @@ import type {
   WsCallsIncomingPayload,
   WsCallsUpdatedPayload,
   WsRtcSignalPayload,
+  WsCallsSeatTakenPayload,
 } from '~/types/api'
 import type {
   AccountsCallback,
@@ -638,6 +639,10 @@ export function usePresenceDomains() {
     socket.on('rtc:signal', (data: WsRtcSignalPayload) => {
       if (!data?.callId || !data?.fromUserId) return
       for (const cb of callsCallbacks.value) cb.onSignal?.(data)
+    })
+    socket.on('calls:seat-taken', (data: WsCallsSeatTakenPayload) => {
+      if (!data?.callId || !data?.socketId) return
+      for (const cb of callsCallbacks.value) cb.onSeatTaken?.(data)
     })
 
     // ── Daily content ─────────────────────────────────────────────────

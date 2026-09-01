@@ -7,6 +7,8 @@
       v-if="((phase === 'in_call' || phase === 'outgoing') && minimized) || phase === 'in_call_elsewhere'"
       @expand="minimized = false"
     />
+    <!-- Remote audio outlives the overlay: minimized calls must keep talking. -->
+    <CallAudioSink v-for="(stream, userId) in remoteStreams" :key="userId" :stream="stream" :speaker-device-id="speakerDeviceId" />
   </Teleport>
 </template>
 
@@ -20,8 +22,9 @@ import CallIncomingBanner from './CallIncomingBanner.vue'
 import CallOutgoingScreen from './CallOutgoingScreen.vue'
 import CallOverlay from './CallOverlay.vue'
 import CallMiniBar from './CallMiniBar.vue'
+import CallAudioSink from './CallAudioSink.vue'
 
-const { phase, call, incoming, minimized, bind } = useCallSession()
+const { phase, call, incoming, minimized, remoteStreams, speakerDeviceId, bind } = useCallSession()
 
 let unbind: (() => void) | null = null
 onMounted(() => {

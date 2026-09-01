@@ -43,12 +43,29 @@ export type QualitySample = {
   rttSeconds: number | null
   /** Chrome/Firefox `outbound-rtp.qualityLimitationReason`. */
   limitation: string | null
+  /** Chrome `outbound-rtp.targetBitrate` (bps): what congestion control is letting the encoder use. */
+  targetBitrate: number | null
 }
 
-export function isBadSample(s: QualitySample): boolean {
+/** Below this share of our own `maxBitrate` cap, a `bandwidth` limitation is the network's doing. */
+export const BANDWIDTH_LIMITED_RATIO = 0.6
+
+/** Skip samples this long after a peer connects: BWE starts low and ramps, which reads as "bandwidth". */
+export const QUALITY_WARMUP_MS = 8_000
+
+/**
+ * `capBitrate` is the tier's own `maxBitrate`. Chrome reports `qualityLimitationReason:
+ * 'bandwidth'` whenever the encoder wants more than its target — including when *we* set that
+ * cap — so without the comparison every tier below the top reads as bad and the ladder only
+ * ever goes down.
+ */
+export function isBadSample(s: QualitySample, capBitrate: number | null = null): boolean {
   if (s.fractionLost !== null && s.fractionLost > 0.05) return true
   if (s.rttSeconds !== null && s.rttSeconds > 0.4) return true
-  if (s.limitation === 'bandwidth') return true
+  if (s.limitation === 'bandwidth') {
+    if (s.targetBitrate === null || capBitrate === null || capBitrate <= 0) return false
+    return s.targetBitrate < capBitrate * BANDWIDTH_LIMITED_RATIO
+  }
   return false
 }
 
@@ -106,6 +123,7 @@ export function sampleFromStatsReport(report: Iterable<Record<string, unknown>>)
   let fractionLost: number | null = null
   let rttSeconds: number | null = null
   let limitation: string | null = null
+  let targetBitrate: number | null = null
 
   for (const stat of report) {
     const type = stat.type
@@ -120,8 +138,10 @@ export function sampleFromStatsReport(report: Iterable<Record<string, unknown>>)
     } else if (type === 'outbound-rtp' && stat.kind === 'video') {
       const reason = stat.qualityLimitationReason
       if (typeof reason === 'string' && reason !== 'none') limitation = reason
+      const target = stat.targetBitrate
+      if (typeof target === 'number' && Number.isFinite(target)) targetBitrate = target
     }
   }
 
-  return { fractionLost, rttSeconds, limitation }
+  return { fractionLost, rttSeconds, limitation, targetBitrate }
 }

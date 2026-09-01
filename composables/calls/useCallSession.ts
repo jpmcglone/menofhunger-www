@@ -1,13 +1,22 @@
 import { shallowRef, type ShallowRef } from 'vue'
-import type { CallSession, CallType, CallsAck, RtcIceServer, WsCallsIncomingPayload, WsRtcSignalPayload } from '~/types/api'
+import type {
+  CallSession,
+  CallType,
+  CallsAck,
+  RtcIceServer,
+  WsCallsIncomingPayload,
+  WsCallsSeatTakenPayload,
+  WsRtcSignalPayload,
+} from '~/types/api'
 import type { CallsCallback } from '~/composables/usePresence'
 import { useUsersStore, type PublicUserEntity } from '~/composables/useUsersStore'
 import { createRingtone, type Ringtone } from './callRingtone'
 import { reduceCallsIncoming, reduceCallsUpdated, remotePeerIds, type CallPhase, type CallSessionState } from './callSessionReducer'
 import { qualityBarsFor } from './callQuality'
 import { acquireAudioTrack, acquireCallMedia, acquireVideoTrack, stopTrack } from './useCallDevices'
+import { SpeakingMonitor } from './speakingDetector'
 import type { CallTransport, PeerMediaState } from './transport/CallTransport'
-import { PeerToPeerCallTransport } from './transport/PeerToPeerCallTransport'
+import { DEFAULT_RECONNECT_GRACE_MS, PeerToPeerCallTransport } from './transport/PeerToPeerCallTransport'
 
 export type { CallPhase } from './callSessionReducer'
 
@@ -26,13 +35,16 @@ export type CallDisplayUser = {
 const localStream: ShallowRef<MediaStream | null> = shallowRef(null)
 const remoteStreams: ShallowRef<Record<string, MediaStream>> = shallowRef({})
 let transport: CallTransport | null = null
+/** Web Audio taps on local + remote streams; drives the "speaking" ring. Lives with the transport. */
+let speakingMonitor: SpeakingMonitor | null = null
 let iceServers: RtcIceServer[] = []
 let ringtone: Ringtone | null = null
 let ringback: Ringtone | null = null
 let unbind: (() => void) | null = null
-let rejoinTimer: ReturnType<typeof setTimeout> | null = null
-
-const REJOIN_RETRY_MS = 3_000
+/** Server-owned grace window from the last start/join ack; every give-up timer keys off it. */
+let reconnectGraceMs = DEFAULT_RECONNECT_GRACE_MS
+/** Runs while the signaling socket is down mid-call. */
+let socketDownTimer: ReturnType<typeof setTimeout> | null = null
 
 export function useCallSession() {
   const state = useState<CallSessionState>('call-session-state', () => ({ phase: 'idle', call: null, incoming: null }))
@@ -41,6 +53,8 @@ export function useCallSession() {
   const micError = useState<string | null>('call-mic-error', () => null)
   const cameraError = useState<string | null>('call-camera-error', () => null)
   const peerStates = useState<Record<string, PeerMediaState>>('call-peer-states', () => ({}))
+  /** userId → currently talking (self included), with hysteresis so it doesn't flicker. */
+  const speakingIds = useState<Record<string, boolean>>('call-speaking-ids', () => ({}))
   const qualityTier = useState<number>('call-quality-tier', () => 0)
   const facingMode = useState<'user' | 'environment'>('call-facing-mode', () => 'user')
   const audioDeviceId = useState<string | null>('call-audio-device', () => null)
@@ -111,21 +125,30 @@ export function useCallSession() {
     peerStates.value = {}
     remoteStreams.value = {}
     qualityTier.value = 0
+    speakingMonitor?.destroy()
+    speakingMonitor = new SpeakingMonitor((ids) => {
+      speakingIds.value = ids
+    })
+    speakingMonitor.setStream(meId.value, localStream.value)
+    speakingMonitor.setMuted(meId.value, !isMicEnabled.value)
     transport = new PeerToPeerCallTransport(
       {
         callId,
         selfUserId: meId.value,
         iceServers,
         sendSignal: (toUserId, signal) => presence.emitRtcSignal(callId, toUserId, signal),
+        reconnectGraceMs,
         events: {
           onRemoteStream(userId, stream) {
             const next = { ...remoteStreams.value }
             if (stream) next[userId] = stream
             else delete next[userId]
             remoteStreams.value = next
+            speakingMonitor?.setStream(userId, stream)
           },
           onPeerState(userId, s) {
             peerStates.value = { ...peerStates.value, [userId]: s }
+            if (s === 'failed') onPeerFailed()
           },
         },
       },
@@ -141,17 +164,45 @@ export function useCallSession() {
     stopRinging()
     transport?.destroy()
     transport = null
+    speakingMonitor?.destroy()
+    speakingMonitor = null
     releaseLocalMedia()
     remoteStreams.value = {}
     peerStates.value = {}
+    speakingIds.value = {}
     qualityTier.value = 0
     connectedAt.value = null
     outgoingCalleeId.value = null
     minimized.value = false
-    if (rejoinTimer) {
-      clearTimeout(rejoinTimer)
-      rejoinTimer = null
-    }
+    clearSocketDownTimer()
+  }
+
+  function clearSocketDownTimer() {
+    if (!socketDownTimer) return
+    clearTimeout(socketDownTimer)
+    socketDownTimer = null
+  }
+
+  /** Unrecoverable mid-call: drop the session and tell the user once. */
+  function connectionLost() {
+    const current = call.value
+    if (current) void presence.emitCallsLeave(current.id)
+    teardown()
+    state.value = { phase: 'idle', call: null, incoming: null }
+    toast.push({ title: 'Connection lost.', message: 'The call couldn’t be reconnected.', tone: 'error', durationMs: 5000 })
+  }
+
+  /**
+   * A peer's media path gave up after the grace window. In a 1:1 there is nobody left to talk
+   * to; in a group the server will remove them from `participants` if their socket also died,
+   * otherwise they stay as a failed tile. Give up only when every remote peer has failed.
+   */
+  function onPeerFailed() {
+    const current = call.value
+    if (phase.value !== 'in_call' || !current) return
+    const ids = remotePeerIds(current, meId.value)
+    if (ids.length === 0) return
+    if (ids.every((id) => peerStates.value[id] === 'failed')) connectionLost()
   }
 
   function stopRinging() {
@@ -167,6 +218,7 @@ export function useCallSession() {
       return null
     }
     if (ack.iceServers) iceServers = ack.iceServers
+    if (typeof ack.reconnectGraceMs === 'number' && ack.reconnectGraceMs > 0) reconnectGraceMs = ack.reconnectGraceMs
     return ack.call
   }
 
@@ -402,6 +454,10 @@ export function useCallSession() {
   function onUpdated(session: CallSession) {
     const { state: next, effects } = reduceCallsUpdated(state.value, session, meId.value)
     state.value = next
+    // A muted peer's tile must never ring, even if their analyser still hears room noise.
+    for (const p of session.participants) {
+      if (p.userId !== meId.value) speakingMonitor?.setMuted(p.userId, !p.micEnabled)
+    }
     for (const e of effects) {
       if (e.type === 'ended') {
         teardown()
@@ -467,15 +523,21 @@ export function useCallSession() {
       teardown()
       state.value = { phase: 'idle', call: null, incoming: null }
       toast.push({ title: 'Call ended.', durationMs: 3000 })
-      return
     }
-    if (code === 'already_in_call' && !rejoinTimer) {
-      // Server hasn't noticed the old socket drop yet; try once more shortly.
-      rejoinTimer = setTimeout(() => {
-        rejoinTimer = null
-        void rejoinAfterReconnect()
-      }, REJOIN_RETRY_MS)
-    }
+  }
+
+  /**
+   * One seat per member: a newer tab or device of ours joined this call and the server handed
+   * it our seat. Tear down locally WITHOUT `calls:leave` — that would hang up the newcomer.
+   */
+  function onSeatTaken(payload: WsCallsSeatTakenPayload) {
+    const current = call.value
+    if (!current || current.id !== payload.callId) return
+    if (phase.value !== 'in_call' && phase.value !== 'outgoing' && phase.value !== 'joining') return
+    if (presence.getSocketId() !== payload.socketId) return
+    teardown()
+    state.value = { phase: 'in_call_elsewhere', call: current, incoming: null }
+    toast.push({ title: 'Call moved to another tab or device.', durationMs: 3000 })
   }
 
   /**
@@ -488,6 +550,7 @@ export function useCallSession() {
       onIncoming: (p) => onIncoming(p),
       onUpdated: (p) => onUpdated(p.call),
       onSignal: (p) => onSignal(p),
+      onSeatTaken: (p) => onSeatTaken(p),
     }
     presence.addCallsCallback(cb)
 
@@ -501,20 +564,54 @@ export function useCallSession() {
     const stopReconnectWatch = watch(
       () => presence.isSocketConnected.value,
       (connected, was) => {
-        if (connected && was === false) void rejoinAfterReconnect()
+        if (connected) {
+          clearSocketDownTimer()
+          if (was === false) void rejoinAfterReconnect()
+          return
+        }
+        // The server drops our seat after `reconnectGraceMs`; stop spinning at the same moment.
+        if (!isEngaged.value || socketDownTimer) return
+        socketDownTimer = setTimeout(() => {
+          socketDownTimer = null
+          if (!presence.isSocketConnected.value && isEngaged.value) connectionLost()
+        }, reconnectGraceMs)
       },
     )
+
+    // Network came back (Wi-Fi ↔ hotspot, VPN toggle): don't wait for ICE to time out.
+    const onOnline = () => {
+      if (phase.value === 'in_call') transport?.restartIce()
+    }
+    window.addEventListener('online', onOnline)
+
+    // A backgrounded tab can miss `calls:updated` (throttled timers, suspended sockets); a
+    // rejoin is a cheap "give me the current participant set" when it becomes visible again.
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') return
+      if (phase.value === 'in_call' && presence.isSocketConnected.value) void rejoinAfterReconnect()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
 
     const stopRouteHook = router.afterEach(() => {
       if (phase.value === 'in_call' || phase.value === 'outgoing') minimized.value = true
     })
 
+    // The local MediaStream object is replaced on every mic/camera swap; re-tap it each time.
+    const stopLocalSpeakingWatch = watch([localStream, isMicEnabled], ([stream, micOn]) => {
+      speakingMonitor?.setStream(meId.value, stream)
+      speakingMonitor?.setMuted(meId.value, !micOn)
+    })
+
     unbind = () => {
+      stopLocalSpeakingWatch()
       presence.removeCallsCallback(cb)
       window.removeEventListener('pagehide', onPageHide)
       window.removeEventListener('beforeunload', onPageHide)
+      window.removeEventListener('online', onOnline)
+      document.removeEventListener('visibilitychange', onVisibility)
       stopReconnectWatch()
       stopRouteHook()
+      clearSocketDownTimer()
       unbind = null
     }
     return unbind
@@ -529,6 +626,7 @@ export function useCallSession() {
     localStream,
     remoteStreams,
     peerStates,
+    speakingIds,
     isMicEnabled,
     isCameraEnabled,
     micError,

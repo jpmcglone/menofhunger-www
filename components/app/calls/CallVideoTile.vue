@@ -1,12 +1,16 @@
 <template>
-  <div class="relative h-full w-full overflow-hidden rounded-2xl bg-zinc-900">
+  <div
+    class="relative h-full w-full overflow-hidden rounded-2xl bg-zinc-900 transition-shadow duration-200"
+    :class="speaking ? 'moh-speaking-ring' : ''"
+  >
+    <!-- Display only. Remote audio plays through CallAudioSink in CallHost so it survives minimize. -->
     <video
       ref="videoEl"
       class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
       :class="[showVideo ? 'opacity-100' : 'opacity-0', mirrored ? 'scale-x-[-1]' : '']"
       autoplay
       playsinline
-      :muted="muted"
+      muted
     />
     <!-- Avatar fallback while the camera is off or the stream hasn't arrived -->
     <div v-if="!showVideo" class="absolute inset-0 flex items-center justify-center">
@@ -29,8 +33,8 @@
       <Icon
         :name="micEnabled ? 'tabler:microphone' : 'tabler:microphone-off'"
         size="13"
-        :class="micEnabled ? 'opacity-80' : 'text-red-400'"
-        :aria-label="micEnabled ? 'Mic on' : 'Muted'"
+        :class="!micEnabled ? 'text-red-400' : speaking ? 'text-sky-300' : 'opacity-80'"
+        :aria-label="!micEnabled ? 'Muted' : speaking ? 'Speaking' : 'Mic on'"
       />
       <span class="truncate">{{ label }}</span>
     </div>
@@ -49,13 +53,13 @@ const props = withDefaults(
     micEnabled: boolean
     cameraEnabled: boolean
     connectionState?: PeerMediaState | 'connected'
-    /** Local self-view: mute playback (no echo) and mirror. */
-    muted?: boolean
+    /** Local self-view: mirror like a mirror. */
     mirrored?: boolean
-    speakerDeviceId?: string | null
     avatarSizeClass?: string
+    /** Audio is flowing from this participant right now; draws the pulsing ring. */
+    speaking?: boolean
   }>(),
-  { connectionState: 'connected', muted: false, mirrored: false, speakerDeviceId: null, avatarSizeClass: 'h-20 w-20' },
+  { connectionState: 'connected', mirrored: false, avatarSizeClass: 'h-20 w-20', speaking: false },
 )
 
 const videoEl = ref<HTMLVideoElement | null>(null)
@@ -86,25 +90,41 @@ function attach() {
   void el.play().catch(() => {})
 }
 
-async function applySink() {
-  const el = videoEl.value as (HTMLVideoElement & { setSinkId?: (id: string) => Promise<void> }) | null
-  if (!el || props.muted || !props.speakerDeviceId || typeof el.setSinkId !== 'function') return
-  try {
-    await el.setSinkId(props.speakerDeviceId)
-  } catch {
-    // Device gone or not permitted; keep default output.
-  }
-}
-
-onMounted(() => {
-  attach()
-  void applySink()
-})
+onMounted(attach)
 watch(() => props.stream, attach)
 watch(() => props.cameraEnabled, refreshHasVideo)
-watch(() => props.speakerDeviceId, () => void applySink())
 onBeforeUnmount(() => {
   const el = videoEl.value
   if (el) el.srcObject = null
 })
 </script>
+
+<style scoped>
+/* Two-layer ring: a crisp inner edge plus a soft halo that breathes while audio is flowing. */
+.moh-speaking-ring {
+  box-shadow:
+    0 0 0 2px rgb(56 189 248),
+    0 0 0 6px rgb(56 189 248 / 0.28);
+  animation: moh-speaking-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes moh-speaking-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgb(56 189 248),
+      0 0 0 5px rgb(56 189 248 / 0.22);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgb(56 189 248),
+      0 0 0 8px rgb(56 189 248 / 0.34);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moh-speaking-ring {
+    animation: none;
+  }
+}
+</style>

@@ -69,7 +69,9 @@ type _MessageCall = Satisfies<Www.MessageCall, Api.MessageCallDto>
 type _CallsAck = Satisfies<Www.CallsAck, Api.CallsAckDto>
 type _WsCallsIncoming = Satisfies<Www.WsCallsIncomingPayload, Api.CallsIncomingPayloadDto>
 type _WsCallsUpdated = Satisfies<Www.WsCallsUpdatedPayload, Api.CallsUpdatedPayloadDto>
+type _WsCallsSeatTaken = Satisfies<Www.WsCallsSeatTakenPayload, Api.CallsSeatTakenPayloadDto>
 type _WsRtcSignal = Satisfies<Www.WsRtcSignalPayload, Api.RtcSignalPayloadDto>
+type _WsPresenceCallChanged = Satisfies<Www.WsPresenceCallChangedPayload, Api.PresenceCallChangedPayloadDto>
 
 // ─── Billing / referrals ─────────────────────────────────────────────────────
 type _BillingMe = Satisfies<Www.BillingMe, Api.BillingMeDto>

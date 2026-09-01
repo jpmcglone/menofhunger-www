@@ -39,7 +39,7 @@
       tag="div"
       class="moh-divide transition-opacity duration-150"
     >
-      <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" :platforms="u.platforms" />
+      <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" :platforms="u.platforms" :in-call="u.inCall === true" />
     </TransitionGroup>
 
     <!-- Recently / older online (authenticated viewers only) -->
@@ -236,6 +236,7 @@ const feedCallback: {
   onSnapshot?: (p: { users: OnlineUser[]; totalOnline?: number; anonymousOnline?: number }) => void
   onPlatformsChanged?: (p: { userId: string; platforms: string[] }) => void
   onAnonymousCount?: (p: { anonymousOnline: number }) => void
+  onCallChanged?: (p: { userId: string; inCall: boolean }) => void
 } = {
   onOnline(payload) {
     const { userId, user: userData, lastConnectAt = Date.now(), platforms } = payload
@@ -330,6 +331,11 @@ const feedCallback: {
   onPlatformsChanged(payload) {
     users.value = users.value.map((user) =>
       user.id === payload.userId ? { ...user, platforms: payload.platforms } : user,
+    )
+  },
+  onCallChanged(payload) {
+    users.value = users.value.map((user) =>
+      user.id === payload.userId ? { ...user, inCall: payload.inCall } : user,
     )
   },
 }

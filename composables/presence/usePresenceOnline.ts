@@ -7,6 +7,7 @@ import type {
   WsPresenceStatusClearedPayload,
   WsPresenceStatusUpdatedPayload,
   WsPresencePlatformsChangedPayload,
+  WsPresenceCallChangedPayload,
 } from '~/types/api'
 import type {
   OnlineFeedCallback,
@@ -510,6 +511,15 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
           cb.onPlatformsChanged?.(data)
+        }
+      }
+    })
+
+    socket.on('presence:call-changed', (data: WsPresenceCallChangedPayload) => {
+      if (!data?.userId || typeof data.inCall !== 'boolean') return
+      if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
+        for (const cb of onlineFeedCallbacks.value) {
+          cb.onCallChanged?.(data)
         }
       }
     })

@@ -1333,6 +1333,8 @@ export type OnlineUser = FollowListUser & {
    * responding instance; may be empty for multi-instance deployments.
    */
   platforms?: string[]
+  /** Currently in a voice/video call. Kept live by `presence:call-changed`. */
+  inCall?: boolean
 }
 
 /** Data type for GET /presence/online (array); totalOnline in pagination. */
@@ -1633,7 +1635,9 @@ export type CallsAckError = Contracts.CallsAckErrorDto
 export type CallsAck = Contracts.CallsAckDto
 export type WsCallsIncomingPayload = Contracts.CallsIncomingPayloadDto
 export type WsCallsUpdatedPayload = Contracts.CallsUpdatedPayloadDto
+export type WsCallsSeatTakenPayload = Contracts.CallsSeatTakenPayloadDto
 export type WsRtcSignalPayload = Contracts.RtcSignalPayloadDto
+export type WsPresenceCallChangedPayload = Contracts.PresenceCallChangedPayloadDto
 
 export type MessageKind = 'text' | 'call'
 

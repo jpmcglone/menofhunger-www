@@ -2,6 +2,7 @@ import {
   AUDIO_ONLY_TIER,
   isBadSample,
   nextQualityTier,
+  QUALITY_WARMUP_MS,
   sampleFromStatsReport,
   topTierFor,
   VIDEO_QUALITY_TIERS,
@@ -14,6 +15,8 @@ type PeerQuality = {
   pc: RTCPeerConnection
   tier: number
   counters: QualityCounters
+  /** When the connection last became `connected`; samples inside the warm-up window are ignored. */
+  connectedAt: number | null
 }
 
 /**
@@ -33,7 +36,7 @@ export class CallQualityManager {
 
   attach(userId: string, pc: RTCPeerConnection): void {
     const top = topTierFor(this.peers.size + (this.peers.has(userId) ? 0 : 1))
-    this.peers.set(userId, { pc, tier: top, counters: { bad: 0, good: 0 } })
+    this.peers.set(userId, { pc, tier: top, counters: { bad: 0, good: 0 }, connectedAt: null })
     void this.applyTier(userId)
     this.reclampAll()
     this.ensureTimer()
@@ -91,14 +94,21 @@ export class CallQualityManager {
 
   private async sampleAll(): Promise<void> {
     const top = topTierFor(this.peers.size)
+    const now = Date.now()
     for (const [userId, p] of this.peers) {
-      if (p.pc.connectionState !== 'connected') continue
+      if (p.pc.connectionState !== 'connected') {
+        p.connectedAt = null
+        continue
+      }
+      if (p.connectedAt === null) p.connectedAt = now
+      if (now - p.connectedAt < QUALITY_WARMUP_MS) continue
       let bad = false
       try {
         const report = await p.pc.getStats()
         const values: Record<string, unknown>[] = []
         report.forEach((v) => values.push(v as unknown as Record<string, unknown>))
-        bad = isBadSample(sampleFromStatsReport(values))
+        const cap = VIDEO_QUALITY_TIERS[Math.min(p.tier, AUDIO_ONLY_TIER)]?.maxBitrate ?? null
+        bad = isBadSample(sampleFromStatsReport(values), cap)
       } catch {
         continue
       }

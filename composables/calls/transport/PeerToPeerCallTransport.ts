@@ -6,6 +6,8 @@ import type { CallSignal, CallTransport, CallTransportOptions, PeerMediaState } 
 const DISCONNECTED_RESTART_MS = 3_000
 /** Signals buffered per not-yet-known peer (their offer can beat our `calls:updated`). */
 const MAX_EARLY_SIGNALS = 64
+/** Fallback when the ack didn't carry `reconnectGraceMs` (matches the server constant). */
+export const DEFAULT_RECONNECT_GRACE_MS = 30_000
 
 type Peer = {
   userId: string
@@ -20,6 +22,8 @@ type Peer = {
   isSettingRemoteAnswerPending: boolean
   pendingCandidates: RTCIceCandidateInit[]
   disconnectedTimer: ReturnType<typeof setTimeout> | null
+  /** Runs while `reconnecting`; on expiry the peer is `failed` and no more restarts are attempted. */
+  giveUpTimer: ReturnType<typeof setTimeout> | null
   state: PeerMediaState
 }
 
@@ -76,6 +80,14 @@ export class PeerToPeerCallTransport implements CallTransport {
 
   peerCount(): number {
     return this.peers.size
+  }
+
+  restartIce(): void {
+    if (this.destroyed) return
+    for (const peer of this.peers.values()) {
+      if (peer.state === 'connected' || peer.state === 'failed') continue
+      this.restartIcePeer(peer)
+    }
   }
 
   async setLocalTrack(kind: 'audio' | 'video', track: MediaStreamTrack | null): Promise<void> {
@@ -180,6 +192,7 @@ export class PeerToPeerCallTransport implements CallTransport {
       isSettingRemoteAnswerPending: false,
       pendingCandidates: [],
       disconnectedTimer: null,
+      giveUpTimer: null,
       state: 'connecting',
     }
     this.peers.set(userId, peer)
@@ -213,22 +226,26 @@ export class PeerToPeerCallTransport implements CallTransport {
     }
 
     pc.ontrack = ({ track }) => {
-      if (!stream.getTracks().some((t) => t.id === track.id)) stream.addTrack(track)
-      // Re-emit so a bound <video> re-attaches when a track arrives after the first paint.
-      this.opts.events.onRemoteStream(userId, stream)
+      if (peer.stream.getTracks().some((t) => t.id === track.id)) return
+      // A fresh MediaStream, not `addTrack` on the old one: programmatic `addTrack` fires no
+      // `addtrack` event and keeps the object identity, so Vue watchers on the stream would
+      // never re-run and the bound <video> would sit on the avatar until it remounted.
+      peer.stream = new MediaStream([...peer.stream.getTracks(), track])
+      this.opts.events.onRemoteStream(userId, peer.stream)
     }
 
     pc.oniceconnectionstatechange = () => {
       const s = pc.iceConnectionState
+      if (peer.state === 'failed') return
       if (s === 'failed') {
         this.setPeerState(peer, 'reconnecting')
-        this.restartIce(peer)
+        this.restartIcePeer(peer)
       } else if (s === 'disconnected') {
         this.setPeerState(peer, 'reconnecting')
         this.clearDisconnectedTimer(peer)
         peer.disconnectedTimer = setTimeout(() => {
           peer.disconnectedTimer = null
-          if (pc.iceConnectionState === 'disconnected') this.restartIce(peer)
+          if (pc.iceConnectionState === 'disconnected') this.restartIcePeer(peer)
         }, DISCONNECTED_RESTART_MS)
       } else if (s === 'connected' || s === 'completed') {
         this.clearDisconnectedTimer(peer)
@@ -238,10 +255,11 @@ export class PeerToPeerCallTransport implements CallTransport {
 
     pc.onconnectionstatechange = () => {
       const s = pc.connectionState
+      if (peer.state === 'failed') return
       if (s === 'connected') this.setPeerState(peer, 'connected')
       else if (s === 'failed') {
         this.setPeerState(peer, 'reconnecting')
-        this.restartIce(peer)
+        this.restartIcePeer(peer)
       } else if (s === 'closed') this.setPeerState(peer, 'failed')
     }
 
@@ -255,6 +273,7 @@ export class PeerToPeerCallTransport implements CallTransport {
     if (!peer) return
     this.peers.delete(userId)
     this.clearDisconnectedTimer(peer)
+    this.clearGiveUpTimer(peer)
     this.quality.detach(userId)
     try {
       peer.pc.onnegotiationneeded = null
@@ -270,9 +289,9 @@ export class PeerToPeerCallTransport implements CallTransport {
     this.opts.events.onRemoteStream(userId, null)
   }
 
-  private restartIce(peer: Peer): void {
+  private restartIcePeer(peer: Peer): void {
     // Only one side needs to restart; the impolite side does it so both don't race.
-    if (peer.polite) return
+    if (peer.polite || peer.state === 'failed') return
     try {
       peer.pc.restartIce()
     } catch {
@@ -283,7 +302,32 @@ export class PeerToPeerCallTransport implements CallTransport {
   private setPeerState(peer: Peer, state: PeerMediaState): void {
     if (peer.state === state) return
     peer.state = state
+    if (state === 'reconnecting') this.armGiveUpTimer(peer)
+    else this.clearGiveUpTimer(peer)
     this.opts.events.onPeerState(peer.userId, state)
+  }
+
+  /**
+   * Mirror of the server's participant grace: if the media path hasn't recovered by the time
+   * the server would have dropped a disconnected participant, stop pretending and let the
+   * session decide (show "Connection lost", or wait for `calls:updated` to remove them).
+   */
+  private armGiveUpTimer(peer: Peer): void {
+    if (peer.giveUpTimer) return
+    const ms = this.opts.reconnectGraceMs ?? DEFAULT_RECONNECT_GRACE_MS
+    peer.giveUpTimer = setTimeout(() => {
+      peer.giveUpTimer = null
+      if (peer.state === 'reconnecting') {
+        this.clearDisconnectedTimer(peer)
+        this.setPeerState(peer, 'failed')
+      }
+    }, ms)
+  }
+
+  private clearGiveUpTimer(peer: Peer): void {
+    if (!peer.giveUpTimer) return
+    clearTimeout(peer.giveUpTimer)
+    peer.giveUpTimer = null
   }
 
   private clearDisconnectedTimer(peer: Peer): void {

@@ -8,8 +8,8 @@
     >
       <Icon :name="iconName" size="14" class="shrink-0" :class="isMissed ? 'text-red-500' : ''" aria-hidden="true" />
       <span class="min-w-0 truncate">
-        <span class="font-semibold">{{ senderLabel }}</span>
-        <span> {{ bodyLabel }}</span>
+        <!-- Explicit `{{ ' ' }}`: Vue's whitespace condensing drops a leading space inside a span. -->
+        <template v-if="label.lead"><span class="font-semibold">{{ label.lead }}</span>{{ ' ' }}</template>{{ label.rest }}
         <time class="ml-1.5 tabular-nums opacity-70" :datetime="message.createdAt" :title="formatMessageTimeFull(message.createdAt)">
           {{ formatMessageTime(message.createdAt) }}
         </time>
@@ -42,11 +42,12 @@ const props = defineProps<{
 }>()
 
 const { canJoin } = useCallGating()
-const { phase, call: engagedCall, joinCall } = useCallSession()
+const { phase, call: engagedCall, isEngaged, joinCall } = useCallSession()
 /** The conversation's live call (provided by the chat page); hides Join once it's full or gone. */
 const activeCall = useChatActiveCall()
 
 const call = computed(() => props.message.call)
+/** The row's sender is always the caller, so `isMine` means "the viewer placed this call". */
 const isMine = computed(() => props.message.sender.id === props.meId)
 const senderLabel = computed(() => (isMine.value ? 'You' : props.message.sender.name || props.message.sender.username || 'Someone'))
 const isLive = computed(() => {
@@ -58,22 +59,35 @@ const isLive = computed(() => {
 const isMissed = computed(() => call.value.outcome === 'missed' || call.value.outcome === 'declined')
 
 const typeLabel = computed(() => (call.value.type === 'video' ? 'video call' : 'voice call'))
-const bodyLabel = computed(() => {
+const typeTitle = computed(() => (call.value.type === 'video' ? 'Video call' : 'Voice call'))
+
+/**
+ * Perspective-aware copy. `missed` / `declined` / `cancelled` only happen on direct calls and
+ * describe what the *callee* did (or didn't do), so the bold lead is the actor, not the sender.
+ */
+const label = computed<{ lead: string | null; rest: string }>(() => {
   const c = call.value
   switch (c.outcome) {
     case 'started':
     case 'active':
-      return `started a ${typeLabel.value}`
+      return { lead: senderLabel.value, rest: `started a ${typeLabel.value}` }
     case 'ended':
-      return c.durationSeconds != null ? `${typeLabel.value} · ${formatDuration(c.durationSeconds)}` : `${typeLabel.value} ended`
+      return {
+        lead: null,
+        rest: c.durationSeconds != null ? `${typeTitle.value} · ${formatDuration(c.durationSeconds)}` : `${typeTitle.value} ended`,
+      }
     case 'missed':
-      return `missed ${typeLabel.value}`
+      return isMine.value
+        ? { lead: null, rest: `${typeTitle.value} · no answer` }
+        : { lead: null, rest: `Missed ${typeLabel.value} from ${senderLabel.value}` }
     case 'declined':
-      return `declined the ${typeLabel.value}`
+      return isMine.value
+        ? { lead: null, rest: `${typeTitle.value} declined` }
+        : { lead: 'You', rest: `declined the ${typeLabel.value}` }
     case 'cancelled':
-      return `cancelled the ${typeLabel.value}`
+      return { lead: senderLabel.value, rest: `cancelled the ${typeLabel.value}` }
   }
-  return props.message.body
+  return { lead: null, rest: props.message.body }
 })
 
 const iconName = computed(() => {
@@ -83,12 +97,13 @@ const iconName = computed(() => {
 })
 
 const viewerInCall = computed(() => Boolean(props.meId && activeCall.value?.participants.some((p) => p.userId === props.meId)))
-const inThisTab = computed(() => engagedCall.value?.id === call.value.callId && phase.value === 'in_call')
+const inThisTab = computed(() => engagedCall.value?.id === call.value.callId && isEngaged.value)
 const isFull = computed(() => Boolean(activeCall.value && activeCall.value.participants.length >= activeCall.value.capacity))
-const showJoin = computed(() => !viewerInCall.value && !inThisTab.value)
-const canJoinThis = computed(() => !isFull.value && (activeCall.value ? canJoin(activeCall.value) : true))
+/** Hide only when this tab is live in the call; a seat held elsewhere still gets "Rejoin". */
+const showJoin = computed(() => !inThisTab.value)
+const canJoinThis = computed(() => viewerInCall.value || (!isFull.value && (activeCall.value ? canJoin(activeCall.value) : true)))
 const busy = computed(() => phase.value === 'requesting_media' || phase.value === 'joining')
-const joinLabel = computed(() => (isFull.value ? 'Full' : 'Join'))
+const joinLabel = computed(() => (viewerInCall.value ? 'Rejoin' : isFull.value ? 'Full' : 'Join'))
 
 function formatDuration(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds))

@@ -18,9 +18,18 @@
         <span class="text-sm font-semibold truncate">{{ label }}</span>
         <span v-if="showTimer" class="text-xs tabular-nums text-white/70">{{ elapsed }}</span>
       </button>
-      <div v-else class="flex min-w-0 items-center gap-2 pr-2">
+      <div v-else class="flex min-w-0 items-center gap-2">
         <Icon name="tabler:device-laptop" size="16" class="text-white/70" aria-hidden="true" />
-        <span class="text-sm truncate">In a call in another tab</span>
+        <span class="text-sm truncate">In a call elsewhere</span>
+        <button
+          v-if="call"
+          type="button"
+          class="ml-1 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/20 transition-colors"
+          aria-label="Move the call to this tab"
+          @click="switchHere"
+        >
+          Switch here
+        </button>
       </div>
 
       <template v-if="expandable">
@@ -52,8 +61,15 @@ import { useCallTimer } from '~/composables/calls/useCallTimer'
 
 const emit = defineEmits<{ expand: [] }>()
 
-const { phase, call, isMicEnabled, connectedAt, remoteParticipants, toggleMic, leaveCall } = useCallSession()
+const { phase, call, isMicEnabled, connectedAt, remoteParticipants, toggleMic, leaveCall, joinCall } = useCallSession()
 const { elapsed } = useCallTimer(connectedAt)
+
+/** One seat per member: joining from here hands the seat to this tab and the other one stands down. */
+function switchHere() {
+  const current = call.value
+  if (!current) return
+  void joinCall({ id: current.id, type: current.type })
+}
 
 const expandable = computed(() => phase.value === 'in_call' || phase.value === 'outgoing')
 const showTimer = computed(() => phase.value === 'in_call')

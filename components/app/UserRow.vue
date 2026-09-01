@@ -51,6 +51,14 @@
       </div>
 
       <div class="ml-auto shrink-0 flex items-center gap-2">
+        <Icon
+          v-if="inCall"
+          name="tabler:headset"
+          class="h-4 w-4 text-emerald-500 dark:text-emerald-400"
+          title="In a call"
+          aria-label="In a call"
+          role="img"
+        />
         <div v-if="uniquePlatforms.length > 0" class="flex items-center gap-1 text-gray-400 dark:text-gray-500" aria-label="Active platforms">
           <template v-for="p in uniquePlatforms" :key="p">
             <Icon
@@ -112,6 +120,8 @@ const props = defineProps<{
   nameMeta?: string | null
   /** Deduped list of client platforms (e.g. ["ios", "web"]). Shows small icon badges. */
   platforms?: string[] | null
+  /** Currently in a voice/video call; shows a headset. */
+  inCall?: boolean
 }>()
 
 const { user } = useUserOverlay(computed(() => props.user))

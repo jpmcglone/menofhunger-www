@@ -23,6 +23,11 @@ export type CallTransportOptions = {
   iceServers: RtcIceServer[]
   /** Relay a signal to one remote participant through the authenticated socket. */
   sendSignal: (toUserId: string, signal: CallSignal) => void
+  /**
+   * How long a peer may stay `reconnecting` before it is marked `failed`. Comes from the
+   * server's `reconnectGraceMs` so every client gives up at the same moment the server does.
+   */
+  reconnectGraceMs?: number
   events: CallTransportEvents
 }
 
@@ -47,6 +52,11 @@ export interface CallTransport {
   setLocalTrack(kind: 'audio' | 'video', track: MediaStreamTrack | null): Promise<void>
   /** Number of remote peers currently wired. */
   peerCount(): number
+  /**
+   * The network path changed (browser `online`, interface switch). Kick ICE on every peer
+   * that isn't healthy instead of waiting for the disconnect timers to notice.
+   */
+  restartIce(): void
   /** Tear everything down. The instance is unusable afterwards. */
   destroy(): void
 }

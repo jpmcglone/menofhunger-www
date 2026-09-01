@@ -136,13 +136,26 @@
         <template v-if="showCallControls && conversation">
           <template v-if="conversation.activeCall">
             <Button
-              v-if="viewerInActiveCall"
+              v-if="viewerInActiveCall && engagedHere"
               size="small"
               severity="secondary"
               rounded
-              :label="engagedHere ? 'Show call' : 'In call'"
-              :disabled="!engagedHere"
+              label="Show call"
               @click="emit('showCall')"
+            >
+              <template #icon>
+                <Icon :name="conversation.activeCall.type === 'video' ? 'tabler:video' : 'tabler:phone'" aria-hidden="true" />
+              </template>
+            </Button>
+            <!-- Seated server-side but not live in this tab (reload / other device): take the seat back. -->
+            <Button
+              v-else-if="viewerInActiveCall"
+              size="small"
+              rounded
+              label="Rejoin"
+              :disabled="callBusy"
+              :loading="callBusy"
+              @click="emit('joinCall', conversation.activeCall)"
             >
               <template #icon>
                 <Icon :name="conversation.activeCall.type === 'video' ? 'tabler:video' : 'tabler:phone'" aria-hidden="true" />
@@ -257,7 +270,7 @@ const viewerInActiveCall = computed(() => {
 })
 const engagedHere = computed(() => {
   const c = props.conversation?.activeCall
-  return Boolean(c && callSession.call.value?.id === c.id && callSession.phase.value === 'in_call')
+  return Boolean(c && callSession.call.value?.id === c.id && callSession.isEngaged.value)
 })
 const activeCallFull = computed(() => {
   const c = props.conversation?.activeCall
