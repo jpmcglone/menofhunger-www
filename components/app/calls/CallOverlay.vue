@@ -54,7 +54,7 @@
             :camera-enabled="p.cameraEnabled"
             :connection-state="peerStates[p.userId] ?? 'connecting'"
             :avatar-size-class="tiles.length > 1 ? 'h-16 w-16' : 'h-28 w-28'"
-            :speaking="speakingIds[p.userId] === true"
+            :speaking-level="speakingIds[p.userId] ?? 0"
             :fit="p.screenSharing ? 'contain' : 'cover'"
             :screen-sharing="Boolean(p.screenSharing)"
             picture-in-picture
@@ -70,7 +70,7 @@
             :camera-enabled="isCameraEnabled"
             :mirrored="facingMode === 'user' && !isScreenSharing"
             avatar-size-class="h-16 w-16"
-            :speaking="selfSpeaking"
+            :speaking-level="selfSpeaking"
             :fit="isScreenSharing ? 'contain' : 'cover'"
             :screen-sharing="isScreenSharing"
           />
@@ -107,7 +107,7 @@
           :camera-enabled="isCameraEnabled"
           :mirrored="facingMode === 'user' && !isScreenSharing"
           avatar-size-class="h-12 w-12"
-          :speaking="selfSpeaking"
+          :speaking-level="selfSpeaking"
           :fit="isScreenSharing ? 'contain' : 'cover'"
           :screen-sharing="isScreenSharing"
         />
@@ -184,7 +184,7 @@ const { user: me } = useAuth()
 const { elapsed } = useCallTimer(connectedAt)
 
 const selfUser = computed(() => (me.value?.id ? participantUser(me.value.id) : null))
-const selfSpeaking = computed(() => Boolean(me.value?.id && speakingIds.value[me.value.id]))
+const selfSpeaking = computed(() => (me.value?.id ? (speakingIds.value[me.value.id] ?? 0) : 0))
 const tiles = computed<CallParticipant[]>(() => props.call.participants.filter((p) => p.userId !== me.value?.id))
 const selfInGrid = computed(() => tiles.value.length >= 3)
 

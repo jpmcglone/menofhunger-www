@@ -15,6 +15,8 @@ export const SPEAKING_EXIT = 0.01
 export const SPEAKING_HOLD_MS = 350
 /** Sampling cadence. 10 Hz is plenty for a UI ring and cheap enough for 4 analysers. */
 export const SPEAKING_POLL_MS = 100
+/** RMS / webrtc `audioLevel` that maps to ring intensity 1. Typical speech sits below this. */
+export const SPEAKING_FULL = 0.16
 
 export type SpeakingTrack = {
   speaking: boolean
@@ -35,6 +37,25 @@ export function reduceSpeaking(prev: SpeakingTrack, level: number, now: number):
   return now - prev.lastLoudAt >= SPEAKING_HOLD_MS ? { speaking: false, lastLoudAt: prev.lastLoudAt } : prev
 }
 
+/** Map a raw analyser / webrtc level onto 0…1 once hysteresis says they're speaking. */
+export function speakingIntensity(level: number, speaking: boolean): number {
+  if (!speaking) return 0
+  const span = SPEAKING_FULL - SPEAKING_EXIT
+  if (span <= 0) return 0
+  return Math.min(1, Math.max(0, (level - SPEAKING_EXIT) / span))
+}
+
+export function quantizeSpeakingIntensity(intensity: number): number {
+  if (intensity <= 0) return 0
+  return Math.round(intensity * 20) / 20
+}
+
+/** Per-ring opacities: 1 always follows intensity, 2 from ~⅓, 3 from ~⅔. */
+export function speakingRingAlphas(intensity: number): [number, number, number] {
+  const i = Math.min(1, Math.max(0, intensity))
+  return [i, Math.min(1, Math.max(0, (i - 0.33) / 0.45)), Math.min(1, Math.max(0, (i - 0.66) / 0.34))]
+}
+
 /** RMS of an analyser's float time-domain buffer. */
 export function rmsLevel(samples: Float32Array): number {
   if (samples.length === 0) return 0
@@ -52,6 +73,7 @@ type Tap = {
   analyser: AnalyserNode
   buffer: Float32Array<ArrayBuffer>
   track: SpeakingTrack
+  level: number
 }
 
 /**
@@ -64,9 +86,9 @@ export class SpeakingMonitor {
   private taps = new Map<string, Tap>()
   private muted = new Set<string>()
   private timer: ReturnType<typeof setInterval> | null = null
-  private snapshot: Record<string, boolean> = {}
+  private snapshot: Record<string, number> = {}
 
-  constructor(private readonly onChange: (speaking: Record<string, boolean>) => void) {}
+  constructor(private readonly onChange: (levels: Record<string, number>) => void) {}
 
   /** Attach (or replace) the stream analysed under `id`; `null` detaches. */
   setStream(id: string, stream: MediaStream | null): void {
@@ -86,7 +108,7 @@ export class SpeakingMonitor {
       analyser.smoothingTimeConstant = 0.4
       source.connect(analyser)
       const buffer = new Float32Array(new ArrayBuffer(analyser.fftSize * Float32Array.BYTES_PER_ELEMENT))
-      this.taps.set(id, { stream, source, analyser, buffer, track: INITIAL_SPEAKING })
+      this.taps.set(id, { stream, source, analyser, buffer, track: INITIAL_SPEAKING, level: 0 })
     } catch {
       // Stream not analysable in this browser (e.g. no live audio track yet); stay silent.
       return
@@ -149,26 +171,27 @@ export class SpeakingMonitor {
 
   private tick(): void {
     const now = Date.now()
-    let changed = false
     for (const tap of this.taps.values()) {
       tap.analyser.getFloatTimeDomainData(tap.buffer)
-      const next = reduceSpeaking(tap.track, rmsLevel(tap.buffer), now)
-      if (next !== tap.track) {
-        changed = changed || next.speaking !== tap.track.speaking
-        tap.track = next
-      }
+      tap.level = rmsLevel(tap.buffer)
+      tap.track = reduceSpeaking(tap.track, tap.level, now)
     }
-    if (changed) this.publish()
+    this.publish()
   }
 
   private publish(): void {
-    const next: Record<string, boolean> = {}
+    const next: Record<string, number> = {}
     for (const [id, tap] of this.taps) {
-      if (tap.track.speaking && !this.muted.has(id)) next[id] = true
+      if (this.muted.has(id)) continue
+      const quantized = quantizeSpeakingIntensity(speakingIntensity(tap.level, tap.track.speaking))
+      if (quantized > 0) next[id] = quantized
     }
     const prevKeys = Object.keys(this.snapshot)
     const nextKeys = Object.keys(next)
-    if (prevKeys.length === nextKeys.length && nextKeys.every((k) => this.snapshot[k])) return
+    if (
+      prevKeys.length === nextKeys.length
+      && nextKeys.every((k) => this.snapshot[k] === next[k])
+    ) return
     this.snapshot = next
     this.onChange(next)
   }

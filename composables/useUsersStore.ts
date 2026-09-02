@@ -5,6 +5,7 @@ export type PublicUserEntity = {
   bio?: string | null
   premium?: boolean
   premiumPlus?: boolean
+  isOrganization?: boolean
   verifiedStatus?: string
   avatarUrl?: string | null
   bannerUrl?: string | null

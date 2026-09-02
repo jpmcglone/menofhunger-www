@@ -1,8 +1,14 @@
 <template>
-  <div
-    class="relative h-full w-full rounded-2xl"
-    :class="speaking ? 'moh-speaking-ring' : ''"
-  >
+  <div class="relative h-full w-full rounded-2xl">
+    <div class="moh-speak-rings pointer-events-none absolute inset-0 z-10 rounded-[inherit]" aria-hidden="true">
+      <span
+        v-for="(alpha, index) in ringAlphas"
+        :key="index"
+        class="moh-speak-ring"
+        :class="`moh-speak-ring-${index + 1}`"
+        :style="ringStyle(index, alpha)"
+      />
+    </div>
     <!-- Clip + mask live on this inner surface so WebKit's video compositor can't paint a sharp rect. -->
     <div class="moh-call-tile-clip absolute inset-0 bg-zinc-900">
       <!-- Mirror the wrapper, never the <video>: Safari drops object-fit after scaleX on the element. -->
@@ -41,8 +47,9 @@
         <Icon
           :name="micEnabled ? 'tabler:microphone' : 'tabler:microphone-off'"
           size="13"
-          :class="!micEnabled ? 'text-red-400' : speaking ? 'text-sky-300' : 'opacity-80'"
-          :aria-label="!micEnabled ? 'Muted' : speaking ? 'Speaking' : 'Mic on'"
+          :class="micIconClass"
+          :style="isSpeaking ? { color: ringColor } : undefined"
+          :aria-label="!micEnabled ? 'Muted' : isSpeaking ? 'Speaking' : 'Mic on'"
         />
         <span class="truncate">{{ screenSharing && label === 'You' ? "You're sharing your screen" : label }}</span>
       </div>
@@ -55,6 +62,8 @@ import type { CallDisplayUser } from '~/composables/calls/useCallSession'
 import type { PeerMediaState } from '~/composables/calls/transport/CallTransport'
 import { callVideoAttachKey } from '~/composables/calls/callLifecycle'
 import { registerCallPipSource } from '~/composables/calls/callPictureInPicture'
+import { speakingRingAlphas } from '~/composables/calls/speakingDetector'
+import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 const props = withDefaults(
   defineProps<{
@@ -69,6 +78,8 @@ const props = withDefaults(
     avatarSizeClass?: string
     /** Audio is flowing from this participant right now; draws the pulsing ring. */
     speaking?: boolean
+    /** 0…1 volume while speaking. Drives ring fade, thickness, and extra outlines. */
+    speakingLevel?: number
     /** Screen share: contain-fit and never mirrored. */
     fit?: 'cover' | 'contain'
     screenSharing?: boolean
@@ -80,6 +91,7 @@ const props = withDefaults(
     mirrored: false,
     avatarSizeClass: 'h-20 w-20',
     speaking: false,
+    speakingLevel: 0,
     fit: 'cover',
     screenSharing: false,
     pictureInPicture: false,
@@ -91,6 +103,34 @@ const hasVideoTrack = ref(false)
 const attachKey = computed(() => callVideoAttachKey(props.stream))
 
 const showVideo = computed(() => props.cameraEnabled && hasVideoTrack.value)
+const intensity = computed(() => {
+  const n = props.speakingLevel
+  if (n > 0) return Math.min(1, n)
+  return props.speaking ? 0.55 : 0
+})
+const isSpeaking = computed(() => intensity.value > 0.02)
+const ringAlphas = computed(() => speakingRingAlphas(intensity.value))
+const ringColor = computed(() => userTierColorVar(userColorTier(props.user)) ?? 'var(--moh-link)')
+const micIconClass = computed(() => {
+  if (!props.micEnabled) return 'text-red-400'
+  return isSpeaking.value ? '' : 'opacity-80'
+})
+
+function ringStyle(index: number, alpha: number) {
+  const i = intensity.value
+  const spreads = [
+    2 + i * 2.5,
+    6 + i * 5,
+    12 + i * 8,
+  ] as const
+  const glows = [0, 5 + i * 7, 12 + i * 12] as const
+  const bloom = [0, 1 + i * 1.2, 2 + i * 2.4] as const
+  return {
+    opacity: alpha,
+    transform: `scale(${1 + bloom[index] / 100})`,
+    boxShadow: `0 0 ${glows[index]}px ${spreads[index]}px ${ringColor.value}`,
+  }
+}
 
 function refreshHasVideo() {
   const s = props.stream
@@ -165,31 +205,34 @@ onBeforeUnmount(() => {
   border-radius: inherit;
 }
 
-/* Two-layer ring: a crisp inner edge plus a soft halo that breathes while audio is flowing. */
-.moh-speaking-ring {
-  box-shadow:
-    0 0 0 2px rgb(56 189 248),
-    0 0 0 6px rgb(56 189 248 / 0.28);
-  animation: moh-speaking-pulse 1.4s ease-in-out infinite;
+/* Volume rings sit outside the clipped video so they can thicken without cropping. */
+.moh-speak-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 160ms cubic-bezier(0.2, 0, 0, 1),
+    transform 220ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-@keyframes moh-speaking-pulse {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 2px rgb(56 189 248),
-      0 0 0 5px rgb(56 189 248 / 0.22);
-  }
-  50% {
-    box-shadow:
-      0 0 0 2px rgb(56 189 248),
-      0 0 0 8px rgb(56 189 248 / 0.34);
-  }
+.moh-speak-ring-1 {
+  transition-duration: 180ms, 140ms, 180ms;
+}
+
+.moh-speak-ring-2 {
+  transition-duration: 220ms, 180ms, 220ms;
+}
+
+.moh-speak-ring-3 {
+  transition-duration: 280ms, 220ms, 280ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .moh-speaking-ring {
-    animation: none;
+  .moh-speak-ring {
+    transition: opacity 80ms linear, box-shadow 80ms linear, transform 80ms linear;
   }
 }
 </style>

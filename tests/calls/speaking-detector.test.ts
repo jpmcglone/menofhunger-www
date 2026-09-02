@@ -5,9 +5,12 @@ import {
   INITIAL_SPEAKING,
   SPEAKING_ENTER,
   SPEAKING_EXIT,
+  SPEAKING_FULL,
   SPEAKING_HOLD_MS,
   reduceSpeaking,
   rmsLevel,
+  speakingIntensity,
+  speakingRingAlphas,
   type SpeakingTrack,
 } from '~/composables/calls/speakingDetector'
 
@@ -72,6 +75,25 @@ describe('reduceSpeaking hysteresis', () => {
   })
 })
 
+describe('speakingIntensity', () => {
+  it('is 0 when quiet and 1 at the full-loud ceiling', () => {
+    expect(speakingIntensity(0.4, false)).toBe(0)
+    expect(speakingIntensity(SPEAKING_EXIT, true)).toBe(0)
+    expect(speakingIntensity(SPEAKING_FULL, true)).toBe(1)
+    expect(speakingIntensity(SPEAKING_FULL + 0.2, true)).toBe(1)
+    expect(speakingIntensity((SPEAKING_EXIT + SPEAKING_FULL) / 2, true)).toBeCloseTo(0.5)
+  })
+
+  it('reveals the second and third rings as volume climbs', () => {
+    expect(speakingRingAlphas(0)).toEqual([0, 0, 0])
+    expect(speakingRingAlphas(0.2)[0]).toBeCloseTo(0.2)
+    expect(speakingRingAlphas(0.2)[1]).toBe(0)
+    expect(speakingRingAlphas(0.5)[1]).toBeGreaterThan(0)
+    expect(speakingRingAlphas(0.5)[2]).toBe(0)
+    expect(speakingRingAlphas(1)[2]).toBeCloseTo(1)
+  })
+})
+
 describe('rmsLevel', () => {
   it('is 0 for silence and the amplitude for a square wave', () => {
     expect(rmsLevel(new Float32Array(0))).toBe(0)
@@ -93,11 +115,14 @@ describe('speaking ring wiring', () => {
     expect(teardown).toContain('speakingIds.value = {}')
 
     const overlay = read('components/app/calls/CallOverlay.vue')
-    expect(overlay).toContain(':speaking="speakingIds[p.userId] === true"')
-    expect(overlay).toContain(':speaking="selfSpeaking"')
+    expect(overlay).toContain(':speaking-level="speakingIds[p.userId] ?? 0"')
+    expect(overlay).toContain(':speaking-level="selfSpeaking"')
 
     const tile = read('components/app/calls/CallVideoTile.vue')
-    expect(tile).toContain("speaking ? 'moh-speaking-ring' : ''")
+    expect(tile).toContain('speakingRingAlphas')
+    expect(tile).toContain('moh-speak-ring-3')
     expect(tile).toContain('prefers-reduced-motion: reduce')
+    expect(tile).toContain('userTierColorVar')
+    expect(tile).toContain('var(--moh-link)')
   })
 })

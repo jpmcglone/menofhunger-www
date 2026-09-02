@@ -38,7 +38,10 @@ export type CallDisplayUser = {
   username: string | null
   name: string | null
   avatarUrl: string | null
+  premium: boolean
   premiumPlus: boolean
+  isOrganization: boolean
+  verifiedStatus: string
 }
 
 /**
@@ -71,7 +74,7 @@ export function useCallSession() {
   const cameraError = useState<string | null>('call-camera-error', () => null)
   const peerStates = useState<Record<string, PeerMediaState>>('call-peer-states', () => ({}))
   /** userId → currently talking (self included), with hysteresis so it doesn't flicker. */
-  const speakingIds = useState<Record<string, boolean>>('call-speaking-ids', () => ({}))
+  const speakingIds = useState<Record<string, number>>('call-speaking-ids', () => ({}))
   const qualityTier = useState<number>('call-quality-tier', () => 0)
   const facingMode = useState<'user' | 'environment'>('call-facing-mode', () => 'user')
   const audioDeviceId = useState<string | null>('call-audio-device', () => null)
@@ -150,8 +153,8 @@ export function useCallSession() {
     remoteStreams.value = {}
     qualityTier.value = 0
     speakingMonitor?.destroy()
-    speakingMonitor = new SpeakingMonitor((ids) => {
-      speakingIds.value = ids
+    speakingMonitor = new SpeakingMonitor((levels) => {
+      speakingIds.value = levels
     })
     speakingMonitor.setStream(meId.value, localStream.value)
     speakingMonitor.setMuted(meId.value, !isMicEnabled.value)
@@ -288,7 +291,10 @@ export function useCallSession() {
       username: u?.username ?? null,
       name: u?.name ?? null,
       avatarUrl: u?.avatarUrl ?? null,
+      premium: Boolean(u?.premium),
       premiumPlus: Boolean(u?.premiumPlus),
+      isOrganization: Boolean(u?.isOrganization),
+      verifiedStatus: u?.verifiedStatus ?? 'none',
     }
   }
 
