@@ -57,6 +57,7 @@
             :speaking-level="speakingIds[p.userId] ?? 0"
             :fit="p.screenSharing ? 'contain' : 'cover'"
             :screen-sharing="Boolean(p.screenSharing)"
+            :hand-raised="isGroupCall && Boolean(p.handRaised)"
             picture-in-picture
           />
         </div>
@@ -73,6 +74,7 @@
             :speaking-level="selfSpeaking"
             :fit="isScreenSharing ? 'contain' : 'cover'"
             :screen-sharing="isScreenSharing"
+            :hand-raised="isGroupCall && selfHandRaised"
           />
         </div>
         <div v-if="tiles.length === 0" class="flex items-center justify-center text-white/70 text-sm">
@@ -110,6 +112,7 @@
           :speaking-level="selfSpeaking"
           :fit="isScreenSharing ? 'contain' : 'cover'"
           :screen-sharing="isScreenSharing"
+          :hand-raised="isGroupCall && selfHandRaised"
         />
       </div>
     </div>
@@ -126,11 +129,14 @@
         :video-device-id="videoDeviceId"
         :speaker-device-id="speakerDeviceId"
         :screen-sharing="isScreenSharing"
+        :show-hand-raise="isGroupCall"
+        :hand-raised="selfHandRaised"
         @toggle-mic="toggleMic"
         @toggle-camera="toggleCamera"
         @switch-camera="switchCamera"
         @toggle-screen-share="toggleScreenShare"
         @react="sendReaction"
+        @toggle-hand="toggleHand"
         @leave="leaveCall"
         @select-microphone="setMicrophoneDevice"
         @select-camera="setCameraDevice"
@@ -174,6 +180,7 @@ const {
   switchCamera,
   toggleScreenShare,
   sendReaction,
+  toggleHand,
   leaveCall,
   setMicrophoneDevice,
   setCameraDevice,
@@ -186,6 +193,10 @@ const { elapsed } = useCallTimer(connectedAt)
 const selfUser = computed(() => (me.value?.id ? participantUser(me.value.id) : null))
 const selfSpeaking = computed(() => (me.value?.id ? (speakingIds.value[me.value.id] ?? 0) : 0))
 const tiles = computed<CallParticipant[]>(() => props.call.participants.filter((p) => p.userId !== me.value?.id))
+const isGroupCall = computed(() => props.call.participants.length > 2)
+const selfHandRaised = computed(() =>
+  props.call.participants.find((p) => p.userId === me.value?.id)?.handRaised === true,
+)
 const selfInGrid = computed(() => tiles.value.length >= 3)
 
 const gridClass = computed(() => {

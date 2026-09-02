@@ -113,6 +113,19 @@
       <Icon :name="screenSharing ? 'tabler:screen-share-off' : 'tabler:screen-share'" size="20" aria-hidden="true" />
     </button>
 
+    <button
+      v-if="showHandRaise"
+      type="button"
+      class="moh-call-btn"
+      :class="handRaised ? 'moh-call-btn-off' : 'moh-call-btn-secondary'"
+      :aria-label="handRaised ? 'Lower hand' : 'Raise hand'"
+      :aria-pressed="handRaised"
+      data-testid="call-raise-hand"
+      @click="emit('toggleHand')"
+    >
+      <Icon name="tabler:hand-stop" size="20" aria-hidden="true" />
+    </button>
+
     <div v-if="showReactions" class="relative">
       <button
         type="button"
@@ -172,8 +185,10 @@ const props = withDefaults(
     screenSharing?: boolean
     showReactions?: boolean
     allowScreenShare?: boolean
+    showHandRaise?: boolean
+    handRaised?: boolean
   }>(),
-  { leaveLabel: 'Leave call', showDevices: true, screenSharing: false, showReactions: true, allowScreenShare: true },
+  { leaveLabel: 'Leave call', showDevices: true, screenSharing: false, showReactions: true, allowScreenShare: true, showHandRaise: false, handRaised: false },
 )
 
 const emit = defineEmits<{
@@ -182,6 +197,7 @@ const emit = defineEmits<{
   switchCamera: []
   toggleScreenShare: []
   react: [emoji: string]
+  toggleHand: []
   leave: []
   selectMicrophone: [deviceId: string]
   selectCamera: [deviceId: string]

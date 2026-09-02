@@ -595,11 +595,41 @@ export function useCallSession() {
     ingestReaction(meId.value, payload)
   }
 
+  function isGroupCall(session: CallSession | null | undefined): boolean {
+    return (session?.participants.length ?? 0) > 2
+  }
+
+  function selfHandRaised(session: CallSession | null | undefined): boolean {
+    if (!session || !meId.value) return false
+    return session.participants.find((p) => p.userId === meId.value)?.handRaised === true
+  }
+
+  function patchSelfHand(session: CallSession, raised: boolean): CallSession {
+    if (!meId.value) return session
+    return {
+      ...session,
+      participants: session.participants.map((p) =>
+        p.userId === meId.value ? { ...p, handRaised: raised } : p,
+      ),
+    }
+  }
+
+  function toggleHand(): void {
+    const current = call.value
+    if (!current || !isGroupCall(current)) return
+    const next = !selfHandRaised(current)
+    state.value = { ...state.value, call: patchSelfHand(current, next) }
+    presence.emitCallsState(current.id, { handRaised: next })
+  }
+
   // ─── Realtime ───────────────────────────────────────────────────────────────
 
   function onUpdated(session: CallSession) {
     const { state: next, effects } = reduceCallsUpdated(state.value, session, meId.value)
     state.value = next
+    if (!isGroupCall(session) && selfHandRaised(session)) {
+      presence.emitCallsState(session.id, { handRaised: false })
+    }
     // A muted peer's tile must never ring, even if their analyser still hears room noise.
     for (const p of session.participants) {
       if (p.userId !== meId.value) speakingMonitor?.setMuted(p.userId, !p.micEnabled)
@@ -869,6 +899,7 @@ export function useCallSession() {
     switchCamera,
     toggleScreenShare,
     sendReaction,
+    toggleHand,
     setCameraDevice,
     setMicrophoneDevice,
     setSpeakerDevice,

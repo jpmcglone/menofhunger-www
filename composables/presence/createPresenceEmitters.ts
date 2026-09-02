@@ -236,7 +236,7 @@ export function createPresenceEmitters(socketRef: Ref<Socket | null>) {
     emitCallsDecline(callId: string): Promise<CallsAck> {
       return emitCallsWithAck(socketRef.value, 'calls:decline', { callId: String(callId ?? '').trim() })
     },
-    emitCallsState(callId: string, state: { micEnabled?: boolean; cameraEnabled?: boolean; screenSharing?: boolean }) {
+    emitCallsState(callId: string, state: { micEnabled?: boolean; cameraEnabled?: boolean; screenSharing?: boolean; handRaised?: boolean }) {
       const socket = socketRef.value
       const id = String(callId ?? '').trim()
       if (!socket?.connected || !id) return

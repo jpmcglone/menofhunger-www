@@ -52,6 +52,7 @@
           :aria-label="!micEnabled ? 'Muted' : isSpeaking ? 'Speaking' : 'Mic on'"
         />
         <span class="truncate">{{ screenSharing && label === 'You' ? "You're sharing your screen" : label }}</span>
+        <span v-if="handRaised" class="text-sm leading-none" aria-label="Hand raised">✋</span>
       </div>
     </div>
   </div>
@@ -83,6 +84,8 @@ const props = withDefaults(
     /** Screen share: contain-fit and never mirrored. */
     fit?: 'cover' | 'contain'
     screenSharing?: boolean
+    /** Group calls only: this person has their hand up. */
+    handRaised?: boolean
     /** Register this tile's <video> as the OS picture-in-picture source. */
     pictureInPicture?: boolean
   }>(),
@@ -94,6 +97,7 @@ const props = withDefaults(
     speakingLevel: 0,
     fit: 'cover',
     screenSharing: false,
+    handRaised: false,
     pictureInPicture: false,
   },
 )
