@@ -36,6 +36,14 @@ describe('useAuth hydration guardrails (structural)', () => {
     }
   })
 
+  it('does not fetch the person-only crew inbox while acting as a page', () => {
+    const badge = readFromRepo('composables/useCrewInvitesBadge.ts')
+    const crew = readFromRepo('composables/useCrew.ts')
+    expect(badge).toContain('isPageAccount')
+    expect(badge).toMatch(/if \(!userId \|\| isPageAccount\.value\)/)
+    expect(crew).toContain('if (isPageAccount.value) return []')
+  })
+
   it('never renders a badge or indicator on the Home navigation item', () => {
     const tabBar = readFromRepo('components/app/TabBar.vue')
     const leftRail = readFromRepo('components/app/layout/LeftRail.vue')

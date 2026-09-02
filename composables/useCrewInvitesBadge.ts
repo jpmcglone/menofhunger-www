@@ -6,7 +6,7 @@ import { userColorTier } from '~/utils/user-tier'
  * `useBadgeHydration` owns automatic bootstrap/recovery; `refresh` is explicit.
  */
 export function useCrewInvitesBadge() {
-  const { user } = useAuth()
+  const { user, isPageAccount } = useAuth()
   const crewApi = useCrew()
 
   const count = useState<number>('crew-invites-badge-count', () => 0)
@@ -26,7 +26,7 @@ export function useCrewInvitesBadge() {
 
   async function refresh() {
     const userId = user.value?.id
-    if (!userId) {
+    if (!userId || isPageAccount.value) {
       setCount(0)
       return
     }

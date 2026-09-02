@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PeerMediaState } from '~/composables/calls/transport/CallTransport'
-import { DEFAULT_RECONNECT_GRACE_MS, PeerToPeerCallTransport } from '~/composables/calls/transport/PeerToPeerCallTransport'
+import {
+  CONNECTING_RESTART_MS,
+  DEFAULT_RECONNECT_GRACE_MS,
+  PeerToPeerCallTransport,
+} from '~/composables/calls/transport/PeerToPeerCallTransport'
 
 /** Just enough RTCPeerConnection for the transport's state machine; no media, no network. */
 class FakePeerConnection {
@@ -10,6 +14,8 @@ class FakePeerConnection {
   signalingState = 'stable'
   localDescription: unknown = null
   remoteDescription: unknown = null
+  transceivers: Array<{ sender: unknown; receiver: { track: { kind: string } } }> = []
+  setLocalCalls: Array<{ type: string; sdp?: string } | undefined> = []
   restartIce = vi.fn()
   close = vi.fn()
   onnegotiationneeded: (() => void) | null = null
@@ -30,15 +36,21 @@ class FakePeerConnection {
     return ch
   }
 
-  addTransceiver() {
-    return {
+  addTransceiver(kind?: string) {
+    const t = {
       sender: {
         replaceTrack: vi.fn(async () => undefined),
         getParameters: () => ({ encodings: [{}] }),
         setParameters: vi.fn(async () => undefined),
         track: null,
       },
+      receiver: { track: { kind: kind === 'audio' ? 'audio' : 'video' } },
     }
+    this.transceivers.push(t)
+    return t
+  }
+  getTransceivers() {
+    return this.transceivers
   }
   getSenders() {
     return []
@@ -47,6 +59,12 @@ class FakePeerConnection {
     return new Map()
   }
   async setLocalDescription(desc?: { type: string; sdp: string }) {
+    this.setLocalCalls.push(desc)
+    if (desc?.type === 'rollback') {
+      this.localDescription = null
+      this.signalingState = 'stable'
+      return
+    }
     this.localDescription = desc ?? { type: this.remoteDescription ? 'answer' : 'offer', sdp: 'local' }
     this.signalingState = 'stable'
   }
@@ -115,6 +133,10 @@ function makeTransport(opts?: { reconnectGraceMs?: number; selfUserId?: string }
 
 const lastState = (states: Array<[string, PeerMediaState]>, userId: string) =>
   states.filter(([id]) => id === userId).at(-1)?.[1]
+
+async function flushMicrotasks() {
+  for (let i = 0; i < 8; i++) await Promise.resolve()
+}
 
 describe('PeerToPeerCallTransport reconnect alignment', () => {
   beforeEach(() => {
@@ -300,13 +322,65 @@ describe('PeerToPeerCallTransport reconnect alignment', () => {
       description: { type: 'offer', sdp: 'v=0' },
     } as never)
     transport.setPeers(['alice'])
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushMicrotasks()
     const pc = FakePeerConnection.instances[0]!
     expect(pc.remoteDescription).toEqual({ type: 'offer', sdp: 'v=0' })
     expect(sendSignal).toHaveBeenCalledWith(
       'alice',
       expect.objectContaining({ description: expect.objectContaining({ type: 'answer' }) }),
+    )
+    transport.destroy()
+  })
+
+  it('opens with audio + camera only so a two-m-line iOS offer can answer', () => {
+    const { transport } = makeTransport()
+    transport.setPeers(['alice'])
+    expect(FakePeerConnection.instances[0]!.transceivers).toHaveLength(2)
+    transport.destroy()
+  })
+
+  it('polite peer rolls back on a colliding offer', async () => {
+    const { transport } = makeTransport({ selfUserId: 'aaa' })
+    transport.setPeers(['alice'])
+    await flushMicrotasks()
+    const pc = FakePeerConnection.instances[0]!
+    pc.signalingState = 'have-local-offer'
+    await transport.handleSignal({
+      callId: 'call-1',
+      fromUserId: 'alice',
+      description: { type: 'offer', sdp: 'theirs' },
+    } as never)
+    expect(pc.setLocalCalls.some((d) => d?.type === 'rollback')).toBe(true)
+    expect(pc.remoteDescription).toEqual({ type: 'offer', sdp: 'theirs' })
+    transport.destroy()
+  })
+
+  it('impolite peer ignores a colliding offer', async () => {
+    const { transport } = makeTransport({ selfUserId: 'zed' })
+    transport.setPeers(['alice'])
+    await flushMicrotasks()
+    const pc = FakePeerConnection.instances[0]!
+    pc.signalingState = 'have-local-offer'
+    pc.remoteDescription = null
+    await transport.handleSignal({
+      callId: 'call-1',
+      fromUserId: 'alice',
+      description: { type: 'offer', sdp: 'theirs' },
+    } as never)
+    expect(pc.remoteDescription).toBeNull()
+    transport.destroy()
+  })
+
+  it('re-offers when still connecting with no remote description', async () => {
+    const { transport, sendSignal } = makeTransport({ selfUserId: 'zed' })
+    transport.setPeers(['alice'])
+    await flushMicrotasks()
+    sendSignal.mockClear()
+    vi.advanceTimersByTime(CONNECTING_RESTART_MS)
+    await flushMicrotasks()
+    expect(sendSignal).toHaveBeenCalledWith(
+      'alice',
+      expect.objectContaining({ description: expect.objectContaining({ type: 'offer' }) }),
     )
     transport.destroy()
   })

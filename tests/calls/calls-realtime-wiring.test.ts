@@ -119,5 +119,6 @@ describe('DM calling realtime wiring', () => {
     expect(transport).toContain("if (peer.polite || peer.state === 'failed') return")
     expect(transport).toContain('peer.pc.restartIce()')
     expect(transport).toContain('peer.ignoreOffer = !peer.polite && offerCollision')
+    expect(transport).toContain("setLocalDescription({ type: 'rollback' })")
   })
 })

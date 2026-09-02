@@ -15,6 +15,7 @@ type ApiFetchData = ReturnType<typeof useApiClient>['apiFetchData']
  */
 export function useCrew() {
   const { apiFetchData } = useApiClient()
+  const { isPageAccount } = useAuth()
 
   async function getMyCrew(): Promise<CrewPrivate | null> {
     const res = await apiFetchData<{ crew: CrewPrivate | null }>('/crew/me')
@@ -95,6 +96,7 @@ export function useCrew() {
   }
 
   async function listInbox(): Promise<CrewInvite[]> {
+    if (isPageAccount.value) return []
     const res = await apiFetchData<CrewInvite[]>('/crew/invites/inbox')
     return Array.isArray(res) ? res : []
   }
