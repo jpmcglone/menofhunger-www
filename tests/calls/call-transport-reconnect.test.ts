@@ -46,8 +46,14 @@ class FakePeerConnection {
   async getStats() {
     return new Map()
   }
-  async setLocalDescription() {}
-  async setRemoteDescription() {}
+  async setLocalDescription(desc?: { type: string; sdp: string }) {
+    this.localDescription = desc ?? { type: this.remoteDescription ? 'answer' : 'offer', sdp: 'local' }
+    this.signalingState = 'stable'
+  }
+  async setRemoteDescription(desc: { type: string; sdp: string }) {
+    this.remoteDescription = desc
+    this.signalingState = desc.type === 'offer' ? 'have-remote-offer' : 'stable'
+  }
   async addIceCandidate() {}
 
   ice(state: string) {
@@ -284,5 +290,24 @@ describe('PeerToPeerCallTransport reconnect alignment', () => {
 
     impolite.destroy()
     polite.destroy()
+  })
+
+  it('applies an early remote offer before starting negotiation', async () => {
+    const { transport, sendSignal } = makeTransport({ selfUserId: 'aaa' })
+    await transport.handleSignal({
+      callId: 'call-1',
+      fromUserId: 'alice',
+      description: { type: 'offer', sdp: 'v=0' },
+    } as never)
+    transport.setPeers(['alice'])
+    await Promise.resolve()
+    await Promise.resolve()
+    const pc = FakePeerConnection.instances[0]!
+    expect(pc.remoteDescription).toEqual({ type: 'offer', sdp: 'v=0' })
+    expect(sendSignal).toHaveBeenCalledWith(
+      'alice',
+      expect.objectContaining({ description: expect.objectContaining({ type: 'answer' }) }),
+    )
+    transport.destroy()
   })
 })

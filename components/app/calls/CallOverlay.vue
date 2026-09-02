@@ -44,7 +44,64 @@
 
     <!-- Tiles -->
     <div class="relative min-h-0 flex-1 px-3 pb-2">
-      <div class="grid h-full w-full gap-2" :class="gridClass">
+      <!-- Presenting: share on the stage, people in a filmstrip (Hangouts / Zoom). -->
+      <div
+        v-if="presenter"
+        class="flex h-full min-h-0 flex-col gap-2 sm:flex-row"
+      >
+        <div class="min-h-0 min-w-0 flex-1" data-testid="call-presenting-stage">
+          <CallVideoTile
+            :stream="stageStream"
+            :user="presenterUser"
+            :label="stageLabel"
+            :mic-enabled="true"
+            :camera-enabled="true"
+            :connection-state="stageConnectionState"
+            avatar-size-class="h-20 w-20"
+            fit="contain"
+            screen-sharing
+            variant="stage"
+            picture-in-picture
+          />
+        </div>
+        <div
+          class="flex shrink-0 gap-2 overflow-x-auto sm:h-full sm:w-[7.25rem] sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden"
+          data-testid="call-presenting-filmstrip"
+        >
+          <div
+            v-for="p in tiles"
+            :key="p.userId"
+            class="h-[6.25rem] w-[4.75rem] shrink-0 sm:h-auto sm:w-full sm:aspect-[3/4]"
+          >
+            <CallVideoTile
+              :stream="remoteStreams[p.userId] ?? null"
+              :user="participantUser(p.userId)"
+              :label="participantLabel(p.userId)"
+              :mic-enabled="p.micEnabled"
+              :camera-enabled="p.cameraEnabled"
+              :connection-state="peerStates[p.userId] ?? 'connecting'"
+              avatar-size-class="h-10 w-10"
+              :speaking-level="speakingIds[p.userId] ?? 0"
+              :hand-raised="isGroupCall && Boolean(p.handRaised)"
+              :ice-path="isAdmin ? (icePaths[p.userId] ?? null) : null"
+            />
+          </div>
+          <div class="h-[6.25rem] w-[4.75rem] shrink-0 sm:h-auto sm:w-full sm:aspect-[3/4]">
+            <CallVideoTile
+              :stream="localStream"
+              :user="selfUser"
+              label="You"
+              :mic-enabled="isMicEnabled"
+              :camera-enabled="isCameraEnabled"
+              :mirrored="facingMode === 'user'"
+              avatar-size-class="h-10 w-10"
+              :speaking-level="selfSpeaking"
+              :hand-raised="isGroupCall && selfHandRaised"
+            />
+          </div>
+        </div>
+      </div>
+      <div v-else class="grid h-full w-full gap-2" :class="gridClass">
         <div v-for="p in tiles" :key="p.userId" class="min-h-0">
           <CallVideoTile
             :stream="remoteStreams[p.userId] ?? null"
@@ -55,9 +112,8 @@
             :connection-state="peerStates[p.userId] ?? 'connecting'"
             :avatar-size-class="tiles.length > 1 ? 'h-16 w-16' : 'h-28 w-28'"
             :speaking-level="speakingIds[p.userId] ?? 0"
-            :fit="p.screenSharing ? 'contain' : 'cover'"
-            :screen-sharing="Boolean(p.screenSharing)"
             :hand-raised="isGroupCall && Boolean(p.handRaised)"
+            :ice-path="isAdmin ? (icePaths[p.userId] ?? null) : null"
             picture-in-picture
           />
         </div>
@@ -69,11 +125,9 @@
             label="You"
             :mic-enabled="isMicEnabled"
             :camera-enabled="isCameraEnabled"
-            :mirrored="facingMode === 'user' && !isScreenSharing"
+            :mirrored="facingMode === 'user'"
             avatar-size-class="h-16 w-16"
             :speaking-level="selfSpeaking"
-            :fit="isScreenSharing ? 'contain' : 'cover'"
-            :screen-sharing="isScreenSharing"
             :hand-raised="isGroupCall && selfHandRaised"
           />
         </div>
@@ -90,9 +144,9 @@
         >{{ r.emoji }}</span>
       </div>
 
-      <!-- Draggable self-view (1–3 remotes) -->
+      <!-- Draggable self-view (1–3 remotes, no presenter) -->
       <div
-        v-if="!selfInGrid"
+        v-if="!presenter && !selfInGrid"
         ref="pipEl"
         class="absolute z-10 h-[7.5rem] w-[5.25rem] rounded-2xl shadow-xl shadow-black/50 sm:h-[9rem] sm:w-[16rem] touch-none cursor-grab active:cursor-grabbing"
         :style="pipStyle"
@@ -107,11 +161,9 @@
           label="You"
           :mic-enabled="isMicEnabled"
           :camera-enabled="isCameraEnabled"
-          :mirrored="facingMode === 'user' && !isScreenSharing"
+          :mirrored="facingMode === 'user'"
           avatar-size-class="h-12 w-12"
           :speaking-level="selfSpeaking"
-          :fit="isScreenSharing ? 'contain' : 'cover'"
-          :screen-sharing="isScreenSharing"
           :hand-raised="isGroupCall && selfHandRaised"
         />
       </div>
@@ -129,6 +181,7 @@
         :video-device-id="videoDeviceId"
         :speaker-device-id="speakerDeviceId"
         :screen-sharing="isScreenSharing"
+        :allow-screen-share="!someoneElsePresenting"
         :show-hand-raise="isGroupCall"
         :hand-raised="selfHandRaised"
         @toggle-mic="toggleMic"
@@ -159,9 +212,12 @@ const emit = defineEmits<{ minimize: [] }>()
 
 const {
   localStream,
+  localScreenStream,
   remoteStreams,
+  remoteScreenStreams,
   peerStates,
   speakingIds,
+  icePaths,
   isMicEnabled,
   isCameraEnabled,
   cameraError,
@@ -188,6 +244,7 @@ const {
 } = useCallSession()
 
 const { user: me } = useAuth()
+const isAdmin = computed(() => Boolean(me.value?.siteAdmin))
 const { elapsed } = useCallTimer(connectedAt)
 
 const selfUser = computed(() => (me.value?.id ? participantUser(me.value.id) : null))
@@ -198,6 +255,28 @@ const selfHandRaised = computed(() =>
   props.call.participants.find((p) => p.userId === me.value?.id)?.handRaised === true,
 )
 const selfInGrid = computed(() => tiles.value.length >= 3)
+const presenter = computed(() => props.call.participants.find((p) => p.screenSharing) ?? null)
+const someoneElsePresenting = computed(() => Boolean(presenter.value && presenter.value.userId !== me.value?.id))
+const presenterUser = computed(() => (presenter.value ? participantUser(presenter.value.userId) : null))
+const stageStream = computed(() => {
+  const p = presenter.value
+  if (!p) return null
+  if (p.userId === me.value?.id) return localScreenStream.value
+  return remoteScreenStreams.value[p.userId] ?? null
+})
+const stageLabel = computed(() => {
+  const p = presenter.value
+  if (!p) return ''
+  if (p.userId === me.value?.id) return "You're presenting"
+  return `${participantLabel(p.userId)} is presenting`
+})
+const stageConnectionState = computed(() => {
+  const p = presenter.value
+  if (!p || p.userId === me.value?.id) return 'connected' as const
+  const s = peerStates.value[p.userId]
+  if (s === 'reconnecting' || s === 'failed') return s
+  return 'connected' as const
+})
 
 const gridClass = computed(() => {
   const n = tiles.value.length + (selfInGrid.value ? 1 : 0)

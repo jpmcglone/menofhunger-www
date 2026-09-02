@@ -1,4 +1,5 @@
 import type { RtcIceCandidate, RtcIceServer, RtcSessionDescription, WsRtcSignalPayload } from '~/types/api'
+import type { IcePathKind } from '../callQuality'
 
 /**
  * Per-peer media path state as seen by this tab. Independent of the server-side
@@ -11,12 +12,18 @@ export type CallSignal = {
   candidate?: RtcIceCandidate
 }
 
+export type CallLocalTrackKind = 'audio' | 'video' | 'screen'
+
 export type CallTransportEvents = {
-  /** A remote peer's stream (one MediaStream per peer; tracks are added to it as they arrive). `null` when the peer is removed. */
+  /** A remote peer's camera/mic stream. `null` when the peer is removed. */
   onRemoteStream: (userId: string, stream: MediaStream | null) => void
+  /** A remote peer's screen-share track (separate from their camera). `null` when it ends or the peer leaves. */
+  onRemoteScreenStream?: (userId: string, stream: MediaStream | null) => void
   onPeerState: (userId: string, state: PeerMediaState) => void
   /** In-call data-channel payload (reactions). `raw` is already JSON-parsed. */
   onData?: (userId: string, raw: unknown) => void
+  /** Selected ICE pair for this peer: TURN / STUN / host. Admin tiles only. */
+  onIcePath?: (userId: string, path: IcePathKind | null) => void
 }
 
 export type CallTransportOptions = {
@@ -50,8 +57,9 @@ export interface CallTransport {
   /**
    * Publish (or stop publishing) a local track of the given kind to every peer.
    * `null` stops sending without renegotiating away the transceiver.
+   * `screen` is a second video m-line so a share does not replace the camera.
    */
-  setLocalTrack(kind: 'audio' | 'video', track: MediaStreamTrack | null): Promise<void>
+  setLocalTrack(kind: CallLocalTrackKind, track: MediaStreamTrack | null): Promise<void>
   /** Number of remote peers currently wired. */
   peerCount(): number
   /**

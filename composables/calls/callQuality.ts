@@ -118,6 +118,47 @@ export function qualityBarsFor(tier: number): 0 | 1 | 2 | 3 {
   return 0
 }
 
+export type IcePathKind = 'turn' | 'stun' | 'direct'
+
+/** Either side on a relay → TURN; else srflx/prflx → STUN; else host → Direct. */
+export function classifyIceTypes(
+  localType: string | null | undefined,
+  remoteType: string | null | undefined,
+): IcePathKind | null {
+  const types = [localType, remoteType].map((t) => t?.toLowerCase()).filter((t): t is string => Boolean(t))
+  if (types.length === 0) return null
+  if (types.some((t) => t === 'relay')) return 'turn'
+  if (types.some((t) => t === 'srflx' || t === 'prflx')) return 'stun'
+  if (types.some((t) => t === 'host')) return 'direct'
+  return null
+}
+
+export function icePathLabel(kind: IcePathKind | null | undefined): string | null {
+  if (kind === 'turn') return 'TURN'
+  if (kind === 'stun') return 'STUN'
+  if (kind === 'direct') return 'Direct'
+  return null
+}
+
+/** Selected ICE pair type from a `getStats()` report. */
+export function icePathFromStats(report: Iterable<Record<string, unknown>>): IcePathKind | null {
+  const stats = [...report]
+  const byId = new Map<string, Record<string, unknown>>()
+  for (const s of stats) {
+    if (typeof s.id === 'string') byId.set(s.id, s)
+  }
+  const pair = stats.find(
+    (s) => s.type === 'candidate-pair' && (s.nominated === true || s.state === 'succeeded'),
+  )
+  if (!pair) return null
+  const local = typeof pair.localCandidateId === 'string' ? byId.get(pair.localCandidateId) : undefined
+  const remote = typeof pair.remoteCandidateId === 'string' ? byId.get(pair.remoteCandidateId) : undefined
+  return classifyIceTypes(
+    typeof local?.candidateType === 'string' ? local.candidateType : null,
+    typeof remote?.candidateType === 'string' ? remote.candidateType : null,
+  )
+}
+
 /** Pull the fields we care about out of a `getStats()` report for one peer connection. */
 export function sampleFromStatsReport(report: Iterable<Record<string, unknown>>): QualitySample {
   let fractionLost: number | null = null

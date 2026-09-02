@@ -12,6 +12,7 @@ import type {
 import type { CallsCallback, MessagesCallback } from '~/composables/usePresence'
 import { useUsersStore, type PublicUserEntity } from '~/composables/useUsersStore'
 import { createReactionBlip } from './callReactionSound'
+import { createHangupChime } from './callHangupSound'
 import {
   encodeCallReaction,
   isCallReactionEmoji,
@@ -22,7 +23,7 @@ import {
 } from './callReactions'
 import { createRingtone, type Ringtone } from './callRingtone'
 import { reduceCallsIncoming, reduceCallsUpdated, remotePeerIds, type CallPhase, type CallSessionState } from './callSessionReducer'
-import { qualityBarsFor } from './callQuality'
+import { qualityBarsFor, type IcePathKind } from './callQuality'
 import { shouldHangUpCallOnPageLifecycle } from './callLifecycle'
 import { enterCallPictureInPicture, exitCallPictureInPicture } from './callPictureInPicture'
 import { acquireAudioTrack, acquireCallMedia, acquireVideoTrack, canScreenShare, shouldStartCallWithCamera, stopTrack } from './useCallDevices'
@@ -49,7 +50,9 @@ export type CallDisplayUser = {
  * media pipeline per tab anyway). Module scope on the client is the singleton.
  */
 const localStream: ShallowRef<MediaStream | null> = shallowRef(null)
+const localScreenStream: ShallowRef<MediaStream | null> = shallowRef(null)
 const remoteStreams: ShallowRef<Record<string, MediaStream>> = shallowRef({})
+const remoteScreenStreams: ShallowRef<Record<string, MediaStream>> = shallowRef({})
 let transport: CallTransport | null = null
 /** Web Audio taps on local + remote streams; drives the "speaking" ring. Lives with the transport. */
 let speakingMonitor: SpeakingMonitor | null = null
@@ -61,10 +64,14 @@ let unbind: (() => void) | null = null
 let reconnectGraceMs = DEFAULT_RECONNECT_GRACE_MS
 /** Runs while the signaling socket is down mid-call. */
 let socketDownTimer: ReturnType<typeof setTimeout> | null = null
-/** Browser "Stop sharing" / our toggle: restore camera if it was on before the share. */
-let cameraWasOnBeforeShare = false
 let reactionPruneTimer: ReturnType<typeof setInterval> | null = null
 const reactionBlip = createReactionBlip()
+const hangupChime = createHangupChime()
+/** Signals that landed before `createTransport` (join ack). Replay after the transport exists. */
+const MAX_PENDING_SIGNALS = 64
+let pendingSignals: WsRtcSignalPayload[] = []
+/** Call id we're joining/starting before `call` is on session state. */
+let joiningCallId: string | null = null
 
 export function useCallSession() {
   const state = useState<CallSessionState>('call-session-state', () => ({ phase: 'idle', call: null, incoming: null }))
@@ -76,6 +83,8 @@ export function useCallSession() {
   /** userId → currently talking (self included), with hysteresis so it doesn't flicker. */
   const speakingIds = useState<Record<string, number>>('call-speaking-ids', () => ({}))
   const qualityTier = useState<number>('call-quality-tier', () => 0)
+  /** userId → selected ICE path. Admin tiles only. */
+  const icePaths = useState<Record<string, IcePathKind>>('call-ice-paths', () => ({}))
   const facingMode = useState<'user' | 'environment'>('call-facing-mode', () => 'user')
   const audioDeviceId = useState<string | null>('call-audio-device', () => null)
   const videoDeviceId = useState<string | null>('call-video-device', () => null)
@@ -116,11 +125,22 @@ export function useCallSession() {
   function localVideoTrack(): MediaStreamTrack | null {
     return localStream.value?.getVideoTracks()[0] ?? null
   }
+  function localScreenTrack(): MediaStreamTrack | null {
+    return localScreenStream.value?.getVideoTracks()[0] ?? null
+  }
+
+  function otherPresenterId(): string | null {
+    const me = meId.value
+    return call.value?.participants.find((p) => p.screenSharing && p.userId !== me)?.userId ?? null
+  }
 
   function releaseLocalMedia() {
     const s = localStream.value
     if (s) for (const t of s.getTracks()) stopTrack(t)
     localStream.value = null
+    const share = localScreenStream.value
+    if (share) for (const t of share.getTracks()) stopTrack(t)
+    localScreenStream.value = null
   }
 
   async function acquireForCall(type: CallType, joining = false): Promise<boolean> {
@@ -151,6 +171,8 @@ export function useCallSession() {
     transport?.destroy()
     peerStates.value = {}
     remoteStreams.value = {}
+    remoteScreenStreams.value = {}
+    icePaths.value = {}
     qualityTier.value = 0
     speakingMonitor?.destroy()
     speakingMonitor = new SpeakingMonitor((levels) => {
@@ -173,12 +195,24 @@ export function useCallSession() {
             remoteStreams.value = next
             speakingMonitor?.setStream(userId, stream)
           },
+          onRemoteScreenStream(userId, stream) {
+            const next = { ...remoteScreenStreams.value }
+            if (stream) next[userId] = stream
+            else delete next[userId]
+            remoteScreenStreams.value = next
+          },
           onPeerState(userId, s) {
             peerStates.value = { ...peerStates.value, [userId]: s }
             if (s === 'failed') onPeerFailed()
           },
           onData(userId, raw) {
             ingestReaction(userId, raw)
+          },
+          onIcePath(userId, path) {
+            const next = { ...icePaths.value }
+            if (path) next[userId] = path
+            else delete next[userId]
+            icePaths.value = next
           },
         },
       },
@@ -188,6 +222,16 @@ export function useCallSession() {
     )
     void transport.setLocalTrack('audio', isMicEnabled.value ? localAudioTrack() : null)
     void transport.setLocalTrack('video', isCameraEnabled.value ? localVideoTrack() : null)
+    void transport.setLocalTrack('screen', localScreenTrack())
+    flushPendingSignals()
+  }
+
+  function shouldPlayHangupChime(): boolean {
+    return phase.value === 'in_call' || phase.value === 'outgoing'
+  }
+
+  function playHangupChime() {
+    hangupChime.play(speakerDeviceId.value)
   }
 
   function teardown() {
@@ -198,14 +242,17 @@ export function useCallSession() {
     speakingMonitor = null
     releaseLocalMedia()
     remoteStreams.value = {}
+    remoteScreenStreams.value = {}
     peerStates.value = {}
     speakingIds.value = {}
+    icePaths.value = {}
     qualityTier.value = 0
+    pendingSignals = []
+    joiningCallId = null
     connectedAt.value = null
     outgoingCalleeId.value = null
     minimized.value = false
     isScreenSharing.value = false
-    cameraWasOnBeforeShare = false
     reactions.value = []
     if (reactionPruneTimer) {
       clearInterval(reactionPruneTimer)
@@ -223,9 +270,11 @@ export function useCallSession() {
   /** Unrecoverable mid-call: drop the session and tell the user once. */
   function connectionLost() {
     const current = call.value
+    const chime = shouldPlayHangupChime()
     if (current) void presence.emitCallsLeave(current.id)
     teardown()
     state.value = { phase: 'idle', call: null, incoming: null }
+    if (chime) playHangupChime()
     toast.push({ title: 'Connection lost.', message: 'The call couldn’t be reconnected.', tone: 'error', durationMs: 5000 })
   }
 
@@ -320,6 +369,7 @@ export function useCallSession() {
 
     const ack = await presence.emitCallsStart(conversationId, type)
     const session = applyAck(ack)
+    if (session) joiningCallId = session.id
     if (!session) {
       teardown()
       state.value = { phase: 'idle', call: null, incoming: null }
@@ -351,6 +401,7 @@ export function useCallSession() {
     state.value = { phase: 'requesting_media', call: null, incoming: null }
     await acquireForCall(session.type, true)
 
+    joiningCallId = session.id
     state.value = { phase: 'joining', call: null, incoming: null }
     const ack = await presence.emitCallsJoin(session.id)
     const joined = applyAck(ack)
@@ -385,8 +436,10 @@ export function useCallSession() {
   async function leaveCall(): Promise<void> {
     const current = call.value
     const wasOutgoing = phase.value === 'outgoing'
+    const chime = shouldPlayHangupChime()
     teardown()
     state.value = { phase: 'idle', call: null, incoming: null }
+    if (chime) playHangupChime()
     if (current && !wasOutgoing) toast.push({ title: 'You left the call.', durationMs: 2500 })
     if (current) await presence.emitCallsLeave(current.id)
   }
@@ -414,10 +467,6 @@ export function useCallSession() {
   }
 
   async function toggleCamera(): Promise<void> {
-    if (isScreenSharing.value) {
-      await stopScreenShare({ restoreCamera: false })
-      return
-    }
     const current = call.value
     if (isCameraEnabled.value) {
       // Stop publishing entirely (privacy + bandwidth) rather than sending black frames.
@@ -501,6 +550,10 @@ export function useCallSession() {
 
   async function startScreenShare(): Promise<void> {
     if (!canScreenShare() || isScreenSharing.value) return
+    if (otherPresenterId()) {
+      toast.push({ title: 'Someone is already presenting.', durationMs: 3000 })
+      return
+    }
     let display: MediaStream
     try {
       display = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 15 } }, audio: false })
@@ -513,52 +566,35 @@ export function useCallSession() {
     }
     const track = display.getVideoTracks()[0]
     if (!track) return
+    if (otherPresenterId()) {
+      stopTrack(track)
+      toast.push({ title: 'Someone is already presenting.', durationMs: 3000 })
+      return
+    }
     try {
       track.contentHint = 'detail'
     } catch {
       // Older browsers ignore contentHint.
     }
-    cameraWasOnBeforeShare = isCameraEnabled.value && !isScreenSharing.value
-    const prev = localVideoTrack()
-    const s = new MediaStream(localStream.value?.getTracks().filter((t) => t !== prev) ?? [])
-    s.addTrack(track)
-    localStream.value = s
-    if (prev) stopTrack(prev)
+    localScreenStream.value = new MediaStream([track])
     isScreenSharing.value = true
-    isCameraEnabled.value = true
     track.onended = () => {
-      void stopScreenShare({ restoreCamera: cameraWasOnBeforeShare })
+      void stopScreenShare()
     }
-    await transport?.setLocalTrack('video', track)
+    await transport?.setLocalTrack('screen', track)
     const current = call.value
-    if (current) presence.emitCallsState(current.id, { screenSharing: true, cameraEnabled: true })
+    if (current) presence.emitCallsState(current.id, { screenSharing: true })
   }
 
-  async function stopScreenShare(opts?: { restoreCamera?: boolean }): Promise<void> {
+  async function stopScreenShare(): Promise<void> {
     if (!isScreenSharing.value) return
-    const restore = opts?.restoreCamera ?? cameraWasOnBeforeShare
-    const track = localVideoTrack()
-    await transport?.setLocalTrack('video', null)
-    if (track) {
-      localStream.value?.removeTrack(track)
-      stopTrack(track)
-    }
-    localStream.value = localStream.value ? new MediaStream(localStream.value.getTracks()) : null
+    const track = localScreenTrack()
+    await transport?.setLocalTrack('screen', null)
+    if (track) stopTrack(track)
+    localScreenStream.value = null
     isScreenSharing.value = false
-    isCameraEnabled.value = false
-    cameraWasOnBeforeShare = false
     const current = call.value
-    if (restore && current) {
-      const got = await acquireVideoTrack({ videoDeviceId: videoDeviceId.value, facingMode: facingMode.value })
-      if (got.track) {
-        const s = new MediaStream(localStream.value?.getTracks() ?? [])
-        s.addTrack(got.track)
-        localStream.value = s
-        isCameraEnabled.value = true
-        await transport?.setLocalTrack('video', got.track)
-      }
-    }
-    if (current) presence.emitCallsState(current.id, { screenSharing: false, cameraEnabled: isCameraEnabled.value })
+    if (current) presence.emitCallsState(current.id, { screenSharing: false })
   }
 
   async function toggleScreenShare(): Promise<void> {
@@ -636,7 +672,9 @@ export function useCallSession() {
     }
     for (const e of effects) {
       if (e.type === 'ended') {
+        const chime = shouldPlayHangupChime()
         teardown()
+        if (chime) playHangupChime()
         toast.push({ title: e.reason === 'removed' ? 'You were disconnected from the call.' : 'Call ended.', durationMs: 3000 })
       } else if (e.type === 'dismiss_incoming') {
         stopRinging()
@@ -665,8 +703,19 @@ export function useCallSession() {
   }
 
   function onSignal(payload: WsRtcSignalPayload) {
-    if (!call.value || payload.callId !== call.value.id) return
-    void transport?.handleSignal(payload)
+    const activeId = call.value?.id ?? joiningCallId
+    if (!activeId || payload.callId !== activeId) return
+    if (!transport) {
+      if (pendingSignals.length < MAX_PENDING_SIGNALS) pendingSignals.push(payload)
+      return
+    }
+    void transport.handleSignal(payload)
+  }
+
+  function flushPendingSignals() {
+    if (!transport || pendingSignals.length === 0) return
+    const queued = pendingSignals.splice(0)
+    for (const s of queued) void transport.handleSignal(s)
   }
 
   function notifyIfHidden(payload: WsCallsIncomingPayload) {
@@ -701,8 +750,10 @@ export function useCallSession() {
     }
     const code = ack.error?.code
     if (code === 'call_not_found' || code === 'call_ended') {
+      const chime = shouldPlayHangupChime()
       teardown()
       state.value = { phase: 'idle', call: null, incoming: null }
+      if (chime) playHangupChime()
       toast.push({ title: 'Call ended.', durationMs: 3000 })
     }
   }
@@ -842,7 +893,15 @@ export function useCallSession() {
       speakingMonitor?.setMuted(meId.value, !micOn)
     })
 
+    const stopPresenterWatch = watch(
+      () => call.value?.participants,
+      () => {
+        if (isScreenSharing.value && otherPresenterId()) void stopScreenShare()
+      },
+    )
+
     unbind = () => {
+      stopPresenterWatch()
       stopLocalSpeakingWatch()
       presence.removeCallsCallback(cb)
       presence.removeMessagesCallback(messagesCb)
@@ -866,9 +925,12 @@ export function useCallSession() {
     isEngaged,
     remoteParticipants,
     localStream,
+    localScreenStream,
     remoteStreams,
+    remoteScreenStreams,
     peerStates,
     speakingIds,
+    icePaths,
     isMicEnabled,
     isCameraEnabled,
     micError,

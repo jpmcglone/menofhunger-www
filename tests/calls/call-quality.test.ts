@@ -6,6 +6,9 @@ import {
   isBadSample,
   nextQualityTier,
   qualityBarsFor,
+  classifyIceTypes,
+  icePathFromStats,
+  icePathLabel,
   sampleFromStatsReport,
   topTierFor,
   VIDEO_QUALITY_TIERS,
@@ -127,5 +130,35 @@ describe('sampling', () => {
     expect(qualityBarsFor(1)).toBe(2)
     expect(qualityBarsFor(3)).toBe(1)
     expect(qualityBarsFor(AUDIO_ONLY_TIER)).toBe(0)
+  })
+})
+
+describe('ICE path from stats', () => {
+  it('classifies relay as TURN, srflx/prflx as STUN, host as Direct', () => {
+    expect(classifyIceTypes('relay', 'host')).toBe('turn')
+    expect(classifyIceTypes('srflx', 'host')).toBe('stun')
+    expect(classifyIceTypes('host', 'prflx')).toBe('stun')
+    expect(classifyIceTypes('host', 'host')).toBe('direct')
+    expect(classifyIceTypes(null, null)).toBeNull()
+    expect(icePathLabel('turn')).toBe('TURN')
+    expect(icePathLabel('stun')).toBe('STUN')
+    expect(icePathLabel('direct')).toBe('Direct')
+  })
+
+  it('reads the nominated pair’s candidate types', () => {
+    expect(
+      icePathFromStats([
+        { id: 'pair', type: 'candidate-pair', nominated: true, localCandidateId: 'L', remoteCandidateId: 'R' },
+        { id: 'L', type: 'local-candidate', candidateType: 'relay' },
+        { id: 'R', type: 'remote-candidate', candidateType: 'srflx' },
+      ]),
+    ).toBe('turn')
+    expect(
+      icePathFromStats([
+        { id: 'pair', type: 'candidate-pair', state: 'succeeded', localCandidateId: 'L', remoteCandidateId: 'R' },
+        { id: 'L', type: 'local-candidate', candidateType: 'host' },
+        { id: 'R', type: 'remote-candidate', candidateType: 'host' },
+      ]),
+    ).toBe('direct')
   })
 })

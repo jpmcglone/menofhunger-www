@@ -7,6 +7,9 @@ import {
   SPEAKING_EXIT,
   SPEAKING_FULL,
   SPEAKING_HOLD_MS,
+  SPEAKING_PEAK_HOLD_MS,
+  peakLevel,
+  pushPeak,
   reduceSpeaking,
   rmsLevel,
   speakingIntensity,
@@ -94,6 +97,19 @@ describe('speakingIntensity', () => {
   })
 })
 
+describe('peak hold', () => {
+  it('holds the loudest sample for SPEAKING_PEAK_HOLD_MS then drops', () => {
+    let peaks = pushPeak([], 0.2, 0)
+    expect(peakLevel(peaks, 0)).toBeCloseTo(0.2)
+    peaks = pushPeak(peaks, 0.05, 100)
+    expect(peakLevel(peaks, 100)).toBeCloseTo(0.2)
+    peaks = pushPeak(peaks, 0.01, SPEAKING_PEAK_HOLD_MS)
+    expect(peakLevel(peaks, SPEAKING_PEAK_HOLD_MS)).toBeCloseTo(0.2)
+    peaks = pushPeak(peaks, 0.01, SPEAKING_PEAK_HOLD_MS + 1)
+    expect(peakLevel(peaks, SPEAKING_PEAK_HOLD_MS + 1)).toBeCloseTo(0.05)
+  })
+})
+
 describe('rmsLevel', () => {
   it('is 0 for silence and the amplitude for a square wave', () => {
     expect(rmsLevel(new Float32Array(0))).toBe(0)
@@ -109,6 +125,9 @@ describe('speaking ring wiring', () => {
     expect(session).toContain('speakingMonitor?.setStream(userId, stream)')
     // Muted peers never ring, whatever the analyser hears.
     expect(session).toContain('speakingMonitor?.setMuted(p.userId, !p.micEnabled)')
+    expect(session).toContain('pendingSignals')
+    expect(session).toContain('flushPendingSignals')
+    expect(session).toContain('joiningCallId')
     // Torn down with the call, and the map is cleared so no ring lingers.
     const teardown = session.slice(session.indexOf('function teardown('), session.indexOf('function clearSocketDownTimer('))
     expect(teardown).toContain('speakingMonitor?.destroy()')
@@ -117,6 +136,8 @@ describe('speaking ring wiring', () => {
     const overlay = read('components/app/calls/CallOverlay.vue')
     expect(overlay).toContain(':speaking-level="speakingIds[p.userId] ?? 0"')
     expect(overlay).toContain(':speaking-level="selfSpeaking"')
+    expect(overlay).toContain(':ice-path="isAdmin ? (icePaths[p.userId] ?? null) : null"')
+    expect(overlay).toContain('me.value?.siteAdmin')
 
     const tile = read('components/app/calls/CallVideoTile.vue')
     expect(tile).toContain('speakingRingAlphas')
@@ -124,5 +145,6 @@ describe('speaking ring wiring', () => {
     expect(tile).toContain('prefers-reduced-motion: reduce')
     expect(tile).toContain('userTierColorVar')
     expect(tile).toContain('var(--moh-link)')
+    expect(tile).toContain('data-testid="call-ice-path"')
   })
 })

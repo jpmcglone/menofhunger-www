@@ -42,16 +42,25 @@
         </div>
       </div>
 
+      <div
+        v-if="icePathLabel"
+        class="absolute top-2 right-2 z-20 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/80"
+        data-testid="call-ice-path"
+      >
+        {{ icePathLabel }}
+      </div>
+
       <!-- Name + mic state -->
       <div class="absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-xs text-white">
         <Icon
+          v-if="variant === 'person'"
           :name="micEnabled ? 'tabler:microphone' : 'tabler:microphone-off'"
           size="13"
           :class="micIconClass"
           :style="isSpeaking ? { color: ringColor } : undefined"
           :aria-label="!micEnabled ? 'Muted' : isSpeaking ? 'Speaking' : 'Mic on'"
         />
-        <span class="truncate">{{ screenSharing && label === 'You' ? "You're sharing your screen" : label }}</span>
+        <span class="truncate">{{ label }}</span>
         <span v-if="handRaised" class="text-sm leading-none" aria-label="Hand raised">✋</span>
       </div>
     </div>
@@ -64,6 +73,7 @@ import type { PeerMediaState } from '~/composables/calls/transport/CallTransport
 import { callVideoAttachKey } from '~/composables/calls/callLifecycle'
 import { registerCallPipSource } from '~/composables/calls/callPictureInPicture'
 import { speakingRingAlphas } from '~/composables/calls/speakingDetector'
+import { icePathLabel as labelForIcePath, type IcePathKind } from '~/composables/calls/callQuality'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
 const props = withDefaults(
@@ -84,10 +94,14 @@ const props = withDefaults(
     /** Screen share: contain-fit and never mirrored. */
     fit?: 'cover' | 'contain'
     screenSharing?: boolean
+    /** `stage` is the presenting screen: no mic, no speaking rings. */
+    variant?: 'person' | 'stage'
     /** Group calls only: this person has their hand up. */
     handRaised?: boolean
     /** Register this tile's <video> as the OS picture-in-picture source. */
     pictureInPicture?: boolean
+    /** Admin-only: selected ICE path to this peer. */
+    icePath?: IcePathKind | null
   }>(),
   {
     connectionState: 'connected',
@@ -97,17 +111,22 @@ const props = withDefaults(
     speakingLevel: 0,
     fit: 'cover',
     screenSharing: false,
+    variant: 'person',
     handRaised: false,
     pictureInPicture: false,
+    icePath: null,
   },
 )
+
+const icePathLabel = computed(() => labelForIcePath(props.icePath))
 
 const videoEl = ref<HTMLVideoElement | null>(null)
 const hasVideoTrack = ref(false)
 const attachKey = computed(() => callVideoAttachKey(props.stream))
 
-const showVideo = computed(() => props.cameraEnabled && hasVideoTrack.value)
+const showVideo = computed(() => hasVideoTrack.value && (props.cameraEnabled || props.variant === 'stage' || props.screenSharing))
 const intensity = computed(() => {
+  if (props.variant === 'stage') return 0
   const n = props.speakingLevel
   if (n > 0) return Math.min(1, n)
   return props.speaking ? 0.55 : 0

@@ -1,7 +1,7 @@
 import type { WsRtcSignalPayload } from '~/types/api'
 import { CALL_DATA_CHANNEL_LABEL } from '../callReactions'
 import { CallQualityManager, prioritizeAudioSender } from '../useCallQualityManager'
-import type { CallSignal, CallTransport, CallTransportOptions, PeerMediaState } from './CallTransport'
+import type { CallLocalTrackKind, CallSignal, CallTransport, CallTransportOptions, PeerMediaState } from './CallTransport'
 
 /** How long `disconnected` may last before we force an ICE restart. */
 const DISCONNECTED_RESTART_MS = 3_000
@@ -14,8 +14,11 @@ type Peer = {
   userId: string
   pc: RTCPeerConnection
   stream: MediaStream
+  screenStream: MediaStream | null
   audioSender: RTCRtpSender
   videoSender: RTCRtpSender
+  screenSender: RTCRtpSender
+  screenTransceiver: RTCRtpTransceiver
   /** Perfect negotiation: the polite side rolls back on collision. */
   polite: boolean
   makingOffer: boolean
@@ -27,12 +30,17 @@ type Peer = {
   giveUpTimer: ReturnType<typeof setTimeout> | null
   state: PeerMediaState
   dataChannel: RTCDataChannel | null
+  /**
+   * Hold `negotiationneeded` until early signals (their offer) are applied. Otherwise we
+   * glare: we send an offer while they already sent one, and the impolite side drops theirs.
+   */
+  holdNegotiate: boolean
 }
 
 /**
  * Browser-to-browser mesh: one RTCPeerConnection per remote participant, both
- * audio and video transceivers created up front (so negotiation happens even before
- * a local track exists, and toggling camera is a `replaceTrack`, not a renegotiation).
+ * audio, camera, and screen transceivers created up front (so negotiation happens even
+ * before a local track exists, and toggling camera or share is a `replaceTrack`).
  *
  * Signaling follows the W3C "perfect negotiation" pattern verbatim; `polite` is
  * decided deterministically by user id so both sides always agree.
@@ -49,11 +57,12 @@ export class PeerToPeerCallTransport implements CallTransport {
   private readonly quality: CallQualityManager
   private localAudio: MediaStreamTrack | null = null
   private localVideo: MediaStreamTrack | null = null
+  private localScreen: MediaStreamTrack | null = null
   private destroyed = false
 
   constructor(opts: CallTransportOptions, onTierChange: (userId: string, tier: number) => void = () => {}) {
     this.opts = opts
-    this.quality = new CallQualityManager(onTierChange)
+    this.quality = new CallQualityManager(onTierChange, (userId, path) => this.opts.events.onIcePath?.(userId, path))
   }
 
   get qualityManager(): CallQualityManager {
@@ -71,8 +80,29 @@ export class PeerToPeerCallTransport implements CallTransport {
         this.addPeer(id)
         const queued = this.earlySignals.get(id)
         this.earlySignals.delete(id)
-        if (queued) void this.replay(queued)
+        void this.releasePeer(id, queued)
       }
+    }
+  }
+
+  private async releasePeer(userId: string, queued?: WsRtcSignalPayload[]): Promise<void> {
+    if (queued?.length) await this.replay(queued)
+    const peer = this.peers.get(userId)
+    if (!peer || this.destroyed) return
+    peer.holdNegotiate = false
+    if (!peer.pc.remoteDescription) await this.makeOffer(peer)
+  }
+
+  private async makeOffer(peer: Peer): Promise<void> {
+    if (peer.holdNegotiate || this.destroyed) return
+    try {
+      peer.makingOffer = true
+      await peer.pc.setLocalDescription()
+      this.send(peer.userId, { description: toDescriptionDto(peer.pc.localDescription) })
+    } catch {
+      // Retried on the next state change.
+    } finally {
+      peer.makingOffer = false
     }
   }
 
@@ -104,12 +134,13 @@ export class PeerToPeerCallTransport implements CallTransport {
     }
   }
 
-  async setLocalTrack(kind: 'audio' | 'video', track: MediaStreamTrack | null): Promise<void> {
+  async setLocalTrack(kind: CallLocalTrackKind, track: MediaStreamTrack | null): Promise<void> {
     if (kind === 'audio') this.localAudio = track
-    else this.localVideo = track
+    else if (kind === 'video') this.localVideo = track
+    else this.localScreen = track
     await Promise.all(
       [...this.peers.values()].map(async (peer) => {
-        const sender = kind === 'audio' ? peer.audioSender : peer.videoSender
+        const sender = kind === 'audio' ? peer.audioSender : kind === 'video' ? peer.videoSender : peer.screenSender
         try {
           await sender.replaceTrack(track)
         } catch {
@@ -117,7 +148,7 @@ export class PeerToPeerCallTransport implements CallTransport {
         }
       }),
     )
-    if (kind === 'video' && track) this.quality.reapply()
+    if ((kind === 'video' || kind === 'screen') && track) this.quality.reapply()
   }
 
   sendData(payload: unknown): void {
@@ -212,13 +243,17 @@ export class PeerToPeerCallTransport implements CallTransport {
     const stream = new MediaStream()
     const audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' })
     const videoTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' })
+    const screenTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' })
 
     const peer: Peer = {
       userId,
       pc,
       stream,
+      screenStream: null,
       audioSender: audioTransceiver.sender,
       videoSender: videoTransceiver.sender,
+      screenSender: screenTransceiver.sender,
+      screenTransceiver,
       polite: this.opts.selfUserId < userId,
       makingOffer: false,
       ignoreOffer: false,
@@ -228,6 +263,7 @@ export class PeerToPeerCallTransport implements CallTransport {
       giveUpTimer: null,
       state: 'connecting',
       dataChannel: null,
+      holdNegotiate: true,
     }
     this.peers.set(userId, peer)
 
@@ -241,18 +277,11 @@ export class PeerToPeerCallTransport implements CallTransport {
 
     if (this.localAudio) void audioTransceiver.sender.replaceTrack(this.localAudio)
     if (this.localVideo) void videoTransceiver.sender.replaceTrack(this.localVideo)
+    if (this.localScreen) void screenTransceiver.sender.replaceTrack(this.localScreen)
     void prioritizeAudioSender(audioTransceiver.sender)
 
-    pc.onnegotiationneeded = async () => {
-      try {
-        peer.makingOffer = true
-        await pc.setLocalDescription()
-        this.send(userId, { description: toDescriptionDto(pc.localDescription) })
-      } catch {
-        // Retried on the next state change.
-      } finally {
-        peer.makingOffer = false
-      }
+    pc.onnegotiationneeded = () => {
+      void this.makeOffer(peer)
     }
 
     pc.onicecandidate = ({ candidate }) => {
@@ -267,7 +296,12 @@ export class PeerToPeerCallTransport implements CallTransport {
       })
     }
 
-    pc.ontrack = ({ track }) => {
+    pc.ontrack = (ev) => {
+      const { track, transceiver } = ev
+      if (transceiver === peer.screenTransceiver) {
+        this.bindScreenTrack(peer, track)
+        return
+      }
       if (peer.stream.getTracks().some((t) => t.id === track.id)) return
       // A fresh MediaStream, not `addTrack` on the old one: programmatic `addTrack` fires no
       // `addtrack` event and keeps the object identity, so Vue watchers on the stream would
@@ -292,6 +326,7 @@ export class PeerToPeerCallTransport implements CallTransport {
       } else if (s === 'connected' || s === 'completed') {
         this.clearDisconnectedTimer(peer)
         this.setPeerState(peer, 'connected')
+        this.quality.sampleIcePath(userId)
       }
     }
 
@@ -336,6 +371,24 @@ export class PeerToPeerCallTransport implements CallTransport {
     }
     for (const t of peer.stream.getTracks()) peer.stream.removeTrack(t)
     this.opts.events.onRemoteStream(userId, null)
+    this.opts.events.onRemoteScreenStream?.(userId, null)
+  }
+
+  private bindScreenTrack(peer: Peer, track: MediaStreamTrack): void {
+    const publish = () => {
+      const live = track.readyState === 'live' && !track.muted
+      if (live) {
+        peer.screenStream = new MediaStream([track])
+        this.opts.events.onRemoteScreenStream?.(peer.userId, peer.screenStream)
+      } else {
+        peer.screenStream = null
+        this.opts.events.onRemoteScreenStream?.(peer.userId, null)
+      }
+    }
+    track.onmute = publish
+    track.onunmute = publish
+    track.onended = publish
+    publish()
   }
 
   private restartIcePeer(peer: Peer): void {

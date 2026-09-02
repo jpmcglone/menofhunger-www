@@ -1,11 +1,13 @@
 import {
   AUDIO_ONLY_TIER,
+  icePathFromStats,
   isBadSample,
   nextQualityTier,
   QUALITY_WARMUP_MS,
   sampleFromStatsReport,
   topTierFor,
   VIDEO_QUALITY_TIERS,
+  type IcePathKind,
   type QualityCounters,
 } from './callQuality'
 
@@ -29,9 +31,21 @@ export class CallQualityManager {
   private readonly peers = new Map<string, PeerQuality>()
   private timer: ReturnType<typeof setInterval> | null = null
   private readonly onTierChange: (userId: string, tier: number) => void
+  private readonly onIcePath: (userId: string, path: IcePathKind | null) => void
 
-  constructor(onTierChange: (userId: string, tier: number) => void) {
+  constructor(
+    onTierChange: (userId: string, tier: number) => void,
+    onIcePath: (userId: string, path: IcePathKind | null) => void = () => {},
+  ) {
     this.onTierChange = onTierChange
+    this.onIcePath = onIcePath
+  }
+
+  /** Read the selected ICE pair as soon as ICE connects (don't wait for the 2s quality tick). */
+  sampleIcePath(userId: string): void {
+    const p = this.peers.get(userId)
+    if (!p) return
+    void this.readIcePath(userId, p.pc)
   }
 
   attach(userId: string, pc: RTCPeerConnection): void {
@@ -96,17 +110,22 @@ export class CallQualityManager {
     const top = topTierFor(this.peers.size)
     const now = Date.now()
     for (const [userId, p] of this.peers) {
-      if (p.pc.connectionState !== 'connected') {
+      if (p.pc.connectionState !== 'connected' && p.pc.iceConnectionState !== 'connected' && p.pc.iceConnectionState !== 'completed') {
         p.connectedAt = null
         continue
       }
       if (p.connectedAt === null) p.connectedAt = now
+      const values: Record<string, unknown>[] = []
+      try {
+        const report = await p.pc.getStats()
+        report.forEach((v) => values.push(v as unknown as Record<string, unknown>))
+        this.onIcePath(userId, icePathFromStats(values))
+      } catch {
+        continue
+      }
       if (now - p.connectedAt < QUALITY_WARMUP_MS) continue
       let bad = false
       try {
-        const report = await p.pc.getStats()
-        const values: Record<string, unknown>[] = []
-        report.forEach((v) => values.push(v as unknown as Record<string, unknown>))
         const cap = VIDEO_QUALITY_TIERS[Math.min(p.tier, AUDIO_ONLY_TIER)]?.maxBitrate ?? null
         bad = isBadSample(sampleFromStatsReport(values), cap)
       } catch {
@@ -118,6 +137,17 @@ export class CallQualityManager {
         p.tier = decision.tier
         await this.applyTier(userId)
       }
+    }
+  }
+
+  private async readIcePath(userId: string, pc: RTCPeerConnection): Promise<void> {
+    try {
+      const report = await pc.getStats()
+      const values: Record<string, unknown>[] = []
+      report.forEach((v) => values.push(v as unknown as Record<string, unknown>))
+      this.onIcePath(userId, icePathFromStats(values))
+    } catch {
+      // Stats unavailable (closed pc); badge stays empty.
     }
   }
 

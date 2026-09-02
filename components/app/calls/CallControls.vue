@@ -211,8 +211,8 @@ const { microphones, cameras, speakers, supportsSpeakerSelection, ensureDeviceLa
 
 const isTouch = computed(() => isCoarsePointer())
 const showDevicePicker = computed(() => props.showDevices && !isTouch.value)
-const showFlip = computed(() => props.cameraEnabled && !props.screenSharing && (isTouch.value || cameras.value.length > 1))
-const showScreenShare = computed(() => props.allowScreenShare && canScreenShare())
+const showFlip = computed(() => props.cameraEnabled && (isTouch.value || cameras.value.length > 1))
+const showScreenShare = computed(() => (props.allowScreenShare || props.screenSharing) && canScreenShare())
 const hasDevices = computed(
   () =>
     microphones.value.length > 0 ||

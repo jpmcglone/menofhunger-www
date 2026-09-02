@@ -15,8 +15,27 @@ export const SPEAKING_EXIT = 0.01
 export const SPEAKING_HOLD_MS = 350
 /** Sampling cadence. 10 Hz is plenty for a UI ring and cheap enough for 4 analysers. */
 export const SPEAKING_POLL_MS = 100
+/** Displayed intensity is the loudest sample in this window so the ring sits still a beat. */
+export const SPEAKING_PEAK_HOLD_MS = 250
 /** RMS / webrtc `audioLevel` that maps to ring intensity 1. Typical speech sits below this. */
 export const SPEAKING_FULL = 0.16
+
+export type PeakSample = { level: number; at: number }
+
+/** Keep samples inside the peak-hold window and return the next buffer. */
+export function pushPeak(peaks: PeakSample[], level: number, now: number, windowMs = SPEAKING_PEAK_HOLD_MS): PeakSample[] {
+  const next = peaks.length === 0 ? [{ level, at: now }] : [...peaks, { level, at: now }]
+  return next.filter((p) => now - p.at <= windowMs)
+}
+
+/** Highest raw level seen in the hold window. */
+export function peakLevel(peaks: PeakSample[], now: number, windowMs = SPEAKING_PEAK_HOLD_MS): number {
+  let peak = 0
+  for (const p of peaks) {
+    if (now - p.at <= windowMs) peak = Math.max(peak, p.level)
+  }
+  return peak
+}
 
 export type SpeakingTrack = {
   speaking: boolean
@@ -74,6 +93,7 @@ type Tap = {
   buffer: Float32Array<ArrayBuffer>
   track: SpeakingTrack
   level: number
+  peaks: PeakSample[]
 }
 
 /**
@@ -108,7 +128,7 @@ export class SpeakingMonitor {
       analyser.smoothingTimeConstant = 0.4
       source.connect(analyser)
       const buffer = new Float32Array(new ArrayBuffer(analyser.fftSize * Float32Array.BYTES_PER_ELEMENT))
-      this.taps.set(id, { stream, source, analyser, buffer, track: INITIAL_SPEAKING, level: 0 })
+      this.taps.set(id, { stream, source, analyser, buffer, track: INITIAL_SPEAKING, level: 0, peaks: [] })
     } catch {
       // Stream not analysable in this browser (e.g. no live audio track yet); stay silent.
       return
@@ -175,15 +195,17 @@ export class SpeakingMonitor {
       tap.analyser.getFloatTimeDomainData(tap.buffer)
       tap.level = rmsLevel(tap.buffer)
       tap.track = reduceSpeaking(tap.track, tap.level, now)
+      tap.peaks = pushPeak(tap.peaks, tap.level, now)
     }
     this.publish()
   }
 
   private publish(): void {
+    const now = Date.now()
     const next: Record<string, number> = {}
     for (const [id, tap] of this.taps) {
       if (this.muted.has(id)) continue
-      const quantized = quantizeSpeakingIntensity(speakingIntensity(tap.level, tap.track.speaking))
+      const quantized = quantizeSpeakingIntensity(speakingIntensity(peakLevel(tap.peaks, now), tap.track.speaking))
       if (quantized > 0) next[id] = quantized
     }
     const prevKeys = Object.keys(this.snapshot)
