@@ -122,17 +122,14 @@ const micIconClass = computed(() => {
 
 function ringStyle(index: number, alpha: number) {
   const i = intensity.value
-  const spreads = [
-    2 + i * 2.5,
-    6 + i * 5,
-    12 + i * 8,
-  ] as const
-  const glows = [0, 5 + i * 7, 12 + i * 12] as const
-  const bloom = [0, 1 + i * 1.2, 2 + i * 2.4] as const
+  const spreads = [2 + i * 2.5, 6 + i * 5, 12 + i * 8]
+  const glows = [0, 5 + i * 7, 12 + i * 12]
+  const bloom = [0, 1 + i * 1.2, 2 + i * 2.4]
+  const ring = Math.min(Math.max(index, 0), spreads.length - 1)
   return {
     opacity: alpha,
-    transform: `scale(${1 + bloom[index] / 100})`,
-    boxShadow: `0 0 ${glows[index]}px ${spreads[index]}px ${ringColor.value}`,
+    transform: `scale(${1 + (bloom[ring] ?? 0) / 100})`,
+    boxShadow: `0 0 ${glows[ring] ?? 0}px ${spreads[ring] ?? 0}px ${ringColor.value}`,
   }
 }
 

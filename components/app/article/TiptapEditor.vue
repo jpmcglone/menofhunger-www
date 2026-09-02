@@ -209,7 +209,7 @@ watch(() => props.modelValue, (val) => {
   const current = JSON.stringify(ed.getJSON())
   if (current === val) return
   try {
-    ed.commands.setContent(parseBody(val), false)
+    ed.commands.setContent(parseBody(val), { emitUpdate: false })
   } catch {
     // commandManager can go null between the check and setContent (MENOFHUNGER-WWW-1R).
   }
