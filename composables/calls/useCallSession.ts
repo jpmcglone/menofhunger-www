@@ -23,7 +23,7 @@ import {
 import { createRingtone, type Ringtone } from './callRingtone'
 import { reduceCallsIncoming, reduceCallsUpdated, remotePeerIds, type CallPhase, type CallSessionState } from './callSessionReducer'
 import { qualityBarsFor } from './callQuality'
-import { acquireAudioTrack, acquireCallMedia, acquireVideoTrack, canScreenShare, stopTrack } from './useCallDevices'
+import { acquireAudioTrack, acquireCallMedia, acquireVideoTrack, canScreenShare, shouldStartCallWithCamera, stopTrack } from './useCallDevices'
 import { SpeakingMonitor } from './speakingDetector'
 import type { CallTransport, PeerMediaState } from './transport/CallTransport'
 import { DEFAULT_RECONNECT_GRACE_MS, PeerToPeerCallTransport } from './transport/PeerToPeerCallTransport'
@@ -118,10 +118,10 @@ export function useCallSession() {
     localStream.value = null
   }
 
-  async function acquireForCall(type: CallType): Promise<boolean> {
+  async function acquireForCall(type: CallType, joining = false): Promise<boolean> {
     const media = await acquireCallMedia({
       audio: true,
-      video: type === 'video',
+      video: shouldStartCallWithCamera(type === 'video', joining),
       audioDeviceId: audioDeviceId.value,
       videoDeviceId: videoDeviceId.value,
       facingMode: facingMode.value,
@@ -341,7 +341,7 @@ export function useCallSession() {
     if (opts?.participants) seedParticipants(opts.participants)
     stopRinging()
     state.value = { phase: 'requesting_media', call: null, incoming: null }
-    await acquireForCall(session.type)
+    await acquireForCall(session.type, true)
 
     state.value = { phase: 'joining', call: null, incoming: null }
     const ack = await presence.emitCallsJoin(session.id)

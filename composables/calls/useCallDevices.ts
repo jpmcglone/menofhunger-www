@@ -38,6 +38,11 @@ export function isCoarsePointer(): boolean {
   return import.meta.client && Boolean(window.matchMedia?.('(pointer: coarse)').matches)
 }
 
+/** Video-call starter publishes camera. Answer / late join keeps it off — mic stays live. */
+export function shouldStartCallWithCamera(isVideo: boolean, joining: boolean): boolean {
+  return isVideo && !joining
+}
+
 export function canScreenShare(): boolean {
   return import.meta.client && !isCoarsePointer() && Boolean(navigator.mediaDevices?.getDisplayMedia)
 }

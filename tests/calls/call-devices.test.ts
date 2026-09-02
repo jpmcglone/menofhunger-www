@@ -6,6 +6,7 @@ import {
   videoConstraints,
   MOBILE_VIDEO_CONSTRAINTS,
   DEFAULT_VIDEO_CONSTRAINTS,
+  shouldStartCallWithCamera,
 } from '~/composables/calls/useCallDevices'
 
 const root = resolve(import.meta.dirname, '../..')
@@ -34,6 +35,21 @@ describe('videoConstraints', () => {
     const c = videoConstraints({ audio: false, video: true }, false)
     expect(c.width).toEqual(DEFAULT_VIDEO_CONSTRAINTS.width)
     expect(c.aspectRatio).toEqual(DEFAULT_VIDEO_CONSTRAINTS.aspectRatio)
+  })
+})
+
+describe('shouldStartCallWithCamera', () => {
+  it('starts camera only for the person who placed a video call', () => {
+    expect(shouldStartCallWithCamera(true, false)).toBe(true)
+    expect(shouldStartCallWithCamera(true, true)).toBe(false)
+    expect(shouldStartCallWithCamera(false, false)).toBe(false)
+    expect(shouldStartCallWithCamera(false, true)).toBe(false)
+  })
+
+  it('join/accept acquires audio only', () => {
+    const session = read('composables/calls/useCallSession.ts')
+    expect(session).toContain('acquireForCall(session.type, true)')
+    expect(session).toContain('await acquireForCall(type)')
   })
 })
 
