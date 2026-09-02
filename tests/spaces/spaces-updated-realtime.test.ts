@@ -69,6 +69,8 @@ describe('spaces updated realtime wiring (structural)', () => {
     expect(row).toMatch(/showRadioVisualizer/)
     expect(row).toMatch(/rounded-xl border moh-border/)
     expect(row).toMatch(/getYouTubePosterUrls/)
+    expect(row).toMatch(/showWatchPoster.value && props.space.watchPartyUrl/)
+    expect(row).not.toMatch(/isActive && .*WATCH_PARTY/)
     expect(index).toMatch(/gap-3/)
     expect(index).not.toMatch(/border-t moh-border/)
     expect(preview).toMatch(/AppSpaceRow is already the card/)

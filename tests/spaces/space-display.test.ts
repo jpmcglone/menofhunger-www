@@ -116,7 +116,7 @@ describe('spaceStatusKind', () => {
 })
 
 describe('spaceLobbyRowKind', () => {
-  it('uses a watch card only while a watch party is live', () => {
+  it('uses a watch card whenever a YouTube URL is set, live or scheduled', () => {
     expect(spaceLobbyRowKind({
       ...base,
       isActive: true,
@@ -125,8 +125,13 @@ describe('spaceLobbyRowKind', () => {
     })).toBe('watch')
     expect(spaceLobbyRowKind({
       ...base,
+      scheduledAt: '2099-08-16T18:00:00.000Z',
       mode: 'WATCH_PARTY',
       watchPartyUrl: 'https://youtu.be/abc',
+    })).toBe('watch')
+    expect(spaceLobbyRowKind({
+      ...base,
+      mode: 'WATCH_PARTY',
     })).toBe('quiet')
   })
 

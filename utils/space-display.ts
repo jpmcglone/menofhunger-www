@@ -12,7 +12,8 @@ export type SpaceLobbyRowKind = 'watch' | 'radio' | 'quiet'
 
 /** Lobby card treatment: cinematic watch party, radio, or a quiet list row. */
 export function spaceLobbyRowKind(space: SpaceDisplayInput): SpaceLobbyRowKind {
-  if (space.isActive && space.mode === 'WATCH_PARTY' && Boolean(space.watchPartyUrl?.trim())) {
+  // Same rule as radio: a saved YouTube URL earns the poster, live or scheduled.
+  if (space.mode === 'WATCH_PARTY' && Boolean(space.watchPartyUrl?.trim())) {
     return 'watch'
   }
   if (space.mode === 'RADIO' && Boolean(space.radioStreamUrl?.trim())) {
