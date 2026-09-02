@@ -84,6 +84,7 @@
               :speaking-level="speakingIds[p.userId] ?? 0"
               :hand-raised="isGroupCall && Boolean(p.handRaised)"
               :ice-path="isAdmin ? (icePaths[p.userId] ?? null) : null"
+              fit="contain"
             />
           </div>
           <div class="h-[6.25rem] w-[4.75rem] shrink-0 sm:h-auto sm:w-full sm:aspect-[3/4]">
@@ -114,6 +115,7 @@
             :speaking-level="speakingIds[p.userId] ?? 0"
             :hand-raised="isGroupCall && Boolean(p.handRaised)"
             :ice-path="isAdmin ? (icePaths[p.userId] ?? null) : null"
+            fit="contain"
             picture-in-picture
           />
         </div>

@@ -19,12 +19,13 @@ type Peer = {
   screenStream: MediaStream | null
   audioSender: RTCRtpSender
   videoSender: RTCRtpSender
-  screenSender: RTCRtpSender | null
-  screenTransceiver: RTCRtpTransceiver | null
+  screenSender: RTCRtpSender
+  screenTransceiver: RTCRtpTransceiver
   /** Perfect negotiation: the polite side rolls back on collision. */
   polite: boolean
   makingOffer: boolean
   ignoreOffer: boolean
+  applyingRemote: boolean
   isSettingRemoteAnswerPending: boolean
   pendingCandidates: RTCIceCandidateInit[]
   disconnectedTimer: ReturnType<typeof setTimeout> | null
@@ -44,13 +45,13 @@ type Peer = {
 
 /**
  * Browser-to-browser mesh: one RTCPeerConnection per remote participant.
- * Audio + camera transceivers are created up front so negotiation happens before
- * a local track exists. The screen m-line is added only when someone shares —
- * a third transceiver on day one glares with iOS builds that still offer two.
+ * Audio, camera, and screen transceivers are created up front so web and iOS
+ * always offer the same three m-lines (a 2-vs-3 mismatch maps the iPhone
+ * camera onto the screen transceiver — web shows no person video).
  *
  * Signaling follows the W3C "perfect negotiation" pattern; `polite` is decided
- * by user id so both sides always agree. The polite side explicitly rolls back
- * on glare (Safari / libwebrtc do not implicit-rollback like Chromium).
+ * by user id. The polite side explicitly rolls back on glare (Safari / libwebrtc
+ * do not implicit-rollback like Chromium).
  */
 export class PeerToPeerCallTransport implements CallTransport {
   private readonly peers = new Map<string, Peer>()
@@ -150,15 +151,7 @@ export class PeerToPeerCallTransport implements CallTransport {
     else this.localScreen = track
     await Promise.all(
       [...this.peers.values()].map(async (peer) => {
-        const sender =
-          kind === 'audio'
-            ? peer.audioSender
-            : kind === 'video'
-              ? peer.videoSender
-              : track
-                ? this.ensureScreenTransceiver(peer).sender
-                : peer.screenSender
-        if (!sender) return
+        const sender = kind === 'audio' ? peer.audioSender : kind === 'video' ? peer.videoSender : peer.screenSender
         try {
           await sender.replaceTrack(track)
         } catch {
@@ -202,6 +195,7 @@ export class PeerToPeerCallTransport implements CallTransport {
 
   private async applySignal(peer: Peer, payload: WsRtcSignalPayload): Promise<void> {
     const { pc } = peer
+    peer.applyingRemote = true
     try {
       if (payload.description) {
         const description = payload.description as RTCSessionDescriptionInit
@@ -211,8 +205,11 @@ export class PeerToPeerCallTransport implements CallTransport {
         peer.ignoreOffer = !peer.polite && offerCollision
         if (peer.ignoreOffer) return
 
-        // Chromium implicit-rollbacks; Safari and iOS libwebrtc do not.
-        if (offerCollision) {
+        // Chromium implicit-rollbacks; Safari and iOS libwebrtc do not. Only roll
+        // back while we actually have a local offer — a no-op rollback on stable
+        // (Chrome already recovered) fires negotiationneeded and deadlocks web↔web.
+        const glareState = pc.signalingState === 'have-local-offer' || pc.signalingState === 'have-local-pranswer'
+        if (offerCollision && glareState) {
           try {
             await pc.setLocalDescription({ type: 'rollback' })
           } catch {
@@ -223,7 +220,6 @@ export class PeerToPeerCallTransport implements CallTransport {
         peer.isSettingRemoteAnswerPending = description.type === 'answer'
         await pc.setRemoteDescription(description)
         peer.isSettingRemoteAnswerPending = false
-        this.adoptScreenTransceiver(peer)
 
         // Candidates that arrived before the remote description can now be applied.
         const queued = peer.pendingCandidates.splice(0)
@@ -253,6 +249,8 @@ export class PeerToPeerCallTransport implements CallTransport {
       }
     } catch {
       // Negotiation glitches are recovered by the next negotiationneeded / ICE restart.
+    } finally {
+      peer.applyingRemote = false
     }
   }
 
@@ -274,6 +272,7 @@ export class PeerToPeerCallTransport implements CallTransport {
     const stream = new MediaStream()
     const audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' })
     const videoTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' })
+    const screenTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' })
 
     const peer: Peer = {
       userId,
@@ -282,11 +281,12 @@ export class PeerToPeerCallTransport implements CallTransport {
       screenStream: null,
       audioSender: audioTransceiver.sender,
       videoSender: videoTransceiver.sender,
-      screenSender: null,
-      screenTransceiver: null,
+      screenSender: screenTransceiver.sender,
+      screenTransceiver,
       polite: this.opts.selfUserId < userId,
       makingOffer: false,
       ignoreOffer: false,
+      applyingRemote: false,
       isSettingRemoteAnswerPending: false,
       pendingCandidates: [],
       disconnectedTimer: null,
@@ -309,10 +309,11 @@ export class PeerToPeerCallTransport implements CallTransport {
 
     if (this.localAudio) void audioTransceiver.sender.replaceTrack(this.localAudio)
     if (this.localVideo) void videoTransceiver.sender.replaceTrack(this.localVideo)
-    if (this.localScreen) void this.ensureScreenTransceiver(peer).sender.replaceTrack(this.localScreen)
+    if (this.localScreen) void screenTransceiver.sender.replaceTrack(this.localScreen)
     void prioritizeAudioSender(audioTransceiver.sender)
 
     pc.onnegotiationneeded = () => {
+      if (peer.applyingRemote || peer.holdNegotiate) return
       void this.makeOffer(peer)
     }
 
@@ -330,7 +331,7 @@ export class PeerToPeerCallTransport implements CallTransport {
 
     pc.ontrack = (ev) => {
       const { track, transceiver } = ev
-      if (this.isScreenTransceiver(peer, transceiver)) {
+      if (transceiver === peer.screenTransceiver) {
         this.bindScreenTrack(peer, track)
         return
       }
@@ -452,39 +453,6 @@ export class PeerToPeerCallTransport implements CallTransport {
       () => undefined,
     )
     return next
-  }
-
-  /**
-   * Second video m-line — created when we start sharing, or adopted from a remote
-   * offer that already has one (newer iOS). Camera stays `videos[0]`.
-   */
-  private findScreenTransceiver(peer: Peer): RTCRtpTransceiver | null {
-    const videos = peer.pc.getTransceivers().filter((t) => t.receiver.track?.kind === 'video')
-    return videos.length >= 2 ? (videos[1] ?? null) : null
-  }
-
-  private adoptScreenTransceiver(peer: Peer): void {
-    if (peer.screenTransceiver) return
-    const extra = this.findScreenTransceiver(peer)
-    if (!extra) return
-    peer.screenTransceiver = extra
-    peer.screenSender = extra.sender
-    if (this.localScreen) void extra.sender.replaceTrack(this.localScreen)
-  }
-
-  private ensureScreenTransceiver(peer: Peer): RTCRtpTransceiver {
-    this.adoptScreenTransceiver(peer)
-    if (peer.screenTransceiver) return peer.screenTransceiver
-    const created = peer.pc.addTransceiver('video', { direction: 'sendrecv' })
-    peer.screenTransceiver = created
-    peer.screenSender = created.sender
-    return created
-  }
-
-  private isScreenTransceiver(peer: Peer, transceiver: RTCRtpTransceiver | undefined): boolean {
-    if (!transceiver) return false
-    if (peer.screenTransceiver === transceiver) return true
-    return this.findScreenTransceiver(peer) === transceiver
   }
 
   private armConnectingTimer(peer: Peer): void {

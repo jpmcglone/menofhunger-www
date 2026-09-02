@@ -332,10 +332,10 @@ describe('PeerToPeerCallTransport reconnect alignment', () => {
     transport.destroy()
   })
 
-  it('opens with audio + camera only so a two-m-line iOS offer can answer', () => {
+  it('opens audio + camera + screen so iOS and web share the same m-line order', () => {
     const { transport } = makeTransport()
     transport.setPeers(['alice'])
-    expect(FakePeerConnection.instances[0]!.transceivers).toHaveLength(2)
+    expect(FakePeerConnection.instances[0]!.transceivers).toHaveLength(3)
     transport.destroy()
   })
 

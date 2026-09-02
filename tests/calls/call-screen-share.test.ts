@@ -46,8 +46,10 @@ describe('screen share chrome', () => {
     expect(controls).toContain('isCoarsePointer')
 
     const tile = read('components/app/calls/CallVideoTile.vue')
-    expect(tile).toContain("fit === 'contain' ? 'object-contain'")
+    expect(tile).toContain('object-contain')
     expect(tile).toContain("variant === 'stage'")
+    expect(tile).toContain('hasFrames')
+    expect(tile).toContain('videoWidth')
 
     const overlay = read('components/app/calls/CallOverlay.vue')
     expect(overlay).toContain('call-presenting-stage')
@@ -55,5 +57,6 @@ describe('screen share chrome', () => {
     expect(overlay).toContain('You\'re presenting')
     expect(overlay).toContain('toggleScreenShare')
     expect(overlay).toContain('someoneElsePresenting')
+    expect(overlay).toContain('fit="contain"')
   })
 })

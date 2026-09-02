@@ -20,7 +20,10 @@
           :key="attachKey"
           ref="videoEl"
           class="moh-call-tile-video absolute inset-0 h-full w-full"
-          :class="[showVideo ? 'opacity-100' : 'opacity-0', fit === 'contain' ? 'object-contain' : 'object-cover']"
+          :class="[showVideo ? 'opacity-100' : 'opacity-0', objectFitClass]"
+          @loadeddata="syncFrames"
+          @loadedmetadata="syncFrames"
+          @resize="syncFrames"
           autoplay
           playsinline
           muted
@@ -122,9 +125,20 @@ const icePathLabel = computed(() => labelForIcePath(props.icePath))
 
 const videoEl = ref<HTMLVideoElement | null>(null)
 const hasVideoTrack = ref(false)
+const hasFrames = ref(false)
 const attachKey = computed(() => callVideoAttachKey(props.stream))
 
-const showVideo = computed(() => hasVideoTrack.value && (props.cameraEnabled || props.variant === 'stage' || props.screenSharing))
+const objectFitClass = computed(() =>
+  props.fit === 'contain' || props.variant === 'stage' || props.screenSharing ? 'object-contain' : 'object-cover',
+)
+
+const showVideo = computed(() => {
+  if (props.variant === 'stage' || props.screenSharing) return hasFrames.value || hasVideoTrack.value
+  // Chrome often leaves iOS recv tracks `muted`; cameraEnabled can also lag the DTO.
+  // Once the element has dimensions, show frames regardless.
+  if (hasFrames.value) return true
+  return hasVideoTrack.value && props.cameraEnabled
+})
 const intensity = computed(() => {
   if (props.variant === 'stage') return 0
   const n = props.speakingLevel
@@ -152,9 +166,15 @@ function ringStyle(index: number, alpha: number) {
   }
 }
 
+function syncFrames() {
+  const el = videoEl.value
+  hasFrames.value = Boolean(el && el.videoWidth > 0 && el.videoHeight > 0)
+}
+
 function refreshHasVideo() {
   const s = props.stream
-  hasVideoTrack.value = Boolean(s && s.getVideoTracks().some((t) => t.readyState === 'live' && !t.muted))
+  hasVideoTrack.value = Boolean(s && s.getVideoTracks().some((t) => t.readyState === 'live'))
+  syncFrames()
 }
 
 function attach() {
@@ -174,7 +194,7 @@ function attach() {
       t.onended = refreshHasVideo
     }
   }
-  void el.play().catch(() => {})
+  void el.play().then(() => syncFrames()).catch(() => {})
 }
 
 onMounted(attach)
