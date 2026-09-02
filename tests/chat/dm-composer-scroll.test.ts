@@ -34,3 +34,17 @@ describe('DM composer field scroll', () => {
     expect(keep).toMatch(/try\s*\{[\s\S]*scrollIntoView/)
   })
 })
+
+describe('TipTap commandManager null (MENOFHUNGER-WWW-1R)', () => {
+  it('guards setContent in every editor that can unmount mid-update', () => {
+    for (const file of [
+      'components/app/StyledTextarea.vue',
+      'components/app/article/TiptapEditor.vue',
+      'components/admin/NewsletterEditor.vue',
+    ]) {
+      const src = readFileSync(resolve(process.cwd(), file), 'utf8')
+      expect(src).toContain('isEditorAlive')
+      expect(src).toContain('commandManager')
+    }
+  })
+})

@@ -23,6 +23,8 @@ import {
 import { createRingtone, type Ringtone } from './callRingtone'
 import { reduceCallsIncoming, reduceCallsUpdated, remotePeerIds, type CallPhase, type CallSessionState } from './callSessionReducer'
 import { qualityBarsFor } from './callQuality'
+import { shouldHangUpCallOnPageLifecycle } from './callLifecycle'
+import { enterCallPictureInPicture, exitCallPictureInPicture } from './callPictureInPicture'
 import { acquireAudioTrack, acquireCallMedia, acquireVideoTrack, canScreenShare, shouldStartCallWithCamera, stopTrack } from './useCallDevices'
 import { SpeakingMonitor } from './speakingDetector'
 import type { CallTransport, PeerMediaState } from './transport/CallTransport'
@@ -658,6 +660,7 @@ export function useCallSession() {
     if (ack.call) {
       state.value = { ...state.value, call: ack.call }
       transport?.setPeers(remotePeerIds(ack.call, meId.value))
+      transport?.resumeConnections()
       return
     }
     const code = ack.error?.code
@@ -666,6 +669,41 @@ export function useCallSession() {
       state.value = { phase: 'idle', call: null, incoming: null }
       toast.push({ title: 'Call ended.', durationMs: 3000 })
     }
+  }
+
+  /** iOS stops camera/mic tracks when the page is frozen; grab them again if they died. */
+  async function restoreLocalTracks() {
+    if (phase.value !== 'in_call' && phase.value !== 'outgoing') return
+    if (isMicEnabled.value) {
+      const audio = localAudioTrack()
+      if (!audio || audio.readyState === 'ended') {
+        const got = await acquireAudioTrack({ audioDeviceId: audioDeviceId.value })
+        if (got.track) {
+          got.track.enabled = true
+          const prev = localAudioTrack()
+          const s = new MediaStream(localStream.value?.getTracks().filter((t) => t !== prev) ?? [])
+          s.addTrack(got.track)
+          localStream.value = s
+          stopTrack(prev)
+          await transport?.setLocalTrack('audio', got.track)
+        }
+      }
+    }
+    if (isCameraEnabled.value && !isScreenSharing.value) {
+      const video = localVideoTrack()
+      if (!video || video.readyState === 'ended') {
+        const got = await acquireVideoTrack({ videoDeviceId: videoDeviceId.value, facingMode: facingMode.value })
+        if (got.track) await replaceVideoTrack(got.track)
+      }
+    }
+  }
+
+  async function resumeAfterForeground() {
+    if (phase.value !== 'in_call' && phase.value !== 'outgoing') return
+    await exitCallPictureInPicture()
+    await restoreLocalTracks()
+    transport?.resumeConnections()
+    if (presence.isSocketConnected.value) await rejoinAfterReconnect()
   }
 
   /**
@@ -707,12 +745,19 @@ export function useCallSession() {
     }
     presence.addMessagesCallback(messagesCb)
 
-    const onPageHide = () => {
+    const hangUpIfClosing = () => {
       const current = call.value
       if (current && (phase.value === 'in_call' || phase.value === 'outgoing')) void presence.emitCallsLeave(current.id)
     }
+    const onPageHide = () => {
+      if (phase.value === 'in_call') void enterCallPictureInPicture()
+      if (shouldHangUpCallOnPageLifecycle('pagehide')) hangUpIfClosing()
+    }
+    const onBeforeUnload = () => {
+      if (shouldHangUpCallOnPageLifecycle('beforeunload')) hangUpIfClosing()
+    }
     window.addEventListener('pagehide', onPageHide)
-    window.addEventListener('beforeunload', onPageHide)
+    window.addEventListener('beforeunload', onBeforeUnload)
 
     const stopReconnectWatch = watch(
       () => presence.isSocketConnected.value,
@@ -733,17 +778,23 @@ export function useCallSession() {
 
     // Network came back (Wi-Fi ↔ hotspot, VPN toggle): don't wait for ICE to time out.
     const onOnline = () => {
-      if (phase.value === 'in_call') transport?.restartIce()
+      if (phase.value === 'in_call') transport?.resumeConnections()
     }
     window.addEventListener('online', onOnline)
 
-    // A backgrounded tab can miss `calls:updated` (throttled timers, suspended sockets); a
-    // rejoin is a cheap "give me the current participant set" when it becomes visible again.
+    // Background: keep the call (PiP) instead of hanging up. Foreground: restore tracks + ICE.
     const onVisibility = () => {
-      if (document.visibilityState !== 'visible') return
-      if (phase.value === 'in_call' && presence.isSocketConnected.value) void rejoinAfterReconnect()
+      if (document.visibilityState !== 'visible') {
+        if (phase.value === 'in_call') void enterCallPictureInPicture()
+        return
+      }
+      if (phase.value === 'in_call' || phase.value === 'outgoing') void resumeAfterForeground()
     }
     document.addEventListener('visibilitychange', onVisibility)
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && (phase.value === 'in_call' || phase.value === 'outgoing')) void resumeAfterForeground()
+    }
+    window.addEventListener('pageshow', onPageShow)
 
     const stopRouteHook = router.afterEach(() => {
       if (phase.value === 'in_call' || phase.value === 'outgoing') minimized.value = true
@@ -760,8 +811,9 @@ export function useCallSession() {
       presence.removeCallsCallback(cb)
       presence.removeMessagesCallback(messagesCb)
       window.removeEventListener('pagehide', onPageHide)
-      window.removeEventListener('beforeunload', onPageHide)
+      window.removeEventListener('beforeunload', onBeforeUnload)
       window.removeEventListener('online', onOnline)
+      window.removeEventListener('pageshow', onPageShow)
       document.removeEventListener('visibilitychange', onVisibility)
       stopReconnectWatch()
       stopRouteHook()

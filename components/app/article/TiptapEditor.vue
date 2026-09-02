@@ -86,7 +86,7 @@
 
 <script setup lang="ts">
 import { useEditor, EditorContent } from '@tiptap/vue-3'
-import { Extension } from '@tiptap/core'
+import { Extension, type Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -198,12 +198,21 @@ const editor = useEditor({
   },
 })
 
+function isEditorAlive(ed: Editor | null | undefined): ed is Editor {
+  if (!ed || ed.isDestroyed) return false
+  return Boolean((ed as unknown as { commandManager?: unknown }).commandManager)
+}
+
 watch(() => props.modelValue, (val) => {
-  if (!editor.value) return
-  const current = JSON.stringify(editor.value.getJSON())
+  const ed = editor.value
+  if (!isEditorAlive(ed)) return
+  const current = JSON.stringify(ed.getJSON())
   if (current === val) return
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(editor.value as any).commands.setContent(parseBody(val), false)
+  try {
+    ed.commands.setContent(parseBody(val), false)
+  } catch {
+    // commandManager can go null between the check and setContent (MENOFHUNGER-WWW-1R).
+  }
 })
 
 const toolbarItems = computed(() => {

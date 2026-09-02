@@ -92,6 +92,18 @@ export class PeerToPeerCallTransport implements CallTransport {
     }
   }
 
+  resumeConnections(): void {
+    if (this.destroyed) return
+    for (const [id, peer] of [...this.peers.entries()]) {
+      if (peer.state === 'failed') {
+        this.removePeer(id)
+        this.addPeer(id)
+        continue
+      }
+      this.restartIcePeer(peer)
+    }
+  }
+
   async setLocalTrack(kind: 'audio' | 'video', track: MediaStreamTrack | null): Promise<void> {
     if (kind === 'audio') this.localAudio = track
     else this.localVideo = track

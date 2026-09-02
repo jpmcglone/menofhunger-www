@@ -46,10 +46,35 @@ describe('shouldStartCallWithCamera', () => {
     expect(shouldStartCallWithCamera(false, true)).toBe(false)
   })
 
+  it('asks for facing-only first when flipping (no device id)', () => {
+    const src = read('composables/calls/useCallDevices.ts')
+    expect(src).toContain('facingOnly, sized')
+    expect(src).toContain('req.videoDeviceId')
+  })
+
   it('join/accept acquires audio only', () => {
     const session = read('composables/calls/useCallSession.ts')
     expect(session).toContain('acquireForCall(session.type, true)')
     expect(session).toContain('await acquireForCall(type)')
+  })
+})
+
+describe('self-view chrome', () => {
+  it('rounds the floating self-view wrapper so its shadow is not a sharp rect', () => {
+    const overlay = read('components/app/calls/CallOverlay.vue')
+    expect(overlay).toMatch(/ref="pipEl"[\s\S]*rounded-2xl/)
+    expect(overlay).toContain('shadow-xl')
+  })
+
+  it('mirrors the wrapper, remounts the video on track change, and clips WebKit', () => {
+    const tile = read('components/app/calls/CallVideoTile.vue')
+    expect(tile).toContain('callVideoAttachKey')
+    expect(tile).toContain(':key="attachKey"')
+    expect(tile).toContain("mirrored && fit !== 'contain' ? 'scale-x-[-1]'")
+    expect(tile).toMatch(/scale-x-\[-1\][\s\S]*<video/)
+    expect(tile).not.toMatch(/<video[^>]*scale-x-\[-1\]/)
+    expect(tile).toContain('clip-path: inset(0 round 1rem)')
+    expect(tile).toContain('webkit-playsinline')
   })
 })
 

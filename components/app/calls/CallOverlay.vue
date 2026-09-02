@@ -57,6 +57,7 @@
             :speaking="speakingIds[p.userId] === true"
             :fit="p.screenSharing ? 'contain' : 'cover'"
             :screen-sharing="Boolean(p.screenSharing)"
+            picture-in-picture
           />
         </div>
         <!-- 4-way: self joins the grid instead of floating -->
@@ -91,7 +92,7 @@
       <div
         v-if="!selfInGrid"
         ref="pipEl"
-        class="absolute z-10 h-[7.5rem] w-[5.25rem] sm:h-[9rem] sm:w-[16rem] touch-none cursor-grab shadow-xl shadow-black/50 active:cursor-grabbing"
+        class="absolute z-10 h-[7.5rem] w-[5.25rem] rounded-2xl shadow-xl shadow-black/50 sm:h-[9rem] sm:w-[16rem] touch-none cursor-grab active:cursor-grabbing"
         :style="pipStyle"
         @pointerdown="onPipPointerDown"
         @pointermove="onPipPointerMove"

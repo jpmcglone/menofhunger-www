@@ -30,17 +30,21 @@ describe('DM calling realtime wiring', () => {
     expect(emitters).toContain("socket.emit('rtc:signal'")
   })
 
-  it('binds the session once per tab from the client-only host and leaves on unload', () => {
+  it('binds the session once per tab from the client-only host and leaves only on real unload', () => {
     const overlays = read('components/app/layout/GlobalOverlays.vue')
     expect(overlays).toMatch(/<ClientOnly>[\s\S]*<AppCallsCallHost v-if="isAuthed" \/>[\s\S]*<\/ClientOnly>/)
 
     const host = read('components/app/calls/CallHost.vue')
     expect(host).toContain('unbind = bind()')
+    expect(host).toContain('registerCallPipSource')
 
     const session = read('composables/calls/useCallSession.ts')
     expect(session).toContain("window.addEventListener('pagehide', onPageHide)")
-    expect(session).toContain("window.addEventListener('beforeunload', onPageHide)")
+    expect(session).toContain("window.addEventListener('beforeunload', onBeforeUnload)")
+    expect(session).toContain('shouldHangUpCallOnPageLifecycle')
     expect(session).toContain('void rejoinAfterReconnect()')
+    expect(session).toContain('resumeAfterForeground')
+    expect(session).toContain('enterCallPictureInPicture')
   })
 
   it('gives up on the server-owned grace window: socket down, all peers failed, online restart, visibility resync', () => {
@@ -50,7 +54,7 @@ describe('DM calling realtime wiring', () => {
     expect(session).toMatch(/socketDownTimer = setTimeout\([\s\S]*connectionLost\(\)[\s\S]*\}, reconnectGraceMs\)/)
     expect(session).toContain("ids.every((id) => peerStates.value[id] === 'failed')")
     expect(session).toContain("window.addEventListener('online', onOnline)")
-    expect(session).toContain('transport?.restartIce()')
+    expect(session).toContain('transport?.resumeConnections()')
     expect(session).toContain("document.addEventListener('visibilitychange', onVisibility)")
     expect(session).toContain("title: 'Connection lost.'")
   })

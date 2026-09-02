@@ -148,11 +148,13 @@ export async function acquireCallMedia(req: CallMediaRequest): Promise<CallMedia
 export async function acquireVideoTrack(req: Pick<CallMediaRequest, 'videoDeviceId' | 'facingMode'>): Promise<{ track: MediaStreamTrack | null; error: string | null }> {
   if (!import.meta.client || !navigator.mediaDevices?.getUserMedia) return { track: null, error: 'This browser cannot access media devices.' }
   const facing = req.facingMode ?? (isCoarsePointer() ? 'user' : undefined)
-  const attempts: MediaStreamConstraints[] = [
-    { video: videoConstraints({ audio: false, video: true, videoDeviceId: req.videoDeviceId, facingMode: facing }) },
-    { video: facing ? { facingMode: { ideal: facing } } : true },
-    { audio: true, video: facing ? { facingMode: { ideal: facing } } : true },
-  ]
+  const sized = { video: videoConstraints({ audio: false, video: true, videoDeviceId: req.videoDeviceId, facingMode: facing }) }
+  const facingOnly: MediaStreamConstraints = { video: facing ? { facingMode: { ideal: facing } } : true }
+  // Flip (facing, no deviceId): ask for facing only first. Sized 640×480 on Safari iOS
+  // can stick the <video> element to the old aspect and letterbox after replaceTrack.
+  const attempts: MediaStreamConstraints[] = req.videoDeviceId
+    ? [sized, facingOnly, { audio: true, video: facing ? { facingMode: { ideal: facing } } : true }]
+    : [facingOnly, sized, { audio: true, video: facing ? { facingMode: { ideal: facing } } : true }]
   let lastErr: unknown
   for (const constraints of attempts) {
     try {

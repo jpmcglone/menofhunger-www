@@ -9,6 +9,15 @@
     />
     <!-- Remote audio outlives the overlay: minimized calls must keep talking. -->
     <CallAudioSink v-for="(stream, userId) in remoteStreams" :key="userId" :stream="stream" :speaker-device-id="speakerDeviceId" />
+    <!-- Off-screen remote video so OS PiP still has a source when the overlay is minimized. -->
+    <video
+      ref="osPipEl"
+      class="pointer-events-none fixed right-[-9999px] bottom-0 h-[90px] w-[160px] opacity-0"
+      autoplay
+      playsinline
+      muted
+      aria-hidden="true"
+    />
     <CallVoicemailRecorder
       v-if="pendingVoicemail"
       :conversation-id="pendingVoicemail.conversationId"
@@ -23,6 +32,7 @@
  * call survives navigation. Also owns the one-per-tab realtime binding.
  */
 import { useCallSession } from '~/composables/calls/useCallSession'
+import { registerCallPipSource } from '~/composables/calls/callPictureInPicture'
 import CallIncomingBanner from './CallIncomingBanner.vue'
 import CallOutgoingScreen from './CallOutgoingScreen.vue'
 import CallOverlay from './CallOverlay.vue'
@@ -32,11 +42,41 @@ import CallVoicemailRecorder from './CallVoicemailRecorder.vue'
 
 const { phase, call, incoming, minimized, remoteStreams, speakerDeviceId, pendingVoicemail, bind } = useCallSession()
 
+const osPipEl = ref<HTMLVideoElement | null>(null)
+
+function firstRemoteVideoStream(): MediaStream | null {
+  for (const stream of Object.values(remoteStreams.value)) {
+    if (stream.getVideoTracks().some((t) => t.readyState === 'live')) return stream
+  }
+  return null
+}
+
+watch(
+  [osPipEl, remoteStreams],
+  () => {
+    const el = osPipEl.value
+    if (!el) return
+    el.setAttribute('playsinline', '')
+    el.setAttribute('webkit-playsinline', '')
+    const stream = firstRemoteVideoStream()
+    if (el.srcObject !== stream) el.srcObject = stream
+    if (stream) void el.play().catch(() => {})
+  },
+  { immediate: true },
+)
+
 let unbind: (() => void) | null = null
+let unregisterPip: (() => void) | null = null
+watch(osPipEl, (el) => {
+  unregisterPip?.()
+  unregisterPip = registerCallPipSource(el)
+})
 onMounted(() => {
   unbind = bind()
 })
 onBeforeUnmount(() => {
+  unregisterPip?.()
+  unregisterPip = null
   unbind?.()
   unbind = null
 })

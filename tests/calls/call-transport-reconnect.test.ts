@@ -190,6 +190,23 @@ describe('PeerToPeerCallTransport reconnect alignment', () => {
     transport.destroy()
   })
 
+  it('resumeConnections() rebuilds a failed peer and ICE-restarts a live one', () => {
+    const { transport, states } = makeTransport({ reconnectGraceMs: 1_000 })
+    transport.setPeers(['alice', 'bob'])
+    const [alice, bob] = FakePeerConnection.instances as [FakePeerConnection, FakePeerConnection]
+    alice.ice('connected')
+    bob.ice('disconnected')
+    vi.advanceTimersByTime(1_000)
+    expect(lastState(states, 'bob')).toBe('failed')
+    const before = FakePeerConnection.instances.length
+    alice.restartIce.mockClear()
+    transport.resumeConnections()
+    expect(alice.restartIce).toHaveBeenCalledTimes(1)
+    expect(FakePeerConnection.instances.length).toBe(before + 1)
+    expect(bob.close).toHaveBeenCalled()
+    transport.destroy()
+  })
+
   it('restartIce() kicks only unhealthy peers, and only from the impolite side', () => {
     const { transport } = makeTransport()
     transport.setPeers(['alice', 'bob'])

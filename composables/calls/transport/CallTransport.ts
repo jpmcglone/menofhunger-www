@@ -59,6 +59,11 @@ export interface CallTransport {
    * that isn't healthy instead of waiting for the disconnect timers to notice.
    */
   restartIce(): void
+  /**
+   * Tab came back (visibility / pageshow). Rebuild failed peers and ICE-restart the rest
+   * so a background freeze doesn't leave a dead connection.
+   */
+  resumeConnections(): void
   /** Send a JSON payload on every open `moh` data channel. */
   sendData(payload: unknown): void
   /** Tear everything down. The instance is unusable afterwards. */
