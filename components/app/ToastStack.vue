@@ -1,5 +1,5 @@
 <template>
-  <div class="pointer-events-none fixed inset-x-0 z-[1500]" :style="stackStyle" aria-live="polite" aria-relevant="additions">
+  <div class="pointer-events-none fixed inset-x-0 z-[10050]" :style="stackStyle" aria-live="polite" aria-relevant="additions">
     <div class="mx-auto w-full max-w-md px-3">
       <TransitionGroup name="moh-toast" tag="div" class="space-y-2">
         <div

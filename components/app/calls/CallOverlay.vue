@@ -93,6 +93,9 @@
 
     <!-- Controls -->
     <div class="px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+      <p v-if="cameraError && !isCameraEnabled" class="mb-3 text-center text-sm text-white/85">
+        {{ cameraError }}
+      </p>
       <CallControls
         :mic-enabled="isMicEnabled"
         :camera-enabled="isCameraEnabled"
@@ -128,6 +131,7 @@ const {
   speakingIds,
   isMicEnabled,
   isCameraEnabled,
+  cameraError,
   qualityBars,
   facingMode,
   audioDeviceId,

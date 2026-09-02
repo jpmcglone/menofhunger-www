@@ -1,26 +1,73 @@
 <template>
-  <div class="flex items-center justify-center gap-3">
-    <!-- Secondary: devices -->
-    <button
-      v-if="showDevices"
-      type="button"
-      class="moh-call-btn moh-call-btn-secondary"
-      aria-label="Audio and video settings"
-      aria-haspopup="menu"
-      @click="deviceMenu?.toggle($event)"
-    >
-      <Icon name="tabler:settings" size="20" aria-hidden="true" />
-    </button>
-    <Menu ref="deviceMenu" :model="deviceMenuItems" popup>
-      <template #item="{ item, props: itemProps }">
-        <a v-bind="itemProps.action" class="flex items-center gap-2">
-          <Icon :name="item.iconName ?? 'tabler:circle'" size="14" :class="item.iconName ? '' : 'opacity-0'" aria-hidden="true" />
-          <span v-bind="itemProps.label" class="truncate">{{ item.label }}</span>
-        </a>
-      </template>
-    </Menu>
+  <div ref="rootEl" class="relative flex items-center justify-center gap-3">
+    <!-- Desktop: pick mic / camera / speaker. Phones have one of each; Flip covers camera. -->
+    <div v-if="showDevicePicker" class="relative">
+      <button
+        type="button"
+        class="moh-call-btn moh-call-btn-secondary"
+        aria-label="Choose microphone, camera, or speaker"
+        :aria-expanded="devicesOpen"
+        aria-haspopup="menu"
+        @click="devicesOpen = !devicesOpen"
+      >
+        <Icon name="tabler:settings" size="20" aria-hidden="true" />
+      </button>
+      <div
+        v-if="devicesOpen"
+        class="absolute bottom-[calc(100%+0.75rem)] left-0 z-20 w-64 overflow-hidden rounded-2xl bg-zinc-800 text-white shadow-xl ring-1 ring-white/10"
+        role="menu"
+      >
+        <p v-if="!hasDevices" class="px-3 py-2.5 text-sm text-white/60">No devices found</p>
+        <template v-else>
+          <section v-if="microphones.length" class="border-b border-white/10 last:border-b-0">
+            <h3 class="px-3 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">Microphone</h3>
+            <button
+              v-for="(d, i) in microphones"
+              :key="d.deviceId"
+              type="button"
+              role="menuitemradio"
+              :aria-checked="d.deviceId === audioDeviceId"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/10"
+              @click="onSelectMicrophone(d.deviceId)"
+            >
+              <Icon :name="d.deviceId === audioDeviceId ? 'tabler:check' : 'tabler:circle'" size="14" :class="d.deviceId === audioDeviceId ? '' : 'opacity-0'" aria-hidden="true" />
+              <span class="truncate">{{ d.label || `Microphone ${i + 1}` }}</span>
+            </button>
+          </section>
+          <section v-if="cameras.length" class="border-b border-white/10 last:border-b-0">
+            <h3 class="px-3 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">Camera</h3>
+            <button
+              v-for="(d, i) in cameras"
+              :key="d.deviceId"
+              type="button"
+              role="menuitemradio"
+              :aria-checked="d.deviceId === videoDeviceId"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/10"
+              @click="onSelectCamera(d.deviceId)"
+            >
+              <Icon :name="d.deviceId === videoDeviceId ? 'tabler:check' : 'tabler:circle'" size="14" :class="d.deviceId === videoDeviceId ? '' : 'opacity-0'" aria-hidden="true" />
+              <span class="truncate">{{ d.label || `Camera ${i + 1}` }}</span>
+            </button>
+          </section>
+          <section v-if="supportsSpeakerSelection && speakers.length">
+            <h3 class="px-3 pt-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">Speaker</h3>
+            <button
+              v-for="(d, i) in speakers"
+              :key="d.deviceId"
+              type="button"
+              role="menuitemradio"
+              :aria-checked="d.deviceId === speakerDeviceId"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/10"
+              @click="onSelectSpeaker(d.deviceId)"
+            >
+              <Icon :name="d.deviceId === speakerDeviceId ? 'tabler:check' : 'tabler:circle'" size="14" :class="d.deviceId === speakerDeviceId ? '' : 'opacity-0'" aria-hidden="true" />
+              <span class="truncate">{{ d.label || `Speaker ${i + 1}` }}</span>
+            </button>
+          </section>
+        </template>
+      </div>
+    </div>
 
-    <!-- Primary: mic -->
     <button
       type="button"
       class="moh-call-btn"
@@ -32,7 +79,6 @@
       <Icon :name="micEnabled ? 'tabler:microphone' : 'tabler:microphone-off'" size="22" aria-hidden="true" />
     </button>
 
-    <!-- Primary: camera -->
     <button
       type="button"
       class="moh-call-btn"
@@ -44,7 +90,6 @@
       <Icon :name="cameraEnabled ? 'tabler:video' : 'tabler:video-off'" size="22" aria-hidden="true" />
     </button>
 
-    <!-- Secondary: flip camera (touch devices with a camera on) -->
     <button
       v-if="showFlip"
       type="button"
@@ -55,7 +100,6 @@
       <Icon name="tabler:camera-rotate" size="20" aria-hidden="true" />
     </button>
 
-    <!-- Primary: leave -->
     <button
       type="button"
       class="moh-call-btn moh-call-btn-leave"
@@ -68,9 +112,8 @@
 </template>
 
 <script setup lang="ts">
-import type { MenuItem } from 'primevue/menuitem'
-import type Menu from 'primevue/menu'
-import { useCallDevices } from '~/composables/calls/useCallDevices'
+import { onClickOutside } from '@vueuse/core'
+import { isCoarsePointer, useCallDevices } from '~/composables/calls/useCallDevices'
 
 const props = withDefaults(
   defineProps<{
@@ -95,56 +138,44 @@ const emit = defineEmits<{
   selectSpeaker: [deviceId: string]
 }>()
 
-const deviceMenu = ref<InstanceType<typeof Menu> | null>(null)
+const rootEl = ref<HTMLElement | null>(null)
+const devicesOpen = ref(false)
 const { microphones, cameras, speakers, supportsSpeakerSelection, ensureDeviceLabels } = useCallDevices()
 
-const isTouch = computed(() => import.meta.client && window.matchMedia?.('(pointer: coarse)').matches)
+const isTouch = computed(() => isCoarsePointer())
+const showDevicePicker = computed(() => props.showDevices && !isTouch.value)
 const showFlip = computed(() => props.cameraEnabled && (isTouch.value || cameras.value.length > 1))
+const hasDevices = computed(
+  () =>
+    microphones.value.length > 0 ||
+    cameras.value.length > 0 ||
+    (supportsSpeakerSelection.value && speakers.value.length > 0),
+)
 
-// Labels are blank until a permission has been granted; the call itself already asked, so this is instant.
 onMounted(() => {
-  if (props.showDevices) void ensureDeviceLabels()
+  if (showDevicePicker.value) void ensureDeviceLabels()
 })
 
-function deviceLabel(d: MediaDeviceInfo, fallback: string, index: number): string {
-  return d.label || `${fallback} ${index + 1}`
+watch(devicesOpen, (open) => {
+  if (open) void ensureDeviceLabels()
+})
+
+onClickOutside(rootEl, () => {
+  devicesOpen.value = false
+})
+
+function onSelectMicrophone(id: string) {
+  emit('selectMicrophone', id)
+  devicesOpen.value = false
 }
-
-const deviceMenuItems = computed<MenuItem[]>(() => {
-  const items: MenuItem[] = []
-  if (microphones.value.length) {
-    items.push({
-      label: 'Microphone',
-      items: microphones.value.map((d, i) => ({
-        label: deviceLabel(d, 'Microphone', i),
-        iconName: d.deviceId === props.audioDeviceId ? 'tabler:check' : undefined,
-        command: () => emit('selectMicrophone', d.deviceId),
-      })),
-    })
-  }
-  if (cameras.value.length) {
-    items.push({
-      label: 'Camera',
-      items: cameras.value.map((d, i) => ({
-        label: deviceLabel(d, 'Camera', i),
-        iconName: d.deviceId === props.videoDeviceId ? 'tabler:check' : undefined,
-        command: () => emit('selectCamera', d.deviceId),
-      })),
-    })
-  }
-  if (supportsSpeakerSelection.value && speakers.value.length) {
-    items.push({
-      label: 'Speaker',
-      items: speakers.value.map((d, i) => ({
-        label: deviceLabel(d, 'Speaker', i),
-        iconName: d.deviceId === props.speakerDeviceId ? 'tabler:check' : undefined,
-        command: () => emit('selectSpeaker', d.deviceId),
-      })),
-    })
-  }
-  if (!items.length) items.push({ label: 'No devices found', disabled: true })
-  return items
-})
+function onSelectCamera(id: string) {
+  emit('selectCamera', id)
+  devicesOpen.value = false
+}
+function onSelectSpeaker(id: string) {
+  emit('selectSpeaker', id)
+  devicesOpen.value = false
+}
 </script>
 
 <style scoped>

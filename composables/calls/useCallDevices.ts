@@ -18,12 +18,24 @@ export type CallMediaResult = {
   micError: string | null
 }
 
-/** 720p 30fps 16:9 is the top tier; the quality manager scales down from here. */
+/** 720p 30fps 16:9 is the top tier on desktop; the quality manager scales down from here. */
 export const DEFAULT_VIDEO_CONSTRAINTS: MediaTrackConstraints = {
   width: { ideal: 1280 },
   height: { ideal: 720 },
   frameRate: { ideal: 30, max: 30 },
   aspectRatio: { ideal: 16 / 9 },
+}
+
+/** Phones reject 720p + 16:9 more often than they honor `ideal`. Ask for something they can actually start. */
+export const MOBILE_VIDEO_CONSTRAINTS: MediaTrackConstraints = {
+  width: { ideal: 640 },
+  height: { ideal: 480 },
+  frameRate: { ideal: 24, max: 30 },
+  facingMode: { ideal: 'user' },
+}
+
+export function isCoarsePointer(): boolean {
+  return import.meta.client && Boolean(window.matchMedia?.('(pointer: coarse)').matches)
 }
 
 export const DEFAULT_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
@@ -35,9 +47,12 @@ export const DEFAULT_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
 export function describeMediaError(err: unknown, kind: 'microphone' | 'camera'): string {
   const name = String((err as { name?: unknown } | null)?.name ?? '')
   if (name === 'NotAllowedError' || name === 'SecurityError') {
-    return `${capitalize(kind)} access was blocked. Allow it in your browser's site settings and try again.`
+    return `${capitalize(kind)} is blocked. Allow it for this site in your browser settings, then tap again.`
   }
-  if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
+  if (name === 'OverconstrainedError') {
+    return `Couldn't start the ${kind} on this device.`
+  }
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
     return `No ${kind} was found.`
   }
   if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') {
@@ -50,8 +65,8 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function videoConstraints(req: CallMediaRequest): MediaTrackConstraints {
-  const c: MediaTrackConstraints = { ...DEFAULT_VIDEO_CONSTRAINTS }
+export function videoConstraints(req: CallMediaRequest, coarse = isCoarsePointer()): MediaTrackConstraints {
+  const c: MediaTrackConstraints = { ...(coarse ? MOBILE_VIDEO_CONSTRAINTS : DEFAULT_VIDEO_CONSTRAINTS) }
   if (req.videoDeviceId) c.deviceId = { exact: req.videoDeviceId }
   else if (req.facingMode) c.facingMode = { ideal: req.facingMode }
   return c
@@ -116,15 +131,31 @@ export async function acquireCallMedia(req: CallMediaRequest): Promise<CallMedia
   return { stream, audioTrack, videoTrack, cameraError, micError }
 }
 
-/** Grab just a camera track (camera re-enable, device switch, flip). */
+/**
+ * Grab just a camera track (camera re-enable, device switch, flip).
+ * Phones often fail the first constraint set, or refuse video-only after an audio-only
+ * getUserMedia — keep asking with simpler shapes, then audio+video (drop the extra mic).
+ */
 export async function acquireVideoTrack(req: Pick<CallMediaRequest, 'videoDeviceId' | 'facingMode'>): Promise<{ track: MediaStreamTrack | null; error: string | null }> {
   if (!import.meta.client || !navigator.mediaDevices?.getUserMedia) return { track: null, error: 'This browser cannot access media devices.' }
-  try {
-    const s = await navigator.mediaDevices.getUserMedia({ video: videoConstraints({ audio: false, video: true, ...req }) })
-    return { track: s.getVideoTracks()[0] ?? null, error: null }
-  } catch (err) {
-    return { track: null, error: describeMediaError(err, 'camera') }
+  const facing = req.facingMode ?? (isCoarsePointer() ? 'user' : undefined)
+  const attempts: MediaStreamConstraints[] = [
+    { video: videoConstraints({ audio: false, video: true, videoDeviceId: req.videoDeviceId, facingMode: facing }) },
+    { video: facing ? { facingMode: { ideal: facing } } : true },
+    { audio: true, video: facing ? { facingMode: { ideal: facing } } : true },
+  ]
+  let lastErr: unknown
+  for (const constraints of attempts) {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia(constraints)
+      const track = s.getVideoTracks()[0] ?? null
+      for (const extra of s.getAudioTracks()) stopTrack(extra)
+      if (track) return { track, error: null }
+    } catch (err) {
+      lastErr = err
+    }
   }
+  return { track: null, error: describeMediaError(lastErr, 'camera') }
 }
 
 /** Grab just a microphone track (device switch). */

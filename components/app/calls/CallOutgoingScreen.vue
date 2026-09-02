@@ -29,6 +29,9 @@
     </div>
 
     <div class="relative px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+      <p v-if="cameraError && !isCameraEnabled" class="mb-3 text-center text-sm text-white/85">
+        {{ cameraError }}
+      </p>
       <CallControls
         :mic-enabled="isMicEnabled"
         :camera-enabled="isCameraEnabled"
@@ -55,6 +58,7 @@ const {
   localStream,
   isMicEnabled,
   isCameraEnabled,
+  cameraError,
   facingMode,
   audioDeviceId,
   videoDeviceId,
