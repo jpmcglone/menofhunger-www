@@ -1,5 +1,5 @@
 <template>
-  <div class="flex w-full justify-center py-1" :data-message-id="message.id">
+  <div class="flex w-full flex-col items-center gap-2 py-1" :data-message-id="message.id">
     <div
       class="flex max-w-[90%] items-center gap-2.5 rounded-full border px-3 py-1.5 text-xs"
       :class="isLive
@@ -25,6 +25,40 @@
         @click="joinCall({ id: call.callId, type: call.type })"
       />
     </div>
+    <button
+      v-if="canLeaveVoicemail"
+      type="button"
+      class="text-xs font-semibold text-gray-600 underline dark:text-zinc-300"
+      data-testid="call-leave-voicemail"
+      @click="offerVoicemail"
+    >
+      Leave a video message
+    </button>
+    <div v-if="voicemail" class="max-w-[260px] overflow-hidden rounded-2xl bg-gray-200 dark:bg-zinc-800">
+      <button
+        type="button"
+        class="moh-tap relative block w-full focus:outline-none"
+        aria-label="Play video message"
+        @click="playing = !playing"
+      >
+        <video
+          v-if="playing"
+          :src="voicemail.url"
+          class="block max-h-[320px] w-full object-contain"
+          controls
+          playsinline
+          autoplay
+        />
+        <img
+          v-else-if="voicemail.thumbnailUrl"
+          :src="voicemail.thumbnailUrl"
+          class="block max-h-[320px] w-full object-contain"
+          alt=""
+        />
+        <div v-else class="flex h-36 items-center justify-center text-xs text-gray-500">Video message</div>
+      </button>
+      <p v-if="!isMine" class="px-3 py-1.5 text-[11px] text-gray-500 dark:text-zinc-400">Left you a video message</p>
+    </div>
   </div>
 </template>
 
@@ -42,7 +76,15 @@ const props = defineProps<{
 }>()
 
 const { canJoin } = useCallGating()
-const { phase, call: engagedCall, isEngaged, joinCall } = useCallSession()
+const { phase, call: engagedCall, isEngaged, joinCall, pendingVoicemail } = useCallSession()
+const playing = ref(false)
+const voicemail = computed(() => props.message.media?.find((m) => m.kind === 'video') ?? null)
+const canLeaveVoicemail = computed(() =>
+  isMine.value && call.value.outcome === 'missed' && !voicemail.value,
+)
+function offerVoicemail() {
+  pendingVoicemail.value = { conversationId: props.message.conversationId, messageId: props.message.id }
+}
 /** The conversation's live call (provided by the chat page); hides Join once it's full or gone. */
 const activeCall = useChatActiveCall()
 

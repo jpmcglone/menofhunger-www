@@ -1,4 +1,5 @@
 import type { WsRtcSignalPayload } from '~/types/api'
+import { CALL_DATA_CHANNEL_LABEL } from '../callReactions'
 import { CallQualityManager, prioritizeAudioSender } from '../useCallQualityManager'
 import type { CallSignal, CallTransport, CallTransportOptions, PeerMediaState } from './CallTransport'
 
@@ -25,6 +26,7 @@ type Peer = {
   /** Runs while `reconnecting`; on expiry the peer is `failed` and no more restarts are attempted. */
   giveUpTimer: ReturnType<typeof setTimeout> | null
   state: PeerMediaState
+  dataChannel: RTCDataChannel | null
 }
 
 /**
@@ -104,6 +106,25 @@ export class PeerToPeerCallTransport implements CallTransport {
       }),
     )
     if (kind === 'video' && track) this.quality.reapply()
+  }
+
+  sendData(payload: unknown): void {
+    if (this.destroyed) return
+    let body: string
+    try {
+      body = JSON.stringify(payload)
+    } catch {
+      return
+    }
+    for (const peer of this.peers.values()) {
+      const ch = peer.dataChannel
+      if (!ch || ch.readyState !== 'open') continue
+      try {
+        ch.send(body)
+      } catch {
+        // Channel closed mid-send.
+      }
+    }
   }
 
   async handleSignal(payload: WsRtcSignalPayload): Promise<void> {
@@ -194,8 +215,17 @@ export class PeerToPeerCallTransport implements CallTransport {
       disconnectedTimer: null,
       giveUpTimer: null,
       state: 'connecting',
+      dataChannel: null,
     }
     this.peers.set(userId, peer)
+
+    // Impolite side creates the channel so it rides the first offer; polite receives `ondatachannel`.
+    if (!peer.polite) {
+      this.bindDataChannel(peer, pc.createDataChannel(CALL_DATA_CHANNEL_LABEL, { ordered: true }))
+    }
+    pc.ondatachannel = (ev) => {
+      if (ev.channel?.label === CALL_DATA_CHANNEL_LABEL) this.bindDataChannel(peer, ev.channel)
+    }
 
     if (this.localAudio) void audioTransceiver.sender.replaceTrack(this.localAudio)
     if (this.localVideo) void videoTransceiver.sender.replaceTrack(this.localVideo)
@@ -279,8 +309,15 @@ export class PeerToPeerCallTransport implements CallTransport {
       peer.pc.onnegotiationneeded = null
       peer.pc.onicecandidate = null
       peer.pc.ontrack = null
+      peer.pc.ondatachannel = null
       peer.pc.oniceconnectionstatechange = null
       peer.pc.onconnectionstatechange = null
+      if (peer.dataChannel) {
+        peer.dataChannel.onmessage = null
+        peer.dataChannel.onopen = null
+        peer.dataChannel.close()
+        peer.dataChannel = null
+      }
       peer.pc.close()
     } catch {
       // Already closed.
@@ -334,6 +371,21 @@ export class PeerToPeerCallTransport implements CallTransport {
     if (!peer.disconnectedTimer) return
     clearTimeout(peer.disconnectedTimer)
     peer.disconnectedTimer = null
+  }
+
+  private bindDataChannel(peer: Peer, channel: RTCDataChannel): void {
+    peer.dataChannel = channel
+    channel.onmessage = (ev) => {
+      let parsed: unknown = ev.data
+      if (typeof ev.data === 'string') {
+        try {
+          parsed = JSON.parse(ev.data)
+        } catch {
+          return
+        }
+      }
+      this.opts.events.onData?.(peer.userId, parsed)
+    }
   }
 
   private send(toUserId: string, signal: CallSignal): void {

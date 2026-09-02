@@ -15,6 +15,8 @@ export type CallTransportEvents = {
   /** A remote peer's stream (one MediaStream per peer; tracks are added to it as they arrive). `null` when the peer is removed. */
   onRemoteStream: (userId: string, stream: MediaStream | null) => void
   onPeerState: (userId: string, state: PeerMediaState) => void
+  /** In-call data-channel payload (reactions). `raw` is already JSON-parsed. */
+  onData?: (userId: string, raw: unknown) => void
 }
 
 export type CallTransportOptions = {
@@ -57,6 +59,8 @@ export interface CallTransport {
    * that isn't healthy instead of waiting for the disconnect timers to notice.
    */
   restartIce(): void
+  /** Send a JSON payload on every open `moh` data channel. */
+  sendData(payload: unknown): void
   /** Tear everything down. The instance is unusable afterwards. */
   destroy(): void
 }

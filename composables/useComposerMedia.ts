@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 export type { CreateMediaPayload, ComposerMediaItem, UploadStatus } from '~/composables/composer/types'
 import type { CreateMediaPayload, ComposerMediaItem } from '~/composables/composer/types'
+import { makeLocalId } from '~/composables/composer/types'
 import { useComposerDragReorder } from '~/composables/composer/useComposerDragReorder'
 import { useComposerUploads } from '~/composables/composer/useComposerUploads'
 import { useComposerImageIngest } from '~/composables/composer/useComposerImageIngest'
@@ -128,6 +129,14 @@ export function useComposerMedia(opts?: {
             durationSeconds: typeof m.durationSeconds === 'number' ? m.durationSeconds : null,
             alt: (m.altText ?? '').trim() || null,
           })
+        } else if (m.kind === 'audio') {
+          out.push({
+            source: 'upload',
+            kind: 'audio',
+            r2Key: m.r2Key,
+            durationSeconds: typeof m.durationSeconds === 'number' ? m.durationSeconds : null,
+            alt: (m.altText ?? '').trim() || null,
+          })
         } else {
           out.push({
             source: 'upload',
@@ -152,6 +161,42 @@ export function useComposerMedia(opts?: {
       }
     }
     return out
+  }
+
+  function enqueueAudio(file: File, durationSeconds: number) {
+    const localId = makeLocalId()
+    composerMedia.value = [
+      {
+        localId,
+        source: 'upload',
+        kind: 'audio',
+        previewUrl: URL.createObjectURL(file),
+        file,
+        durationSeconds,
+        uploadStatus: 'queued',
+      },
+    ]
+    processUploadQueue()
+    return localId
+  }
+
+  function waitForUploads(): Promise<boolean> {
+    return new Promise((resolve) => {
+      const stop = watch(
+        () => composerMedia.value.map((m) => m.uploadStatus),
+        (statuses) => {
+          if (statuses.some((s) => s === 'error')) {
+            stop()
+            resolve(false)
+          }
+          if (statuses.length > 0 && statuses.every((s) => s === 'done' || !s)) {
+            stop()
+            resolve(true)
+          }
+        },
+        { immediate: true },
+      )
+    })
   }
 
   function clearAll() {
@@ -208,6 +253,8 @@ export function useComposerMedia(opts?: {
     searchGiphy: giphy.searchGiphy,
     selectGiphyGif: giphy.selectGiphyGif,
     toCreatePayload,
+    enqueueAudio,
+    waitForUploads,
     clearAll,
   }
 }

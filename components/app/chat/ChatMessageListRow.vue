@@ -113,8 +113,13 @@
           :key="media.id"
           class="relative overflow-hidden rounded-2xl bg-gray-200 dark:bg-zinc-800"
         >
+          <ChatAudioMessage
+            v-if="media.kind === 'audio'"
+            :media="media"
+            :own="messageItem.message.sender.id === meId"
+          />
           <button
-            v-if="media.kind === 'video'"
+            v-else-if="media.kind === 'video'"
             type="button"
             class="moh-tap relative block focus:outline-none cursor-zoom-in max-h-[320px] max-w-[260px] w-full"
             :style="{ aspectRatio: media.width && media.height ? `${media.width}/${media.height}` : '16/9' }"
@@ -422,6 +427,7 @@ import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { ownMessageTintStyle, userColorTier } from '~/utils/user-tier'
 import { PILL_CLASS, RECT_CLASS, PILL_MAX_EMS_WITH_META, estimateTextEms, pickBubbleShape } from '~/composables/chat/useChatBubbleShape'
 import ChatMessageCallRow from './ChatMessageCallRow.vue'
+import ChatAudioMessage from './ChatAudioMessage.vue'
 
 const props = defineProps({
   /** The flat list item — divider or message. */

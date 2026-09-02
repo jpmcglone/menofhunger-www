@@ -42,6 +42,13 @@ export type CreateMediaPayload =
       alt?: string | null
     }
   | {
+      source: 'upload'
+      kind: 'audio'
+      r2Key: string
+      durationSeconds: number | null
+      alt?: string | null
+    }
+  | {
       source: 'giphy'
       kind: 'gif'
       url: string

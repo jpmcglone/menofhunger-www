@@ -66,6 +66,19 @@
           <Icon name="tabler:photo" size="18" aria-hidden="true" />
         </button>
 
+        <button
+          v-if="showMic"
+          type="button"
+          aria-label="Record a voice note"
+          data-testid="chat-voice-mic"
+          :disabled="disabled"
+          class="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed"
+          @mousedown.prevent
+          @click="onMicClick"
+        >
+          <Icon name="tabler:microphone" size="18" aria-hidden="true" />
+        </button>
+
         <!-- GIF button -->
         <button
           type="button"
@@ -159,8 +172,35 @@
           </div>
         </Transition>
 
+        <div
+          v-if="voice.recording.value || pendingVoice"
+          class="flex items-center gap-2 rounded-full border moh-border px-3 py-2"
+          data-testid="chat-voice-recording"
+        >
+          <span class="inline-block h-2 w-2 rounded-full bg-red-500" :class="voice.recording.value ? 'animate-pulse' : ''" aria-hidden="true" />
+          <span class="text-sm tabular-nums">
+            {{ voice.recording.value ? 'Recording' : 'Voice note' }} {{ formatVoiceClock(voice.elapsed.value || pendingVoiceSeconds) }}
+          </span>
+          <div class="ml-auto flex items-center gap-2">
+            <button type="button" class="text-xs underline" @click="cancelVoice">Cancel</button>
+            <button
+              v-if="voice.recording.value"
+              type="button"
+              class="text-xs font-semibold"
+              @click="stopVoice"
+            >Stop</button>
+            <button
+              v-else
+              type="button"
+              class="text-xs font-semibold"
+              data-testid="chat-voice-send"
+              @click="sendVoice"
+            >Send</button>
+          </div>
+        </div>
+
         <!-- Text pill (emoji inside on the left) -->
-        <div class="relative flex items-stretch" :class="outlineClass">
+        <div v-else class="relative flex items-stretch" :class="outlineClass">
           <!-- Emoji button inside the pill, left side -->
           <div class="dm-composer-emoji absolute left-2 top-1/2 -translate-y-1/2 z-10">
             <AppEmojiPickerButton
@@ -249,6 +289,7 @@ import type { FollowListUser, MessageReplySnippet } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/composer/types'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 import { useComposerMedia } from '~/composables/useComposerMedia'
+import { useVoiceRecorder } from '~/composables/chat/useVoiceRecorder'
 
 const MAX_CHARS = 10_000
 
@@ -321,6 +362,8 @@ const {
   searchGiphy,
   selectGiphyGif,
   toCreatePayload,
+  enqueueAudio,
+  waitForUploads,
   clearAll,
 } = useComposerMedia({
   maxSlots: 1,
@@ -337,6 +380,57 @@ const acceptTypes = computed(() =>
 
 const hasText = computed(() => (props.modelValue ?? '').trim().length > 0)
 const hasContent = computed(() => hasText.value || composerMedia.value.length > 0)
+const showMic = computed(() =>
+  isVerified.value && canSendMedia.value && !hasText.value && composerMedia.value.length === 0 && !props.replyTo,
+)
+
+const voice = useVoiceRecorder()
+const pendingVoice = ref<{ file: File; durationSeconds: number } | null>(null)
+const pendingVoiceSeconds = computed(() => pendingVoice.value?.durationSeconds ?? 0)
+
+function formatVoiceClock(total: number) {
+  const s = Math.max(0, Math.floor(total))
+  const m = Math.floor(s / 60)
+  const r = s % 60
+  return `${m}:${r.toString().padStart(2, '0')}`
+}
+
+async function onMicClick() {
+  if (!isVerified.value || !canSendMedia.value) {
+    usePremiumMediaModal().show()
+    return
+  }
+  pendingVoice.value = null
+  try {
+    await voice.start()
+  } catch {
+    useAppToast().push({ title: 'Couldn’t access your microphone.', tone: 'error' })
+  }
+}
+
+async function stopVoice() {
+  const result = await voice.stop()
+  pendingVoice.value = result
+}
+
+function cancelVoice() {
+  voice.cancel()
+  pendingVoice.value = null
+}
+
+async function sendVoice() {
+  let result = pendingVoice.value
+  if (voice.recording.value) result = await voice.stop()
+  if (!result) return
+  pendingVoice.value = null
+  enqueueAudio(result.file, result.durationSeconds)
+  const ok = await waitForUploads()
+  if (!ok) {
+    useAppToast().push({ title: 'Couldn’t upload the voice note.', tone: 'error' })
+    return
+  }
+  emit('send')
+}
 const charsRemaining = computed(() => MAX_CHARS - (props.modelValue?.length ?? 0))
 const showCharCount = computed(() => charsRemaining.value <= 200)
 

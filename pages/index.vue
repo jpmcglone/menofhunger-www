@@ -187,7 +187,7 @@
 
         <!-- ── Feature cards ─────────────────────────────────────────── -->
         <section class="py-8 sm:py-10">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
             <!-- Verified members -->
             <div
               class="rounded-2xl border p-6 shadow-sm"
@@ -231,6 +231,20 @@
               </div>
               <div class="text-base font-bold text-gray-900 dark:text-gray-50">Premium groups</div>
               <div class="mt-1.5 text-sm leading-relaxed text-gray-600 dark:text-gray-300">Smaller groups for deeper conversations.</div>
+            </div>
+
+            <!-- Voice & video calls -->
+            <div
+              class="rounded-2xl border border-sky-500/25 bg-sky-500/[0.06] p-6 shadow-sm"
+              data-testid="landing-calls-card"
+            >
+              <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/15">
+                <Icon name="tabler:video" class="text-xl text-sky-600 dark:text-sky-400" aria-hidden="true" />
+              </div>
+              <div class="text-base font-bold text-gray-900 dark:text-gray-50">Voice &amp; video calls</div>
+              <div class="mt-1.5 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                Peer-to-peer encrypted. Calls travel directly between devices — our servers only help you connect and never see or store them.
+              </div>
             </div>
           </div>
         </section>

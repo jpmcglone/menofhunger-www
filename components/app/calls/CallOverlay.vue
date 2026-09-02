@@ -23,6 +23,14 @@
             :class="[n <= qualityBars ? 'bg-white' : 'bg-white/25', n === 1 ? 'h-1.5' : n === 2 ? 'h-2.5' : 'h-3.5']"
           />
         </span>
+        <span
+          class="hidden sm:inline-flex items-center gap-1 text-xs text-white/60"
+          :title="CALL_ENCRYPTION_SENTENCE"
+          data-testid="call-encrypted-badge"
+        >
+          <Icon name="tabler:lock" size="13" aria-hidden="true" />
+          {{ CALL_ENCRYPTION_SHORT }}
+        </span>
       </div>
       <button
         type="button"
@@ -47,6 +55,8 @@
             :connection-state="peerStates[p.userId] ?? 'connecting'"
             :avatar-size-class="tiles.length > 1 ? 'h-16 w-16' : 'h-28 w-28'"
             :speaking="speakingIds[p.userId] === true"
+            :fit="p.screenSharing ? 'contain' : 'cover'"
+            :screen-sharing="Boolean(p.screenSharing)"
           />
         </div>
         <!-- 4-way: self joins the grid instead of floating -->
@@ -57,14 +67,24 @@
             label="You"
             :mic-enabled="isMicEnabled"
             :camera-enabled="isCameraEnabled"
-            :mirrored="facingMode === 'user'"
+            :mirrored="facingMode === 'user' && !isScreenSharing"
             avatar-size-class="h-16 w-16"
             :speaking="selfSpeaking"
+            :fit="isScreenSharing ? 'contain' : 'cover'"
+            :screen-sharing="isScreenSharing"
           />
         </div>
         <div v-if="tiles.length === 0" class="flex items-center justify-center text-white/70 text-sm">
           Waiting for others to join…
         </div>
+      </div>
+      <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <span
+          v-for="r in reactions"
+          :key="r.id"
+          class="moh-call-reaction absolute text-4xl"
+          :style="reactionStyle(r.userId)"
+        >{{ r.emoji }}</span>
       </div>
 
       <!-- Draggable self-view (1–3 remotes) -->
@@ -84,9 +104,11 @@
           label="You"
           :mic-enabled="isMicEnabled"
           :camera-enabled="isCameraEnabled"
-          :mirrored="facingMode === 'user'"
+          :mirrored="facingMode === 'user' && !isScreenSharing"
           avatar-size-class="h-12 w-12"
           :speaking="selfSpeaking"
+          :fit="isScreenSharing ? 'contain' : 'cover'"
+          :screen-sharing="isScreenSharing"
         />
       </div>
     </div>
@@ -102,9 +124,12 @@
         :audio-device-id="audioDeviceId"
         :video-device-id="videoDeviceId"
         :speaker-device-id="speakerDeviceId"
+        :screen-sharing="isScreenSharing"
         @toggle-mic="toggleMic"
         @toggle-camera="toggleCamera"
         @switch-camera="switchCamera"
+        @toggle-screen-share="toggleScreenShare"
+        @react="sendReaction"
         @leave="leaveCall"
         @select-microphone="setMicrophoneDevice"
         @select-camera="setCameraDevice"
@@ -118,6 +143,7 @@
 import type { CallParticipant, CallSession } from '~/types/api'
 import { useCallSession } from '~/composables/calls/useCallSession'
 import { useCallTimer } from '~/composables/calls/useCallTimer'
+import { CALL_ENCRYPTION_SENTENCE, CALL_ENCRYPTION_SHORT } from '~/composables/calls/callCopy'
 import CallVideoTile from './CallVideoTile.vue'
 import CallControls from './CallControls.vue'
 
@@ -137,12 +163,16 @@ const {
   audioDeviceId,
   videoDeviceId,
   speakerDeviceId,
+  isScreenSharing,
+  reactions,
   connectedAt,
   participantUser,
   participantLabel,
   toggleMic,
   toggleCamera,
   switchCamera,
+  toggleScreenShare,
+  sendReaction,
   leaveCall,
   setMicrophoneDevice,
   setCameraDevice,
@@ -172,6 +202,13 @@ const title = computed(() => {
 })
 
 const qualityLabel = computed(() => (qualityBars.value >= 3 ? 'Great' : qualityBars.value === 2 ? 'Good' : qualityBars.value === 1 ? 'Poor' : 'Audio only'))
+
+function reactionStyle(userId: string) {
+  const self = userId === me.value?.id
+  return self
+    ? { right: '1.5rem', bottom: '1.25rem' }
+    : { left: `${12 + (userId.charCodeAt(0) % 40)}%`, bottom: '18%' }
+}
 
 // ─── Self-view drag ─────────────────────────────────────────────────────────
 const pipEl = ref<HTMLElement | null>(null)
@@ -212,3 +249,17 @@ function onPipPointerUp(e: PointerEvent) {
   }
 }
 </script>
+
+<style scoped>
+.moh-call-reaction {
+  animation: moh-call-reaction-rise 2.4s ease-out forwards;
+}
+@keyframes moh-call-reaction-rise {
+  0% { transform: translateY(0) scale(0.7); opacity: 0; }
+  12% { transform: translateY(-12px) scale(1); opacity: 1; }
+  100% { transform: translateY(-140px) scale(1.15); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .moh-call-reaction { animation: none; opacity: 1; }
+}
+</style>

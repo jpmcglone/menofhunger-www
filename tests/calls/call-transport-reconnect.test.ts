@@ -17,9 +17,17 @@ class FakePeerConnection {
   ontrack: ((e: unknown) => void) | null = null
   oniceconnectionstatechange: (() => void) | null = null
   onconnectionstatechange: (() => void) | null = null
+  ondatachannel: ((e: { channel: FakeDataChannel }) => void) | null = null
+  createdChannels: FakeDataChannel[] = []
 
   constructor() {
     FakePeerConnection.instances.push(this)
+  }
+
+  createDataChannel(label: string) {
+    const ch = new FakeDataChannel(label)
+    this.createdChannels.push(ch)
+    return ch
   }
 
   addTransceiver() {
@@ -45,6 +53,22 @@ class FakePeerConnection {
   ice(state: string) {
     this.iceConnectionState = state
     this.oniceconnectionstatechange?.()
+  }
+}
+
+class FakeDataChannel {
+  label: string
+  readyState = 'open'
+  onmessage: ((e: { data: string }) => void) | null = null
+  sent: string[] = []
+  constructor(label: string) {
+    this.label = label
+  }
+  send(data: string) {
+    this.sent.push(data)
+  }
+  close() {
+    this.readyState = 'closed'
   }
 }
 
@@ -196,5 +220,52 @@ describe('PeerToPeerCallTransport reconnect alignment', () => {
     transport.destroy()
     vi.advanceTimersByTime(5_000)
     expect(states.some(([, s]) => s === 'failed')).toBe(false)
+  })
+
+  it('creates the moh data channel only on the impolite side and round-trips JSON', () => {
+    const received: Array<[string, unknown]> = []
+    const impolite = new PeerToPeerCallTransport({
+      callId: 'call-1',
+      selfUserId: 'zed',
+      iceServers: [],
+      sendSignal: vi.fn(),
+      events: {
+        onRemoteStream: () => {},
+        onPeerState: () => {},
+        onData: (userId, raw) => received.push([userId, raw]),
+      },
+    })
+    impolite.setPeers(['alice'])
+    const created = FakePeerConnection.instances.at(-1)!
+    expect(created.createdChannels.map((c) => c.label)).toEqual(['moh'])
+
+    const polite = new PeerToPeerCallTransport({
+      callId: 'call-1',
+      selfUserId: 'aaa',
+      iceServers: [],
+      sendSignal: vi.fn(),
+      events: {
+        onRemoteStream: () => {},
+        onPeerState: () => {},
+        onData: (userId, raw) => received.push([userId, raw]),
+      },
+    })
+    polite.setPeers(['alice'])
+    const politePc = FakePeerConnection.instances.at(-1)!
+    expect(politePc.createdChannels).toHaveLength(0)
+
+    impolite.sendData({ t: 'reaction', emoji: '🔥', at: 1 })
+    expect(created.createdChannels[0]!.sent).toEqual(['{"t":"reaction","emoji":"🔥","at":1}'])
+
+    politePc.ondatachannel?.({ channel: new FakeDataChannel('moh') })
+    const inbound = politePc // just to keep the instance
+    expect(inbound.ondatachannel).toBeTruthy()
+    const ch = new FakeDataChannel('moh')
+    politePc.ondatachannel?.({ channel: ch })
+    ch.onmessage?.({ data: '{"t":"reaction","emoji":"👍","at":2}' })
+    expect(received).toEqual([['alice', { t: 'reaction', emoji: '👍', at: 2 }]])
+
+    impolite.destroy()
+    polite.destroy()
   })
 })

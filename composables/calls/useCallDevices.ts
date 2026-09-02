@@ -38,6 +38,10 @@ export function isCoarsePointer(): boolean {
   return import.meta.client && Boolean(window.matchMedia?.('(pointer: coarse)').matches)
 }
 
+export function canScreenShare(): boolean {
+  return import.meta.client && !isCoarsePointer() && Boolean(navigator.mediaDevices?.getDisplayMedia)
+}
+
 export const DEFAULT_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   echoCancellation: true,
   noiseSuppression: true,

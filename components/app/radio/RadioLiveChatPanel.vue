@@ -221,7 +221,7 @@ function mediaPayloadsToChat(payloads: CreateMediaPayload[]): SpaceChatMediaItem
   for (const p of payloads) {
     if (p.source === 'giphy') {
       out.push({ url: p.url, width: p.width, height: p.height, alt: p.alt ?? null })
-    } else if (p.source === 'upload') {
+    } else if (p.source === 'upload' && p.kind !== 'audio') {
       const url = assetUrl(p.r2Key)
       if (url) out.push({ url, width: p.width, height: p.height, alt: p.alt ?? null })
     }

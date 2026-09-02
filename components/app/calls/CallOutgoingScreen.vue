@@ -25,6 +25,14 @@
             Calling{{ dots }}
           </span>
         </div>
+        <div
+          class="mt-3 inline-flex items-center gap-1.5 text-xs text-white/55"
+          :title="CALL_ENCRYPTION_SENTENCE"
+          data-testid="call-encrypted-badge"
+        >
+          <Icon name="tabler:lock" size="13" aria-hidden="true" />
+          {{ CALL_ENCRYPTION_SHORT }}
+        </div>
       </div>
     </div>
 
@@ -39,6 +47,8 @@
         :video-device-id="videoDeviceId"
         :speaker-device-id="speakerDeviceId"
         :show-devices="false"
+        :show-reactions="false"
+        :allow-screen-share="false"
         leave-label="Cancel call"
         @toggle-mic="toggleMic"
         @toggle-camera="toggleCamera"
@@ -51,6 +61,7 @@
 
 <script setup lang="ts">
 import { useCallSession } from '~/composables/calls/useCallSession'
+import { CALL_ENCRYPTION_SENTENCE, CALL_ENCRYPTION_SHORT } from '~/composables/calls/callCopy'
 import CallVideoTile from './CallVideoTile.vue'
 import CallControls from './CallControls.vue'
 

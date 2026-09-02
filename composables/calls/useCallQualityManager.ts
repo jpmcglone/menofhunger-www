@@ -136,9 +136,18 @@ export class CallQualityManager {
         if (tier.active) {
           enc.maxBitrate = tier.maxBitrate
           enc.maxFramerate = tier.maxFramerate
-          enc.scaleResolutionDownBy = tier.scaleResolutionDownBy
+          // Screen share: keep resolution (text must stay legible) and drop framerate first.
+          const screenShare = sender.track?.contentHint === 'detail'
+          enc.scaleResolutionDownBy = screenShare ? 1 : tier.scaleResolutionDownBy
+          if (screenShare) {
+            enc.maxFramerate = Math.min(tier.maxFramerate, 15)
+            ;(params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = 'maintain-resolution'
+          } else {
+            ;(params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = 'balanced'
+          }
+        } else {
+          ;(params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = 'balanced'
         }
-        ;(params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = 'balanced'
         await sender.setParameters(params)
       } catch {
         // Older Safari rejects some parameters; the call still works at browser defaults.

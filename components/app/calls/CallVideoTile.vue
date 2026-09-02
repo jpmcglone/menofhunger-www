@@ -6,8 +6,8 @@
     <!-- Display only. Remote audio plays through CallAudioSink in CallHost so it survives minimize. -->
     <video
       ref="videoEl"
-      class="absolute inset-0 h-full w-full object-cover transition-opacity duration-300"
-      :class="[showVideo ? 'opacity-100' : 'opacity-0', mirrored ? 'scale-x-[-1]' : '']"
+      class="absolute inset-0 h-full w-full transition-opacity duration-300"
+      :class="[showVideo ? 'opacity-100' : 'opacity-0', fit === 'contain' ? 'object-contain' : 'object-cover', mirrored && fit !== 'contain' ? 'scale-x-[-1]' : '']"
       autoplay
       playsinline
       muted
@@ -36,7 +36,7 @@
         :class="!micEnabled ? 'text-red-400' : speaking ? 'text-sky-300' : 'opacity-80'"
         :aria-label="!micEnabled ? 'Muted' : speaking ? 'Speaking' : 'Mic on'"
       />
-      <span class="truncate">{{ label }}</span>
+      <span class="truncate">{{ screenSharing && label === 'You' ? "You're sharing your screen" : label }}</span>
     </div>
   </div>
 </template>
@@ -58,8 +58,11 @@ const props = withDefaults(
     avatarSizeClass?: string
     /** Audio is flowing from this participant right now; draws the pulsing ring. */
     speaking?: boolean
+    /** Screen share: contain-fit and never mirrored. */
+    fit?: 'cover' | 'contain'
+    screenSharing?: boolean
   }>(),
-  { connectionState: 'connected', mirrored: false, avatarSizeClass: 'h-20 w-20', speaking: false },
+  { connectionState: 'connected', mirrored: false, avatarSizeClass: 'h-20 w-20', speaking: false, fit: 'cover', screenSharing: false },
 )
 
 const videoEl = ref<HTMLVideoElement | null>(null)

@@ -3,22 +3,33 @@ import type {
   CallSession,
   CallType,
   CallsAck,
+  Message,
   RtcIceServer,
   WsCallsIncomingPayload,
   WsCallsSeatTakenPayload,
   WsRtcSignalPayload,
 } from '~/types/api'
-import type { CallsCallback } from '~/composables/usePresence'
+import type { CallsCallback, MessagesCallback } from '~/composables/usePresence'
 import { useUsersStore, type PublicUserEntity } from '~/composables/useUsersStore'
+import { createReactionBlip } from './callReactionSound'
+import {
+  encodeCallReaction,
+  isCallReactionEmoji,
+  parseCallReactionPayload,
+  pruneCallReactions,
+  reduceCallReactions,
+  type CallReaction,
+} from './callReactions'
 import { createRingtone, type Ringtone } from './callRingtone'
 import { reduceCallsIncoming, reduceCallsUpdated, remotePeerIds, type CallPhase, type CallSessionState } from './callSessionReducer'
 import { qualityBarsFor } from './callQuality'
-import { acquireAudioTrack, acquireCallMedia, acquireVideoTrack, stopTrack } from './useCallDevices'
+import { acquireAudioTrack, acquireCallMedia, acquireVideoTrack, canScreenShare, stopTrack } from './useCallDevices'
 import { SpeakingMonitor } from './speakingDetector'
 import type { CallTransport, PeerMediaState } from './transport/CallTransport'
 import { DEFAULT_RECONNECT_GRACE_MS, PeerToPeerCallTransport } from './transport/PeerToPeerCallTransport'
 
 export type { CallPhase } from './callSessionReducer'
+export { canScreenShare } from './useCallDevices'
 
 export type CallDisplayUser = {
   id: string
@@ -45,6 +56,10 @@ let unbind: (() => void) | null = null
 let reconnectGraceMs = DEFAULT_RECONNECT_GRACE_MS
 /** Runs while the signaling socket is down mid-call. */
 let socketDownTimer: ReturnType<typeof setTimeout> | null = null
+/** Browser "Stop sharing" / our toggle: restore camera if it was on before the share. */
+let cameraWasOnBeforeShare = false
+let reactionPruneTimer: ReturnType<typeof setInterval> | null = null
+const reactionBlip = createReactionBlip()
 
 export function useCallSession() {
   const state = useState<CallSessionState>('call-session-state', () => ({ phase: 'idle', call: null, incoming: null }))
@@ -64,8 +79,15 @@ export function useCallSession() {
   const minimized = useState<boolean>('call-overlay-minimized', () => false)
   /** Elapsed-time anchor for the in-call timer (ms epoch when this tab connected). */
   const connectedAt = useState<number | null>('call-connected-at', () => null)
+  const pendingVoicemail = useState<{ conversationId: string; messageId: string } | null>(
+    'call-pending-voicemail',
+    () => null,
+  )
+  let outgoingMessageId: string | null = null
   /** Direct call we started: who we're ringing (not yet a participant). */
   const outgoingCalleeId = useState<string | null>('call-outgoing-callee', () => null)
+  const isScreenSharing = useState<boolean>('call-screen-sharing', () => false)
+  const reactions = useState<CallReaction[]>('call-reactions', () => [])
 
   const { user } = useAuth()
   const presence = usePresence()
@@ -150,6 +172,9 @@ export function useCallSession() {
             peerStates.value = { ...peerStates.value, [userId]: s }
             if (s === 'failed') onPeerFailed()
           },
+          onData(userId, raw) {
+            ingestReaction(userId, raw)
+          },
         },
       },
       () => {
@@ -174,6 +199,13 @@ export function useCallSession() {
     connectedAt.value = null
     outgoingCalleeId.value = null
     minimized.value = false
+    isScreenSharing.value = false
+    cameraWasOnBeforeShare = false
+    reactions.value = []
+    if (reactionPruneTimer) {
+      clearInterval(reactionPruneTimer)
+      reactionPruneTimer = null
+    }
     clearSocketDownTimer()
   }
 
@@ -227,8 +259,13 @@ export function useCallSession() {
     connectedAt.value = connectedAt.value ?? Date.now()
     minimized.value = false
     stopRinging()
-    presence.emitCallsState(session.id, { micEnabled: isMicEnabled.value, cameraEnabled: isCameraEnabled.value })
+    presence.emitCallsState(session.id, {
+      micEnabled: isMicEnabled.value,
+      cameraEnabled: isCameraEnabled.value,
+      screenSharing: isScreenSharing.value,
+    })
     transport?.setPeers(remotePeerIds(session, meId.value))
+    ensureReactionPrune()
   }
 
   // ─── Actions ────────────────────────────────────────────────────────────────
@@ -282,6 +319,7 @@ export function useCallSession() {
     }
     createTransport(session.id)
     if (session.status === 'ringing') {
+      outgoingMessageId = session.messageId
       state.value = { phase: 'outgoing', call: session, incoming: null }
       minimized.value = false
       ringback = createRingtone('outgoing')
@@ -368,6 +406,10 @@ export function useCallSession() {
   }
 
   async function toggleCamera(): Promise<void> {
+    if (isScreenSharing.value) {
+      await stopScreenShare({ restoreCamera: false })
+      return
+    }
     const current = call.value
     if (isCameraEnabled.value) {
       // Stop publishing entirely (privacy + bandwidth) rather than sending black frames.
@@ -449,6 +491,102 @@ export function useCallSession() {
     speakerDeviceId.value = deviceId
   }
 
+  async function startScreenShare(): Promise<void> {
+    if (!canScreenShare() || isScreenSharing.value) return
+    let display: MediaStream
+    try {
+      display = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 15 } }, audio: false })
+    } catch (err) {
+      const name = err instanceof DOMException ? err.name : ''
+      if (name !== 'NotAllowedError' && name !== 'AbortError') {
+        toast.push({ title: 'Couldn’t share your screen.', tone: 'error' })
+      }
+      return
+    }
+    const track = display.getVideoTracks()[0]
+    if (!track) return
+    try {
+      track.contentHint = 'detail'
+    } catch {
+      // Older browsers ignore contentHint.
+    }
+    cameraWasOnBeforeShare = isCameraEnabled.value && !isScreenSharing.value
+    const prev = localVideoTrack()
+    const s = new MediaStream(localStream.value?.getTracks().filter((t) => t !== prev) ?? [])
+    s.addTrack(track)
+    localStream.value = s
+    if (prev) stopTrack(prev)
+    isScreenSharing.value = true
+    isCameraEnabled.value = true
+    track.onended = () => {
+      void stopScreenShare({ restoreCamera: cameraWasOnBeforeShare })
+    }
+    await transport?.setLocalTrack('video', track)
+    const current = call.value
+    if (current) presence.emitCallsState(current.id, { screenSharing: true, cameraEnabled: true })
+  }
+
+  async function stopScreenShare(opts?: { restoreCamera?: boolean }): Promise<void> {
+    if (!isScreenSharing.value) return
+    const restore = opts?.restoreCamera ?? cameraWasOnBeforeShare
+    const track = localVideoTrack()
+    await transport?.setLocalTrack('video', null)
+    if (track) {
+      localStream.value?.removeTrack(track)
+      stopTrack(track)
+    }
+    localStream.value = localStream.value ? new MediaStream(localStream.value.getTracks()) : null
+    isScreenSharing.value = false
+    isCameraEnabled.value = false
+    cameraWasOnBeforeShare = false
+    const current = call.value
+    if (restore && current) {
+      const got = await acquireVideoTrack({ videoDeviceId: videoDeviceId.value, facingMode: facingMode.value })
+      if (got.track) {
+        const s = new MediaStream(localStream.value?.getTracks() ?? [])
+        s.addTrack(got.track)
+        localStream.value = s
+        isCameraEnabled.value = true
+        await transport?.setLocalTrack('video', got.track)
+      }
+    }
+    if (current) presence.emitCallsState(current.id, { screenSharing: false, cameraEnabled: isCameraEnabled.value })
+  }
+
+  async function toggleScreenShare(): Promise<void> {
+    if (isScreenSharing.value) await stopScreenShare()
+    else await startScreenShare()
+  }
+
+  function ensureReactionPrune() {
+    if (reactionPruneTimer || !import.meta.client) return
+    reactionPruneTimer = setInterval(() => {
+      reactions.value = pruneCallReactions(reactions.value, Date.now())
+    }, 400)
+  }
+
+  function ingestReaction(userId: string, raw: unknown) {
+    const parsed = parseCallReactionPayload(raw)
+    if (!parsed) return
+    const incoming: CallReaction = {
+      id: `${userId}-${parsed.at}-${parsed.emoji}`,
+      userId,
+      emoji: parsed.emoji,
+      at: parsed.at,
+    }
+    reactions.value = reduceCallReactions(reactions.value, incoming, Date.now())
+    reactionBlip.play(speakerDeviceId.value)
+    ensureReactionPrune()
+  }
+
+  function sendReaction(emoji: string) {
+    if (!isCallReactionEmoji(emoji) || !meId.value) return
+    const at = Date.now()
+    const payload = encodeCallReaction(emoji, at)
+    transport?.sendData(payload)
+    ingestReaction(meId.value, payload)
+  }
+
   // ─── Realtime ───────────────────────────────────────────────────────────────
 
   function onUpdated(session: CallSession) {
@@ -467,7 +605,11 @@ export function useCallSession() {
       } else if (e.type === 'connected') {
         stopRinging()
         connectedAt.value = connectedAt.value ?? Date.now()
-        presence.emitCallsState(session.id, { micEnabled: isMicEnabled.value, cameraEnabled: isCameraEnabled.value })
+        presence.emitCallsState(session.id, {
+          micEnabled: isMicEnabled.value,
+          cameraEnabled: isCameraEnabled.value,
+          screenSharing: isScreenSharing.value,
+        })
       } else if (e.type === 'peers') {
         transport?.setPeers(e.userIds)
       }
@@ -554,6 +696,17 @@ export function useCallSession() {
     }
     presence.addCallsCallback(cb)
 
+    const messagesCb: MessagesCallback = {
+      onMessageEdited: (payload) => {
+        const message = payload.message as Message | undefined
+        if (!message || message.id !== outgoingMessageId) return
+        if (message.kind !== 'call' || message.call?.outcome !== 'missed') return
+        if (message.media?.length) return
+        pendingVoicemail.value = { conversationId: payload.conversationId ?? message.conversationId, messageId: message.id }
+      },
+    }
+    presence.addMessagesCallback(messagesCb)
+
     const onPageHide = () => {
       const current = call.value
       if (current && (phase.value === 'in_call' || phase.value === 'outgoing')) void presence.emitCallsLeave(current.id)
@@ -605,6 +758,7 @@ export function useCallSession() {
     unbind = () => {
       stopLocalSpeakingWatch()
       presence.removeCallsCallback(cb)
+      presence.removeMessagesCallback(messagesCb)
       window.removeEventListener('pagehide', onPageHide)
       window.removeEventListener('beforeunload', onPageHide)
       window.removeEventListener('online', onOnline)
@@ -640,6 +794,10 @@ export function useCallSession() {
     minimized,
     connectedAt,
     outgoingCalleeId,
+    isScreenSharing,
+    reactions,
+    pendingVoicemail,
+    dismissVoicemail: () => { pendingVoicemail.value = null },
     participantUser,
     participantLabel,
     startCall,
@@ -651,6 +809,8 @@ export function useCallSession() {
     toggleMic,
     toggleCamera,
     switchCamera,
+    toggleScreenShare,
+    sendReaction,
     setCameraDevice,
     setMicrophoneDevice,
     setSpeakerDevice,
