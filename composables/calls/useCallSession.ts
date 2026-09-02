@@ -26,6 +26,7 @@ import { reduceCallsIncoming, reduceCallsUpdated, remotePeerIds, type CallPhase,
 import { qualityBarsFor, type IcePathKind } from './callQuality'
 import { shouldHangUpCallOnPageLifecycle } from './callLifecycle'
 import { enterCallPictureInPicture, exitCallPictureInPicture } from './callPictureInPicture'
+import { callMediaLog, callMediaTrackInfo } from './callMediaLog'
 import { acquireAudioTrack, acquireCallMedia, acquireVideoTrack, canScreenShare, shouldStartCallWithCamera, stopTrack } from './useCallDevices'
 import { SpeakingMonitor } from './speakingDetector'
 import type { CallTransport, PeerMediaState } from './transport/CallTransport'
@@ -156,6 +157,13 @@ export function useCallSession() {
     cameraError.value = media.cameraError
     isMicEnabled.value = Boolean(media.audioTrack)
     isCameraEnabled.value = Boolean(media.videoTrack)
+    callMediaLog('acquire', {
+      type,
+      joining,
+      camera: callMediaTrackInfo(media.videoTrack),
+      cameraError: media.cameraError,
+      mic: callMediaTrackInfo(media.audioTrack),
+    })
     if (media.micError && !media.audioTrack) {
       toast.push({ title: media.micError, message: 'You can still listen, but others won’t hear you.', tone: 'error', durationMs: 6000 })
     }
@@ -318,6 +326,12 @@ export function useCallSession() {
       cameraEnabled: isCameraEnabled.value,
       screenSharing: isScreenSharing.value,
     })
+    callMediaLog('enter-call', {
+      callId: session.id,
+      cameraEnabled: isCameraEnabled.value,
+      micEnabled: isMicEnabled.value,
+      remotes: remotePeerIds(session, meId.value),
+    })
     transport?.setPeers(remotePeerIds(session, meId.value))
     ensureReactionPrune()
   }
@@ -468,6 +482,10 @@ export function useCallSession() {
 
   async function toggleCamera(): Promise<void> {
     const current = call.value
+    callMediaLog('toggle-camera', {
+      from: isCameraEnabled.value,
+      callId: current?.id ?? null,
+    })
     if (isCameraEnabled.value) {
       // Stop publishing entirely (privacy + bandwidth) rather than sending black frames.
       const track = localVideoTrack()
@@ -493,6 +511,7 @@ export function useCallSession() {
       await transport?.setLocalTrack('video', got.track)
     }
     if (current) presence.emitCallsState(current.id, { cameraEnabled: isCameraEnabled.value })
+    callMediaLog('camera-state', { cameraEnabled: isCameraEnabled.value, callId: current?.id ?? null })
   }
 
   async function replaceVideoTrack(next: MediaStreamTrack) {

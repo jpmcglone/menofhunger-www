@@ -28,6 +28,9 @@ describe('screen share session', () => {
     expect(transport).toContain('screenSender')
     expect(transport).toContain('onRemoteScreenStream')
     expect(transport).toContain("kind === 'screen'")
+    expect(transport).toContain('renegotiateForTrack')
+    expect(transport).toContain('publishRemoteTracks')
+    expect(transport).toContain('videoTransceiver')
   })
 
   it('skips resolution scale-down when the sender track is a screen share', () => {

@@ -71,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { callMediaLog } from '~/composables/calls/callMediaLog'
 import type { CallDisplayUser } from '~/composables/calls/useCallSession'
 import type { PeerMediaState } from '~/composables/calls/transport/CallTransport'
 import { callVideoAttachKey } from '~/composables/calls/callLifecycle'
@@ -202,6 +203,28 @@ watch(() => props.stream, attach)
 watch(attachKey, attach)
 watch(() => props.cameraEnabled, refreshHasVideo)
 watch(videoEl, attach)
+watch(
+  showVideo,
+  (show) => {
+    const el = videoEl.value
+    callMediaLog('tile-show', {
+      label: props.label,
+      show,
+      cameraEnabled: props.cameraEnabled,
+      hasTrack: hasVideoTrack.value,
+      hasFrames: hasFrames.value,
+      videoWidth: el?.videoWidth ?? 0,
+      videoHeight: el?.videoHeight ?? 0,
+      tracks: props.stream?.getVideoTracks().map((t) => ({
+        id: t.id,
+        muted: t.muted,
+        enabled: t.enabled,
+        readyState: t.readyState,
+      })),
+    })
+  },
+  { immediate: true },
+)
 
 let unregisterPip: (() => void) | null = null
 watch(

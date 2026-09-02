@@ -14,7 +14,7 @@ class FakePeerConnection {
   signalingState = 'stable'
   localDescription: unknown = null
   remoteDescription: unknown = null
-  transceivers: Array<{ sender: unknown; receiver: { track: { kind: string } } }> = []
+  transceivers: Array<{ sender: unknown; receiver: { track: Record<string, unknown> } }> = []
   setLocalCalls: Array<{ type: string; sdp?: string } | undefined> = []
   restartIce = vi.fn()
   close = vi.fn()
@@ -44,7 +44,15 @@ class FakePeerConnection {
         setParameters: vi.fn(async () => undefined),
         track: null,
       },
-      receiver: { track: { kind: kind === 'audio' ? 'audio' : 'video' } },
+      receiver: {
+        track: {
+          id: `${kind ?? 'video'}-recv`,
+          kind: kind === 'audio' ? 'audio' : 'video',
+          enabled: true,
+          muted: true,
+          readyState: 'live',
+        },
+      },
     }
     this.transceivers.push(t)
     return t
@@ -65,7 +73,8 @@ class FakePeerConnection {
       this.signalingState = 'stable'
       return
     }
-    this.localDescription = desc ?? { type: this.remoteDescription ? 'answer' : 'offer', sdp: 'local' }
+    const implicitType = this.signalingState === 'have-remote-offer' ? 'answer' : 'offer'
+    this.localDescription = desc ?? { type: implicitType, sdp: 'local' }
     this.signalingState = 'stable'
   }
   async setRemoteDescription(desc: { type: string; sdp: string }) {
@@ -368,6 +377,44 @@ describe('PeerToPeerCallTransport reconnect alignment', () => {
       description: { type: 'offer', sdp: 'theirs' },
     } as never)
     expect(pc.remoteDescription).toBeNull()
+    transport.destroy()
+  })
+
+  it('renegotiates after a late camera so iOS gets a new offer with the track', async () => {
+    const { transport, sendSignal } = makeTransport()
+    transport.setPeers(['alice'])
+    await flushMicrotasks()
+    const pc = FakePeerConnection.instances[0]!
+    pc.remoteDescription = { type: 'answer', sdp: 'theirs' }
+    pc.signalingState = 'stable'
+    sendSignal.mockClear()
+    await transport.setLocalTrack(
+      'video',
+      { id: 'cam', kind: 'video', enabled: true, muted: false, readyState: 'live' } as MediaStreamTrack,
+    )
+    await flushMicrotasks()
+    expect(sendSignal).toHaveBeenCalledWith(
+      'alice',
+      expect.objectContaining({ description: expect.objectContaining({ type: 'offer' }) }),
+    )
+    transport.destroy()
+  })
+
+  it('pulls the camera receiver track after ICE connects even if ontrack never fired', async () => {
+    const { transport, streams } = makeTransport()
+    transport.setPeers(['alice'])
+    await flushMicrotasks()
+    const pc = FakePeerConnection.instances[0]!
+    pc.transceivers[1]!.receiver.track = {
+      id: 'recv-cam',
+      kind: 'video',
+      enabled: true,
+      muted: true,
+      readyState: 'live',
+    }
+    pc.ice('connected')
+    const last = streams.filter(([id]) => id === 'alice').at(-1)?.[1]
+    expect(last?.getTracks().some((t) => t.id === 'recv-cam')).toBe(true)
     transport.destroy()
   })
 

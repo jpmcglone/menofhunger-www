@@ -1,5 +1,11 @@
 import type { WsRtcSignalPayload } from '~/types/api'
 import { CALL_DATA_CHANNEL_LABEL } from '../callReactions'
+import {
+  callMediaLog,
+  callMediaSdpMLines,
+  callMediaTrackInfo,
+  callMediaTransceiverInfo,
+} from '../callMediaLog'
 import { CallQualityManager, prioritizeAudioSender } from '../useCallQualityManager'
 import type { CallLocalTrackKind, CallSignal, CallTransport, CallTransportOptions, PeerMediaState } from './CallTransport'
 
@@ -20,6 +26,7 @@ type Peer = {
   audioSender: RTCRtpSender
   videoSender: RTCRtpSender
   screenSender: RTCRtpSender
+  videoTransceiver: RTCRtpTransceiver
   screenTransceiver: RTCRtpTransceiver
   /** Perfect negotiation: the polite side rolls back on collision. */
   polite: boolean
@@ -108,7 +115,15 @@ export class PeerToPeerCallTransport implements CallTransport {
       try {
         peer.makingOffer = true
         await peer.pc.setLocalDescription()
-        this.send(peer.userId, { description: toDescriptionDto(peer.pc.localDescription) })
+        const desc = toDescriptionDto(peer.pc.localDescription)
+        callMediaLog('signal-out', {
+          peer: peer.userId,
+          type: desc.type,
+          mLines: callMediaSdpMLines(desc.sdp),
+          camera: callMediaTransceiverInfo(peer.videoTransceiver),
+          screen: callMediaTransceiverInfo(peer.screenTransceiver),
+        })
+        this.send(peer.userId, { description: desc })
       } catch {
         // Retried on the next state change.
       } finally {
@@ -149,6 +164,11 @@ export class PeerToPeerCallTransport implements CallTransport {
     if (kind === 'audio') this.localAudio = track
     else if (kind === 'video') this.localVideo = track
     else this.localScreen = track
+    callMediaLog('local-track', {
+      kind,
+      track: callMediaTrackInfo(track),
+      peers: this.peers.size,
+    })
     await Promise.all(
       [...this.peers.values()].map(async (peer) => {
         const sender = kind === 'audio' ? peer.audioSender : kind === 'video' ? peer.videoSender : peer.screenSender
@@ -160,6 +180,11 @@ export class PeerToPeerCallTransport implements CallTransport {
       }),
     )
     if ((kind === 'video' || kind === 'screen') && track) this.quality.reapply()
+    // replaceTrack alone does not fire ontrack on iOS when the m-line was offered
+    // empty (joiner / late camera). Renegotiate so the far side gets the msid.
+    if (kind === 'video' || kind === 'screen') {
+      for (const peer of this.peers.values()) this.renegotiateForTrack(peer)
+    }
   }
 
   sendData(payload: unknown): void {
@@ -203,6 +228,16 @@ export class PeerToPeerCallTransport implements CallTransport {
         const offerCollision = description.type === 'offer' && !readyForOffer
 
         peer.ignoreOffer = !peer.polite && offerCollision
+        callMediaLog('signal-in', {
+          peer: peer.userId,
+          type: description.type,
+          mLines: callMediaSdpMLines(description.sdp),
+          signaling: pc.signalingState,
+          polite: peer.polite,
+          makingOffer: peer.makingOffer,
+          offerCollision,
+          ignore: peer.ignoreOffer,
+        })
         if (peer.ignoreOffer) return
 
         // Chromium implicit-rollbacks; Safari and iOS libwebrtc do not. Only roll
@@ -231,9 +266,18 @@ export class PeerToPeerCallTransport implements CallTransport {
           }
         }
 
+        this.publishRemoteTracks(peer)
         if (description.type === 'offer') {
           await pc.setLocalDescription()
-          this.send(peer.userId, { description: toDescriptionDto(pc.localDescription) })
+          const answer = toDescriptionDto(pc.localDescription)
+          callMediaLog('signal-out', {
+            peer: peer.userId,
+            type: answer.type,
+            mLines: callMediaSdpMLines(answer.sdp),
+            camera: callMediaTransceiverInfo(peer.videoTransceiver),
+            screen: callMediaTransceiverInfo(peer.screenTransceiver),
+          })
+          this.send(peer.userId, { description: answer })
         }
       } else if (payload.candidate) {
         const candidate = payload.candidate as RTCIceCandidateInit
@@ -282,6 +326,7 @@ export class PeerToPeerCallTransport implements CallTransport {
       audioSender: audioTransceiver.sender,
       videoSender: videoTransceiver.sender,
       screenSender: screenTransceiver.sender,
+      videoTransceiver,
       screenTransceiver,
       polite: this.opts.selfUserId < userId,
       makingOffer: false,
@@ -298,6 +343,7 @@ export class PeerToPeerCallTransport implements CallTransport {
       queue: Promise.resolve(),
     }
     this.peers.set(userId, peer)
+    callMediaLog('peer-add', { peer: userId, polite: peer.polite })
 
     // Impolite side creates the channel so it rides the first offer; polite receives `ondatachannel`.
     if (!peer.polite) {
@@ -331,16 +377,20 @@ export class PeerToPeerCallTransport implements CallTransport {
 
     pc.ontrack = (ev) => {
       const { track, transceiver } = ev
-      if (transceiver === peer.screenTransceiver) {
+      const isScreen = transceiver === peer.screenTransceiver
+      callMediaLog('ontrack', {
+        peer: userId,
+        isScreen,
+        mid: transceiver?.mid,
+        track: callMediaTrackInfo(track),
+        camera: callMediaTransceiverInfo(peer.videoTransceiver),
+        screen: callMediaTransceiverInfo(peer.screenTransceiver),
+      })
+      if (isScreen) {
         this.bindScreenTrack(peer, track)
         return
       }
-      if (peer.stream.getTracks().some((t) => t.id === track.id)) return
-      // A fresh MediaStream, not `addTrack` on the old one: programmatic `addTrack` fires no
-      // `addtrack` event and keeps the object identity, so Vue watchers on the stream would
-      // never re-run and the bound <video> would sit on the avatar until it remounted.
-      peer.stream = new MediaStream([...peer.stream.getTracks(), track])
-      this.opts.events.onRemoteStream(userId, peer.stream)
+      this.bindCameraTrack(peer, track)
     }
 
     pc.oniceconnectionstatechange = () => {
@@ -359,6 +409,7 @@ export class PeerToPeerCallTransport implements CallTransport {
       } else if (s === 'connected' || s === 'completed') {
         this.clearDisconnectedTimer(peer)
         this.setPeerState(peer, 'connected')
+        this.publishRemoteTracks(peer)
         this.quality.sampleIcePath(userId)
       }
     }
@@ -409,6 +460,56 @@ export class PeerToPeerCallTransport implements CallTransport {
     this.opts.events.onRemoteScreenStream?.(userId, null)
   }
 
+  private bindCameraTrack(peer: Peer, track: MediaStreamTrack): void {
+    const republish = () => {
+      peer.stream = new MediaStream(peer.stream.getTracks())
+      this.opts.events.onRemoteStream(peer.userId, peer.stream)
+    }
+    track.onunmute = () => {
+      callMediaLog('remote-camera-unmute', { peer: peer.userId, track: callMediaTrackInfo(track) })
+      republish()
+    }
+    track.onmute = () => {
+      callMediaLog('remote-camera-mute', { peer: peer.userId, track: callMediaTrackInfo(track) })
+    }
+    track.onended = () => {
+      callMediaLog('remote-camera-ended', { peer: peer.userId, track: callMediaTrackInfo(track) })
+    }
+    if (peer.stream.getTracks().some((t) => t.id === track.id)) return
+    // A fresh MediaStream, not `addTrack` on the old one: programmatic `addTrack` fires no
+    // `addtrack` event and keeps the object identity, so Vue watchers on the stream would
+    // never re-run and the bound <video> would sit on the avatar until it remounted.
+    peer.stream = new MediaStream([...peer.stream.getTracks(), track])
+    this.opts.events.onRemoteStream(peer.userId, peer.stream)
+  }
+
+  /**
+   * ontrack is not guaranteed after a late replaceTrack. Pull whatever the camera /
+   * screen receivers already have so a joiner who then enables camera still lands
+   * on the person tile.
+   */
+  private publishRemoteTracks(peer: Peer): void {
+    const camera = peer.videoTransceiver.receiver.track
+    const screen = peer.screenTransceiver.receiver.track
+    callMediaLog('sync-remote', {
+      peer: peer.userId,
+      signaling: peer.pc.signalingState,
+      ice: peer.pc.iceConnectionState,
+      camera: callMediaTransceiverInfo(peer.videoTransceiver),
+      screen: callMediaTransceiverInfo(peer.screenTransceiver),
+    })
+    if (camera && camera.kind === 'video') this.bindCameraTrack(peer, camera)
+    if (screen && screen.kind === 'video') this.bindScreenTrack(peer, screen)
+  }
+
+  private renegotiateForTrack(peer: Peer): void {
+    if (peer.holdNegotiate || peer.applyingRemote || this.destroyed) return
+    if (!peer.pc.remoteDescription) return
+    if (peer.pc.signalingState !== 'stable') return
+    callMediaLog('renegotiate', { peer: peer.userId, reason: 'local-track' })
+    void this.makeOffer(peer)
+  }
+
   private bindScreenTrack(peer: Peer, track: MediaStreamTrack): void {
     const publish = () => {
       const live = track.readyState === 'live' && !track.muted
@@ -438,6 +539,13 @@ export class PeerToPeerCallTransport implements CallTransport {
 
   private setPeerState(peer: Peer, state: PeerMediaState): void {
     if (peer.state === state) return
+    callMediaLog('peer-state', {
+      peer: peer.userId,
+      from: peer.state,
+      to: state,
+      ice: peer.pc.iceConnectionState,
+      conn: peer.pc.connectionState,
+    })
     peer.state = state
     if (state === 'reconnecting') this.armGiveUpTimer(peer)
     else this.clearGiveUpTimer(peer)
