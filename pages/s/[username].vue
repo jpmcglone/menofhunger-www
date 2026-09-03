@@ -115,11 +115,13 @@
                  the socket room. -->
             <template v-if="space?.mode === 'WATCH_PARTY' && space?.watchPartyUrl">
               <div
-                class="relative w-full max-h-full aspect-video"
+                class="w-full"
                 :class="pinWatchPlayerForChat
-                  ? 'fixed left-0 right-0 z-[10001] max-h-none rounded-none'
-                  : ''"
-                :style="pinWatchPlayerForChat ? { top: 'var(--moh-safe-top, 0px)' } : undefined"
+                  ? 'fixed left-0 right-0 z-[10001] rounded-none'
+                  : 'relative max-h-full aspect-video'"
+                :style="pinWatchPlayerForChat
+                  ? { top: 'var(--moh-safe-top, 0px)', height: WATCH_PLAYER_PINNED_HEIGHT }
+                  : undefined"
               >
                 <ClientOnly>
                   <SpaceYouTubePlayer
@@ -251,7 +253,9 @@ import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { registerAvatarPositionResolver } from '~/composables/useSpaceReactions'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
-import { spaceStatusKind as resolveSpaceStatusKind } from '~/utils/space-display'
+import { spaceDisplayTitle, spaceStatusKind as resolveSpaceStatusKind } from '~/utils/space-display'
+import { computeSpaceSeo } from '~/utils/spaceSeo'
+import { WATCH_PLAYER_PINNED_HEIGHT } from '~/utils/watchPartyLayout'
 
 const route = useRoute()
 const username = computed(() => (route.params.username as string)?.trim() ?? '')
@@ -635,35 +639,31 @@ definePageMeta({
   keepalive: { max: 1 },
 })
 
-const spaceMode = computed(() => {
-  if (!seoSpace.value) return ''
-  if (seoSpace.value.mode === 'WATCH_PARTY') return ' Watch party in progress.'
-  if (seoSpace.value.mode === 'RADIO') return ' Radio playing live.'
-  return ''
-})
+const seo = computed(() =>
+  computeSpaceSeo(
+    seoSpace.value
+      ? { ...seoSpace.value, ownerUsername: seoSpace.value.owner?.username ?? null }
+      : null,
+  ),
+)
 
 usePageSeo({
-  title: computed(() => {
-    if (!seoSpace.value) return 'Space'
-    const host = seoSpace.value.owner?.username ? `@${seoSpace.value.owner.username}` : ''
-    return host ? `${seoSpace.value.title} by ${host}` : seoSpace.value.title
-  }),
-  description: computed(() => {
-    if (!seoSpace.value) return 'Join a live space on Men of Hunger — chat, watch parties, and radio with other men.'
-    const desc = seoSpace.value.description
-      ? `${seoSpace.value.description}`
-      : `Join ${seoSpace.value.title} — a live space hosted by @${seoSpace.value.owner?.username ?? 'unknown'} on Men of Hunger.`
-    return `${desc}${spaceMode.value} Verified members can join and chat live.`
-  }),
+  title: computed(() => seo.value.title),
+  description: computed(() => seo.value.description),
+  image: computed(() => seo.value.image ?? undefined),
+  imageAlt: computed(() => seo.value.imageAlt),
+  twitterCard: computed(() => seo.value.twitterCard),
   canonicalPath: computed(() => (username.value ? `/s/${encodeURIComponent(username.value)}` : '/spaces')),
   ogType: 'website',
   jsonLdGraph: computed(() => {
     if (!seoSpace.value) return []
     const s = seoSpace.value
+    const name = spaceDisplayTitle(s) || 'Space'
     return [{
       '@type': 'Event',
-      name: s.title,
-      description: s.description || `Live space hosted by @${s.owner?.username ?? 'unknown'}`,
+      name,
+      description: seo.value.description,
+      ...(seo.value.image ? { image: seo.value.image } : {}),
       eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
       eventStatus: s.isActive
         ? 'https://schema.org/EventScheduled'

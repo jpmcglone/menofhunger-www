@@ -1,5 +1,5 @@
 export type SpaceDisplayInput = {
-  title: string
+  title: string | null
   isActive: boolean
   scheduledAt?: string | null
   mode: 'NONE' | 'WATCH_PARTY' | 'RADIO'
@@ -51,8 +51,8 @@ export function spaceStatusKind(
 }
 
 /** Default identity name from create: `{username}'s Space`. */
-export function isDefaultSpaceTitle(title: string): boolean {
-  return /^.+'s space$/i.test(title.trim())
+export function isDefaultSpaceTitle(title: string | null | undefined): boolean {
+  return /^.+'s space$/i.test((title ?? '').trim())
 }
 
 function playingTitle(
@@ -67,7 +67,7 @@ export function spaceDisplayTitle(
   space: SpaceDisplayInput,
   extras?: { playbackTitleOverride?: string | null },
 ): string {
-  const stored = space.title.trim()
+  const stored = (space.title ?? '').trim()
   const playing = playingTitle(space, extras)
   if (stored && !isDefaultSpaceTitle(stored)) return stored
   if (playing) return playing

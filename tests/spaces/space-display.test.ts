@@ -87,6 +87,19 @@ describe('spaceDisplayTitle', () => {
     ).toBe('Conference talk')
   })
 
+  it('treats a cleared title like no custom name', () => {
+    expect(
+      spaceDisplayTitle({
+        ...base,
+        title: null,
+        isActive: true,
+        mode: 'WATCH_PARTY',
+        playbackTitle: 'Conference talk',
+      }),
+    ).toBe('Conference talk')
+    expect(spaceDisplayTitle({ ...base, title: null })).toBe('')
+  })
+
   it('keeps a custom title and exposes YouTube as the subtitle', () => {
     const space = {
       ...base,

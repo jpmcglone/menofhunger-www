@@ -137,6 +137,8 @@ describe('space layout', () => {
     expect(panel).not.toMatch(/<select[\s>]/)
     expect(panel).toMatch(/\(optional\)/)
     expect(panel).toMatch(/discardLabel: 'Discard'/)
+    expect(panel).toMatch(/title: normalizedTitleInput\.value \|\| null/)
+    expect(panel).not.toMatch(/if \(!normalizedTitleInput\.value\) return false/)
     expect(panel).toMatch(/async function applyAll/)
     expect(panel).toMatch(
       /async function onSave\(\) \{\s*const saved = await applyAll\(\)\s*if \(saved\) \{\s*toast\.push[\s\S]*?expanded\.value = false/,
@@ -158,7 +160,15 @@ describe('space layout', () => {
     expect(page).toMatch(/pinWatchPlayerForChat/)
     expect(page).toMatch(/z-\[10001\]/)
     expect(overlays).toMatch(/keep-watch-player-visible/)
-    expect(overlay).toMatch(/56\.25vw/)
-    expect(player).toMatch(/if \(spaceChatSheetOpen\.value\) return/)
+    expect(page).toMatch(/WATCH_PLAYER_PINNED_HEIGHT/)
+    expect(overlay).toMatch(/WATCH_CHAT_PINNED_TOP/)
+    expect(player).toMatch(/recoverFollowerPlayback/)
+    expect(player).not.toMatch(/if \(spaceChatSheetOpen\.value\) return/)
+  })
+
+  it('shows the avatar spaces ring only when that space is live', () => {
+    const avatar = readFromRepo('components/app/UserAvatar.vue')
+    expect(avatar).toMatch(/getById\(spaceId\)\?\.isActive/)
+    expect(avatar).not.toMatch(/return Boolean\(selectedSpaceId\.value\) \|\| Boolean\(getCurrentSpaceForUser\(uid\)\)/)
   })
 })

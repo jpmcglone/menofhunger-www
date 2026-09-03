@@ -258,7 +258,6 @@ const scheduleError = computed(() => {
 
 const canSave = computed(() => {
   if (!isDirty.value) return false
-  if (!normalizedTitleInput.value) return false
   if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) return false
   if (scheduleError.value) return false
   return true
@@ -337,9 +336,7 @@ async function onSave() {
 async function applyAll(): Promise<boolean> {
   if (saveBusy.value) return false
   if (!canSave.value) {
-    if (!normalizedTitleInput.value) {
-      toast.push({ title: 'Add a title', tone: 'error', durationMs: 1800 })
-    } else if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) {
+    if (draftMode.value === 'RADIO' && !normalizedRadioInput.value) {
       toast.push({ title: 'Add a stream URL', tone: 'error', durationMs: 1800 })
     } else if (scheduleError.value) {
       toast.push({ title: scheduleError.value, tone: 'error', durationMs: 1800 })
@@ -350,7 +347,7 @@ async function applyAll(): Promise<boolean> {
   try {
     let latest = props.space
     if (isTitleDirty.value) {
-      const updated = await updateSpace(props.space.id, { title: normalizedTitleInput.value })
+      const updated = await updateSpace(props.space.id, { title: normalizedTitleInput.value || null })
       if (!updated) {
         toast.push({ title: 'Could not save title', tone: 'error', durationMs: 2000 })
         return false
@@ -410,9 +407,10 @@ function shareToFeed() {
         minute: '2-digit',
       }).format(d)
     : null
-  const eventName = /^.+'s space$/i.test((props.space.title ?? '').trim())
+  const storedTitle = (props.space.title ?? '').trim()
+  const eventName = !storedTitle || /^.+'s space$/i.test(storedTitle)
     ? 'my Space'
-    : props.space.title.trim()
+    : storedTitle
   const text = when
     ? `Join me for ${eventName} — ${when}\n${url}`
     : `Join me for ${eventName}\n${url}`

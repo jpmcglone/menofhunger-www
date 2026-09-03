@@ -10,7 +10,7 @@ export function useSpaceOwner() {
     })
   }
 
-  async function updateSpace(id: string, data: { title?: string; description?: string | null }): Promise<Space | null> {
+  async function updateSpace(id: string, data: { title?: string | null; description?: string | null }): Promise<Space | null> {
     try {
       return await apiFetchData<Space>(`/spaces/${id}`, {
         method: 'PATCH',

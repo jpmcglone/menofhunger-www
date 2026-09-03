@@ -98,7 +98,7 @@ function atAuthor(post: FeedPost | null): string {
   return u ? `@${u}` : ''
 }
 
-/** Social-card title: who / what kind — never the post body (that belongs in description). */
+/** Social-card title when there is no public body to lead with. */
 function identityTitle(at: string, kind?: string): string {
   if (kind && at) return `${kind} · ${at}`
   if (kind) return kind
@@ -199,39 +199,39 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     return restrictionSeoDescription
   })()
 
-  // Title is identity (and kind), not a body excerpt. Social cards show title
-  // and description stacked; putting the post in both makes X/Slack/iMessage
-  // repeat the same sentence. `usePageSeo` already suffixes ` | Men of Hunger`.
+  // Public titles lead with the post text so unfurls show the content.
+  // Gated/private stay identity-only. `usePageSeo` suffixes ` | Men of Hunger`.
   const titleCoreBudget = groupRef ? Math.max(24, TITLE_SNIP - groupSuffix.length) : TITLE_SNIP
+  const isYouTubeLink = Boolean(previewLink && parseYouTubeUrl(previewLink))
   let title: string
   if (!post) {
     title = isRestricted ? restrictionLabel : 'Post'
   } else {
     const p = post
     const at = atAuthor(p)
+    const bodyText = (bodyTextSansLinks ?? '').trim()
+    const publicBodyTitle = isPublicPost && bodyText
+      ? (at ? `${excerpt(bodyText, titleCoreBudget)} · ${at}` : excerpt(bodyText, titleCoreBudget))
+      : null
     if (isOnlyMePost) {
       title = at ? `Private post — ${at}` : 'Private post'
     } else if (isCheckin && checkinPrompt) {
       title = at ? `${checkinPrompt} · ${at}` : checkinPrompt
     } else if (isTierGated) {
       title = at || restrictionLabel
+    } else if (publicBodyTitle) {
+      title = publicBodyTitle
     } else if (pollMetaPublic) {
       title = identityTitle(at, 'Poll')
     } else if (primaryMedia) {
-      const hasBody = Boolean((bodyTextSansLinks ?? '').trim())
-      if (hasBody) {
-        title = identityTitle(at)
-      } else {
-        const kind = primaryMedia.kind === 'gif' ? 'GIF' : primaryMedia.kind === 'video' ? 'Video' : 'Photo'
-        title = identityTitle(at, kind)
-      }
+      const kind = primaryMedia.kind === 'gif' ? 'GIF' : primaryMedia.kind === 'video' ? 'Video' : 'Photo'
+      title = identityTitle(at, kind)
     } else {
       const external = (previewLink ?? '').trim()
-      const hasBody = Boolean((bodyTextSansLinks ?? '').trim())
-      if (external && !hasBody) {
+      if (external) {
         const lt = (linkMeta?.title ?? '').trim()
-        const host = safeUrlHostname(external) ?? 'Link'
-        const t = excerpt(lt || host, titleCoreBudget)
+        const fallback = isYouTubeLink ? 'YouTube video' : (safeUrlHostname(external) ?? 'Link')
+        const t = excerpt(lt || fallback, titleCoreBudget)
         title = at ? `${t} · ${at}` : t
       } else {
         title = identityTitle(at)
@@ -294,7 +294,9 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
             if (d) description = excerpt(d, DESC_PUBLIC_MAX)
             else {
               const site = (linkMeta?.siteName ?? '').trim()
-              description = site ? `From ${site}.` : 'Shared link.'
+              if (site) description = `From ${site}.`
+              else if (isYouTubeLink) description = 'YouTube video on Men of Hunger.'
+              else description = 'Shared link.'
             }
           } else {
             let d = excerpt(bodyText, DESC_PUBLIC_MAX)
@@ -526,7 +528,7 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
 
     const headlineBase = (isCheckin && checkinPrompt)
       ? checkinPrompt
-      : excerpt(bodyTextSansLinks || 'Post', 90)
+      : excerpt(bodyTextSansLinks || (isYouTubeLink ? 'YouTube video' : 'Post'), 90)
     const headline = pollMetaPublic ? `Poll: ${headlineBase}` : headlineBase
     const article: any = {
       '@type': 'Article',

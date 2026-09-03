@@ -19,6 +19,7 @@
     "/api/errors",
     "/u/this-user-does-not-exist",
     "/p/this-post-does-not-exist",
+    "/s/this-space-does-not-exist",
     "/a/this-article-does-not-exist"
   ]
 }

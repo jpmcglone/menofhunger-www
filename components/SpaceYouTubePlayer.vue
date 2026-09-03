@@ -163,7 +163,6 @@ const { watchPartyState, sendControl, subscribe, unsubscribe, requestCurrentStat
 const presence = usePresence()
 const { isSocketConnected } = presence
 const { selectedSpaceId } = useSpaceLobby()
-const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
 
 const isOwner = computed(() => Boolean(user.value?.id && props.space?.owner?.id && user.value.id === props.space.owner.id))
 const canRequestRoomState = computed(() => props.roomReady !== false)
@@ -310,8 +309,8 @@ function unlockViewerPlayback() {
   const state = watchPartyState.value ?? pendingApply
   if (state) {
     const stateVideoId = extractVideoId(state.videoUrl)
-    if (stateVideoId) loadNewVideoIfNeeded(stateVideoId)
     const adjusted = driftAdjustedTime(state)
+    if (stateVideoId) loadNewVideoIfNeeded(stateVideoId, isFinite(adjusted) ? adjusted : 0)
     if (isFinite(adjusted)) ytPlayer.seekTo?.(adjusted, true)
     ytPlayer.setPlaybackRate?.(state.playbackRate || 1)
     pendingUnlockPause = !state.isPlaying
@@ -322,9 +321,7 @@ function unlockViewerPlayback() {
   ytPlayer.playVideo?.()
 }
 
-function onPageBecameVisible() {
-  if (spaceChatSheetOpen.value) return
-  if (typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') return
+function recoverFollowerPlayback() {
   if (!isFollowingPlayback.value || !ytPlayer || !playerReady.value) return
   const state = watchPartyState.value
   if (!state) return
@@ -336,6 +333,11 @@ function onPageBecameVisible() {
     return
   }
   applyState(state)
+}
+
+function onPageBecameVisible() {
+  if (typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') return
+  recoverFollowerPlayback()
 }
 
 /** iPhone Safari blocks iframe media unless allow=autoplay is on the frame itself. */
@@ -404,12 +406,12 @@ function applyOwnerRestoreState(state: WatchPartyState) {
  * If the player is ready and the video ID has changed, swap the video without
  * destroying the iframe. Returns true if a swap occurred.
  */
-function loadNewVideoIfNeeded(videoId: string | null): boolean {
+function loadNewVideoIfNeeded(videoId: string | null, startSeconds = 0): boolean {
   if (!videoId || !ytPlayer || !playerReady.value) return false
   if (videoId === currentVideoId) return false
   currentVideoId = videoId
   hasSyncedInitially = false
-  ytPlayer.loadVideoById?.({ videoId, startSeconds: 0 })
+  ytPlayer.loadVideoById?.({ videoId, startSeconds })
   return true
 }
 
@@ -562,7 +564,38 @@ function createPlayer(videoId: string, startSeconds = 0) {
   })
 }
 
+/** Align this tab to the room clock before it starts driving. Do not emit local time. */
+function snapOwnerToRoomState() {
+  if (!ytPlayer || !playerReady.value) return
+  const state = watchPartyState.value
+  if (!state) return
+  const adjusted = driftAdjustedTime(state)
+  const target = isFinite(adjusted) ? adjusted : Math.max(0, Number(state.currentTime) || 0)
+  const rate = state.playbackRate || 1
+  ignoreNextStateChange = true
+  const stateVideoId = extractVideoId(state.videoUrl)
+  if (stateVideoId) loadNewVideoIfNeeded(stateVideoId, target)
+  ytPlayer.seekTo?.(target, true)
+  ytPlayer.setPlaybackRate?.(rate)
+  if (state.isPlaying) ytPlayer.playVideo?.()
+  else ytPlayer.pauseVideo?.()
+  const now = Date.now()
+  lastOwnerState = {
+    isPlaying: state.isPlaying,
+    currentTime: state.currentTime,
+    playbackRate: rate,
+    atMs: now,
+  }
+  lastOwnerSample = {
+    isPlaying: state.isPlaying,
+    currentTime: target,
+    playbackRate: rate,
+    atMs: now,
+  }
+}
+
 function takeControl() {
+  snapOwnerToRoomState()
   isReplacedOwner.value = false
   // Re-joining the space re-elects this socket as the primary owner.
   presence.emitSpacesJoin(props.space.id)
@@ -666,15 +699,14 @@ function applyState(state: WatchPartyState) {
   // If the video changed, swap the embed first. We stash the desired state in
   // pendingApply so onStateChange can re-apply it once the new video is ready
   // (CUED or BUFFERING), avoiding reliance on a follow-up WS tick.
-  const stateVideoId = extractVideoId(state.videoUrl)
-  if (stateVideoId && loadNewVideoIfNeeded(stateVideoId)) {
-    pendingApply = state
-    return
-  }
-
   // Always compute the wall-clock-adjusted position so a state that was stored
   // seconds ago still lands the viewer at the correct spot.
   const adjusted = driftAdjustedTime(state)
+  const stateVideoId = extractVideoId(state.videoUrl)
+  if (stateVideoId && loadNewVideoIfNeeded(stateVideoId, isFinite(adjusted) ? adjusted : 0)) {
+    pendingApply = state
+    return
+  }
   if (!isFinite(adjusted)) return  // bad/missing updatedAt — skip rather than seek to NaN
   const currentTime = ytPlayer.getCurrentTime?.() ?? 0
   const drift = Math.abs(currentTime - adjusted)
@@ -887,11 +919,11 @@ const replacedCb = {
   },
   onWatchPartyOwnerPromoted: (payload: { spaceId: string }) => {
     if (payload.spaceId !== props.space.id) return
-    isReplacedOwner.value = false
     wpLog('owner:promoted', { spaceId: payload.spaceId })
-    // Resume emitting now that we are primary again. The sync timer will pick
-    // up naturally; emit once immediately so viewers don't wait up to 10 s.
-    if (ytPlayer && playerReady.value) emitCurrentState()
+    // Snap to the last room checkpoint first so this tab does not broadcast
+    // drifted follower time. The owner timer emits on the next real change.
+    snapOwnerToRoomState()
+    isReplacedOwner.value = false
   },
 }
 
@@ -943,6 +975,15 @@ onMounted(async () => {
   startOwnerSyncTimer()
   document.addEventListener('visibilitychange', onPageBecameVisible)
   window.addEventListener('pageshow', onPageBecameVisible)
+})
+
+onDeactivated(() => {
+  if (!isFollowingPlayback.value || !ytPlayer || !playerReady.value) return
+  ytPlayer.pauseVideo?.()
+})
+
+onActivated(() => {
+  recoverFollowerPlayback()
 })
 
 onBeforeUnmount(() => {

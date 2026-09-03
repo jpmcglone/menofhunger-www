@@ -382,6 +382,8 @@ export default defineNuxtConfig({
     // increase memory churn on Render. Prefer CDN caching if/when Cloudflare is in front.
     '/u/**': { ssr: true, headers: { 'cache-control': 'no-store' } },
     '/p/**': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    // Space permalinks: SSR so unfurls get the display title + YouTube poster.
+    '/s/**': { ssr: true, headers: { 'cache-control': 'no-store' } },
     // Article detail + listing: public and indexed; SSR for full meta on first response.
     '/a/**': { ssr: true, headers: { 'cache-control': 'no-store' } },
     '/articles': { ssr: true, headers: { 'cache-control': 'no-store' } },

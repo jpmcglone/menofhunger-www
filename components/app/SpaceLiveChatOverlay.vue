@@ -5,7 +5,7 @@
       class="fixed inset-x-0 bottom-0 z-[9999] flex flex-col moh-bg moh-text"
       :class="keepWatchPlayerVisible ? '' : 'inset-0'"
       :style="keepWatchPlayerVisible
-        ? { top: 'calc(var(--moh-safe-top, 0px) + 56.25vw)', zIndex: 9999 }
+        ? { top: WATCH_CHAT_PINNED_TOP, zIndex: 9999 }
         : { top: 0, zIndex: 9999 }"
       role="dialog"
       aria-modal="true"
@@ -47,6 +47,8 @@
 </template>
 
 <script setup lang="ts">
+import { WATCH_CHAT_PINNED_TOP } from '~/utils/watchPartyLayout'
+
 const props = defineProps<{
   modelValue: boolean
   spaceName: string

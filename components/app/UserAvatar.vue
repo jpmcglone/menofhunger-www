@@ -64,8 +64,7 @@
 /**
  * User avatar with presence: takes a user (id + avatar fields) and shows
  * AvatarCircle + green dot (online), clock (idle), or offline. Callers don't need usePresence().
- * When the displayed user is the current auth user AND they are in a space, shows the Spaces
- * gradient ring automatically.
+ * When the displayed user is in a live space, shows the Spaces gradient ring automatically.
  */
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { avatarRoundClass } from '~/utils/avatar-rounding'
@@ -132,6 +131,7 @@ const route = useRoute()
 const { getPresenceStatus, getCurrentSpaceForUser, getUserStatus, isPresenceKnown } = usePresence()
 const { user: authUser } = useAuth()
 const { selectedSpaceId } = useSpaceLobby()
+const { getById } = useSpaces()
 const { user: u } = useUserOverlay(computed(() => props.user))
 const wrapEl = ref<HTMLElement | null>(null)
 
@@ -219,7 +219,7 @@ function onStatusButtonClick() {
   }
 }
 
-// Show the Spaces gradient ring when a user is in a space.
+// Show the Spaces gradient ring only when that space is live (`isActive`).
 // For the current user, check both local lobby state and the presence-tracked map
 // (seeded in useSpaceLobby.select/leave) so the ring is visible on their own posts/avatar.
 // For other users, read from the presence WebSocket state (users:spaceChanged events).
@@ -230,10 +230,11 @@ const showSpacesRing = computed(() => {
   if (route.path.startsWith('/spaces')) return false
   if (props.showPresence === false) return false
   const authId = authUser.value?.id
-  if (uid === authId) {
-    return Boolean(selectedSpaceId.value) || Boolean(getCurrentSpaceForUser(uid))
-  }
-  return Boolean(getCurrentSpaceForUser(uid))
+  const spaceId = uid === authId
+    ? (selectedSpaceId.value || getCurrentSpaceForUser(uid))
+    : getCurrentSpaceForUser(uid)
+  if (!spaceId) return false
+  return Boolean(getById(spaceId)?.isActive)
 })
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({

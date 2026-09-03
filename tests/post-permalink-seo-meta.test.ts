@@ -89,7 +89,7 @@ function input(partial: Partial<PostPermalinkSeoInput> & { post: FeedPost | null
 }
 
 describe('computePostPermalinkSeo — public posts', () => {
-  it('titles with @username and puts the post body only in the description', () => {
+  it('public text posts lead the share title with the body', () => {
     const post = basePost({ body: LONG_PUBLIC_BODY })
     const r = computePostPermalinkSeo(
       input({
@@ -97,8 +97,8 @@ describe('computePostPermalinkSeo — public posts', () => {
         bodyTextSansLinks: LONG_PUBLIC_BODY,
       }),
     )
-    expect(r.title).toBe('@alice')
-    expect(r.title).not.toContain('public post')
+    expect(r.title).toContain('This is a public post')
+    expect(r.title).toContain('@alice')
     expect(r.description.length).toBeGreaterThan(80)
     expect(r.description).toContain('public post')
     expect(r.author).toBe('@alice')
@@ -106,15 +106,20 @@ describe('computePostPermalinkSeo — public posts', () => {
     expect(r.ogType).toBe('article')
   })
 
-  it('does not repeat the opening of the post in both title and description', () => {
-    const body =
-      "And it's a little ironic since you're so offended that he wouldn't be charitable"
+  it('puts the public caption in the title for a YouTube post', () => {
+    const ytUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    const caption = 'Watch this one with us tonight'
     const r = computePostPermalinkSeo(
-      input({ post: basePost({ body }), bodyTextSansLinks: body }),
+      input({
+        post: basePost({ body: `${caption} ${ytUrl}` }),
+        previewLink: ytUrl,
+        bodyTextSansLinks: caption,
+      }),
     )
-    expect(r.title).toBe('@alice')
-    expect(r.description.startsWith("And it's a little ironic")).toBe(true)
-    expect(r.title).not.toContain('ironic')
+    expect(r.title).toContain(caption)
+    expect(r.title).toContain('@alice')
+    expect(r.description).toContain(caption)
+    expect(r.image).toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg')
   })
 
   it('og:image prefers media over avatar over logo', () => {
@@ -164,6 +169,8 @@ describe('computePostPermalinkSeo — public posts', () => {
       }),
     )
     expect(r.image).toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg')
+    expect(r.title).toBe('YouTube video · @alice')
+    expect(r.description).toContain('YouTube video')
     expect(r.imageAlt).toContain('YouTube video')
     expect(r.twitterCard).toBe('summary_large_image')
     const article = r.jsonLdGraph.find((x: any) => x?.['@type'] === 'Article') as any

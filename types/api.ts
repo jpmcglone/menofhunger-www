@@ -330,7 +330,7 @@ export type SpaceOwner = {
 
 export type Space = {
   id: string
-  title: string
+  title: string | null
   description: string | null
   isActive: boolean
   scheduledAt: string | null
@@ -351,7 +351,7 @@ export type WsSpacesUpdatedPayload = {
   version: string
   reason: string
   patch: Partial<{
-    title: string
+    title: string | null
     description: string | null
     isActive: boolean
     scheduledAt: string | null
