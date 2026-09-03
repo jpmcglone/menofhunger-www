@@ -28,10 +28,12 @@
         <Icon name="tabler:plus" class="text-[10px]" />
       </button>
 
-      <!-- Emoji picker dropdown -->
+      <Teleport to="body">
       <div
         v-if="pickerOpen"
-        class="absolute bottom-full left-0 z-30 mb-2 flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+        ref="menuEl"
+        class="fixed z-[2000] flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+        :style="menuStyle"
         role="menu"
         aria-label="Pick a reaction"
       >
@@ -47,6 +49,7 @@
           {{ reaction.emoji }}
         </button>
       </div>
+      </Teleport>
     </div>
   </div>
 </template>
@@ -67,6 +70,22 @@ const emit = defineEmits<{
 const pickerOpen = ref(false)
 const pickerAnchorEl = ref<HTMLElement | null>(null)
 const mounted = ref(false)
+const { style: menuStyle, menuEl, place: placeMenu, reset: resetMenu } = useMenuPosition()
+
+watch(pickerOpen, (isOpen) => {
+  if (!isOpen) {
+    resetMenu()
+    return
+  }
+  const el = pickerAnchorEl.value
+  if (!el) return
+  placeMenu(el, {
+    menuWidth: 220,
+    menuHeight: 52,
+    gap: 8,
+    trackViewport: true,
+  })
+})
 
 function pick(reactionId: string, emoji: string) {
   emit('toggle', reactionId, emoji)
@@ -75,8 +94,8 @@ function pick(reactionId: string, emoji: string) {
 
 function onDocPointerDown(e: PointerEvent) {
   if (!pickerOpen.value) return
-  const el = pickerAnchorEl.value
-  if (el?.contains(e.target as Node)) return
+  const t = e.target as Node
+  if (pickerAnchorEl.value?.contains(t) || menuEl.value?.contains(t)) return
   pickerOpen.value = false
 }
 

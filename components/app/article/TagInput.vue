@@ -21,7 +21,7 @@
       </TransitionGroup>
 
       <!-- Text input — hidden once max tags reached -->
-      <div v-if="modelValue.length < MAX_TAGS" class="relative flex-1 min-w-[120px]">
+      <div v-if="modelValue.length < MAX_TAGS" ref="wrapEl" class="relative flex-1 min-w-[120px]">
         <input
           ref="inputEl"
           v-model="inputText"
@@ -55,12 +55,14 @@
           <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 font-medium text-[9px] leading-none dark:border-zinc-700 dark:bg-zinc-800">Tab</kbd>
         </div>
 
-        <!-- Autocomplete dropdown -->
+        <Teleport to="body">
         <Transition name="dropdown">
           <ul
             v-if="showDropdown && suggestions.length > 0"
+            ref="menuEl"
             role="listbox"
-            class="absolute left-0 top-full z-50 mt-1 max-h-48 w-48 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            class="fixed z-[2000] max-h-48 w-48 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            :style="menuStyle"
           >
             <li
               v-for="(s, i) in suggestions"
@@ -78,6 +80,7 @@
             </li>
           </ul>
         </Transition>
+        </Teleport>
       </div>
 
       <span v-if="modelValue.length >= MAX_TAGS" class="text-[10px] text-gray-400 dark:text-zinc-600 ml-1">
@@ -104,6 +107,8 @@ const emit = defineEmits<{
 const { apiFetchData } = useApiClient()
 
 const inputEl = ref<HTMLInputElement | null>(null)
+const wrapEl = ref<HTMLElement | null>(null)
+const { style: menuStyle, menuEl, place: placeMenu, reset: resetMenu } = useMenuPosition()
 const inputText = ref('')
 const isInputFocused = ref(false)
 const hasCommitCandidate = computed(() => {
@@ -261,6 +266,25 @@ function closeDropdown() {
   showDropdown.value = false
   activeSuggestion.value = -1
 }
+
+watch(
+  () => showDropdown.value && suggestions.value.length > 0,
+  (visible) => {
+    if (!visible) {
+      resetMenu()
+      return
+    }
+    const el = wrapEl.value
+    if (!el) return
+    placeMenu(el, {
+      menuWidth: 192,
+      menuHeight: Math.min(192, 8 + suggestions.value.length * 32),
+      maxHeight: 192,
+      gap: 4,
+      trackViewport: true,
+    })
+  },
+)
 
 // Wire up arrow-key navigation at the input level.
 onMounted(() => {

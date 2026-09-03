@@ -26,7 +26,9 @@ const { apiFetchData } = useApiClient()
 const { recents, loaded, loading, load, recordUser, recordGroup, remove, clearAll, invalidate } = useRecentSearches()
 
 const inputRef = ref<{ $el?: HTMLElement } | null>(null)
+const wrapEl = ref<HTMLElement | null>(null)
 const focused = ref(false)
+const { style: menuStyle, menuEl, place: placeMenu, reset: resetMenu } = useMenuPosition()
 let blurTimer: ReturnType<typeof setTimeout> | null = null
 const query = computed({
   get: () => props.modelValue,
@@ -183,6 +185,30 @@ function onKeydown(e: KeyboardEvent) {
 
 watch(queryTrimmed, () => { highlightedIndex.value = -1 })
 
+function placeSearchMenu() {
+  const el = wrapEl.value
+  if (!el) return
+  placeMenu(el, {
+    matchAnchorWidth: true,
+    maxHeight: 320,
+    menuHeight: 240,
+    gap: 4,
+    trackViewport: true,
+  })
+}
+
+watch(open, (isOpen) => {
+  if (isOpen) void nextTick(() => placeSearchMenu())
+  else resetMenu()
+})
+
+watch(
+  [people, groups, recents],
+  () => {
+    if (open.value) void nextTick(() => placeSearchMenu())
+  },
+)
+
 // ── Actions ──────────────────────────────────────────────────────────────────
 
 function closePanel() {
@@ -296,7 +322,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="relative w-full">
+  <div ref="wrapEl" class="relative w-full">
     <!-- Input -->
     <IconField iconPosition="left" class="w-full">
       <InputIcon>
@@ -321,7 +347,7 @@ defineExpose({
       />
     </IconField>
 
-    <!-- Dropdown panel -->
+    <Teleport to="body">
     <Transition
       enter-active-class="transition-all duration-150 ease-out origin-top"
       enter-from-class="opacity-0 scale-y-95"
@@ -332,8 +358,10 @@ defineExpose({
     >
       <div
         v-if="open"
+        ref="menuEl"
         role="listbox"
-        class="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border moh-border bg-white dark:bg-zinc-950 shadow-xl"
+        class="fixed z-[2000] overflow-y-auto rounded-xl border moh-border bg-white dark:bg-zinc-950 shadow-xl"
+        :style="menuStyle"
       >
         <!-- Recents panel (query empty) -->
         <template v-if="showRecents">
@@ -553,5 +581,6 @@ defineExpose({
         </template>
       </div>
     </Transition>
+    </Teleport>
   </div>
 </template>

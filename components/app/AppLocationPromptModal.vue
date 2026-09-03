@@ -88,12 +88,15 @@ import { needsOnboarding } from '~/utils/onboarding'
 
 const { user, didAttempt } = useAuth()
 const { apiFetchData } = useApiClient()
+const { blocked: firstRunBlocked } = useFirstRunFlow()
 
 // Show when logged in, fully onboarded, no location set, and user hasn't skipped.
 // Wait for /auth/me — a partial user looks like “needs ZIP” and flashes the modal.
+// First-run photo/email sheets go first so we never stack two interruptions.
 const open = computed({
   get: () => {
     if (!didAttempt.value) return false
+    if (firstRunBlocked.value) return false
     const u = user.value
     if (!u?.id) return false
     if (needsOnboarding(u)) return false

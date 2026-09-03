@@ -563,8 +563,10 @@ describe('hydration guardrails (structural)', () => {
   it('keeps the ZIP location modal hidden until /auth/me has settled', () => {
     const modal = readFromRepo('components/app/AppLocationPromptModal.vue')
     expect(modal).toContain('if (!didAttempt.value) return false')
+    expect(modal).toContain('if (firstRunBlocked.value) return false')
     const announcements = readFromRepo('composables/useAnnouncements.ts')
     expect(announcements).toContain('if (!didAttempt.value) return false')
+    expect(announcements).toContain('if (firstRunBlocked.value) return true')
   })
 
   it('does not raise the reconnect banner until the socket has connected once', () => {

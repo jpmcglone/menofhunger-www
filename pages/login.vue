@@ -18,7 +18,7 @@
             v-if="step === 'phone' && !showBannedNotice && !showDeletedNotice"
             class="text-sm moh-text-muted text-pretty"
           >
-            Enter your phone number to continue.
+            Log in or sign up with your phone number.
           </p>
         </div>
       </div>
@@ -53,30 +53,34 @@
       <div class="space-y-2">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Phone number</label>
 
-        <div v-if="step === 'phone'" class="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <InputText
-            ref="phoneInputRef"
-            v-model="phoneInput"
-            class="w-full"
-            placeholder="+1 (555) 555-5555"
-            autocomplete="tel"
-            inputmode="tel"
-            :disabled="phoneSubmitting"
-            @input="onPhoneInput"
-            @keydown.enter.prevent="submitPhone"
-          />
-          <button
-            type="button"
-            class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-white dark:text-black self-end sm:self-auto"
-            :disabled="phoneSubmitting || !phoneInput.trim()"
-            aria-label="Continue"
-            @click="submitPhone"
-          >
-            <!-- Bold right arrow -->
-            <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
-              <path fill="currentColor" d="M13.2 5.2L20 12l-6.8 6.8-1.6-1.6L15.6 13H4v-2h11.6l-4-4.2 1.6-1.6z" />
-            </svg>
-          </button>
+        <div v-if="step === 'phone'" class="space-y-2">
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <InputText
+              ref="phoneInputRef"
+              v-model="phoneInput"
+              class="w-full"
+              placeholder="+1 (555) 555-5555"
+              autocomplete="tel"
+              inputmode="tel"
+              :disabled="phoneSubmitting"
+              @input="onPhoneInput"
+              @keydown.enter.prevent="submitPhone"
+            />
+            <button
+              type="button"
+              class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black text-white transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-white dark:text-black self-end sm:self-auto"
+              :disabled="phoneSubmitting || !phoneInput.trim()"
+              aria-label="Continue"
+              @click="submitPhone"
+            >
+              <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
+                <path fill="currentColor" d="M13.2 5.2L20 12l-6.8 6.8-1.6-1.6L15.6 13H4v-2h11.6l-4-4.2 1.6-1.6z" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs moh-text-soft">
+            US numbers work without +1. For other countries, start with + and your country code.
+          </p>
         </div>
 
         <div v-else class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-zinc-800">
@@ -127,8 +131,9 @@
               :disabled="verifying"
             />
 
-            <div v-if="verifying" class="shrink-0 flex items-center justify-center w-12">
+            <div v-if="verifying" class="shrink-0 flex flex-col items-center justify-center gap-1 w-16">
               <AppLogoLoader :size="28" />
+              <span class="text-[10px] moh-text-muted leading-none">Signing in…</span>
             </div>
           </div>
 
@@ -160,39 +165,73 @@
         </div>
       </template>
 
-    <AppConfirmDialog
-      :visible="introOpen"
-      header="Welcome to Men of Hunger"
-      confirm-label="Continue"
-      confirm-severity="primary"
-      confirm-icon="tabler:arrow-right"
-      :loading="introContinuing"
-      @update:visible="!$event && closeIntro()"
-      @confirm="acceptIntroAndContinue"
-      @cancel="closeIntro"
-    >
-      <div class="space-y-4 text-sm moh-text-muted">
-        <p>
-          You’re about to create a new account.
-          Men of Hunger is a men’s trusted community for men who want measurable progress — structured conversations, accountability, and real growth.
-        </p>
-
-        <div class="space-y-2">
-          <div class="font-semibold moh-text">A few basic rules</div>
-          <ul class="list-disc pl-5 space-y-1">
-            <li>Be respectful. No harassment, abusive content, or threats.</li>
-            <li>Keep it real. No impersonation or scams.</li>
-            <li>No spam. Don’t flood the feed or DM people unsolicited.</li>
-            <li>You must be 18+ to join.</li>
-          </ul>
-          <div class="text-xs moh-text-soft">
-            You can browse right away. Posting and messaging require verification first.
+    <Teleport to="body">
+      <div
+        v-if="introOpen"
+        class="fixed inset-0 z-[10001] sm:flex sm:items-center sm:justify-center sm:p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Welcome to Men of Hunger"
+      >
+        <div
+          class="absolute inset-0 bg-black/55 hidden sm:block"
+          aria-hidden="true"
+          @click="closeIntro"
+        />
+        <section
+          class="relative flex h-full w-full flex-col overflow-y-auto moh-bg moh-texture sm:h-auto sm:max-h-[min(90vh,36rem)] sm:max-w-md sm:rounded-2xl sm:border moh-border"
+        >
+          <div class="flex items-center justify-between gap-3 px-5 pt-5 pb-2">
+            <h2 class="moh-h2">Welcome to Men of Hunger</h2>
+            <button
+              type="button"
+              class="moh-tap moh-focus rounded-lg px-2 py-1 text-sm font-medium moh-text-muted"
+              :disabled="introContinuing"
+              @click="closeIntro"
+            >
+              Cancel
+            </button>
           </div>
-        </div>
-
-        <div v-if="introError" class="text-sm text-red-700 dark:text-red-300">{{ introError }}</div>
+          <div class="flex-1 space-y-4 px-5 py-3 text-sm moh-text-muted">
+            <p>
+              You’re about to create a new account.
+              Men of Hunger is a trusted community for men who want measurable progress — structured conversations, accountability, and real growth.
+            </p>
+            <div class="space-y-2">
+              <div class="font-semibold moh-text">A few basic rules</div>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>Be respectful. No harassment, abusive content, or threats.</li>
+                <li>Keep it real. No impersonation or scams.</li>
+                <li>No spam. Don’t flood the feed or DM people unsolicited.</li>
+                <li>You must be 18+ to join.</li>
+              </ul>
+              <div class="text-xs moh-text-soft">
+                You can browse right away. Posting and messaging require verification first.
+              </div>
+            </div>
+            <p class="text-xs moh-text-soft">
+              By continuing, you agree to our
+              <NuxtLink to="/terms" class="underline underline-offset-2">Terms</NuxtLink>
+              and
+              <NuxtLink to="/privacy" class="underline underline-offset-2">Privacy Policy</NuxtLink>.
+            </p>
+            <div v-if="introError" class="text-sm text-red-700 dark:text-red-300">{{ introError }}</div>
+          </div>
+          <div class="px-5 pb-6 pt-2">
+            <button
+              type="button"
+              class="moh-tap moh-pressable moh-focus flex w-full items-center justify-center gap-1.5 rounded-full bg-black px-4 py-3 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black"
+              :disabled="introContinuing"
+              @click="acceptIntroAndContinue"
+            >
+              <Icon v-if="introContinuing" name="tabler:loader-2" size="16" class="animate-spin" aria-hidden="true" />
+              <Icon v-else name="tabler:arrow-right" size="16" aria-hidden="true" />
+              Continue
+            </button>
+          </div>
+        </section>
       </div>
-    </AppConfirmDialog>
+    </Teleport>
 
       <!-- Daily quote — quiet ambient note on the phone step only. -->
       <Transition name="fade" appear>
@@ -272,6 +311,24 @@ function dismissDeleted() {
   const q = { ...route.query }
   delete q.deleted
   navigateTo({ path: '/login', query: q }, { replace: true })
+}
+
+function accountNoticeFromError(e: unknown): 'banned' | 'deleted' | null {
+  const data = (e as { data?: { meta?: { errors?: { reason?: string }[] } }; response?: { _data?: { meta?: { errors?: { reason?: string }[] } } } } | null | undefined)
+  const reason = data?.data?.meta?.errors?.[0]?.reason ?? data?.response?._data?.meta?.errors?.[0]?.reason
+  if (reason === 'account_banned') return 'banned'
+  if (reason === 'account_deleted') return 'deleted'
+  return null
+}
+
+function showAccountNotice(kind: 'banned' | 'deleted') {
+  resetToPhone()
+  inlineError.value = null
+  const q = { ...route.query }
+  delete q.banned
+  delete q.deleted
+  q[kind] = '1'
+  void Promise.resolve(navigateTo({ path: '/login', query: q }, { replace: true })).catch(() => undefined)
 }
 
 const step = ref<Step>('phone')
@@ -428,7 +485,12 @@ const { submit: submitPhone, submitting: submitPhoneSubmitting } = useFormSubmit
   },
   {
     defaultError: 'Failed to send code.',
-    onError: (message) => {
+    onError: (message, e) => {
+      const notice = accountNoticeFromError(e)
+      if (notice) {
+        showAccountNotice(notice)
+        return
+      }
       inlineError.value = message
     },
   },
@@ -518,8 +580,7 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
     if (isSafeRedirect(redirect)) {
       await navigateTo(redirect!)
     } else {
-      // New signup: start on home with onboarding gate, then route to profile on completion.
-      // Keep a query flag so OnboardingGate knows to redirect to profile.
+      // New signup: onboarding gate first, then first-run photo via ?welcome=1.
       if (result.isNewUser) {
         await navigateTo('/home?welcome=1')
       } else {
@@ -535,10 +596,11 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
       const reason = data?.meta?.errors?.[0]?.reason
 
       if (reason === 'account_banned') {
-        resetToPhone()
-        inlineError.value = null
-        const q = { ...route.query, banned: '1' }
-        void Promise.resolve(navigateTo({ path: '/login', query: q }, { replace: true })).catch(() => undefined)
+        showAccountNotice('banned')
+        return
+      }
+      if (reason === 'account_deleted') {
+        showAccountNotice('deleted')
         return
       }
 

@@ -176,6 +176,7 @@
                 More
               </span>
             </button>
+            <Teleport to="body">
             <Transition
               enter-active-class="transition-[opacity,transform] duration-150 ease-out"
               enter-from-class="opacity-0 scale-95"
@@ -187,7 +188,8 @@
               <div
                 v-if="morePopoverOpen"
                 ref="morePopoverRef"
-                class="absolute left-0 bottom-full mb-2 z-50 min-w-[12rem] rounded-xl border moh-border bg-white p-1.5 shadow-lg dark:bg-zinc-900"
+                class="fixed z-[2000] min-w-[12rem] max-h-[min(20rem,70vh)] overflow-y-auto rounded-xl border moh-border bg-white p-1.5 shadow-lg dark:bg-zinc-900"
+                :style="moreMenuStyle"
               >
                 <NuxtLink
                   v-for="mi in leftOverflowNavItems"
@@ -239,6 +241,7 @@
                 </NuxtLink>
               </div>
             </Transition>
+            </Teleport>
           </div>
 
           <div ref="leftNavPostRef" class="pt-2">
@@ -376,7 +379,12 @@ defineExpose({
 
 const morePopoverOpen = ref(false)
 const moreButtonRef = ref<HTMLElement | null>(null)
-const morePopoverRef = ref<HTMLElement | null>(null)
+const {
+  style: moreMenuStyle,
+  menuEl: morePopoverRef,
+  place: placeMoreMenu,
+  reset: resetMoreMenu,
+} = useMenuPosition()
 const leftNavViewportRef = ref<HTMLElement | null>(null)
 const leftNavLogoRef = ref<HTMLElement | null>(null)
 const leftNavPostRef = ref<HTMLElement | null>(null)
@@ -393,6 +401,22 @@ const leftOverflowNavItems = computed<AppNavItem[]>(() => {
   return items.slice(Math.max(0, leftNavCapacity.value - 1))
 })
 const moreNavHasActiveRoute = computed(() => leftOverflowNavItems.value.some((item) => isActiveNav(item.to)))
+
+watch(morePopoverOpen, (isOpen) => {
+  if (!isOpen) {
+    resetMoreMenu()
+    return
+  }
+  const btn = moreButtonRef.value
+  if (!btn) return
+  placeMoreMenu(btn, {
+    menuWidth: 192,
+    menuHeight: Math.max(120, 16 + leftOverflowNavItems.value.length * 44),
+    maxHeight: 320,
+    gap: 8,
+    trackViewport: true,
+  })
+})
 
 function onDocClickForMore(e: MouseEvent) {
   if (!morePopoverOpen.value) return

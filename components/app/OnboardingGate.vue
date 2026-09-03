@@ -56,7 +56,7 @@
                   </template>
                 </AppUsernameField>
 
-                <div class="space-y-2">
+                <div v-if="showDisplayNameField || displayName.trim()" class="space-y-2">
                   <label class="text-sm font-medium moh-text">
                     Display name <span class="moh-text-muted font-normal">(optional)</span>
                   </label>
@@ -70,92 +70,46 @@
                   />
                   <p class="text-xs moh-text-muted">A first name is enough. Username is your identity.</p>
                 </div>
-
-                <div class="space-y-2">
-                  <label class="text-sm font-medium moh-text">
-                    Email <span class="moh-text-muted font-normal">(optional)</span>
-                  </label>
-                  <InputText
-                    v-model="email"
-                    type="email"
-                    class="w-full"
-                    placeholder="you@example.com"
-                    autocomplete="email"
-                    :disabled="submitting"
-                    :invalid="showEmailError"
-                  />
-                  <p class="text-xs" :class="showEmailError ? 'text-red-500 dark:text-red-400' : 'moh-text-muted'">
-                    {{ showEmailError ? 'Enter a valid email address.' : 'Helps us reach you for account support.' }}
-                  </p>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="text-sm font-medium moh-text">
-                    Referral code <span class="moh-text-muted font-normal">(optional)</span>
-                  </label>
-                  <InputText
-                    v-model="referralCodeInput"
-                    class="w-full font-mono"
-                    placeholder="e.g. JOHNDOE"
-                    autocomplete="off"
-                    spellcheck="false"
-                    maxlength="20"
-                    :disabled="submitting || referralLocked"
-                  />
-                  <p v-if="referralLocked" class="text-xs text-green-700 dark:text-green-400">
-                    Referral applied. It can’t be changed.
-                  </p>
-                  <p v-else class="text-xs moh-text-muted">
-                    Enter his code and you’ll automatically follow him.
-                  </p>
-                  <p v-if="referralError" class="text-xs text-red-600 dark:text-red-400">{{ referralError }}</p>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="text-sm font-medium" :class="showHeardAboutError ? 'text-red-500 dark:text-red-400' : 'moh-text'">
-                    {{ VOICE.onboarding.heardAboutLabel }}<span class="ml-0.5" :class="showHeardAboutError ? 'text-red-500' : 'moh-text-muted'">*</span>
-                  </label>
-                  <Select
-                    v-model="heardAboutUs"
-                    :options="HEARD_ABOUT_US_OPTIONS"
-                    option-label="label"
-                    option-value="value"
-                    placeholder="Select one"
-                    class="w-full"
-                    :disabled="submitting"
-                    :invalid="showHeardAboutError"
-                  />
-                  <p v-if="showHeardAboutError" class="text-xs text-red-500 dark:text-red-400">
-                    How you heard about us is required.
-                  </p>
-                  <InputText
-                    v-if="heardAboutUs === 'other'"
-                    v-model="heardAboutUsOther"
-                    class="w-full"
-                    placeholder="Tell us how you found us"
-                    maxlength="80"
-                    :disabled="submitting"
-                    :invalid="showHeardAboutOtherError"
-                  />
-                  <p v-if="showHeardAboutOtherError" class="text-xs text-red-500 dark:text-red-400">
-                    Tell us how you found us.
-                  </p>
-                </div>
+                <button
+                  v-else
+                  type="button"
+                  class="text-sm font-medium moh-text"
+                  :disabled="submitting"
+                  @click="showDisplayNameField = true"
+                >
+                  Add display name (optional)
+                </button>
               </div>
 
               <div v-show="page === 2" class="space-y-2">
                 <label class="text-sm font-medium" :class="showInterestsError ? 'text-red-500 dark:text-red-400' : 'moh-text'">
                   Arenas<span class="ml-0.5" :class="showInterestsError ? 'text-red-500' : 'moh-text-muted'">*</span>
                 </label>
-                <AppInterestsPicker
-                  v-model="interests"
+                <p class="text-xs moh-text-muted">Pick the arenas you're building in.</p>
+                <p v-if="interests.length" class="text-xs font-semibold moh-text">{{ interests.length }} selected</p>
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    v-for="arena in visibleArenas"
+                    :key="arena.key"
+                    type="button"
+                    class="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-colors"
+                    :class="arenaChipClass(arena)"
+                    :disabled="submitting"
+                    @click="toggleOnboardingArena(arena)"
+                  >
+                    <Icon :name="arena.icon" class="text-sm shrink-0" aria-hidden="true" />
+                    <span>{{ arena.label }}</span>
+                  </button>
+                </div>
+                <button
+                  v-if="!showMoreArenas"
+                  type="button"
+                  class="pt-1 text-sm font-medium moh-text"
                   :disabled="submitting"
-                  :invalid="showInterestsError"
-                  label=""
-                  helper-right=""
-                  helper-bottom=""
-                  description="Pick the arenas you're building in."
-                />
+                  @click="showMoreArenas = true"
+                >
+                  More arenas
+                </button>
                 <p v-if="showInterestsError" class="text-xs text-red-500 dark:text-red-400">
                   Pick at least one arena.
                 </p>
@@ -173,7 +127,7 @@
                   <div class="text-xs" :class="showBirthdateError ? 'text-red-500 dark:text-red-400' : 'moh-text-muted'">
                     <span v-if="birthdateLocked">Birthday is locked once set.</span>
                     <span v-else-if="showBirthdateError">{{ birthdateErrorText }}</span>
-                    <span v-else>Must be 18+ to join.</span>
+                    <span v-else>MM / DD / YYYY · Must be 18+ to join.</span>
                   </div>
                 </div>
 
@@ -249,6 +203,75 @@
                     Confirm you’re joining as a man.
                   </p>
                 </div>
+
+                <div class="space-y-2">
+                  <label class="text-sm font-medium moh-text">
+                    Email <span class="moh-text-muted font-normal">(optional)</span>
+                  </label>
+                  <InputText
+                    v-model="email"
+                    type="email"
+                    class="w-full"
+                    placeholder="you@example.com"
+                    autocomplete="email"
+                    :disabled="submitting"
+                    :invalid="showEmailError"
+                  />
+                  <p class="text-xs" :class="showEmailError ? 'text-red-500 dark:text-red-400' : 'moh-text-muted'">
+                    {{ showEmailError ? 'Enter a valid email address.' : 'Helps us reach you for account support.' }}
+                  </p>
+                </div>
+
+                <div class="space-y-2">
+                  <label class="text-sm font-medium moh-text">
+                    Referral code <span class="moh-text-muted font-normal">(optional)</span>
+                  </label>
+                  <InputText
+                    v-model="referralCodeInput"
+                    class="w-full font-mono"
+                    placeholder="e.g. JOHNDOE"
+                    autocomplete="off"
+                    spellcheck="false"
+                    maxlength="20"
+                    :disabled="submitting || referralLocked"
+                  />
+                  <p v-if="referralLocked" class="text-xs text-[var(--moh-brass)]">
+                    Referral applied. It can’t be changed.
+                  </p>
+                  <p v-else class="text-xs moh-text-muted">
+                    Enter his code and you’ll automatically follow him.
+                  </p>
+                  <p v-if="referralError" class="text-xs text-red-600 dark:text-red-400">{{ referralError }}</p>
+                </div>
+
+                <div class="space-y-2">
+                  <label class="text-sm font-medium moh-text">
+                    {{ VOICE.onboarding.heardAboutLabel }}
+                    <span class="moh-text-muted font-normal">(optional)</span>
+                  </label>
+                  <Select
+                    v-model="heardAboutUs"
+                    :options="HEARD_ABOUT_US_OPTIONS"
+                    option-label="label"
+                    option-value="value"
+                    placeholder="Select one"
+                    class="w-full"
+                    :disabled="submitting"
+                    show-clear
+                  />
+                  <InputText
+                    v-if="heardAboutUs === 'other'"
+                    v-model="heardAboutUsOther"
+                    class="w-full"
+                    placeholder="Tell us how you found us"
+                    maxlength="80"
+                    :disabled="submitting"
+                    :invalid="showHeardAboutOtherError"
+                  />
+                  <p v-if="showHeardAboutOtherError" class="text-xs text-red-500 dark:text-red-400">
+                    Tell us how you found us.
+                  </p>
+                </div>
               </div>
 
               <div v-if="error" class="text-sm text-red-700 dark:text-red-300">
@@ -257,10 +280,10 @@
 
               <div class="flex items-center justify-end gap-3 pt-1">
                 <Button
-                  class="moh-onboarding-cta"
+                  class="moh-onboarding-cta w-full !rounded-full !bg-black !text-white !border-black dark:!bg-white dark:!text-black dark:!border-white"
                   :label="page === 3 ? VOICE.onboarding.ctaStart : VOICE.onboarding.ctaContinue"
                   :loading="submitting"
-                  :disabled="submitting"
+                  :disabled="submitting || !canContinue"
                   @click="continuePage"
                 >
                   <template #icon>
@@ -277,6 +300,7 @@
 </template>
 
 <script setup lang="ts">
+import { LIFE_ARENAS, PRIMARY_ARENA_KEYS, toggleArena, type LifeArena } from '~/config/arenas'
 import { VOICE } from '~/config/voice'
 import { getApiErrorMessage } from '~/utils/api-error'
 import {
@@ -291,6 +315,7 @@ import type { HeardAboutUs } from '~/types/api'
 const { user, ensureLoaded, me } = useAuth()
 const usersStore = useUsersStore()
 const { apiFetchData } = useApiClient()
+const { startAfterOnboarding } = useFirstRunFlow()
 const {
   capturedReferralCode,
   appliedReferralCode,
@@ -334,6 +359,8 @@ const pageSubtitle = computed(() => {
 
 const usernameInput = ref('')
 const displayName = ref('')
+const showDisplayNameField = ref(false)
+const showMoreArenas = ref(false)
 const email = ref('')
 const heardAboutUs = ref<HeardAboutUs | null>(null)
 const heardAboutUsOther = ref('')
@@ -392,7 +419,10 @@ watch(
   (u) => {
     if (!u) return
     if (!usernameInput.value.trim() && u.username) usernameInput.value = u.username
-    if (!displayName.value.trim() && u.name) displayName.value = u.name
+    if (!displayName.value.trim() && u.name) {
+      displayName.value = u.name
+      showDisplayNameField.value = true
+    }
     if (!birthdate.value && u.birthdate) birthdate.value = u.birthdate.slice(0, 10)
     if (interests.value.length === 0 && Array.isArray(u.interests)) interests.value = u.interests
     if (!email.value && u.email) email.value = u.email
@@ -474,10 +504,43 @@ const emailInvalid = computed(() => {
   return v.length > 0 && !isValidEmail(v)
 })
 
-const heardAboutInvalid = computed(() => !heardAboutUs.value)
 const heardAboutOtherInvalid = computed(() =>
   heardAboutUs.value === 'other' && !heardAboutUsOther.value.trim(),
 )
+
+const primaryArenas = LIFE_ARENAS.filter((arena) =>
+  (PRIMARY_ARENA_KEYS as readonly string[]).includes(arena.key),
+)
+const extraArenas = LIFE_ARENAS.filter(
+  (arena) => !(PRIMARY_ARENA_KEYS as readonly string[]).includes(arena.key),
+)
+const visibleArenas = computed(() =>
+  showMoreArenas.value ? [...primaryArenas, ...extraArenas] : primaryArenas,
+)
+
+watch(
+  interests,
+  (keys) => {
+    if (showMoreArenas.value) return
+    const extraSelected = extraArenas.some((arena) =>
+      arena.featuredInterests.some((key) => keys.includes(key)),
+    )
+    if (extraSelected) showMoreArenas.value = true
+  },
+  { immediate: true },
+)
+
+function arenaChipClass(arena: LifeArena) {
+  const selected = arena.featuredInterests.some((key) => interests.value.includes(key))
+  return selected
+    ? 'border-[var(--moh-brass)] text-[var(--moh-brass)]'
+    : 'moh-border moh-text'
+}
+
+function toggleOnboardingArena(arena: LifeArena) {
+  if (submitting.value) return
+  interests.value = toggleArena(arena, interests.value, 30)
+}
 const interestsInvalid = computed(() => !Array.isArray(interests.value) || interests.value.length < 1)
 
 const usernameInvalid = computed(() => {
@@ -490,7 +553,6 @@ const usernameInvalid = computed(() => {
 
 const showUsernameError = computed(() => attempted.value && usernameInvalid.value)
 const showEmailError = computed(() => attempted.value && emailInvalid.value)
-const showHeardAboutError = computed(() => attempted.value && heardAboutInvalid.value)
 const showHeardAboutOtherError = computed(() => attempted.value && heardAboutOtherInvalid.value)
 const showInterestsError = computed(() => attempted.value && interestsInvalid.value)
 const showBirthdateError = computed(() => attempted.value && birthdateInvalid.value)
@@ -507,7 +569,6 @@ const usernameErrorText = computed(() => {
 
 const canContinue = computed(() => {
   if (page.value === 1) {
-    if (emailInvalid.value || heardAboutInvalid.value || heardAboutOtherInvalid.value) return false
     if (!usernameInput.value.trim()) return false
     if (usernameLocked.value) return usernameIsCaseOnly.value
     return usernameStatus.value === 'available'
@@ -515,6 +576,7 @@ const canContinue = computed(() => {
   if (page.value === 2) {
     return Array.isArray(interests.value) && interests.value.length >= 1
   }
+  if (emailInvalid.value || heardAboutOtherInvalid.value) return false
   if (!menConfirmLocked.value && menOnlyConfirmed.value !== true) return false
   if (!birthdateLocked.value && (!birthdate.value || !isBirthdate18Plus(birthdate.value))) return false
   return true
@@ -579,9 +641,6 @@ async function patchOnboarding(payload: Record<string, unknown>) {
 async function saveAccountPage() {
   const payload: Record<string, unknown> = {
     name: displayName.value.trim(),
-    email: email.value.trim() ? email.value.trim() : '',
-    heardAboutUs: heardAboutUs.value,
-    heardAboutUsOther: heardAboutUs.value === 'other' ? heardAboutUsOther.value.trim() : null,
   }
   const trimmedUsername = usernameInput.value.trim()
   if (!usernameLocked.value) {
@@ -590,7 +649,6 @@ async function saveAccountPage() {
     payload.username = trimmedUsername
   }
   await patchOnboarding(payload)
-  await applyReferralIfNeeded()
 }
 
 async function saveInterestsPage() {
@@ -607,7 +665,14 @@ async function saveDoorPage() {
   if (locationPreview.value && locationZipInput.value.length === 5) {
     payload.locationQuery = locationZipInput.value
   }
+  if (email.value.trim()) payload.email = email.value.trim()
+  if (heardAboutUs.value) {
+    payload.heardAboutUs = heardAboutUs.value
+    payload.heardAboutUsOther = heardAboutUs.value === 'other' ? heardAboutUsOther.value.trim() : null
+  }
   await patchOnboarding(payload)
+  await applyReferralIfNeeded()
+  if (referralError.value) throw new Error(referralError.value)
 }
 
 async function applyReferralIfNeeded() {
@@ -657,8 +722,8 @@ async function finishOnboarding() {
     })
   }
   clearNuxtData(`public-profile:${username.toLowerCase()}`)
-  useState('pending-edit-profile', () => false).value = true
-  await navigateTo(`/u/${encodeURIComponent(username)}`, { replace: true })
+  startAfterOnboarding()
+  await navigateTo('/home', { replace: true })
 }
 </script>
 

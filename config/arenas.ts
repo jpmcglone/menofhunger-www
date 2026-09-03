@@ -19,6 +19,8 @@ export type LifeArena = {
   categoryKey: string
 }
 
+export const PRIMARY_ARENA_KEYS = ['body', 'mission', 'family', 'mind', 'faith'] as const
+
 export const LIFE_ARENAS: LifeArena[] = [
   {
     key: 'body',

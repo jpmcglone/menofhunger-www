@@ -41,6 +41,7 @@
         />
       </button>
 
+      <Teleport to="body">
       <Transition
         enter-active-class="transition duration-150 ease-out"
         enter-from-class="opacity-0 translate-y-1 scale-[0.97]"
@@ -51,9 +52,11 @@
       >
         <ul
           v-if="open"
+          ref="menuEl"
           role="listbox"
           aria-label="Model"
-          class="absolute left-0 top-full z-50 mt-1.5 min-w-[180px] origin-top-left rounded-2xl bg-white py-1.5 shadow-2xl ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/[0.07]"
+          class="fixed z-[2000] min-w-[220px] origin-top-left rounded-2xl bg-white py-1.5 shadow-2xl ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/[0.07]"
+          :style="menuStyle"
         >
           <li
             v-for="mode in (['auto', 'fast', 'regular', 'smart'] as const)"
@@ -80,6 +83,7 @@
           </li>
         </ul>
       </Transition>
+      </Teleport>
     </div>
 
     <!-- Credits chip -->
@@ -103,7 +107,23 @@ const { preferredMode, credits, setPreferredMode } = useMarv()
 const modeBusy = ref(false)
 const open = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
-onClickOutside(dropdownRef, () => { open.value = false })
+const { style: menuStyle, menuEl, place: placeMenu, reset: resetMenu } = useMenuPosition()
+onClickOutside(dropdownRef, () => { open.value = false }, { ignore: [menuEl] })
+
+watch(open, (isOpen) => {
+  if (!isOpen) {
+    resetMenu()
+    return
+  }
+  const el = dropdownRef.value
+  if (!el) return
+  placeMenu(el, {
+    menuWidth: 220,
+    menuHeight: 196,
+    gap: 6,
+    trackViewport: true,
+  })
+})
 
 function modeLabel(m: MarvinModeDto): string {
   if (m === 'auto') return 'Auto'

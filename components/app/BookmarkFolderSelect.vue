@@ -15,9 +15,12 @@
       <Icon name="tabler:chevron-down" class="text-xs opacity-70 shrink-0" aria-hidden="true" />
     </button>
 
+    <Teleport to="body">
     <div
       v-if="open"
-      class="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-xl border moh-border moh-bg shadow-lg"
+      ref="menuEl"
+      class="fixed z-[2000] w-56 overflow-y-auto rounded-xl border moh-border moh-bg shadow-lg"
+      :style="menuStyle"
       role="menu"
       aria-label="Select folder"
     >
@@ -80,6 +83,7 @@
         </button>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 
@@ -98,6 +102,7 @@ const emit = defineEmits<{
 
 const open = ref(false)
 const wrapEl = ref<HTMLElement | null>(null)
+const { style: menuStyle, menuEl, place: placeMenu, reset: resetMenu } = useMenuPosition()
 
 const folderLabel = computed(() => {
   if (props.activeSlug === null) return 'All'
@@ -119,11 +124,28 @@ function onNewFolder() {
 watch(
   open,
   (isOpen, _old, onCleanup) => {
-    if (!import.meta.client || !isOpen) return
+    if (!import.meta.client) return
+    if (!isOpen) {
+      resetMenu()
+      return
+    }
+    const el = wrapEl.value
+    if (el) {
+      placeMenu(el, {
+        align: 'end',
+        menuWidth: 224,
+        menuHeight: 220,
+        maxHeight: 320,
+        gap: 8,
+        trackViewport: true,
+      })
+    }
     const onPointerDown = (e: PointerEvent) => {
-      const el = wrapEl.value
+      const wrap = wrapEl.value
+      const panel = menuEl.value
       const target = e.target as Node | null
-      if (!el || !target || el.contains(target)) return
+      if (!target) return
+      if (wrap?.contains(target) || panel?.contains(target)) return
       open.value = false
     }
     const onKeyDown = (e: KeyboardEvent) => {

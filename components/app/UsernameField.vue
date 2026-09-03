@@ -24,7 +24,7 @@
       />
       <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
         <AppLogoLoader v-if="status === 'checking'" :size="20" class="shrink-0" />
-        <Icon v-else-if="status === 'available' || status === 'same'" name="tabler:check" class="text-green-600" aria-hidden="true" />
+        <Icon v-else-if="status === 'available' || status === 'same'" name="tabler:check" class="text-[var(--moh-brass)]" aria-hidden="true" />
         <Icon v-else-if="invalid && (status === 'taken' || status === 'invalid')" name="tabler:x" class="text-red-600" aria-hidden="true" />
       </div>
     </div>
@@ -64,7 +64,7 @@ const atPrefixClass = computed(() => {
 })
 
 const helperToneClass = computed(() => {
-  if (props.status === 'available' || props.status === 'same') return 'text-green-700 dark:text-green-300'
+  if (props.status === 'available' || props.status === 'same') return 'text-[var(--moh-brass)]'
   if (invalid.value || props.status === 'taken' || props.status === 'invalid') {
     return 'text-red-700 dark:text-red-300'
   }

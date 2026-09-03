@@ -33,7 +33,7 @@ export function needsOnboarding(user: OnboardingState | null | undefined): boole
 
 export function isOnboardingPageComplete(page: OnboardingPage, user: OnboardingState | null | undefined): boolean {
   if (!user) return false
-  if (page === 1) return Boolean(user.usernameIsSet && user.heardAboutUs)
+  if (page === 1) return Boolean(user.usernameIsSet)
   if (page === 2) return Array.isArray(user.interests) && user.interests.length >= 1
   return Boolean(user.birthdate && user.menOnlyConfirmed)
 }

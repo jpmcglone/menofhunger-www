@@ -2,6 +2,7 @@
   <div>
     <!-- Keep SSR/client first paint stable: loading bar tint can update after hydration via CSS vars. -->
     <NuxtLoadingIndicator color="var(--p-primary-color)" :height="4" />
+    <AppLayoutAuthBootOverlay />
     <NuxtLayout>
       <NuxtPage :key="`identity-${identityVersion}`" />
     </NuxtLayout>

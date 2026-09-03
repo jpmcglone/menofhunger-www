@@ -17,6 +17,12 @@ export interface PlaceOptions {
   margin?: number
   /** Gap between anchor and menu in px. Default 4. */
   gap?: number
+  /** Stretch the menu to the anchor's width (search, typeahead). */
+  matchAnchorWidth?: boolean
+  /** Cap height so long lists scroll instead of overflowing the viewport. */
+  maxHeight?: number
+  /** Reposition on resize/scroll until `reset()`. */
+  trackViewport?: boolean
 }
 
 /**
@@ -34,6 +40,19 @@ export function useMenuPosition() {
   const menuEl = ref<HTMLElement | null>(null)
   let lastAnchor: HTMLElement | null = null
   let lastOptions: PlaceOptions = {}
+  let tracking = false
+
+  function setTracking(on: boolean) {
+    if (!import.meta.client || on === tracking) return
+    tracking = on
+    if (on) {
+      window.addEventListener('resize', remeasure)
+      window.addEventListener('scroll', remeasure, true)
+    } else {
+      window.removeEventListener('resize', remeasure)
+      window.removeEventListener('scroll', remeasure, true)
+    }
+  }
 
   function compute(anchorEl: HTMLElement, opts: PlaceOptions) {
     const rect = anchorEl.getBoundingClientRect()
@@ -42,22 +61,34 @@ export function useMenuPosition() {
     const align: Align = opts.align ?? 'start'
 
     const measured = menuEl.value?.getBoundingClientRect()
-    const w = measured?.width || opts.menuWidth || 200
-    const h = measured?.height || opts.menuHeight || 200
+    const w = opts.matchAnchorWidth
+      ? rect.width
+      : (measured?.width || opts.menuWidth || 200)
+    const rawH = measured?.height || opts.menuHeight || 200
+    const spaceBelow = window.innerHeight - rect.bottom - gap - margin
+    const spaceAbove = rect.top - gap - margin
+    const openDown = spaceBelow >= Math.min(rawH, opts.maxHeight ?? rawH) || spaceBelow >= spaceAbove
+    const available = Math.max(96, openDown ? spaceBelow : spaceAbove)
+    const maxH = opts.maxHeight != null ? Math.min(opts.maxHeight, available) : available
+    const h = Math.min(rawH, maxH)
 
     let left = align === 'end' ? rect.right - w : rect.left
     if (left + w > window.innerWidth - margin) left = window.innerWidth - w - margin
     if (left < margin) left = margin
 
-    let top = rect.bottom + gap
-    if (top + h > window.innerHeight - margin) {
-      const flipped = rect.top - h - gap
-      if (flipped >= margin) top = flipped
-      else top = Math.max(margin, window.innerHeight - h - margin)
-    }
+    let top = openDown ? rect.bottom + gap : rect.top - h - gap
     if (top < margin) top = margin
+    if (top + h > window.innerHeight - margin) {
+      top = Math.max(margin, window.innerHeight - h - margin)
+    }
 
-    style.value = { top: `${Math.floor(top)}px`, left: `${Math.floor(left)}px` }
+    const next: CSSProperties = {
+      top: `${Math.floor(top)}px`,
+      left: `${Math.floor(left)}px`,
+    }
+    if (opts.matchAnchorWidth) next.width = `${Math.floor(w)}px`
+    if (opts.maxHeight != null) next.maxHeight = `${Math.floor(maxH)}px`
+    style.value = next
   }
 
   /**
@@ -69,6 +100,7 @@ export function useMenuPosition() {
     if (!import.meta.client) return
     lastAnchor = anchorEl
     lastOptions = opts
+    setTracking(Boolean(opts.trackViewport))
     compute(anchorEl, opts)
     nextTick(() => {
       if (!lastAnchor) return
@@ -84,6 +116,7 @@ export function useMenuPosition() {
   }
 
   function reset() {
+    setTracking(false)
     lastAnchor = null
     lastOptions = {}
     style.value = {}

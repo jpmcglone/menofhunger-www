@@ -22,6 +22,9 @@
   </ClientOnly>
 
   <AppOnboardingGate />
+  <AppFirstRunPhotoPrompt />
+  <AppFirstRunProfileSheet />
+  <AppAddEmailPrompt />
   <AppLocationPromptModal />
   <AppAnnouncementHost />
   <AppConfirmMount />
@@ -90,7 +93,17 @@ defineProps<{
 }>()
 
 const route = useRoute()
-const { isAuthed } = useAuth()
+const { isAuthed, user, didAttempt } = useAuth()
+const { consumeWelcomeQuery } = useFirstRunFlow()
+
+watch(
+  () => [didAttempt.value, user.value?.id, route.query.welcome] as const,
+  () => {
+    if (!didAttempt.value) return
+    consumeWelcomeQuery()
+  },
+  { immediate: true },
+)
 const { selectedSpaceId, currentSpace, members } = useSpaceLobby()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value && currentSpace.value))
 const radioChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)

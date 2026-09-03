@@ -15,15 +15,14 @@ const completeUser: OnboardingState = {
   birthdate: '1990-01-15',
   interests: ['strength_training'],
   menOnlyConfirmed: true,
-  heardAboutUs: 'friend',
 }
 
 describe('needsOnboarding', () => {
-  it('allows a user only after all required profile fields are complete', () => {
+  it('allows a user only after required profile fields are complete', () => {
     expect(needsOnboarding(completeUser)).toBe(false)
   })
 
-  it('does not re-gate a legacy member who never set how they heard', () => {
+  it('does not require how-you-heard to leave the gate', () => {
     expect(needsOnboarding({ ...completeUser, heardAboutUs: null })).toBe(false)
   })
 
@@ -42,9 +41,10 @@ describe('needsOnboarding', () => {
 })
 
 describe('onboarding pages', () => {
-  it('treats page 1 as incomplete until username and how-you-heard are set', () => {
-    expect(isOnboardingPageComplete(1, { usernameIsSet: true })).toBe(false)
-    expect(isOnboardingPageComplete(1, { usernameIsSet: true, heardAboutUs: 'google' })).toBe(true)
+  it('treats page 1 as complete once a username is set', () => {
+    expect(isOnboardingPageComplete(1, { usernameIsSet: false })).toBe(false)
+    expect(isOnboardingPageComplete(1, { usernameIsSet: true })).toBe(true)
+    expect(isOnboardingPageComplete(1, { usernameIsSet: true, heardAboutUs: null })).toBe(true)
   })
 
   it('lands on the first incomplete page', () => {
@@ -56,7 +56,6 @@ describe('onboarding pages', () => {
 
     expect(firstIncompleteOnboardingPage({
       usernameIsSet: true,
-      heardAboutUs: 'friend',
       interests: [],
       birthdate: null,
       menOnlyConfirmed: false,
@@ -64,7 +63,6 @@ describe('onboarding pages', () => {
 
     expect(firstIncompleteOnboardingPage({
       usernameIsSet: true,
-      heardAboutUs: 'friend',
       interests: ['strength_training'],
       birthdate: null,
       menOnlyConfirmed: false,
@@ -74,7 +72,6 @@ describe('onboarding pages', () => {
   it('skips a completed interests page when moving forward', () => {
     const user: OnboardingState = {
       usernameIsSet: true,
-      heardAboutUs: 'nxr',
       interests: ['strength_training'],
       birthdate: null,
       menOnlyConfirmed: false,
@@ -86,7 +83,6 @@ describe('onboarding pages', () => {
   it('does not treat the last page as done when arenas are still missing', () => {
     const user: OnboardingState = {
       usernameIsSet: true,
-      heardAboutUs: 'friend',
       interests: [],
       birthdate: '1990-01-15',
       menOnlyConfirmed: true,
@@ -109,33 +105,40 @@ describe('OnboardingGate pager', () => {
     expect(src).toMatch(/saveAccountPage/)
     expect(src).toMatch(/saveInterestsPage/)
     expect(src).toMatch(/saveDoorPage/)
-    expect(src).toMatch(/pending-edit-profile/)
-    expect(src).toMatch(/\/u\/\$\{encodeURIComponent\(username\)\}/)
+    expect(src).toMatch(/startAfterOnboarding/)
+    expect(src).toMatch(/navigateTo\('\/home'/)
+    expect(src).not.toMatch(/pending-edit-profile/)
+    expect(src).not.toMatch(/\/u\/\$\{encodeURIComponent\(username\)\}/)
     expect(src).toMatch(/await me\(\)/)
     expect(src).toMatch(/isOnboardingFullyComplete/)
     expect(src).toMatch(/firstIncompleteOnboardingPage/)
   })
 
-  it('collects optional display name and shows required errors after submit', () => {
-    expect(src).toMatch(/Display name/)
-    expect(src).toMatch(/attempted/)
-    expect(src).toMatch(/showUsernameError/)
-    expect(src).toMatch(/showEmailError/)
-    expect(src).toMatch(/:disabled="submitting"/)
-    expect(src).toMatch(/clearNuxtData/)
-    expect(src).not.toMatch(/phone/i)
+  it('keeps page 1 username-first and defers email, referral, and attribution', () => {
+    const page1 = src.slice(src.indexOf('v-show="page === 1"'), src.indexOf('v-show="page === 2"'))
+    const page3 = src.slice(src.indexOf('v-show="page === 3"'), src.indexOf('v-if="error"'))
+    expect(page1).toMatch(/Username/)
+    expect(page1).toMatch(/Add display name \(optional\)/)
+    expect(page1).not.toMatch(/v-model="email"/)
+    expect(page1).not.toMatch(/referralCodeInput/)
+    expect(page1).not.toMatch(/heardAboutUs/)
+    expect(page3).toMatch(/v-model="email"/)
+    expect(page3).toMatch(/referralCodeInput/)
+    expect(page3).toMatch(/heardAboutUs/)
+    expect(page3).toMatch(/\(optional\)/)
+    expect(src).not.toMatch(/How you heard about us is required/)
   })
 
-  it('refreshes the signed-in user before opening edit profile after onboarding', () => {
-    const profilePage = readFileSync(resolve(process.cwd(), 'pages/u/[username].vue'), 'utf8')
-    const refetchAt = profilePage.indexOf('if (isSelf.value) await refetchMe()')
-    const refreshAt = profilePage.indexOf('await refreshNuxtData(`public-profile:${normalizedUsername.value}`)')
-    const openAt = profilePage.indexOf('editOpen.value = true')
-    expect(refetchAt).toBeGreaterThan(-1)
-    expect(refreshAt).toBeGreaterThan(-1)
-    expect(openAt).toBeGreaterThan(-1)
-    expect(refetchAt).toBeLessThan(openAt)
-    expect(refreshAt).toBeLessThan(openAt)
+  it('collapses extra arenas behind More and uses a black Continue that disables when invalid', () => {
+    expect(src).toMatch(/PRIMARY_ARENA_KEYS/)
+    expect(src).toMatch(/More arenas/)
+    expect(src).toMatch(/:disabled="submitting \|\| !canContinue"/)
+    expect(src).toMatch(/!bg-black/)
+    expect(src).toMatch(/Must be 18\+ to join/)
+    expect(src).toMatch(/MM \/ DD \/ YYYY/)
+    expect(src).toMatch(/showEmailError/)
+    expect(src).toMatch(/if \(referralError\.value\) throw/)
+    expect(src).not.toMatch(/phone/i)
   })
 
   it('declares location preview state before the immediate user watch that fetches it', () => {

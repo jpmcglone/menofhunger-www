@@ -30,8 +30,11 @@ export function useAnnouncements() {
   let viewed = false
   let presented = false
 
+  const { blocked: firstRunBlocked } = useFirstRunFlow()
+
   const locationPromptOpen = computed(() => {
     if (!didAttempt.value) return false
+    if (firstRunBlocked.value) return false
     const u = user.value
     if (!u?.id) return false
     if (needsOnboarding(u)) return false
@@ -40,6 +43,7 @@ export function useAnnouncements() {
 
   const blockedByGate = computed(() => {
     if (user.value && needsOnboarding(user.value)) return true
+    if (firstRunBlocked.value) return true
     return locationPromptOpen.value
   })
 

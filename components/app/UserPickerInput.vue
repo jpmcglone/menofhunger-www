@@ -19,8 +19,10 @@ const emit = defineEmits<{
 const { apiFetchData } = useApiClient()
 
 const inputEl = ref<HTMLInputElement | null>(null)
+const wrapEl = ref<HTMLElement | null>(null)
 const query = ref('')
 const open = ref(false)
+const { style: menuStyle, menuEl, place: placeMenu, reset: resetMenu } = useMenuPosition()
 const results = ref<FollowListUser[]>([])
 const highlightedIndex = ref(0)
 const isLoading = ref(false)
@@ -174,6 +176,27 @@ function onBlur() {
   setTimeout(() => { open.value = false }, 150)
 }
 
+function placePicker() {
+  const el = wrapEl.value
+  if (!el) return
+  placeMenu(el, {
+    matchAnchorWidth: true,
+    maxHeight: 288,
+    menuHeight: Math.max(120, results.value.length * 56),
+    gap: 6,
+    trackViewport: true,
+  })
+}
+
+watch(open, (isOpen) => {
+  if (isOpen) void nextTick(() => placePicker())
+  else resetMenu()
+})
+
+watch(results, () => {
+  if (open.value) void nextTick(() => placePicker())
+})
+
 function relationshipLabel(u: FollowListUser): string {
   const vf = Boolean(u.relationship?.viewerFollowsUser)
   const fv = Boolean(u.relationship?.userFollowsViewer)
@@ -212,8 +235,7 @@ function relationshipLabel(u: FollowListUser): string {
       </button>
     </div>
 
-    <!-- Search input -->
-    <div v-else class="relative">
+    <div v-else ref="wrapEl" class="relative">
       <div class="pointer-events-none absolute inset-y-0 left-3 flex items-center">
         <Icon
           v-if="isLoading"
@@ -245,11 +267,13 @@ function relationshipLabel(u: FollowListUser): string {
       />
     </div>
 
-    <!-- Dropdown -->
+    <Teleport to="body">
     <Transition name="moh-fade">
       <div
         v-if="open && !modelValue"
-        class="absolute z-50 mt-1.5 w-full border moh-border bg-white dark:bg-zinc-950 rounded-xl shadow-xl overflow-hidden"
+        ref="menuEl"
+        class="fixed z-[2000] overflow-y-auto border moh-border bg-white dark:bg-zinc-950 rounded-xl shadow-xl"
+        :style="menuStyle"
       >
         <button
           v-for="(u, i) in results"
@@ -299,5 +323,6 @@ function relationshipLabel(u: FollowListUser): string {
         </button>
       </div>
     </Transition>
+    </Teleport>
   </div>
 </template>
