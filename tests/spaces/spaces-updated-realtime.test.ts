@@ -156,6 +156,7 @@ describe('spaces updated realtime wiring (structural)', () => {
     const spacePage = await read('pages/s/[username].vue')
     const player = await read('components/SpaceYouTubePlayer.vue')
     expect(spacePage).toMatch(/aspect-video/)
+    expect(spacePage).toMatch(/pinWatchPlayerForChat/)
     expect(spacePage).toMatch(/flex items-center justify-center/)
     expect(player).toMatch(/isFollowingPlayback/)
     expect(player).toMatch(/isReplacedOwner \? 'bottom-12' : 'bottom-3'/)

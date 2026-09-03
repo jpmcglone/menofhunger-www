@@ -149,4 +149,16 @@ describe('space layout', () => {
     expect(page).toMatch(/No video set yet/)
     expect(page).toMatch(/shrink-0 pb-2/)
   })
+
+  it('keeps the watch-party player visible while mobile chat is open', () => {
+    const page = readFromRepo('pages/s/[username].vue')
+    const overlay = readFromRepo('components/app/SpaceLiveChatOverlay.vue')
+    const overlays = readFromRepo('components/app/layout/GlobalOverlays.vue')
+    const player = readFromRepo('components/SpaceYouTubePlayer.vue')
+    expect(page).toMatch(/pinWatchPlayerForChat/)
+    expect(page).toMatch(/z-\[10001\]/)
+    expect(overlays).toMatch(/keep-watch-player-visible/)
+    expect(overlay).toMatch(/56\.25vw/)
+    expect(player).toMatch(/if \(spaceChatSheetOpen\.value\) return/)
+  })
 })

@@ -16,6 +16,7 @@
         v-model="radioChatSheetOpen"
         :space-name="radioChatStationName"
         :member-count="members.length"
+        :keep-watch-player-visible="keepWatchPlayerVisible"
       />
     </div>
   </ClientOnly>
@@ -81,17 +82,24 @@
 
 <script setup lang="ts">
 import { ClientOnly } from '#components'
+import { isViewingSpacePage } from '~/config/routes'
 
 defineProps<{
   /** When the right-rail live chat panel is visible, the mobile sheet overlay is suppressed. */
   showRadioChat: boolean
 }>()
 
+const route = useRoute()
 const { isAuthed } = useAuth()
 const { selectedSpaceId, currentSpace, members } = useSpaceLobby()
 const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
 const radioChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
 const radioChatStationName = computed(() => currentSpace.value?.title ?? 'Place')
+const keepWatchPlayerVisible = computed(() => {
+  const space = currentSpace.value
+  if (!space || space.mode !== 'WATCH_PARTY' || !space.watchPartyUrl) return false
+  return isViewingSpacePage(route.path, space.owner?.username)
+})
 
 const { allPositionedFloating } = useSpaceReactions()
 const lightbox = useImageLightbox()

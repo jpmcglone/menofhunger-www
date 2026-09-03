@@ -114,7 +114,13 @@
                  player's onMounted requestCurrentState fires while we're already in
                  the socket room. -->
             <template v-if="space?.mode === 'WATCH_PARTY' && space?.watchPartyUrl">
-              <div class="relative w-full max-h-full aspect-video">
+              <div
+                class="relative w-full max-h-full aspect-video"
+                :class="pinWatchPlayerForChat
+                  ? 'fixed left-0 right-0 z-[10001] max-h-none rounded-none'
+                  : ''"
+                :style="pinWatchPlayerForChat ? { top: 'var(--moh-safe-top, 0px)' } : undefined"
+              >
                 <ClientOnly>
                   <SpaceYouTubePlayer
                     :space="space"
@@ -259,6 +265,14 @@ const { confirm } = useAppConfirm()
 const { capture } = usePostHog()
 const viewedSpaceId = ref<string | null>(null)
 const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
+/** Keep the YouTube iframe on-screen when mobile chat opens — iOS pauses covered players. */
+const pinWatchPlayerForChat = computed(() =>
+  Boolean(
+    spaceChatSheetOpen.value
+    && space.value?.mode === 'WATCH_PARTY'
+    && space.value?.watchPartyUrl,
+  ),
+)
 const { user, ensureLoaded, isVerified, isPremium } = useAuth()
 const isAuthed = computed(() => Boolean(user.value?.id))
 const canJoinSpace = computed(() => isAuthed.value && (isVerified.value || isPremium.value))

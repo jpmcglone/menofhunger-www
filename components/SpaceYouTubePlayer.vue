@@ -157,6 +157,7 @@ const { watchPartyState, sendControl, subscribe, unsubscribe, requestCurrentStat
 const presence = usePresence()
 const { isSocketConnected } = presence
 const { selectedSpaceId } = useSpaceLobby()
+const spaceChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
 
 const isOwner = computed(() => Boolean(user.value?.id && props.space?.owner?.id && user.value.id === props.space.owner.id))
 const canRequestRoomState = computed(() => props.roomReady !== false)
@@ -316,6 +317,7 @@ function unlockViewerPlayback() {
 }
 
 function onPageBecameVisible() {
+  if (spaceChatSheetOpen.value) return
   if (typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') return
   if (!isFollowingPlayback.value || !ytPlayer || !playerReady.value) return
   const state = watchPartyState.value

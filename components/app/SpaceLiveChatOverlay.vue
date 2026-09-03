@@ -2,8 +2,11 @@
   <Teleport to="body">
     <section
       v-if="visible"
-      class="fixed inset-0 z-[9999] flex flex-col moh-bg moh-text"
-      style="z-index: 9999;"
+      class="fixed inset-x-0 bottom-0 z-[9999] flex flex-col moh-bg moh-text"
+      :class="keepWatchPlayerVisible ? '' : 'inset-0'"
+      :style="keepWatchPlayerVisible
+        ? { top: 'calc(var(--moh-safe-top, 0px) + 56.25vw)', zIndex: 9999 }
+        : { top: 0, zIndex: 9999 }"
       role="dialog"
       aria-modal="true"
       :aria-labelledby="titleId"
@@ -12,7 +15,10 @@
       <div class="absolute inset-0 moh-bg moh-texture moh-vignette pointer-events-none" aria-hidden="true" />
 
       <header
-        class="relative z-10 shrink-0 border-b moh-border-subtle px-4 pb-2 pt-[calc(0.625rem+var(--moh-safe-top,0px))] flex items-center justify-between gap-3"
+        class="relative z-10 shrink-0 border-b moh-border-subtle px-4 pb-2 flex items-center justify-between gap-3"
+        :class="keepWatchPlayerVisible
+          ? 'pt-2.5'
+          : 'pt-[calc(0.625rem+var(--moh-safe-top,0px))]'"
       >
         <AppLiveChatHeader
           :title="spaceName"
@@ -45,6 +51,7 @@ const props = defineProps<{
   modelValue: boolean
   spaceName: string
   memberCount?: number | null
+  keepWatchPlayerVisible?: boolean
 }>()
 
 const emit = defineEmits<{
