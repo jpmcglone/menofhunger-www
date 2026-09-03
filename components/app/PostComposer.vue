@@ -305,47 +305,13 @@
               {{ postCharCount }}/{{ postMaxLen }}
             </div>
             <!-- Group audience picker: only when composing a top-level post outside a group wall -->
-            <div
+            <AppComposerGroupAudiencePicker
               v-if="mode === 'create' && !replyTo && !quotedPost && !communityGroupId && isAuthed && myGroups.length > 0"
-              class="relative"
-            >
-              <Button
-                text
-                rounded
-                severity="secondary"
-                class="moh-focus"
-                :aria-label="selectedGroupName ? `Posting to ${selectedGroupName}` : 'Post to a group'"
-                v-tooltip.bottom="selectedGroupName ? `Posting to: ${selectedGroupName}` : 'Post to a group'"
-                :style="selectedGroupId ? { color: 'var(--moh-brass)' } : {}"
-                @click="groupPickerOpen = !groupPickerOpen"
-              >
-                <template #icon>
-                  <Icon name="tabler:users-group" aria-hidden="true" />
-                </template>
-              </Button>
-              <div
-                v-if="groupPickerOpen"
-                class="absolute bottom-full right-0 mb-2 z-50 w-56 rounded-xl border moh-border moh-surface shadow-lg py-1"
-              >
-                <button
-                  class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-                  :class="!selectedGroupId ? 'font-semibold text-[var(--moh-brass)]' : ''"
-                  @click="selectGroup(null)"
-                >
-                  All followers
-                </button>
-                <div class="border-t moh-border my-1" />
-                <button
-                  v-for="g in myGroups"
-                  :key="g.id"
-                  class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
-                  :class="selectedGroupId === g.id ? 'font-semibold text-[var(--moh-brass)]' : ''"
-                  @click="selectGroup(g.id)"
-                >
-                  {{ g.name }}
-                </button>
-              </div>
-            </div>
+              :groups="myGroups"
+              :model-value="selectedGroupId"
+              @update:model-value="selectGroup"
+              @open="loadMyGroups"
+            />
 
             <!-- Schedule button: visible to verified+, premium-gated via CTA -->
             <div
@@ -755,7 +721,6 @@ const { getUserStatus, setMyStatus, editMyStatus, clearMyStatus } = usePresence(
 // Group audience picker — lets viewer target one of their groups when composing from the main feed.
 // Only used when `props.communityGroupId` is not already set (group-wall context already pins it).
 const selectedGroupId = ref<string | null>(null)
-const groupPickerOpen = ref(false)
 const { groups: myGroups, load: loadSharedMyGroups } = useMyGroups()
 const effectiveGroupId = computed(() => selectedGroupId.value ?? props.communityGroupId ?? null)
 
@@ -768,20 +733,9 @@ async function loadMyGroups() {
   }
 }
 
-watch(groupPickerOpen, (open) => {
-  if (open) void loadMyGroups()
-})
-
 function selectGroup(id: string | null) {
   selectedGroupId.value = id
-  groupPickerOpen.value = false
 }
-
-const selectedGroupName = computed(() => {
-  const gid = selectedGroupId.value
-  if (!gid) return null
-  return myGroups.value.find((g) => g.id === gid)?.name ?? null
-})
 const toast = useAppToast()
 
 // Shared count of the user's scheduled posts — drives the badge on the
