@@ -14,8 +14,22 @@
         <slot>{{ VOICE.feed.emptyBody }}</slot>
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
-        <Button size="small" :label="VOICE.actions.explore" severity="secondary" rounded @click="$emit('explore')" />
-        <Button size="small" :label="VOICE.actions.findPeople" severity="secondary" rounded @click="$emit('who-to-follow')" />
+        <Button
+          as="NuxtLink"
+          to="/explore"
+          size="small"
+          :label="VOICE.actions.explore"
+          severity="secondary"
+          rounded
+        />
+        <Button
+          as="NuxtLink"
+          to="/who-to-follow"
+          size="small"
+          :label="VOICE.actions.findPeople"
+          severity="secondary"
+          rounded
+        />
       </div>
     </div>
   </div>
@@ -23,9 +37,4 @@
 
 <script setup lang="ts">
 import { VOICE } from '~/config/voice'
-
-defineEmits<{
-  (e: 'explore'): void
-  (e: 'who-to-follow'): void
-}>()
 </script>

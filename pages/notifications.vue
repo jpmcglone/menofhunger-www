@@ -44,11 +44,35 @@
     </div>
 
     <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
+      <div v-if="fetchError" class="px-3 py-6 sm:px-4 sm:py-8">
+        <AppInlineAlert severity="danger">
+          <AppUserErrorMessage :error="fetchError" fallback="Could not load notifications." />
+        </AppInlineAlert>
+        <div class="mt-4 flex justify-center">
+          <Button
+            label="Try again"
+            severity="secondary"
+            rounded
+            :loading="loading"
+            :disabled="loading"
+            @click="retryFetch"
+          />
+        </div>
+      </div>
       <div
-        v-if="!notifications.length"
-        class="px-3 py-6 sm:px-4 sm:py-8 text-center text-[13px] sm:text-sm text-gray-500 dark:text-gray-400"
+        v-else-if="!notifications.length"
+        class="px-3 py-6 sm:px-4 sm:py-8 text-center"
       >
-        No notifications yet.
+        <p class="text-[13px] sm:text-sm text-gray-500 dark:text-gray-400">
+          No notifications yet.
+        </p>
+        <p class="mt-1 text-[13px] sm:text-sm moh-text-muted">
+          {{ VOICE.feed.emptyBody }}
+        </p>
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <Button as="NuxtLink" to="/explore" :label="VOICE.actions.explore" severity="secondary" rounded size="small" />
+          <Button as="NuxtLink" to="/who-to-follow" :label="VOICE.actions.findPeople" severity="secondary" rounded size="small" />
+        </div>
       </div>
       <div v-else class="relative z-0">
         <TransitionGroup name="notifications-list" tag="div" class="moh-divide transition-opacity duration-150">
@@ -140,6 +164,7 @@
 
 <script setup lang="ts">
 import type { Notification, NotificationKind } from '~/types/api'
+import { VOICE } from '~/config/voice'
 import { closeBrowserNotificationsForHref } from '~/utils/browser-notifications'
 
 /** Kinds that render as a full AppPostRow when `notification.post` is hydrated. */
@@ -177,6 +202,7 @@ const {
   nextCursor,
   loading,
   hasFetched,
+  fetchError,
   pendingRefresh,
   activeKind,
   unreadByKind,
@@ -189,6 +215,10 @@ const {
   decrementUnreadKind,
   itemHref,
 } = useNotifications()
+
+async function retryFetch() {
+  await fetchList({ forceRefresh: true })
+}
 const { isPageAccount } = useAuth()
 const notificationsTabReturnGate = useTabReturnRefreshGate('notifications')
 

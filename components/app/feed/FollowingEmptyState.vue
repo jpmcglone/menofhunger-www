@@ -104,7 +104,6 @@ defineProps<{
 }>()
 
 defineEmits<{
-  (e: 'find-people'): void
   (e: 'post'): void
   (e: 'check-in'): void
 }>()

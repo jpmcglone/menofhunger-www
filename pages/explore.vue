@@ -308,10 +308,34 @@
 
       <!-- No (valid) search query: discovery sections -->
       <template v-else>
-        <div v-if="discoverError" class="px-4">
+        <div v-if="discoverError" class="px-4 space-y-3">
           <AppInlineAlert severity="warning">
             {{ discoverError }}
           </AppInlineAlert>
+          <div class="flex justify-center">
+            <Button
+              label="Try again"
+              severity="secondary"
+              rounded
+              :loading="discoverLoading"
+              :disabled="discoverLoading"
+              @click="refreshDiscover"
+            />
+          </div>
+        </div>
+
+        <div v-else-if="showDiscoverEmpty" class="px-4">
+          <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center">
+            <p class="text-sm font-medium moh-text">
+              Nothing to discover right now.
+            </p>
+            <p class="mt-1 text-sm moh-text-muted">
+              Search for people, groups, and posts above.
+            </p>
+            <div v-if="!isAuthed" class="mt-4 flex justify-center">
+              <Button as="NuxtLink" to="/login" label="Join now" rounded />
+            </div>
+          </div>
         </div>
 
         <section v-if="shouldRenderCheckinSection" class="space-y-3">
@@ -656,13 +680,13 @@
             </AppHorizontalScroller>
           </section>
 
-          <p class="px-4 text-sm moh-text-muted">
+          <p v-if="!showDiscoverEmpty" class="px-4 text-sm moh-text-muted">
             Or type in the search bar to search.
           </p>
         </template>
 
         <!-- Logged out: groups also appear in “Community groups” above; this is the search hint only -->
-        <template v-else>
+        <template v-else-if="!showDiscoverEmpty">
           <div class="px-4">
             <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 p-4">
               <p class="text-sm moh-text-muted">
@@ -735,6 +759,7 @@ import {
 import { getApiErrorMessage } from '~/utils/api-error'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 import { pickCheckinPrompt } from '~/utils/checkin-prompts'
+import type { PostsCallback } from '~/composables/usePresence'
 
 definePageMeta({
   layout: 'app',
@@ -772,10 +797,20 @@ function onGlobalKeyDown(e: KeyboardEvent) {
   searchInputRef.value?.focus()
 }
 
-// ─── Realtime: presence online feed ─────────────────────────────────────────
+// ─── Realtime: presence online feed + post rows ─────────────────────────────
 // Patch onlineUsers in place while the page is open so "Online now" stays
-// current without a manual refresh.
-const { addOnlineFeedCallback, removeOnlineFeedCallback, subscribeOnlineFeed, unsubscribeOnlineFeed } = usePresence()
+// current without a manual refresh. Post subscriptions keep search / topic /
+// category / discover rows live via the global post cache.
+const {
+  addOnlineFeedCallback,
+  removeOnlineFeedCallback,
+  subscribeOnlineFeed,
+  unsubscribeOnlineFeed,
+  addPostsCallback,
+  removePostsCallback,
+  subscribePosts,
+  unsubscribePosts,
+} = usePresence()
 
 const onlineFeedCb = {
   onOnline: (payload: { userId: string; user?: FollowListUser }) => {
@@ -797,6 +832,8 @@ onMounted(() => {
   document.addEventListener('visibilitychange', onVisibilityChange)
   addOnlineFeedCallback(onlineFeedCb)
   subscribeOnlineFeed()
+  addPostsCallback(explorePostsCb)
+  syncExplorePostSubscriptions()
 })
 
 onBeforeUnmount(() => {
@@ -804,6 +841,13 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)
   removeOnlineFeedCallback(onlineFeedCb)
   unsubscribeOnlineFeed()
+  removePostsCallback(explorePostsCb)
+  if (exploreSubscribedPostIds.value.length) unsubscribePosts(exploreSubscribedPostIds.value)
+  searchFetchSeq++
+  if (debounceTimer != null) {
+    clearTimeout(debounceTimer)
+    debounceTimer = null
+  }
 })
 
 function normalizeQueryParam(v: unknown): string {
@@ -1024,6 +1068,32 @@ const followedTopicsUi = computed(() => {
   return mapped.slice(0, 20)
 })
 
+const showVerifyCheckinCta = computed(
+  () => didAttempt.value && isAuthed.value && !isPageAccount.value && !canAccessCheckins.value,
+)
+
+const discoverHasContent = computed(() => {
+  if (discoverInitialLoading.value) return true
+  if (shouldRenderCheckinSection.value) return true
+  if (showVerifyCheckinCta.value) return true
+  if (followedTopicsUi.value.length > 0) return true
+  if (trendingHashtags.value.length > 0) return true
+  if (exploreGroups.value.length > 0) return true
+  if (displayCategories.value.length > 0) return true
+  if (featuredPosts.value.length > 0) return true
+  if (trendingArticles.value.length > 0) return true
+  if (onlineUsers.value.length > 0) return true
+  if (recommendedUsers.value.length > 0) return true
+  if (trendingPosts.value.length > 0) return true
+  if (newestUsers.value.length > 0) return true
+  if (!isAuthed.value && topUsers.value.length > 0) return true
+  return false
+})
+
+const showDiscoverEmpty = computed(
+  () => discoverHasLoadedOnce.value && !discoverInitialLoading.value && !discoverError.value && !discoverHasContent.value,
+)
+
 const editInterestsOpen = ref(false)
 const editInterestsInput = ref<string[]>([])
 const editInterestsSaving = ref(false)
@@ -1241,6 +1311,63 @@ function onSearchPostEdited(payload: { id: string; post: import('~/types/api').F
   posts.value = posts.value.map((p) => (p.id === pid ? payload.post : p))
 }
 
+function chainIdsForPost(post: FeedPost): string[] {
+  const ids: string[] = []
+  let p: FeedPost | undefined = post
+  while (p?.id) {
+    ids.push(p.id)
+    p = p.parent
+  }
+  return ids
+}
+
+function removePostFromExploreLists(postId: string) {
+  const pid = String(postId ?? '').trim()
+  if (!pid) return
+  posts.value = posts.value.filter((p) => p.id !== pid)
+  topicPosts.value = topicPosts.value.filter((p) => p.id !== pid)
+  categoryPosts.value = categoryPosts.value.filter((p) => p.id !== pid)
+  featuredPosts.value = featuredPosts.value.filter((p) => p.id !== pid)
+  trendingPosts.value = trendingPosts.value.filter((p) => p.id !== pid)
+}
+
+const exploreSubscribedPostIds = ref<string[]>([])
+
+const explorePostsCb: PostsCallback = {
+  onLiveUpdated: (payload) => {
+    const postId = String(payload?.postId ?? '').trim()
+    if (!postId) return
+    if (payload?.patch?.deletedAt) {
+      removePostFromExploreLists(postId)
+    }
+  },
+}
+
+function collectExplorePostIds(): string[] {
+  const ids = new Set<string>()
+  for (const p of [
+    ...posts.value,
+    ...topicPosts.value,
+    ...categoryPosts.value,
+    ...featuredPosts.value,
+    ...trendingPosts.value,
+  ]) {
+    for (const id of chainIdsForPost(p)) ids.add(id)
+  }
+  return [...ids]
+}
+
+function syncExplorePostSubscriptions() {
+  const next = collectExplorePostIds()
+  const prevSet = new Set(exploreSubscribedPostIds.value)
+  const nextSet = new Set(next)
+  const toSub = next.filter((id) => !prevSet.has(id))
+  const toUnsub = exploreSubscribedPostIds.value.filter((id) => !nextSet.has(id))
+  if (toUnsub.length) unsubscribePosts(toUnsub)
+  if (toSub.length) subscribePosts(toSub)
+  exploreSubscribedPostIds.value = next
+}
+
 async function fetchPage(params: { append: boolean }) {
   const seq = ++searchFetchSeq
   const q = searchQueryTrimmed.value
@@ -1348,14 +1475,6 @@ watch(searchQuery, () => {
   if (trimmed !== fromRoute) scheduleDebouncedSearch()
 })
 
-onBeforeUnmount(() => {
-  searchFetchSeq++
-  if (debounceTimer != null) {
-    clearTimeout(debounceTimer)
-    debounceTimer = null
-  }
-})
-
 // Topic feed (uses API endpoint specifically for topics)
 const topicPosts = ref<FeedPost[]>([])
 const topicNextCursor = ref<string | null>(null)
@@ -1382,6 +1501,12 @@ const categoryLoadingMore = ref(false)
 const categoryError = ref<string | null>(null)
 
 const categoryHasMore = computed(() => categoryNextCursor.value !== null)
+
+watch(
+  [posts, topicPosts, categoryPosts, featuredPosts, trendingPosts],
+  () => syncExplorePostSubscriptions(),
+  { deep: true },
+)
 
 const activeCategoryLabel = computed(() => {
   const key = activeCategory.value

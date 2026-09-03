@@ -197,14 +197,11 @@
               v-if="initialFeedResolved && showFollowingEmptyState"
               :following-count="followingCount"
               :show-checkin-cta="showCheckinPromptBar"
-              @find-people="navigateTo('/explore')"
               @post="homeComposerRef?.focus()"
               @check-in="openCheckinComposer"
             />
             <AppFeedAllEmptyState
               v-else-if="initialFeedResolved && (showAllEmptyState || showForYouEmptyState)"
-              @explore="navigateTo('/explore')"
-              @who-to-follow="navigateTo('/who-to-follow')"
             />
 
             <div ref="feedVirtualListContainerEl" class="relative mt-3">

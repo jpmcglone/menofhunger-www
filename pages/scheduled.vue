@@ -15,10 +15,14 @@
       <!-- Empty state -->
       <div v-else-if="items.length === 0 && !loading" class="moh-gutter-x py-8 text-center">
         <Icon name="tabler:calendar-time" class="text-3xl moh-text-muted mb-2" aria-hidden="true" />
-        <p class="text-sm moh-text-muted">No scheduled posts yet.</p>
-        <p class="text-xs moh-text-muted mt-1">
-          Use the <Icon name="tabler:calendar-time" class="inline text-sm" aria-hidden="true" /> button in the composer to schedule a post.
-        </p>
+        <p class="text-sm moh-text-muted">Nothing scheduled yet.</p>
+        <div class="mt-4 flex justify-center">
+          <Button
+            :label="VOICE.actions.post"
+            rounded
+            @click="openScheduleComposer"
+          />
+        </div>
       </div>
 
       <!-- List — each row owns its own border-b moh-border -->
@@ -68,11 +72,18 @@
 
 <script setup lang="ts">
 import type { ScheduledPost } from '~/types/api'
+import { VOICE } from '~/config/voice'
+import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 
 definePageMeta({ layout: 'app', middleware: 'premium', ssr: false })
 usePageSeo({ title: 'Scheduled Posts' })
 
 const confirm = useAppConfirm()
+const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
+
+function openScheduleComposer() {
+  openComposer?.()
+}
 
 const { items, nextCursor, loading, error, loadMore, deleteScheduled, patchItem } = useScheduledPosts()
 

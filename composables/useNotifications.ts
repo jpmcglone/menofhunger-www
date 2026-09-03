@@ -1,4 +1,5 @@
 import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup, NotificationKind } from '~/types/api'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 /** Mirrors PRIMARY_NOTIFICATION_KINDS on the API side. */
 const PRIMARY_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'checkin_post', 'status_update', 'follow', 'boost', 'repost'])
@@ -43,6 +44,8 @@ export function useNotifications() {
   // True once the first fetch has completed (success or error). Used to distinguish
   // "never fetched yet" (show loader) from "fetched and empty" (show empty state).
   const hasFetched = useState<boolean>(`${stateKey}:hasFetched`, () => false)
+  /** Set when the latest inbox fetch failed; cleared on the next successful fetch. */
+  const fetchError = useState<string | null>(`${stateKey}:fetchError`, () => null)
   const isNotificationsPage = computed(() => route.path === '/notifications')
 
   function notificationIsReply(n: Notification): boolean {
@@ -245,6 +248,7 @@ export function useNotifications() {
 
     const run = async (): Promise<GetNotificationsResponse['pagination'] | undefined> => {
       loading.value = true
+      if (!cursor) fetchError.value = null
       try {
         const q = new URLSearchParams()
         if (limit) q.set('limit', String(limit))
@@ -262,6 +266,7 @@ export function useNotifications() {
           notifications.value = list
         }
         nextCursor.value = pagination?.nextCursor ?? null
+        if (!cursor) fetchError.value = null
         return pagination
       } catch (e: unknown) {
         // Fire-and-forget callers (`void fetchList()`) must not surface an unhandled
@@ -271,6 +276,9 @@ export function useNotifications() {
           ?? (e as { response?: { status?: number } })?.response?.status
         if (status !== 401 && import.meta.dev) {
           console.warn('[notifications] fetchList failed', e)
+        }
+        if (!cursor) {
+          fetchError.value = getApiErrorMessage(e) || 'Could not load notifications.'
         }
         return undefined
       } finally {
@@ -956,6 +964,7 @@ export function useNotifications() {
     nextCursor,
     loading,
     hasFetched,
+    fetchError,
     pendingRefresh,
     activeKind,
     unreadByKind,
