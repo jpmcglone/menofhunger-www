@@ -168,6 +168,8 @@ describe('spaces updated realtime wiring (structural)', () => {
     expect(player).toMatch(/prepareWatchPartyIframe/)
     expect(player).toMatch(/accelerometer; autoplay/)
     expect(player).toMatch(/pageshow/)
+    expect(player).toMatch(/shouldCorrectPlayingPosition/)
+    expect(player).toMatch(/if \(isYtPlaying\(\)\) return/)
     expect(player).toMatch(/:deep\(iframe\)/)
   })
 })

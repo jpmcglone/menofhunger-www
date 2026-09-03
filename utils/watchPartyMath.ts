@@ -42,9 +42,30 @@ export function expectedPlaybackTime(from: {
   return from.currentTime + elapsedSec * (from.playbackRate || 1)
 }
 
+export const VIEWER_DRIFT_TOLERANCE_S = 5
+/** iPhone Safari: seekTo pauses the iframe and playVideo from a socket often cannot resume. */
+export const IOS_PLAYING_DRIFT_TOLERANCE_S = 15
+export const IOS_REMOTE_SEEK_THRESHOLD_S = 4
+export const REMOTE_SEEK_THRESHOLD_S = 1.25
+
 /** True when `actualTime` is far enough from the expected timeline to count as a seek. */
-export function isSeekJump(expectedTime: number, actualTime: number, thresholdSec = 1.25): boolean {
+export function isSeekJump(expectedTime: number, actualTime: number, thresholdSec = REMOTE_SEEK_THRESHOLD_S): boolean {
   return Math.abs(actualTime - expectedTime) > thresholdSec
+}
+
+/** Whether a playing viewer should seek. iOS skips small corrections so 10s host ticks do not pause the video. */
+export function shouldCorrectPlayingPosition(opts: {
+  iosWebKit: boolean
+  hasSyncedInitially: boolean
+  isPlaying: boolean
+  drift: number
+  remoteSeek: boolean
+}): boolean {
+  if (!opts.hasSyncedInitially || !opts.isPlaying) return true
+  if (opts.iosWebKit) {
+    return opts.remoteSeek || opts.drift > IOS_PLAYING_DRIFT_TOLERANCE_S
+  }
+  return opts.remoteSeek || opts.drift > VIEWER_DRIFT_TOLERANCE_S
 }
 
 /**

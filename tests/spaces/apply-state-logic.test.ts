@@ -8,10 +8,8 @@
  */
 
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { extractVideoId, driftAdjustedTime } from '~/utils/watchPartyMath'
+import { extractVideoId, driftAdjustedTime, shouldCorrectPlayingPosition } from '~/utils/watchPartyMath'
 import type { WatchPartyState } from '~/types/api'
-
-const VIEWER_DRIFT_TOLERANCE_S = 5
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -35,11 +33,19 @@ function shouldSeek(opts: {
   hasSyncedInitially: boolean
   state: WatchPartyState
   playerCurrentTime: number
+  iosWebKit?: boolean
+  remoteSeek?: boolean
 }): boolean {
   const { hasSyncedInitially, state, playerCurrentTime } = opts
   const adjusted = driftAdjustedTime(state)
   const drift = Math.abs(playerCurrentTime - adjusted)
-  return !hasSyncedInitially || !state.isPlaying || drift > VIEWER_DRIFT_TOLERANCE_S
+  return shouldCorrectPlayingPosition({
+    iosWebKit: Boolean(opts.iosWebKit),
+    hasSyncedInitially,
+    isPlaying: state.isPlaying,
+    drift,
+    remoteSeek: Boolean(opts.remoteSeek),
+  })
 }
 
 /**
@@ -115,6 +121,26 @@ describe('shouldSeek decision', () => {
     // adjusted = 0 + (3000-1000)/1000*2 = 0 + 4 = 4; player at 4.5 → drift = 0.5 < 5
     const state = makeState({ isPlaying: true, currentTime: 0, updatedAt: 1000, playbackRate: 2 })
     expect(shouldSeek({ hasSyncedInitially: true, state, playerCurrentTime: 4.5 })).toBe(false)
+  })
+
+  it('does not seek iOS on a routine 10s host tick (small playing drift)', () => {
+    vi.setSystemTime(2000)
+    const state = makeState({ isPlaying: true, currentTime: 10, updatedAt: 1000, playbackRate: 1 })
+    // adjusted = 11; player at 18 → drift = 7, over desktop 5s but under iOS 15s
+    expect(shouldSeek({ hasSyncedInitially: true, state, playerCurrentTime: 18, iosWebKit: true })).toBe(false)
+  })
+
+  it('seeks iOS when playing drift is huge or the host scrubbed', () => {
+    vi.setSystemTime(2000)
+    const state = makeState({ isPlaying: true, currentTime: 10, updatedAt: 1000, playbackRate: 1 })
+    expect(shouldSeek({ hasSyncedInitially: true, state, playerCurrentTime: 40, iosWebKit: true })).toBe(true)
+    expect(shouldSeek({
+      hasSyncedInitially: true,
+      state,
+      playerCurrentTime: 11,
+      iosWebKit: true,
+      remoteSeek: true,
+    })).toBe(true)
   })
 })
 

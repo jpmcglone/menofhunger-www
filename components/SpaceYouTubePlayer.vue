@@ -138,7 +138,15 @@ function loadYouTubeAPIOnce(): Promise<void> {
 <script setup lang="ts">
 import type { Space, WatchPartyState } from '~/types/api'
 import { isIosWebKit } from '~/utils/ios-webkit'
-import { extractVideoId, driftAdjustedTime, expectedPlaybackTime, isSeekJump } from '~/utils/watchPartyMath'
+import {
+  extractVideoId,
+  driftAdjustedTime,
+  expectedPlaybackTime,
+  isSeekJump,
+  shouldCorrectPlayingPosition,
+  IOS_REMOTE_SEEK_THRESHOLD_S,
+  REMOTE_SEEK_THRESHOLD_S,
+} from '~/utils/watchPartyMath'
 
 const props = defineProps<{
   space: Space
@@ -148,8 +156,6 @@ const props = defineProps<{
 // ─── Sync configuration ────────────────────────────────────────────────────
 /** How often (ms) the owner broadcasts a position checkpoint while playing. */
 const OWNER_SYNC_INTERVAL_MS = 10_000
-/** Max drift (seconds) a viewer is allowed before being force-seeked to correct. */
-const VIEWER_DRIFT_TOLERANCE_S = 5
 // ────────────────────────────────────────────────────────────────────────────
 
 const { user } = useAuth()
@@ -269,6 +275,7 @@ function isYtPlaying(): boolean {
 
 function playAlongHost() {
   if (!ytPlayer) return
+  if (isYtPlaying()) return
   muteViewerForAutoplay()
   ytPlayer.playVideo?.()
   scheduleViewerGestureCheck()
@@ -285,7 +292,6 @@ function scheduleViewerGestureCheck() {
     }
     const blocked = !isYtPlaying()
     viewerNeedsGesture.value = blocked
-    if (blocked && iosWebKit) viewerPlaybackUnlocked.value = false
     if (!blocked) viewerPlaybackUnlocked.value = true
   }, 700)
 }
@@ -682,24 +688,36 @@ function applyState(state: WatchPartyState) {
     lastAppliedRemote != null &&
     Number.isFinite(remoteUpdatedAt) &&
     remoteUpdatedAt > 0 &&
-    isSeekJump(expectedPlaybackTime(lastAppliedRemote, remoteUpdatedAt), state.currentTime)
+    isSeekJump(
+      expectedPlaybackTime(lastAppliedRemote, remoteUpdatedAt),
+      state.currentTime,
+      iosWebKit ? IOS_REMOTE_SEEK_THRESHOLD_S : REMOTE_SEEK_THRESHOLD_S,
+    )
 
   // Seek rules:
   //  • First sync ever — always seek (avoids flashing from 0:00).
   //  • Pause event   — always seek to the EXACT pause timestamp (user requirement).
   //  • Owner scrub   — always seek (Live DVR / VOD seek-while-playing).
   //  • Playing       — only seek when drift exceeds tolerance to avoid micro-stutters.
-  const shouldSeek =
-    !hasSyncedInitially ||
-    !state.isPlaying ||
-    remoteSeek ||
-    drift > VIEWER_DRIFT_TOLERANCE_S
+  //  • iPhone Safari — skip small playing corrections. seekTo pauses the iframe
+  //    and a socket playVideo() cannot resume it (looks like a pause every 10–30s).
+  const shouldSeek = shouldCorrectPlayingPosition({
+    iosWebKit,
+    hasSyncedInitially,
+    isPlaying: state.isPlaying,
+    drift,
+    remoteSeek,
+  })
 
   if (shouldSeek) {
     ytPlayer.seekTo?.(adjusted, true)
   }
 
-  ytPlayer.setPlaybackRate?.(state.playbackRate)
+  const nextRate = Number(state.playbackRate) || 1
+  const currentRate = Number(ytPlayer.getPlaybackRate?.() ?? 1)
+  if (Math.abs(currentRate - nextRate) > 0.01) {
+    ytPlayer.setPlaybackRate?.(nextRate)
+  }
 
   if (state.isPlaying) {
     playAlongHost()
