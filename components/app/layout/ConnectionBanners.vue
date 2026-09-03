@@ -8,7 +8,7 @@
     leave-to-class="opacity-0 -translate-y-2"
   >
     <div
-      v-if="isAuthed && (disconnectedDueToIdle || connectionBarJustConnected || (socketDisconnectedWhileVisible && !isSocketConnected))"
+      v-if="isAuthed && (disconnectedDueToIdle || connectionBarJustConnected || (wasSocketConnectedOnce && socketDisconnectedWhileVisible && !isSocketConnected))"
       :class="[
         'fixed left-0 right-0 top-0 z-50 flex items-center justify-center gap-3 border-b px-4 pb-2.5 pt-[calc(0.625rem+var(--moh-safe-top,0px))] text-center text-sm backdrop-blur-sm',
         connectionBarJustConnected
@@ -112,6 +112,7 @@ const { isAuthed } = useAppNav()
 const {
   disconnectedDueToIdle,
   socketDisconnectedWhileVisible,
+  wasSocketConnectedOnce,
   isSocketConnected,
   connectionBarJustConnected,
   isSocketConnecting,
@@ -179,12 +180,12 @@ onBeforeUnmount(() => {
 })
 
 function onScrollOrTapReconnect() {
-  const showBanner = disconnectedDueToIdle.value || (socketDisconnectedWhileVisible.value && !isSocketConnected.value)
+  const showBanner = disconnectedDueToIdle.value || (wasSocketConnectedOnce.value && socketDisconnectedWhileVisible.value && !isSocketConnected.value)
   if (showBanner && !isSocketConnecting.value) reconnect()
 }
 
 watch(
-  () => isAuthed.value && (disconnectedDueToIdle.value || (socketDisconnectedWhileVisible.value && !isSocketConnected.value)),
+  () => isAuthed.value && (disconnectedDueToIdle.value || (wasSocketConnectedOnce.value && socketDisconnectedWhileVisible.value && !isSocketConnected.value)),
   (shouldListen, _, onCleanup) => {
     if (!import.meta.client || !shouldListen) return
     const opts = { capture: true }

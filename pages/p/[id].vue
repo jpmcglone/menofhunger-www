@@ -1020,7 +1020,8 @@ const CATCH_UP_STORAGE_KEY = 'moh:catch-up-pill'
 const isMounted = ref(false)
 onMounted(() => { isMounted.value = true })
 
-const pillDismissed = ref(false)
+/** Hidden until localStorage is read — most busy-thread visits have already dismissed. */
+const pillDismissed = ref(true)
 
 interface CatchUpPillState { lastSeenCount: number; dismissedCount: number | null }
 function readPillState(pid: string): CatchUpPillState {
@@ -1059,6 +1060,8 @@ onMounted(() => {
     writePillState(postId.value, { lastSeenCount: count, dismissedCount: null })
   } else if (state.dismissedCount !== null) {
     pillDismissed.value = true
+  } else {
+    pillDismissed.value = false
   }
   writePillState(postId.value, { ...state, lastSeenCount: count })
 })

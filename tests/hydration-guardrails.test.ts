@@ -222,9 +222,9 @@ describe('hydration guardrails (structural)', () => {
     // Check-ins are verified-only; unverified authed users get a verify CTA instead of
     // the live hero. It must be inside <ClientOnly> so SSR emits nothing (no hydration
     // mismatch on the auth-derived `canAccessCheckins`).
-    expect(home).toMatch(/<ClientOnly>[\s\S]*?<AppFeedDailyCheckinHero[\s\S]*?v-if="isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
+    expect(home).toMatch(/<ClientOnly>[\s\S]*?<AppFeedDailyCheckinHero[\s\S]*?v-if="didAttempt && isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
     const explore = readFromRepo('pages/explore.vue')
-    expect(explore).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
+    expect(explore).toMatch(/<ClientOnly>[\s\S]*?v-if="didAttempt && isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
   })
 
   it('hides the home daily quote for operated pages without hydrating it', () => {
@@ -237,6 +237,13 @@ describe('hydration guardrails (structural)', () => {
     expect(home).toMatch(/<AppFeedHomeWelcomeCard[\s\S]*?v-if="isAuthed && !isPageAccount"/)
     expect(home).toContain('if (!isAuthed.value || isPageAccount.value) return false')
     expect(home).toMatch(/class="mx-3 my-3 sm:mx-4 sm:my-4 rounded-2xl border moh-border moh-surface/)
+  })
+
+  it('keeps the groups onboarding nudge hidden until membership is known', () => {
+    const home = readFromRepo('pages/home.vue')
+    expect(home).toContain('if (myGroupsCount.value === null) return false')
+    expect(home).toContain('return myGroupsCount.value === 0')
+    expect(home).not.toMatch(/watch\(myGroups/)
   })
 
   it('hides Check-ins notification chips for operated pages', () => {
@@ -546,6 +553,34 @@ describe('hydration guardrails (structural)', () => {
     expect(composable).toMatch(/type CaughtUpRecord = Record<string, number>/)
   })
 
+  it('keeps the only-me drafts card hidden until /auth/me has settled', () => {
+    const home = readFromRepo('pages/home.vue')
+    expect(home).toMatch(/didAttempt\.value && isAuthed\.value && !viewerIsVerified\.value/)
+    expect(home).toMatch(/v-if="didAttempt && isAuthed && !showOnlyMeHomeComposerCard"/)
+    expect(home).toMatch(/v-else-if="didAttempt && isAuthed"/)
+  })
+
+  it('keeps the ZIP location modal hidden until /auth/me has settled', () => {
+    const modal = readFromRepo('components/app/AppLocationPromptModal.vue')
+    expect(modal).toContain('if (!didAttempt.value) return false')
+    const announcements = readFromRepo('composables/useAnnouncements.ts')
+    expect(announcements).toContain('if (!didAttempt.value) return false')
+  })
+
+  it('does not raise the reconnect banner until the socket has connected once', () => {
+    const banners = readFromRepo('components/app/layout/ConnectionBanners.vue')
+    const core = readFromRepo('composables/presence/usePresenceSocketCore.ts')
+    expect(banners).toMatch(/wasSocketConnectedOnce && socketDisconnectedWhileVisible && !isSocketConnected/)
+    expect(core).toMatch(/wasSocketConnectedOnce\.value\s*\n\s*&& typeof document/)
+  })
+
+  it('keeps the radio bar hidden without a joined space object', () => {
+    const bar = readFromRepo('components/app/RadioBar.vue')
+    expect(bar).toMatch(/v-if="selectedSpaceId && displaySpace"/)
+    expect(bar).toMatch(/if \(!id\) lastSpace\.value = null/)
+    expect(bar).toMatch(/selectedSpaceId\.value \? \(currentSpace\.value \?\? lastSpace\.value\) : null/)
+  })
+
   it('gates the catch-me-up pill on isMounted so localStorage is never read during SSR', () => {
     // The pill reads/writes localStorage (lastSeenCount, dismissedCount). On the server that
     // call would throw. The v-if guard must include `isMounted` so the pill is invisible
@@ -554,6 +589,7 @@ describe('hydration guardrails (structural)', () => {
     expect(page).toMatch(/v-if="isMounted && showCatchMeUpPill/)
     expect(page).toMatch(/const isMounted = ref\(false\)/)
     expect(page).toMatch(/onMounted\(\(\)\s*=>\s*\{[\s\S]*?isMounted\.value\s*=\s*true/)
+    expect(page).toMatch(/const pillDismissed = ref\(true\)/)
   })
 
   it('keeps Discover more behind ClientOnly + IntersectionObserver (lazy, not SSR)', () => {

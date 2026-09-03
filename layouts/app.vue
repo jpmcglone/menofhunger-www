@@ -355,8 +355,8 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
 
 // ── Spaces / radio chrome ─────────────────────────────────────────────────────
 
-const { selectedSpaceId, loadLobbyCounts, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
-const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
+const { selectedSpaceId, currentSpace, loadLobbyCounts, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
+const radioHasStation = computed(() => Boolean(selectedSpaceId.value && currentSpace.value))
 const radioTeleportTarget = ref<string | null>(null)
 
 function syncRadioTeleportTarget() {
@@ -400,7 +400,7 @@ useSpacePlayPauseShortcut(radioHasStation)
 // Compact the left nav on space-hungry routes, and whenever the viewer is in a space
 // (live chat takes the right rail; icon-only nav frees the rest for the player/feed).
 const isSettingsOrAdminPage = computed(() => isSettingsPath(route.path) || isAdminPath(route.path))
-const navCompactMode = computed(() => _navCompactModeBase.value || Boolean(selectedSpaceId.value))
+const navCompactMode = computed(() => _navCompactModeBase.value || radioHasStation.value)
 
 // Global keyboard shortcuts
 const searchInputRef = ref<{ focus: () => void } | null>(null)
@@ -424,7 +424,7 @@ useKeyboardShortcutsHandler({
 // can see the conversation list, DM chat, and live chat simultaneously.
 // On /settings and /admin, also show the right rail when in a space so live chat remains visible.
 const isRightRailForcedHidden = computed(() => {
-  if (_isRightRailForcedHiddenBase.value && selectedSpaceId.value) {
+  if (_isRightRailForcedHiddenBase.value && radioHasStation.value) {
     if (isMessagesPage.value || isSettingsOrAdminPage.value) return false
   }
   return _isRightRailForcedHiddenBase.value

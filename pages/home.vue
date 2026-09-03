@@ -50,7 +50,7 @@
          (ClientOnly) so SSR stays empty and there's no hydration mismatch. -->
     <ClientOnly>
       <AppFeedDailyCheckinHero
-        v-if="isAuthed && !isPageAccount && !canAccessCheckins"
+        v-if="didAttempt && isAuthed && !isPageAccount && !canAccessCheckins"
         :prompt="checkinHeroPrompt"
         verify-cta
       />
@@ -76,7 +76,7 @@
          when the user hits Answer on the hero (or the checkin=1 deep-link). -->
     <div ref="homeComposerEl" class="min-h-0">
       <LazyAppPostComposer
-        v-if="isAuthed && !showOnlyMeHomeComposerCard"
+        v-if="didAttempt && isAuthed && !showOnlyMeHomeComposerCard"
         key="home-regular"
         ref="homeComposerRef"
         :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
@@ -85,7 +85,7 @@
         :register-unsaved-guard="false"
         @pending="onComposerPending"
       />
-      <div v-else-if="isAuthed" class="px-3 pt-3 sm:px-4 sm:pt-4">
+      <div v-else-if="didAttempt && isAuthed" class="px-3 pt-3 sm:px-4 sm:pt-4">
         <div class="rounded-2xl border moh-border moh-surface p-4 sm:p-5">
           <div class="flex items-start gap-3">
             <div class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg moh-btn-onlyme moh-btn-tone">
@@ -333,7 +333,7 @@ const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 provide(MOH_FOCUS_HOME_COMPOSER_KEY, () => {
   homeComposerRef.value?.focus()
 })
-const { isAuthed, user: authUser, isPageAccount, canAccessCheckins } = useAuth()
+const { isAuthed, user: authUser, isPageAccount, canAccessCheckins, didAttempt } = useAuth()
 const {
   inlineAnnouncement,
   presentInline,
@@ -343,20 +343,15 @@ const {
 watch(inlineAnnouncement, (item) => {
   if (item) presentInline()
 }, { immediate: true })
-const { groups: myGroups, load: loadMyGroups } = useMyGroups()
+const { load: loadMyGroups } = useMyGroups()
 const groupsNudgeDismissed = useCookie('moh.groups-nudge.dismissed', {
   default: () => '',
   path: '/',
   sameSite: 'lax',
   maxAge: 60 * 60 * 24 * 365,
 })
+/** null = membership unknown. Never treat the default empty list as “0 groups”. */
 const myGroupsCount = ref<number | null>(null)
-
-watch(myGroups, (groups) => {
-  if (isAuthed.value && !isPageAccount.value && !groupsNudgeDismissed.value) {
-    myGroupsCount.value = groups.length
-  }
-})
 
 async function refreshMyGroupsCount() {
   if (!isAuthed.value || isPageAccount.value || groupsNudgeDismissed.value) {
@@ -364,8 +359,12 @@ async function refreshMyGroupsCount() {
     return
   }
   try {
-    await loadMyGroups()
-    myGroupsCount.value = myGroups.value.length
+    const groups = await loadMyGroups()
+    if (!isAuthed.value || isPageAccount.value || groupsNudgeDismissed.value) {
+      myGroupsCount.value = null
+      return
+    }
+    myGroupsCount.value = groups.length
   } catch {
     myGroupsCount.value = null
   }
@@ -775,7 +774,9 @@ onBeforeUnmount(() => {
   }
 })
 
-const showOnlyMeHomeComposerCard = computed(() => isAuthed.value && !viewerIsVerified.value)
+const showOnlyMeHomeComposerCard = computed(
+  () => didAttempt.value && isAuthed.value && !viewerIsVerified.value,
+)
 
 watchEffect(() => {
   if (initialFeedResolved.value) return

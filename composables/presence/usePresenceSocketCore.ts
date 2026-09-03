@@ -216,10 +216,12 @@ export function usePresenceSocketCore(hooks: PresenceSocketHooks) {
         clearTimeout(connectionBarJustConnectedTimer)
         connectionBarJustConnectedTimer = null
       }
-      // Only raise the reconnecting banner when the user was actively viewing the app.
-      // A background disconnect (tab hidden / app backgrounded) should reconnect silently.
+      // Only raise the reconnecting banner after a real session drop — never on the
+      // first handshake (connect can fail/retry while the page is visible).
       socketDisconnectedWhileVisible.value =
-        typeof document !== 'undefined' && document.visibilityState === 'visible'
+        wasSocketConnectedOnce.value
+        && typeof document !== 'undefined'
+        && document.visibilityState === 'visible'
       hooks.onDisconnected()
       // For server-initiated disconnects (e.g. idle timeout), Socket.IO does NOT auto-reconnect.
       // Schedule a delayed reconnect unless this was an explicit logout.

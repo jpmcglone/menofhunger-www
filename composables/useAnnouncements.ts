@@ -18,7 +18,7 @@ export function getAnnouncementAnonymousId(): string | null {
 }
 
 export function useAnnouncements() {
-  const { user } = useAuth()
+  const { user, didAttempt } = useAuth()
   const { apiFetchData } = useApiClient()
   const current = useState<Announcement | null>('moh.announcements.current', () => null)
   const open = useState('moh.announcements.open', () => false)
@@ -31,6 +31,7 @@ export function useAnnouncements() {
   let presented = false
 
   const locationPromptOpen = computed(() => {
+    if (!didAttempt.value) return false
     const u = user.value
     if (!u?.id) return false
     if (needsOnboarding(u)) return false

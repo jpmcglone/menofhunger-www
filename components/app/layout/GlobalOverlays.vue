@@ -92,7 +92,7 @@ defineProps<{
 const route = useRoute()
 const { isAuthed } = useAuth()
 const { selectedSpaceId, currentSpace, members } = useSpaceLobby()
-const radioHasStation = computed(() => Boolean(selectedSpaceId.value))
+const radioHasStation = computed(() => Boolean(selectedSpaceId.value && currentSpace.value))
 const radioChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
 const radioChatStationName = computed(() => currentSpace.value?.title ?? 'Place')
 const keepWatchPlayerVisible = computed(() => {

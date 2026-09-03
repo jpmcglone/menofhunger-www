@@ -1,6 +1,6 @@
 <template>
   <!-- Own padding so layout containers can stay padding-free. -->
-  <div v-if="displaySpace" class="w-full px-3 py-1.5 sm:px-4 sm:py-2 relative">
+  <div v-if="selectedSpaceId && displaySpace" class="w-full px-3 py-1.5 sm:px-4 sm:py-2 relative">
     <!-- Subtle visualizer in background when playing -->
     <div
       v-if="isPlaying"
@@ -274,7 +274,8 @@ const isRightRailBreakpointUp = useHydratedMediaQuery('(min-width: 962px)')
 const isRightRailVisible = computed(() => Boolean(isRightRailBreakpointUp.value) && !isRightRailForcedHidden.value)
 const isRightRailChatVisible = computed(() => Boolean(selectedSpaceId.value) && isRightRailVisible.value)
 
-// Keep last space around briefly so layout-level leave transitions can animate smoothly.
+// Keep last space only while still joined — leftover lastSpace after leave
+// was flashing the bar on every later page.
 const lastSpace = ref<Space | null>(null)
 watch(
   () => currentSpace.value,
@@ -283,7 +284,12 @@ watch(
   },
   { immediate: true },
 )
-const displaySpace = computed(() => currentSpace.value ?? lastSpace.value)
+watch(selectedSpaceId, (id) => {
+  if (!id) lastSpace.value = null
+})
+const displaySpace = computed(() =>
+  selectedSpaceId.value ? (currentSpace.value ?? lastSpace.value) : null,
+)
 const barTitle = useSpaceDisplayTitle(displaySpace)
 const membersCount = computed(() => (displaySpace.value ? members.value.length : null))
 

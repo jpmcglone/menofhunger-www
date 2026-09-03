@@ -86,13 +86,14 @@ import type { LocationPreviewResponse, UserDto } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { needsOnboarding } from '~/utils/onboarding'
 
-const { user } = useAuth()
+const { user, didAttempt } = useAuth()
 const { apiFetchData } = useApiClient()
 
 // Show when logged in, fully onboarded, no location set, and user hasn't skipped.
-// The OnboardingGate takes precedence and includes a ZIP field — defer until that is done.
+// Wait for /auth/me — a partial user looks like “needs ZIP” and flashes the modal.
 const open = computed({
   get: () => {
+    if (!didAttempt.value) return false
     const u = user.value
     if (!u?.id) return false
     if (needsOnboarding(u)) return false

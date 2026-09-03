@@ -335,7 +335,7 @@
              verified-only, so we drive verification instead of the live card.
              Client-only (ClientOnly) so SSR stays empty and avoids hydration mismatch. -->
         <ClientOnly>
-          <section v-if="isAuthed && !isPageAccount && !canAccessCheckins" class="space-y-3">
+          <section v-if="didAttempt && isAuthed && !isPageAccount && !canAccessCheckins" class="space-y-3">
             <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
               Daily check-in
             </h2>
@@ -756,7 +756,7 @@ const colorMode = useColorMode()
 const router = useRouter()
 const { apiFetch, apiFetchData } = useApiClient()
 const { invalidate: invalidateMyGroups } = useMyGroups()
-const { isAuthed, user: authUser, patchUser, isPageAccount, canAccessCheckins } = useAuth()
+const { isAuthed, user: authUser, patchUser, isPageAccount, canAccessCheckins, didAttempt } = useAuth()
 const toast = useAppToast()
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 const { dayKey: etDayKey } = useEasternMidnightRollover()

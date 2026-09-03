@@ -48,7 +48,7 @@ describe('space layout', () => {
     expect(css).toMatch(/--moh-right-rail-chat-w:\s*24rem/)
     expect(rail).toMatch(/showRadioChat \? 'w-\[var\(--moh-right-rail-chat-w\)\]' : 'w-\[var\(--moh-right-rail-w\)\]'/)
     expect(layout).toMatch(/showRadioChat \? 'w-\[var\(--moh-right-rail-chat-w\)\]' : 'w-\[var\(--moh-right-rail-w\)\]'/)
-    expect(layout).toMatch(/_navCompactModeBase\.value \|\| Boolean\(selectedSpaceId\.value\)/)
+    expect(layout).toMatch(/_navCompactModeBase\.value \|\| radioHasStation\.value/)
   })
 
   it('keeps live-chat hover actions on the text line and media left-aligned', () => {

@@ -112,6 +112,8 @@ describe('home feed refresh guardrails', () => {
     expect(src).toContain('[isAuthed, isPageAccount, initialFeedResolved, groupsNudgeDismissed]')
     expect(src).toContain('if (feedResolved && !dismissed && myGroupsCount.value === null)')
     expect(src).not.toMatch(/watch\(isAuthed,[\s\S]*refreshMyGroupsCount/)
+    expect(src).not.toMatch(/watch\(myGroups/)
+    expect(src).toContain('myGroupsCount.value = groups.length')
   })
 
   it('refreshes from the canonical request key', () => {
