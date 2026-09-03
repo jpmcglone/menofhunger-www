@@ -65,10 +65,28 @@ function loadYouTubeAPIOnce(): Promise<void> {
     </div>
     <!-- Overlay for non-owners (and replaced owner tabs) to prevent click-through to YT -->
     <div
-      v-if="isFollowingPlayback && playerReady"
+      v-if="isFollowingPlayback && playerReady && !viewerNeedsGesture"
       class="absolute inset-0 z-10"
       aria-hidden="true"
     />
+    <button
+      v-if="isFollowingPlayback && playerReady && viewerNeedsGesture && !playerError"
+      type="button"
+      class="absolute inset-0 z-20 flex items-center justify-center bg-black/40"
+      aria-label="Watch with the room"
+      @click="unlockViewerPlayback"
+    >
+      <span class="rounded-full bg-black/75 px-4 py-2 text-sm font-medium text-white">
+        Watch with the room
+      </span>
+    </button>
+    <div
+      v-if="playerError"
+      class="absolute inset-0 z-30 flex items-center justify-center bg-black/70 px-4 text-center text-sm text-white"
+      role="alert"
+    >
+      {{ playerError }}
+    </div>
 
     <!-- Viewer controls: local volume only. Lifted when the replaced-owner banner is up. -->
     <div
@@ -119,6 +137,7 @@ function loadYouTubeAPIOnce(): Promise<void> {
 
 <script setup lang="ts">
 import type { Space, WatchPartyState } from '~/types/api'
+import { isIosWebKit } from '~/utils/ios-webkit'
 import { extractVideoId, driftAdjustedTime, expectedPlaybackTime, isSeekJump } from '~/utils/watchPartyMath'
 
 const props = defineProps<{
@@ -149,6 +168,7 @@ function wpLog(...args: unknown[]) {
 
 const playerContainerRef = ref<HTMLElement | null>(null)
 const playerReady = ref(false)
+const playerError = ref<string | null>(null)
 
 let ytPlayer: any = null
 let ignoreNextStateChange = false
@@ -184,6 +204,16 @@ const isFollowingPlayback = computed(() => !isOwner.value || isReplacedOwner.val
 // Local (per-viewer/per-tab) volume only — never synced to others.
 const viewerVolume = ref(100)
 const lastNonZeroVolume = ref(100)
+/** Followers start muted so playVideo() can beat the autoplay gate. */
+const viewerHasUnlockedAudio = ref(false)
+/** True after a tap (or a successful non-iOS play) so later host play/pause/seek/rate can apply. */
+const viewerPlaybackUnlocked = ref(false)
+/** Show the join overlay until iOS WebKit is unlocked, or desktop autoplay is blocked. */
+const viewerNeedsGesture = ref(false)
+let viewerGestureTimer: ReturnType<typeof setTimeout> | null = null
+/** Play during the unlock tap, then pause if the host is paused — iOS needs that play(). */
+let pendingUnlockPause = false
+const iosWebKit = import.meta.client && isIosWebKit()
 
 /** Owner asks server for authoritative state on reconnect/refresh and applies it once. */
 const pendingOwnerRestore = ref(false)
@@ -210,8 +240,107 @@ function onVolumeInput() {
   const vol = Math.max(0, Math.min(100, Number(viewerVolume.value) || 0))
   viewerVolume.value = vol
   ytPlayer.setVolume?.(vol)
-  ytPlayer.unMute?.()
-  if (vol > 1) lastNonZeroVolume.value = vol
+  if (vol > 1) {
+    lastNonZeroVolume.value = vol
+    viewerHasUnlockedAudio.value = true
+    if (!viewerPlaybackUnlocked.value) unlockViewerPlayback()
+    ytPlayer.unMute?.()
+    if (watchPartyState.value?.isPlaying) ytPlayer.playVideo?.()
+    viewerNeedsGesture.value = false
+  } else {
+    ytPlayer.mute?.()
+  }
+}
+
+function muteViewerForAutoplay() {
+  if (!ytPlayer || !isFollowingPlayback.value || viewerHasUnlockedAudio.value) return
+  ytPlayer.mute?.()
+  ytPlayer.setVolume?.(0)
+  viewerVolume.value = 0
+}
+
+function isYtPlaying(): boolean {
+  const playing = (window as any).YT?.PlayerState?.PLAYING
+  const buffering = (window as any).YT?.PlayerState?.BUFFERING
+  const st = ytPlayer?.getPlayerState?.()
+  return st === playing || st === buffering
+}
+
+function playAlongHost() {
+  if (!ytPlayer) return
+  muteViewerForAutoplay()
+  ytPlayer.playVideo?.()
+  scheduleViewerGestureCheck()
+}
+
+function scheduleViewerGestureCheck() {
+  if (!isFollowingPlayback.value) return
+  if (viewerGestureTimer) clearTimeout(viewerGestureTimer)
+  viewerGestureTimer = setTimeout(() => {
+    viewerGestureTimer = null
+    if (!ytPlayer || !watchPartyState.value?.isPlaying) {
+      if (!iosWebKit || viewerPlaybackUnlocked.value) viewerNeedsGesture.value = false
+      return
+    }
+    const blocked = !isYtPlaying()
+    viewerNeedsGesture.value = blocked
+    if (blocked && iosWebKit) viewerPlaybackUnlocked.value = false
+    if (!blocked) viewerPlaybackUnlocked.value = true
+  }, 700)
+}
+
+/**
+ * iPhone Safari only allows later play/pause/seek/rate after a tap on this page.
+ * Play during the tap (even if the host is paused), then snap to room state.
+ */
+function unlockViewerPlayback() {
+  if (!ytPlayer) return
+  prepareWatchPartyIframe()
+  muteViewerForAutoplay()
+  viewerPlaybackUnlocked.value = true
+  viewerNeedsGesture.value = false
+  hasSyncedInitially = false
+  const state = watchPartyState.value ?? pendingApply
+  if (state) {
+    const stateVideoId = extractVideoId(state.videoUrl)
+    if (stateVideoId) loadNewVideoIfNeeded(stateVideoId)
+    const adjusted = driftAdjustedTime(state)
+    if (isFinite(adjusted)) ytPlayer.seekTo?.(adjusted, true)
+    ytPlayer.setPlaybackRate?.(state.playbackRate || 1)
+    pendingUnlockPause = !state.isPlaying
+    pendingApply = state
+  } else {
+    pendingUnlockPause = true
+  }
+  ytPlayer.playVideo?.()
+}
+
+function onPageBecameVisible() {
+  if (typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') return
+  if (!isFollowingPlayback.value || !ytPlayer || !playerReady.value) return
+  const state = watchPartyState.value
+  if (!state) return
+  if (state.isPlaying && isYtPlaying()) return
+  if (iosWebKit) {
+    viewerPlaybackUnlocked.value = false
+    viewerNeedsGesture.value = true
+    pendingApply = state
+    return
+  }
+  applyState(state)
+}
+
+/** iPhone Safari blocks iframe media unless allow=autoplay is on the frame itself. */
+function prepareWatchPartyIframe() {
+  const iframe = playerContainerRef.value?.querySelector('iframe')
+  if (!iframe) return
+  iframe.setAttribute(
+    'allow',
+    'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+  )
+  iframe.setAttribute('allowfullscreen', '')
+  iframe.setAttribute('playsinline', '')
+  iframe.setAttribute('webkit-playsinline', '')
 }
 
 function toggleMute() {
@@ -219,8 +348,12 @@ function toggleMute() {
   if (viewerVolume.value <= 1) {
     const restored = Math.max(1, Math.min(100, Number(lastNonZeroVolume.value) || 35))
     viewerVolume.value = restored
+    viewerHasUnlockedAudio.value = true
+    if (!viewerPlaybackUnlocked.value) unlockViewerPlayback()
     ytPlayer.setVolume?.(restored)
     ytPlayer.unMute?.()
+    if (watchPartyState.value?.isPlaying) ytPlayer.playVideo?.()
+    viewerNeedsGesture.value = false
     return
   }
   if (viewerVolume.value > 1) lastNonZeroVolume.value = viewerVolume.value
@@ -283,6 +416,7 @@ function createPlayer(videoId: string, startSeconds = 0) {
   }
   wpLog('createPlayer:start', { videoId, startSeconds, isOwner: isOwner.value, roomReady: canRequestRoomState.value })
   currentVideoId = videoId
+  playerError.value = null
   const container = document.createElement('div')
   playerContainerRef.value.innerHTML = ''
   playerContainerRef.value.appendChild(container)
@@ -292,11 +426,15 @@ function createPlayer(videoId: string, startSeconds = 0) {
     videoId,
     width: '100%',
     height: '100%',
+    // Same privacy host as feed embeds — Safari ITP is harsher on youtube.com cookies.
+    host: 'https://www.youtube-nocookie.com',
     playerVars: {
       // Explicitly pin the JS API origin to this app. This is recommended by
       // YouTube and helps avoid cross-origin postMessage confusion.
       origin: window.location.origin,
       autoplay: 0,
+      // Viewers start muted so a later playVideo() from socket state is allowed.
+      mute: isFollowingPlayback.value ? 1 : 0,
       // Owner uses native YouTube controls; viewers get locked playback with
       // custom local-volume-only controls.
       controls: isOwner.value ? 1 : 0,
@@ -313,12 +451,14 @@ function createPlayer(videoId: string, startSeconds = 0) {
     },
     events: {
       onReady: () => {
+        prepareWatchPartyIframe()
         const iframe = playerContainerRef.value?.querySelector('iframe')
         wpLog('yt:onReady:dom', {
           containerWidth: playerContainerRef.value?.clientWidth ?? 0,
           containerHeight: playerContainerRef.value?.clientHeight ?? 0,
           hasIframe: Boolean(iframe),
           iframeSrc: iframe?.getAttribute('src') ?? null,
+          iframeAllow: iframe?.getAttribute('allow') ?? null,
         })
         wpLog('yt:onReady', {
           isOwner: isOwner.value,
@@ -327,8 +467,14 @@ function createPlayer(videoId: string, startSeconds = 0) {
           canRequestRoomState: canRequestRoomState.value,
         })
         playerReady.value = true
-        syncLocalVolumeFromPlayer()
+        if (isFollowingPlayback.value) muteViewerForAutoplay()
+        else syncLocalVolumeFromPlayer()
         const state = watchPartyState.value
+        if (isFollowingPlayback.value && iosWebKit && !viewerPlaybackUnlocked.value) {
+          pendingApply = state ?? pendingApply
+          viewerNeedsGesture.value = true
+          return
+        }
         if (isOwner.value) {
           // Apply restore if state arrived before the player was ready.
           // Always clear the flag so the sync timer can start emitting:
@@ -364,6 +510,16 @@ function createPlayer(videoId: string, startSeconds = 0) {
           return
         }
 
+        if (isFollowingPlayback.value && pendingUnlockPause && (st === YTState?.PLAYING || st === YTState?.BUFFERING)) {
+          pendingUnlockPause = false
+          ytPlayer.pauseVideo?.()
+          return
+        }
+        if (isFollowingPlayback.value && (st === YTState?.PLAYING || st === YTState?.BUFFERING)) {
+          viewerPlaybackUnlocked.value = true
+          viewerNeedsGesture.value = false
+        }
+
         // Only the active primary owner tab drives the room via emitCurrentState.
         if (!isOwner.value || isReplacedOwner.value || ignoreNextStateChange) {
           ignoreNextStateChange = false
@@ -383,6 +539,16 @@ function createPlayer(videoId: string, startSeconds = 0) {
       onPlaybackRateChange: () => {
         if (!isOwner.value) return
         emitCurrentState()
+      },
+      onError: (event: { data?: number }) => {
+        const code = Number(event?.data)
+        wpLog('yt:onError', { code, isOwner: isOwner.value })
+        playerError.value =
+          code === 101 || code === 150
+            ? 'YouTube blocked embedding for this video.'
+            : code === 100
+              ? 'YouTube could not find this video.'
+              : 'YouTube could not play this video.'
       },
     },
   })
@@ -482,6 +648,13 @@ function applyState(state: WatchPartyState) {
   // Replaced owner tabs should follow the room exactly like viewers.
   if (isOwner.value && !isReplacedOwner.value) return
 
+  // iPhone Safari: do not call play/seek until a tap unlocks the media session.
+  if (isFollowingPlayback.value && iosWebKit && !viewerPlaybackUnlocked.value) {
+    pendingApply = state
+    viewerNeedsGesture.value = true
+    return
+  }
+
   // If the video changed, swap the embed first. We stash the desired state in
   // pendingApply so onStateChange can re-apply it once the new video is ready
   // (CUED or BUFFERING), avoiding reliance on a follow-up WS tick.
@@ -527,8 +700,10 @@ function applyState(state: WatchPartyState) {
   ytPlayer.setPlaybackRate?.(state.playbackRate)
 
   if (state.isPlaying) {
-    ytPlayer.playVideo?.()
+    playAlongHost()
   } else {
+    pendingUnlockPause = false
+    if (!iosWebKit || viewerPlaybackUnlocked.value) viewerNeedsGesture.value = false
     ytPlayer.pauseVideo?.()
   }
 
@@ -746,10 +921,18 @@ onMounted(async () => {
 
   createPlayer(videoId, startSeconds)
   startOwnerSyncTimer()
+  document.addEventListener('visibilitychange', onPageBecameVisible)
+  window.addEventListener('pageshow', onPageBecameVisible)
 })
 
 onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onPageBecameVisible)
+  window.removeEventListener('pageshow', onPageBecameVisible)
   stopOwnerSyncTimer()
+  if (viewerGestureTimer) {
+    clearTimeout(viewerGestureTimer)
+    viewerGestureTimer = null
+  }
   if (ownerSyncChipDelayTimer) {
     clearTimeout(ownerSyncChipDelayTimer)
     ownerSyncChipDelayTimer = null
@@ -770,6 +953,11 @@ onBeforeUnmount(() => {
   isReplacedOwner.value = false
   pendingOwnerRestore.value = false
   ownerSyncChipVisible.value = false
+  viewerNeedsGesture.value = false
+  viewerPlaybackUnlocked.value = false
+  viewerHasUnlockedAudio.value = false
+  pendingUnlockPause = false
+  playerError.value = null
 })
 </script>
 
