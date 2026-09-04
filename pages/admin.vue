@@ -135,6 +135,7 @@ const adminSections: AdminSection[] = [
     title: 'AI & Monetization',
     items: [
       { key: 'marv', to: '/admin/marv', icon: 'tabler:robot', label: 'M.A.R.V.', description: 'AI helper config, usage, and cost' },
+      { key: 'intros', to: '/admin/intros', icon: 'tabler:user-plus', label: 'Intros', description: 'Weekly pairs to introduce by hand' },
       { key: 'affiliates', to: '/admin/affiliates', icon: 'tabler:coins', label: 'Referral Pilot', description: 'Manage pilot members and settle payouts' },
     ],
   },

@@ -2428,6 +2428,10 @@ export type AdminAnalytics = {
 /** Marv briefing of the already-loaded admin analytics snapshot. */
 export type AdminAnalyticsBrief = Contracts.AdminAnalyticsBriefDto
 
+export type AdminIntroPerson = Contracts.AdminIntroPersonDto
+export type AdminIntroPair = Contracts.AdminIntroPairDto
+export type AdminIntroBrief = Contracts.AdminIntroBriefDto
+
 export type LandingMenBreakdown = {
   /** premium OR premiumPlus. */
   premium: number

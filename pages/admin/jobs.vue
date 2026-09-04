@@ -284,6 +284,13 @@
               </label>
             </div>
             <Button
+              label="AI topic classify (empty public posts)"
+              severity="secondary"
+              :loading="runningKey === 'topicsAi'"
+              :disabled="Boolean(runningKey)"
+              @click="runJob('topicsAi', 'AI topic classify', '/admin/jobs/posts-topics-ai-classify', { runUntilEmpty: true, batchSize: 25 })"
+            />
+            <Button
               label="Normalize topic data (users + follows)"
               severity="secondary"
               :loading="runningKey === 'topicsNormalize'"
@@ -424,6 +431,7 @@ type JobKey =
   | 'dailyContentDedupe'
   | 'hashtagsCleanup'
   | 'topics'
+  | 'topicsAi'
   | 'topicsNormalize'
   | 'links'
   | 'popular'
