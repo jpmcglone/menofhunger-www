@@ -1598,6 +1598,8 @@ export type MarvinUsageEventDto = {
   inputTokens: number | null;
   outputTokens: number | null;
   cachedInputTokens: number | null;
+  /** Hidden reasoning tokens (subset of outputTokens). Null on older rows. */
+  reasoningTokens: number | null;
   modelUsed: string | null;
   estimatedCostUsd: number | null;
   responseId: string | null;
@@ -2412,8 +2414,8 @@ export type PostsCommentDeletedPayloadDto = {
  * Mirrors the shape of `messages:typing` / `spaces:typing` — no state persisted server-side.
  *
  * `status` is only set by server-side emitters (e.g. Marvin):
- *   - `'thinking'` — AI is processing (show purple "thinking" label)
- *   - `'replying'` — about to post the reply (show standard wave animation)
+ * Marv always emits `'replying'` while queued, thinking, or composing.
+ * `'thinking'` is legacy and should render the same.
  */
 export type PostsTypingPayloadDto = {
   postId: string;

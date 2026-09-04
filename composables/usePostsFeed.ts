@@ -228,7 +228,7 @@ export function postsFeedListQuery(opts: {
 export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   const { apiFetch, apiFetchData } = useApiClient()
   const middleScrollerEl = useMiddleScroller()
-  const { clearBumpsForPostIds, bumpCommentCount, getCommentCountBump } = usePostCountBumps()
+  const { clearBumpsForPostIds } = usePostCountBumps()
   const postCache = usePostCache()
   const loadingIndicator = useLoadingIndicator()
   const { user: me } = useAuth()
@@ -1002,11 +1002,8 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
     if (!pid) return
     const idx = posts.value.findIndex((p) => p.id === pid)
     if (idx < 0) return
-    // Only the feed that actually owns the parent should apply the optimistic bump.
-    // Background/kept-alive feeds can also receive reply-modal callbacks; if they
-    // bumped before confirming ownership, notification-embedded PostRows could
-    // double-count replies from unrelated feed handlers.
-    bumpCommentCount(pid)
+    // Insert the reply in the parent's slot immediately. Do not bump
+    // `commentCount` — the authoritative value arrives via `posts:liveUpdated`.
     const replyWithParent: FeedPost = { ...replyPost, parent: parentPostFromFeed }
     posts.value = [...posts.value.slice(0, idx), replyWithParent, ...posts.value.slice(idx + 1)]
     rememberLocalInsert({ kind: 'replaceParent', post: replyWithParent, parentId: pid })

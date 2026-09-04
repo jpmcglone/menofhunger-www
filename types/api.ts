@@ -1872,9 +1872,9 @@ export type WsPostsCommentDeletedPayload = {
  * Live "someone is replying to this post" indicator.
  * Emitted to `post:{postId}` room subscribers (excluding the sender) while a user is composing a reply.
  *
- * `status` is only set by server-side emitters (e.g. Marvin):
- *   - `'thinking'` — AI is processing (renders purple "thinking" label in AppTypingIndicator)
- *   - `'replying'` — about to post the reply (standard wave animation)
+ * `status` is only set by server-side emitters (e.g. Marvin). Marv always
+ * emits `'replying'` while queued, thinking, or composing — clients show the
+ * same "is replying" copy. `'thinking'` is legacy and should render the same.
  */
 export type WsPostsTypingPayload = {
   postId: string
@@ -3084,6 +3084,8 @@ export type MarvinUsageEventDto = {
   inputTokens: number | null
   outputTokens: number | null
   cachedInputTokens: number | null
+  /** Hidden reasoning tokens (subset of outputTokens). Null on older rows. */
+  reasoningTokens: number | null
   modelUsed: string | null
   estimatedCostUsd: number | null
   responseId: string | null

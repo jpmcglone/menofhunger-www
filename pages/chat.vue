@@ -537,13 +537,12 @@ const {
   typingUsersTotalCount,
 } = typingApi
 
-const marvTypingStatus = computed<'thinking' | 'typing' | null>(() => {
+const marvTypingStatus = computed<'typing' | null>(() => {
   const cid = marvConversationId.value
   if (!cid) return null
   const typingUsers = typingUsersByConversationId.value[cid] ?? []
   const marvEntry = typingUsers.find((u) => u.userId === marv.marvUserId.value)
-  if (!marvEntry) return null
-  return marvEntry.status === 'thinking' || marvEntry.status === 'typing' ? marvEntry.status : 'typing'
+  return marvEntry ? 'typing' : null
 })
 
 watch(

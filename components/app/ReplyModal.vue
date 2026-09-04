@@ -277,7 +277,6 @@ onUnmounted(() => {
   window.visualViewport?.removeEventListener('resize', updateReplySheetStyle)
 })
 
-const { bumpCommentCount } = usePostCountBumps()
 const pendingPosts = usePendingPostsManager()
 
 // ─── Typing presence ─────────────────────────────────────────────────────────
@@ -293,9 +292,6 @@ function onReplyPosted(payload: ReplyPostedPayload) {
   const cbs = replyModal.onReplyPostedCallbacks.value
   if (cbs.length) {
     for (const cb of cbs) cb(payload)
-  } else {
-    const parentId = parentPost.value?.id
-    if (parentId) bumpCommentCount(parentId)
   }
   replyModal.hide()
 }
@@ -350,8 +346,6 @@ function onReplyPending(payload: {
         const postedCbs = replyModal.onReplyPostedCallbacks.value
         if (postedCbs.length) {
           for (const cb of postedCbs) cb({ id: real.id, post: real })
-        } else {
-          bumpCommentCount(parent.id)
         }
       },
     })

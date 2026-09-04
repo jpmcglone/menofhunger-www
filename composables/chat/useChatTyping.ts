@@ -6,7 +6,7 @@ export type TypingUserDisplay = {
   userId: string
   username: string
   tier: 'organization' | 'premium' | 'verified' | 'normal'
-  /** For AI users (Marv): 'thinking' while the AI is processing, 'typing'/'replying' while composing. */
+  /** Server-set phase. Clients ignore the value and always show typing/replying. */
   status?: 'thinking' | 'typing' | 'replying'
 }
 

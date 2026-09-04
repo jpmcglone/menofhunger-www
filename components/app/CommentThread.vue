@@ -52,9 +52,8 @@ const { user } = useAuth()
 
 const previewReplies = ref<FeedPost[]>([])
 const previewLoading = ref(false)
-const localCountBump = ref(0)
 
-const totalReplyCount = computed(() => (props.comment.commentCount ?? 0) + localCountBump.value)
+const totalReplyCount = computed(() => props.comment.commentCount ?? 0)
 const visibleReplies = computed(() => previewReplies.value.slice(0, 1))
 const hiddenCount = computed(() => Math.max(0, totalReplyCount.value - visibleReplies.value.length))
 const hasMoreHidden = computed(() => hiddenCount.value > 0)
@@ -95,7 +94,6 @@ async function fetchPreviewReplies() {
 
 function onNestedDeleted(id: string) {
   previewReplies.value = previewReplies.value.filter((p) => p.id !== id)
-  if (localCountBump.value > 0) localCountBump.value -= 1
 }
 
 let unregisterReplyPosted: null | (() => void) = null
@@ -122,7 +120,6 @@ onMounted(() => {
     const p = payload.post
     if (!p?.id || p.parentId !== props.comment.id) return
 
-    localCountBump.value += 1
     previewReplies.value = [p, ...previewReplies.value.filter((x) => x.id !== p.id)].slice(0, 3)
   }
   unregisterReplyPosted = replyModal.registerOnReplyPosted(cb)
@@ -142,7 +139,6 @@ watch(
   () => props.comment.id,
   () => {
     previewReplies.value = []
-    localCountBump.value = 0
     void fetchPreviewReplies()
   },
 )
@@ -151,13 +147,8 @@ watch(
   () => props.comment.commentCount ?? 0,
   (next, prev) => {
     if (!import.meta.client) return
-    // When server-side commentCount catches up after a local reply bump, consume
-    // the optimistic delta so totals do not double-count (0 -> 2 flash).
-    if (localCountBump.value > 0 && next > prev) {
-      localCountBump.value = Math.max(0, localCountBump.value - (next - prev))
-    }
     if (prev <= 0 && next > 0) void fetchPreviewReplies()
-    if (next <= 0 && localCountBump.value <= 0) previewReplies.value = []
+    if (prev > 0 && next <= 0) previewReplies.value = []
   },
 )
 </script>

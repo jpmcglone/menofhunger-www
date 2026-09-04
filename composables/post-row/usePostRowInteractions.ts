@@ -5,7 +5,6 @@ import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { postShareText, postShareUrl as buildPostShareUrl } from '~/utils/acquisition-share'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
-import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 
 export type PostRowMenuItem = MenuItem & { iconName?: string }
@@ -104,7 +103,6 @@ export function usePostRowInteractions(opts: {
   )
 
   // ── Boost ──────────────────────────────────────────────────────────────────
-  const { getCommentCountBump } = usePostCountBumps()
   const boostEntry = computed(() => boostState.get(postView.value))
   const isBoosted = computed(() => boostEntry.value.viewerHasBoosted)
   const boostCount = computed(() => boostEntry.value.boostCount)
@@ -137,9 +135,7 @@ export function usePostRowInteractions(opts: {
 
   // ── Reply ──────────────────────────────────────────────────────────────────
   const { show: showReplyModal } = useReplyModal()
-  const displayedCommentCount = computed(
-    () => (postView.value.commentCount ?? 0) + getCommentCountBump(postView.value.id),
-  )
+  const displayedCommentCount = computed(() => postView.value.commentCount ?? 0)
 
   function onCommentClick() {
     if (!viewerCanInteract.value) return

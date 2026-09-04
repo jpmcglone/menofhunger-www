@@ -8,13 +8,13 @@
  * The matrix covered here:
  *
  *   1. usePostCountBumps — accumulates / clears optimistic comment bumps.
- *   2. usePostsFeed.addReply — bumps the DIRECT parent only (regression: must NOT
- *      bump the thread root for nested replies, which would double-count).
+ *   2. usePostsFeed.addReply — replaces the parent slot with the reply (parent
+ *      attached) and does NOT bump commentCount. Count is authoritative from
+ *      `posts:liveUpdated`.
  *   3. usePostsFeed.replaceOptimistic — preserves _localId for stable v-for keying
  *      (the optimistic→real swap must reuse the same component instance) and clears
  *      _pending flags.
- *   4. PostRow display formula — `post.commentCount + getCommentCountBump(id)` so
- *      we never display a negative or stale number.
+ *   4. PostRow display formula — `post.commentCount` only (no optimistic bump).
  *   5. Real-time commentCount patches via the post-cache plugin contract — server
  *      patch is authoritative; bump for that post id is cleared.
  *   6. Boost: optimistic toggle, in-flight last-intent-wins, ingest seeding,
@@ -156,15 +156,13 @@ function simulateInteraction(
   cache.patch(payload.postId, delta)
 }
 
-// PostRow's displayed comment count is `post.commentCount + bump`. We replicate the
-// formula here so the contract is asserted directly in the test.
+// PostRow's displayed comment count is the cached/authoritative `commentCount`.
 function displayedCommentCount(
   post: FeedPost,
   cache: ReturnType<typeof usePostCache>,
-  bumps: ReturnType<typeof usePostCountBumps>,
 ): number {
   const view = cache.get(post)
-  return (view.commentCount ?? 0) + bumps.getCommentCountBump(post.id)
+  return view.commentCount ?? 0
 }
 
 // ── 1. usePostCountBumps ───────────────────────────────────────────────────────
@@ -222,22 +220,20 @@ describe('usePostsFeed.addReply', () => {
     )
   }
 
-  it('bumps the DIRECT parent commentCount by exactly 1', async () => {
+  it('does not bump any commentCount when inserting a reply', async () => {
     const feed = await makeFeed()
     const bumps = await runInSetup(usePostCountBumps)
-    const parent = makePost({ id: uid('parent') })
+    const parent = makePost({ id: uid('parent'), commentCount: 0 })
     const reply = makePost({ id: uid('reply'), parentId: parent.id })
     feed.posts.value = [parent]
 
     feed.addReply(parent.id, reply, parent)
 
-    expect(bumps.getCommentCountBump(parent.id)).toBe(1)
+    expect(bumps.getCommentCountBump(parent.id)).toBe(0)
+    expect(feed.posts.value[0]!.commentCount ?? 0).toBe(0)
   })
 
-  it('does NOT bump the thread root when posting a nested reply (regression)', async () => {
-    // Setup: A is the root, B is a child of A, C is a child of B.
-    // Posting C must bump B's count by 1 — and ONLY B's, not A's.
-    // Before the fix, the frontend was bumping rootId too, so A would show 2.
+  it('does NOT bump the thread root when posting a nested reply', async () => {
     const feed = await makeFeed()
     const bumps = await runInSetup(usePostCountBumps)
     const root = makePost({ id: uid('A') })
@@ -247,8 +243,10 @@ describe('usePostsFeed.addReply', () => {
     feed.posts.value = [middle]
     feed.addReply(middle.id, grandchild, middle)
 
-    expect(bumps.getCommentCountBump(middle.id)).toBe(1)
+    expect(bumps.getCommentCountBump(middle.id)).toBe(0)
     expect(bumps.getCommentCountBump(root.id)).toBe(0)
+    expect(feed.posts.value[0]!.id).toBe(grandchild.id)
+    expect(feed.posts.value[0]!.parent?.id).toBe(middle.id)
   })
 
   it('does not bump when the parent is not in the current feed array', async () => {
@@ -356,35 +354,30 @@ describe('usePostsFeed.replaceOptimistic', () => {
 // ── 4. PostRow display formula — comment count never doubles ───────────────────
 
 describe('PostRow displayed comment count', () => {
-  it('adds the bump on top of the cached commentCount', async () => {
+  it('ignores leftover bumps — display is the cached commentCount only', async () => {
     const cache = await runInSetup(usePostCache)
     const bumps = await runInSetup(usePostCountBumps)
     const post = makePost({ id: uid(), commentCount: 0 })
 
     bumps.bumpCommentCount(post.id)
-    expect(displayedCommentCount(post, cache, bumps)).toBe(1)
-
     bumps.bumpCommentCount(post.id)
-    expect(displayedCommentCount(post, cache, bumps)).toBe(2)
+    expect(displayedCommentCount(post, cache)).toBe(0)
+    expect(bumps.getCommentCountBump(post.id)).toBe(2)
   })
 
-  it('drops the bump when authoritative server data arrives via the cache (no double-count)', async () => {
+  it('updates when authoritative server data arrives via the cache', async () => {
     const cache = await runInSetup(usePostCache)
     const bumps = await runInSetup(usePostCountBumps)
     const post = makePost({ id: uid(), commentCount: 0 })
 
-    // Optimistic: user posted a reply → bump goes to 1.
-    bumps.bumpCommentCount(post.id)
-    expect(displayedCommentCount(post, cache, bumps)).toBe(1)
+    expect(displayedCommentCount(post, cache)).toBe(0)
 
-    // Realtime arrives with authoritative count = 1. The plugin clears the bump
-    // and patches the cache. PostRow must show 1 (NOT 2).
     simulateLiveUpdated(
       cache,
       bumps,
       makeLiveUpdatedPayload(post.id, { commentCount: 1 }, 'comment_created'),
     )
-    expect(displayedCommentCount(post, cache, bumps)).toBe(1)
+    expect(displayedCommentCount(post, cache)).toBe(1)
   })
 
   it('handles delete-comment patches: the displayed count goes down', async () => {
@@ -397,7 +390,7 @@ describe('PostRow displayed comment count', () => {
       bumps,
       makeLiveUpdatedPayload(post.id, { commentCount: 2 }, 'comment_deleted'),
     )
-    expect(displayedCommentCount(post, cache, bumps)).toBe(2)
+    expect(displayedCommentCount(post, cache)).toBe(2)
   })
 })
 
@@ -607,29 +600,27 @@ describe('bookmark realtime updates', () => {
 // ── 8. End-to-end optimistic→server lifecycle for a comment ────────────────────
 
 describe('optimistic comment → server confirmation lifecycle', () => {
-  it('transitions: bump=1 → server says 1 → bump cleared, displayed stays at 1', async () => {
+  it('transitions: insert reply (count stays 0) → liveUpdated sets count to 1', async () => {
     const feed = await runInSetup(() => usePostsFeed({ enabled: computed(() => false) }))
     const bumps = await runInSetup(usePostCountBumps)
     const cache = await runInSetup(usePostCache)
     const parent = makePost({ id: uid('parent'), commentCount: 0 })
     feed.posts.value = [parent]
 
-    // 1. User posts a reply: addReply optimistically bumps the parent.
     const reply = makePost({ id: uid('reply'), parentId: parent.id })
     feed.addReply(parent.id, reply, parent)
-    expect(displayedCommentCount(parent, cache, bumps)).toBe(1)
+    expect(feed.posts.value[0]!.id).toBe(reply.id)
+    expect(feed.posts.value[0]!.parent?.id).toBe(parent.id)
+    expect(displayedCommentCount(parent, cache)).toBe(0)
+    expect(bumps.getCommentCountBump(parent.id)).toBe(0)
 
-    // 2. Server acks the create and emits a realtime patch with commentCount=1.
     simulateLiveUpdated(
       cache,
       bumps,
       makeLiveUpdatedPayload(parent.id, { commentCount: 1 }, 'comment_created'),
     )
 
-    // 3. The bump is cleared, the cache holds the authoritative count, the
-    //    displayed value stays at 1 — no double-count, no flicker.
-    expect(bumps.getCommentCountBump(parent.id)).toBe(0)
-    expect(displayedCommentCount(parent, cache, bumps)).toBe(1)
+    expect(displayedCommentCount(parent, cache)).toBe(1)
   })
 
   it('a delete-comment patch decrements the displayed count', async () => {
@@ -643,7 +634,7 @@ describe('optimistic comment → server confirmation lifecycle', () => {
       makeLiveUpdatedPayload(parent.id, { commentCount: 3 }, 'comment_deleted'),
     )
 
-    expect(displayedCommentCount(parent, cache, bumps)).toBe(3)
+    expect(displayedCommentCount(parent, cache)).toBe(3)
   })
 
   it('navigating to a fresh permalink wipes stale bumps via clearBumpsForPostIds', async () => {

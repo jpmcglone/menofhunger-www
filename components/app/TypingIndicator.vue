@@ -24,15 +24,12 @@
         >@{{ displayUsers[0]!.username }}</component>
 
         <template v-if="totalCount === 1">
-          <Transition name="moh-fade" mode="out-in">
-            <span v-if="displayUsers[0]!.status === 'thinking'" key="thinking">is <span class="text-violet-500 dark:text-violet-400">thinking</span>…</span>
-            <span v-else key="verb">is <span class="typing-wave" aria-hidden="true"><span
-              v-for="(char, i) in verbChars"
-              :key="i"
-              class="typing-wave-char"
-              :style="{ animationDelay: `${i * 60}ms` }"
-            >{{ char }}</span></span></span>
-          </Transition>
+          <span>is <span class="typing-wave" aria-hidden="true"><span
+            v-for="(char, i) in verbChars"
+            :key="i"
+            class="typing-wave-char"
+            :style="{ animationDelay: `${i * 60}ms` }"
+          >{{ char }}</span></span></span>
         </template>
 
         <template v-else>

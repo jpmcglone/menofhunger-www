@@ -55,12 +55,7 @@
           <div class="mt-0.5 flex items-center gap-1 text-xs truncate">
             <Transition name="moh-fade" mode="out-in">
               <span
-                v-if="typingStatus === 'thinking'"
-                key="thinking"
-                class="text-violet-500 dark:text-violet-400 font-medium"
-              >M.A.R.V. is thinking…</span>
-              <span
-                v-else-if="typingStatus === 'typing'"
+                v-if="typingStatus"
                 key="typing"
                 class="text-gray-500 dark:text-gray-400"
               >M.A.R.V. is typing…</span>
@@ -143,8 +138,8 @@ const props = defineProps({
   unreadCount: { type: Number, default: 0 },
   /** Last message body for the preview line. */
   lastMessagePreview: { type: [String, null] as PropType<string | null>, default: null },
-  /** 'thinking' while the AI is processing; 'typing' when composing the reply; null when idle. */
-  typingStatus: { type: [String, null] as PropType<'thinking' | 'typing' | null>, default: null },
+  /** Any non-null value means Marv is working on a reply — show "is typing". */
+  typingStatus: { type: [String, null] as PropType<'thinking' | 'typing' | 'replying' | null>, default: null },
   /** For testing/QA hooks. */
   dataTestid: { type: String, default: 'chat-marv-pinned-row' },
 })
