@@ -260,6 +260,9 @@ describe('hydration guardrails (structural)', () => {
   // History:
   //  Phase 1 – freeze fix used @tanstack/vue-virtual.
   //  Phase 2 – scroll fix replaced the virtualizer with a plain v-for list.
+  //  Current – measured windowing is restored, with useChatScroll as the sole
+  //            bottom-anchor owner. chat-virtual-list.test.ts covers bounded rows
+  //            and off-screen reply targets.
   //  Phase 3 – CSS containment (content-visibility with "auto") was tried for
   //             browser-native windowing but REJECTED: the 72px intrinsic-size
   //             estimate wildly underestimates media rows (actual 280-320px),
@@ -303,9 +306,6 @@ describe('hydration guardrails (structural)', () => {
     // content-visibility: auto is banned — see comment above.
     expect(list).not.toMatch(/content-visibility:\s*auto/)
     expect(list).not.toMatch(/contain-intrinsic-size/)
-    // Virtualizer is still gone.
-    expect(list).not.toMatch(/from '@tanstack\/vue-virtual'/)
-    expect(list).not.toMatch(/useVirtualizer\(/)
   })
 
   it('does not wrap the chat message list in TransitionGroup', () => {
