@@ -93,6 +93,7 @@
               <ChatThreadPane
                 v-if="selectedChatKey"
                 ref="threadPaneRef"
+                :at-bottom="atBottom"
                 :rendered-chat-key="renderedChatKey"
                 :pane-state="messagesPaneState"
                 :fade-ms="MESSAGES_PANE_FADE_MS"

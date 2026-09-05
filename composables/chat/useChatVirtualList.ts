@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/vue-virtual'
 import type { ChatListItem } from './useChatTimeFormatting'
 
 /** Variable-height windowing; measured sizes stay keyed to stable message IDs. */
-export function useChatVirtualList(items: Ref<ChatListItem[]>, scroller: Ref<HTMLElement | null>) {
+export function useChatVirtualList(items: Ref<ChatListItem[]>, scroller: Ref<HTMLElement | null>, atBottom?: Ref<boolean>) {
   const container = ref<HTMLElement | null>(null)
   const margin = ref(0)
   const updateMargin = () => {
@@ -22,6 +22,10 @@ export function useChatVirtualList(items: Ref<ChatListItem[]>, scroller: Ref<HTM
     overscan: 6,
     scrollMargin: margin.value,
   })))
+  // The chat scroll controller owns bottom anchoring. Letting both systems
+  // compensate the same measurement can move us off the bottom by one row.
+  virtualizer.value.shouldAdjustScrollPositionOnItemSizeChange = (item, _delta, instance) =>
+    !atBottom?.value && item.start < (instance.scrollOffset ?? 0)
   let observer: ResizeObserver | null = null
   watch([container, scroller], () => {
     observer?.disconnect()

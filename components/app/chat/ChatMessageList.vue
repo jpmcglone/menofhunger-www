@@ -115,6 +115,7 @@ const chatHideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hi
 const loadedMediaIds = reactive(new Set<string>())
 
 const props = defineProps({
+  atBottom: { type: Boolean, default: false },
   scrollerElement: { type: Object as PropType<HTMLElement | null>, default: null },
   messagesReady: { type: Boolean, required: true },
   messagesLoading: { type: Boolean, required: true },
@@ -146,7 +147,7 @@ const props = defineProps({
 const {
   container: virtualContainer, rows: virtualRows, totalSize: virtualTotalSize,
   stickyLabel: virtualStickyLabel, measure: measureVirtualRow, scrollToMessage,
-} = useChatVirtualList(toRef(props, 'messagesWithDividers'), toRef(props, 'scrollerElement'))
+} = useChatVirtualList(toRef(props, 'messagesWithDividers'), toRef(props, 'scrollerElement'), toRef(props, 'atBottom'))
 defineExpose({ scrollToMessage })
 
 const CLUSTER_GAP_MS = 5 * 60 * 1000

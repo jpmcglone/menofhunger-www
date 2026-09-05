@@ -11,6 +11,7 @@
       <ChatMessageList
         ref="chatMessageListRef"
         :scroller-element="scrollerEl"
+        :at-bottom="atBottom"
         :messages-ready="messagesReady"
         :messages-loading="messagesLoading"
         :messages-next-cursor="messagesNextCursor"
@@ -93,6 +94,7 @@ import type { TypingUserDisplay } from '~/composables/chat/useChatTyping'
 import ChatMessageList from './ChatMessageList.vue'
 
 defineProps<{
+  atBottom: boolean
   renderedChatKey: string | null
   paneState: 'loading' | 'fading' | 'ready'
   fadeMs: number
