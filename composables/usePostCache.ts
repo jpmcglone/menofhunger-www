@@ -25,10 +25,8 @@ export function usePostCache() {
    */
   function patch(id: string, delta: Partial<FeedPost>): void {
     if (!id) return
-    cache.value = {
-      ...cache.value,
-      [id]: { ...(cache.value[id] ?? {}), ...delta },
-    }
+    // Keep the reactive container stable so only readers of this ID rerun.
+    cache.value[id] = { ...(cache.value[id] ?? {}), ...delta }
   }
 
   /**
@@ -52,16 +50,7 @@ export function usePostCache() {
    */
   function clear(ids: string[]): void {
     if (!ids.length) return
-    const idSet = new Set(ids)
-    const next = { ...cache.value }
-    let changed = false
-    for (const id of Object.keys(next)) {
-      if (idSet.has(id)) {
-        delete next[id]
-        changed = true
-      }
-    }
-    if (changed) cache.value = next
+    for (const id of ids) delete cache.value[id]
   }
 
   /**
@@ -70,12 +59,10 @@ export function usePostCache() {
    * until a feed explicitly calls `clear()`.
    */
   function ingest(posts: FeedPost[]): void {
-    const next = { ...cache.value }
-    let changed = false
     for (const p of posts) {
-      if (!p?.id || next[p.id]) continue
+      if (!p?.id || cache.value[p.id]) continue
       // Seed only the fields the cache tracks as mutable.
-      next[p.id] = {
+      cache.value[p.id] = {
         body: p.body,
         editedAt: p.editedAt,
         editCount: p.editCount,
@@ -90,9 +77,7 @@ export function usePostCache() {
         repostCount: p.repostCount,
         viewerHasReposted: p.viewerHasReposted,
       }
-      changed = true
     }
-    if (changed) cache.value = next
   }
 
   return { cache, patch, get, clear, ingest }

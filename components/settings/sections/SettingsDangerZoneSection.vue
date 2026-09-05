@@ -17,6 +17,7 @@
         :loading="loggingOutEverywhere"
         @click="requestLogoutEverywhere"
       />
+      <AppInlineAlert v-if="logoutError" severity="danger">{{ logoutError }}</AppInlineAlert>
     </div>
 
     <!-- Delete account -->
@@ -129,6 +130,7 @@ const deleteConfirm = ref('')
 const reason = ref('')
 const details = ref('')
 const loggingOutEverywhere = ref(false)
+const logoutError = ref('')
 
 const requiredConfirmation = 'DELETE'
 
@@ -162,8 +164,11 @@ async function requestLogoutEverywhere() {
   })
   if (!ok) return
   loggingOutEverywhere.value = true
+  logoutError.value = ''
   try {
     await logoutEverywhere()
+  } catch {
+    logoutError.value = 'Could not confirm logout on all devices. Please try again.'
   } finally {
     loggingOutEverywhere.value = false
   }

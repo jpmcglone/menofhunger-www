@@ -9,7 +9,7 @@
     </div>
 
     <div
-      v-if="stickyDividerLabel"
+      v-if="virtualStickyLabel"
       class="sticky -top-4 z-10 flex items-center py-1.5 sm:py-2 pointer-events-none -mx-4 px-4 backdrop-blur-sm"
       style="position: sticky;"
     >
@@ -18,16 +18,19 @@
         class="mx-3 shrink-0 rounded-full px-2 text-[11px] font-semibold text-gray-500 shadow-sm dark:text-gray-400"
         style="background: color-mix(in srgb, var(--moh-surface-2) 72%, transparent); border: 1px solid var(--moh-border-subtle);"
       >
-        {{ stickyDividerLabel }}
+        {{ virtualStickyLabel }}
       </div>
       <div class="flex-1 border-t border-gray-200 dark:border-zinc-800" />
     </div>
 
-    <!-- Plain normal-flow list — no virtualizer, no CSS containment. -->
+    <div ref="virtualContainer" class="relative w-full" :style="{ height: `${virtualTotalSize}px` }">
     <div
-      v-for="(item, index) in messagesWithDividers"
-      :key="item.key"
-      class="moh-chat-row"
+      v-for="{ item, index, key, offset } in virtualRows"
+      :key="String(key)"
+      :ref="measureVirtualRow"
+      :data-index="index"
+      class="moh-chat-row absolute top-0 left-0 w-full"
+      :style="{ transform: `translateY(${offset}px)` }"
     >
       <ChatMessageListRow
         :item="item"
@@ -64,6 +67,8 @@
       />
     </div>
 
+    </div>
+
     <!-- Shared popovers (one instance, repositioned on open) -->
     <AppChatReactionPicker
       ref="reactionPickerRef"
@@ -93,7 +98,8 @@
 </template>
 
 <script setup lang="ts">
-import type { PropType } from 'vue'
+import { toRef, type PropType } from 'vue'
+import { useChatVirtualList } from '~/composables/chat/useChatVirtualList'
 import type { Message, MessageMedia, MessageUser, MessageReaction, MessageParticipant } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { shouldShowGroupIncomingAvatar } from '~/utils/chat-incoming-avatar'
@@ -109,6 +115,7 @@ const chatHideThumbs = computed(() => viewer.kind.value === 'media' && viewer.hi
 const loadedMediaIds = reactive(new Set<string>())
 
 const props = defineProps({
+  scrollerElement: { type: Object as PropType<HTMLElement | null>, default: null },
   messagesReady: { type: Boolean, required: true },
   messagesLoading: { type: Boolean, required: true },
   messagesNextCursor: { type: [String, null] as PropType<string | null>, required: true, default: null },
@@ -135,6 +142,12 @@ const props = defineProps({
   messagesNewerCursor: { type: [String, null] as PropType<string | null>, required: false, default: null },
   loadingNewer: { type: Boolean, required: false, default: false },
 })
+
+const {
+  container: virtualContainer, rows: virtualRows, totalSize: virtualTotalSize,
+  stickyLabel: virtualStickyLabel, measure: measureVirtualRow, scrollToMessage,
+} = useChatVirtualList(toRef(props, 'messagesWithDividers'), toRef(props, 'scrollerElement'))
+defineExpose({ scrollToMessage })
 
 const CLUSTER_GAP_MS = 5 * 60 * 1000
 const usersStore = useUsersStore()
@@ -327,18 +340,6 @@ const emit = defineEmits<{
 </script>
 
 <style scoped>
-/*
- * Vertical padding between chat rows.
- *
- * NOTE: CSS containment (content-visibility with the "auto" value) was tried
- * here for browser-native windowing but caused a critical scroll bug: the
- * 72px intrinsic-size estimate wildly underestimates media rows (actual
- * 280-320px), making scrollHeight wrong on first open and landing users in
- * the middle of a media-heavy chat. Image wrappers carry aspect-ratio so
- * heights are predetermined; the ResizeObserver in useChatScroll handles
- * any remaining layout changes. Do NOT restore CSS containment here without
- * first solving the intrinsic-size estimate problem.
- */
 .moh-chat-row {
   padding-block: 6px;
 }

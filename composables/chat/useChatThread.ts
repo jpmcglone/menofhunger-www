@@ -8,6 +8,7 @@ import type {
   MessageUser,
   SendMessageResponse,
 } from '~/types/api'
+import { redactDeletedChatMessage } from '~/utils/chat-message-deletion'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useChatTimeFormatting } from '~/composables/chat/useChatTimeFormatting'
 import type { CreateMediaPayload } from '~/composables/composer/types'
@@ -29,6 +30,7 @@ export interface UseChatThreadOptions {
   showCantStartChat: () => Promise<void>
   prefersReducedMotion: Ref<boolean>
   messagesScroller: Ref<HTMLElement | null> | ComputedRef<HTMLElement | null>
+  scrollToMessage?: (id: string) => Promise<boolean>
   composer: {
     focus: () => void
     getMedia: () => CreateMediaPayload[]
@@ -452,12 +454,15 @@ export function useChatThread(opts: UseChatThreadOptions) {
 
   /**
    * Scroll the scroller to the jump-target message row and briefly highlight it.
-   * All messages are in the DOM (no virtualization), so a direct DOM query works.
+   * Ask the virtual list to mount off-screen targets before measuring the row.
    */
-  function scrollToJumpTarget() {
+  async function scrollToJumpTarget() {
     const targetId = jumpTargetMessageId.value
     if (!targetId || !messagesScroller.value) return
 
+    scroll.setAtBottomState(false)
+    await opts.scrollToMessage?.(targetId)
+    if (jumpTargetMessageId.value !== targetId || !messagesScroller.value) return
     const el = messagesScroller.value.querySelector<HTMLElement>(`[data-message-id="${targetId}"]`)
     if (el) {
       const scrollerRect = messagesScroller.value.getBoundingClientRect()
@@ -762,6 +767,16 @@ export function useChatThread(opts: UseChatThreadOptions) {
     }
   }
 
+  function applyDeletedForAll(messageId: string) {
+    messages.value.forEach((message, index) => {
+      const next = redactDeletedChatMessage(message, messageId)
+      if (next !== message) mutateMessageAt(index, next)
+    })
+    if (infoMessage.value) infoMessage.value = redactDeletedChatMessage(infoMessage.value, messageId)
+    if (replyToMessage.value?.id === messageId) replyToMessage.value = null
+    if (editingMessage.value?.id === messageId) cancelEdit()
+  }
+
   async function handleDeleteForAll(message: Message) {
     const conversationId = message.conversationId
     const idx = messages.value.findIndex((m) => m.id === message.id)
@@ -770,6 +785,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
     }
     try {
       await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/all`, { method: 'DELETE' })
+      applyDeletedForAll(message.id)
     } catch {
       if (idx !== -1) {
         const msg = messages.value[idx]
@@ -778,7 +794,16 @@ export function useChatThread(opts: UseChatThreadOptions) {
     }
   }
 
-  function handleScrollToReply(messageId: string) {
+  async function handleScrollToReply(messageId: string) {
+    scroll.setAtBottomState(false)
+    if (!messages.value.some((message) => message.id === messageId)) {
+      if (!selectedConversationId.value) return
+      jumpTargetMessageId.value = messageId
+      await loadThread(selectedConversationId.value, { jumpToMessageId: messageId })
+      await scrollToJumpTarget()
+      return
+    }
+    await opts.scrollToMessage?.(messageId)
     const scroller = messagesScroller.value
     const el = scroller?.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement | null
     if (!el) return
@@ -883,6 +908,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
     handleReact,
     handleDeleteForMe,
     handleDeleteForAll,
+    applyDeletedForAll,
     handleRestore,
     handleEdit,
     handleScrollToReply,

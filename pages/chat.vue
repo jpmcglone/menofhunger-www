@@ -454,6 +454,7 @@ const thread = useChatThread({
   showCantStartChat,
   prefersReducedMotion,
   messagesScroller,
+  scrollToMessage: (id) => threadPaneRef.value?.scrollToMessage(id) ?? Promise.resolve(false),
   composer: {
     focus: () => { composerBarRef.value?.focus() },
     getMedia: () => composerBarRef.value?.getMedia() ?? [],
@@ -858,10 +859,7 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
 
     onMessageDeletedForAll(convoId, messageId, isSelected) {
       if (isSelected) {
-        const idx = messages.value.findIndex((m) => m.id === messageId)
-        if (idx !== -1) {
-          thread.mutateMessageAt(idx, { ...messages.value[idx]!, deletedForAll: true, body: '' })
-        }
+        thread.applyDeletedForAll(messageId)
       }
 
       patchConversation(convoId, (c) => {

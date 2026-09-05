@@ -10,6 +10,7 @@
     >
       <ChatMessageList
         ref="chatMessageListRef"
+        :scroller-element="scrollerEl"
         :messages-ready="messagesReady"
         :messages-loading="messagesLoading"
         :messages-next-cursor="messagesNextCursor"
@@ -145,7 +146,11 @@ const emit = defineEmits<{
 /** The scroll container — exposed so the page's useChatScroll can drive it. */
 const scrollerEl = ref<HTMLElement | null>(null)
 
-defineExpose({ scrollerEl })
+const chatMessageListRef = ref<InstanceType<typeof ChatMessageList> | null>(null)
+async function scrollToMessage(id: string) {
+  return await chatMessageListRef.value?.scrollToMessage(id) ?? false
+}
+defineExpose({ scrollerEl, scrollToMessage })
 </script>
 
 <style scoped>

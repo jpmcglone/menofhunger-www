@@ -291,8 +291,6 @@ export function useAuth() {
   }
 
   async function logoutEverywhere() {
-    bumpAuthGeneration()
-    clientMePromise = null
     const { emitLogout, disconnect } = usePresence()
     const { onLogout } = usePushNotifications()
 
@@ -300,11 +298,10 @@ export function useAuth() {
 
     // Revoke all sessions server-side (not just the current token).
     // The API also disconnects all sockets for this user on other instances.
-    try {
-      await apiFetch<{ success: true }>('/auth/sessions/revoke-all', { method: 'POST' })
-    } catch {
-      // Best-effort — proceed with local cleanup.
-    }
+    await apiFetch<{ success: true }>('/auth/sessions/revoke-all', { method: 'POST' })
+
+    bumpAuthGeneration()
+    clientMePromise = null
 
     emitLogout()
     disconnect()
