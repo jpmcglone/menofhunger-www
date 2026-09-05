@@ -2431,6 +2431,7 @@ export type AdminAnalyticsBrief = Contracts.AdminAnalyticsBriefDto
 export type AdminIntroPerson = Contracts.AdminIntroPersonDto
 export type AdminIntroPair = Contracts.AdminIntroPairDto
 export type AdminIntroBrief = Contracts.AdminIntroBriefDto
+export type AdminIntroBriefQueued = Contracts.AdminIntroBriefQueuedDto
 
 export type LandingMenBreakdown = {
   /** premium OR premiumPlus. */

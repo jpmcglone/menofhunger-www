@@ -32,7 +32,11 @@
         {{ error }}
       </AppInlineAlert>
 
-      <div v-if="loading && !brief" class="space-y-2" aria-live="polite">
+      <p v-if="generating" class="text-sm moh-text-muted" aria-live="polite">
+        Writing this week — Astra takes a minute.
+      </p>
+
+      <div v-else-if="loading && !brief" class="space-y-2" aria-live="polite">
         <div class="h-3 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
         <div class="h-3 w-full animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
       </div>
@@ -68,8 +72,13 @@
                 {{ pair.right.name || pair.right.username }}
               </NuxtLink>
             </div>
-            <div v-if="pair.topics.length" class="text-xs moh-text-muted">
-              {{ pair.topics.map(topicLabel).join(' · ') }}
+            <div v-if="pair.topics.length || (pair.groups ?? []).length" class="text-xs moh-text-muted">
+              {{
+                [
+                  ...pair.topics.map(topicLabel),
+                  ...(pair.groups ?? []),
+                ].join(' · ')
+              }}
             </div>
             <p class="text-sm moh-text">{{ pair.reason }}</p>
           </div>
@@ -80,8 +89,15 @@
 </template>
 
 <script setup lang="ts">
-import type { AdminIntroBrief } from '~/types/api'
+import type { AdminIntroBrief, AdminIntroBriefQueued } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
+
+const POLL_MS = 2_000
+const POLL_DEADLINE_MS = 120_000
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 definePageMeta({
   layout: 'app',
@@ -123,8 +139,21 @@ async function load() {
 async function generate() {
   generating.value = true
   error.value = null
+  const startedAt = Date.now()
   try {
-    brief.value = await apiFetchData<AdminIntroBrief>('/admin/intros/brief', { method: 'POST' })
+    const queued = await apiFetchData<AdminIntroBriefQueued>('/admin/intros/brief', { method: 'POST' })
+    const deadline = Date.now() + POLL_DEADLINE_MS
+    while (Date.now() < deadline) {
+      await sleep(POLL_MS)
+      const next = await apiFetchData<AdminIntroBrief | null>('/admin/intros/brief', { method: 'GET' })
+      const writtenAt = next ? new Date(next.createdAt).getTime() : 0
+      if (next && next.weekKey === queued.weekKey && writtenAt >= startedAt - 5_000) {
+        brief.value = next
+        return
+      }
+    }
+    error.value = 'Still writing. Refresh in a minute.'
+    await load()
   } catch (e: unknown) {
     error.value = getSafeUserErrorMessage(e, 'Could not write this week’s intros.')
   } finally {
