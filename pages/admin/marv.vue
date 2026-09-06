@@ -3,7 +3,7 @@
     <AppPageHeader
       sticky
       class="px-4 pt-4 pb-3"
-      title="Marv"
+      title="MARV settings"
       
       description="AI helper config, usage, and cost."
     >

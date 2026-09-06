@@ -193,6 +193,7 @@ const cardError = ref<string | null>(null)
 const cardFetched = ref(false)
 
 function sourceLabel(s: MarvinSourceDto): string {
+  if (s === 'admin_console') return 'Admin workspace'
   if (s === 'private_session') return 'Direct chat'
   if (s === 'catch_up') return 'Catch me up'
   return 'Public thread'

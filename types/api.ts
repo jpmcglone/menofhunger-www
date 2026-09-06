@@ -1932,7 +1932,7 @@ export type WsCheckinAnsweredTodayPayload = {
   }
 }
 
-export type WsAdminUpdateKind = 'reports' | 'verification' | 'feedback'
+export type WsAdminUpdateKind = 'reports' | 'verification' | 'feedback' | 'assistant'
 export type WsAdminUpdateAction = 'created' | 'updated' | 'deleted' | 'resolved' | 'reviewed' | 'other'
 export type WsAdminUpdatedPayload = {
   kind: WsAdminUpdateKind
@@ -3032,7 +3032,7 @@ export type OpenCrewMember = {
 /** User-facing reply-mode tier; mirrors the API's `MarvinMode` enum. */
 export type MarvinModeDto = 'auto' | 'fast' | 'regular' | 'smart'
 /** Source channel; mirrors the API's `MarvinSource` enum. */
-export type MarvinSourceDto = 'public_thread' | 'private_session' | 'catch_up'
+export type MarvinSourceDto = 'public_thread' | 'private_session' | 'catch_up' | 'admin_console'
 
 /** Snapshot of the requester's Marv credit bucket. Returned by `GET /marvin/me`. */
 export type MarvinCreditSummaryDto = {
@@ -3392,3 +3392,6 @@ export type NewsletterAudienceFilter = Contracts.NewsletterAudienceFilter
 export type NewsletterAudienceCount = Contracts.NewsletterAudienceCountDto
 export type NewsletterAdmin = Contracts.NewsletterAdminDto
 export type NewsletterPreview = Contracts.NewsletterPreviewDto
+
+// The admin workspace is shared with native/handoff clients and the MCP catalog.
+export type { AdminCapabilityDto, AdminAssistantActionDto, AdminAssistantTurnDto, AdminAssistantWorkspaceDto } from './api-contracts.gen'

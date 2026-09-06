@@ -3,7 +3,7 @@ export default defineNuxtRouteMiddleware(async () => {
   await ensureLoaded()
 
   // Hide existence of admin pages from non-admins (and logged-out users).
-  if (!user.value?.siteAdmin) {
+  if (!user.value?.siteAdmin || user.value.impersonation || user.value.accountSwitch) {
     throw createError({ statusCode: 404, statusMessage: 'Not Found' })
   }
 })
