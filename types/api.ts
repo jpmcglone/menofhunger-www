@@ -9,6 +9,11 @@
  */
 import type * as Contracts from './api-contracts.gen'
 
+/** Read-only founder diagnostics; currently consumed by the MCP/CLI. */
+export type AdminMemberDiagnostics = Contracts.AdminMemberDiagnosticsDto
+export type AdminOperationsHealth = Contracts.AdminOperationsHealthDto
+export type AdminOperationsContent = Contracts.AdminOperationsContentDto
+
 /** Success envelope: payload in `data`, optional cursor/counts in `pagination`. */
 export type ApiEnvelope<T> = { data: T; pagination?: ApiPagination }
 
