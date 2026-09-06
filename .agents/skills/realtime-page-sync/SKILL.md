@@ -42,7 +42,7 @@ If your domain doesn't have one yet:
 
 Keep the names symmetric: `groups:invite-received` ↔ `addGroupInviteCallback({ onReceived })`.
 
-### 2. Mount: fetch then subscribe
+### 2. Activate: subscribe, then fetch
 
 ```ts
 const {
@@ -59,50 +59,47 @@ const cb: NotificationsCallback = {
   onDeleted: (payload) => removeNotificationById(payload.notificationId),
 }
 
-onMounted(async () => {
+let active = false
+async function activate() {
+  if (active) return
+  active = true
   addNotificationsCallback(cb)
-  await fetchList({ forceRefresh: false })
-  await markDelivered()
-})
-onBeforeUnmount(() => removeNotificationsCallback(cb))
+  await fetchList({ forceRefresh: true })
+  if (active) await markDelivered()
+}
+function deactivate() {
+  if (!active) return
+  active = false
+  removeNotificationsCallback(cb)
+}
+onMounted(activate)
+onActivated(activate)
+onDeactivated(deactivate)
+onBeforeUnmount(deactivate)
 ```
 
 Order matters slightly: register the callback **before** the HTTP fetch resolves, so events that arrive during the fetch aren't dropped on the floor. Your patch reducer must be idempotent (dedupe by id) so a double-apply is safe.
 
-### 3. Re-activate: re-fetch even if the socket is alive
+### 3. Re-activate without duplicate initial work
 
-Most app pages live inside `<KeepAlive>`. When the user navigates back, `onMounted` doesn't fire again — `onActivated` does. The socket subscription is still alive, but the device may have been backgrounded; refetch closes the gap.
-
-```ts
-onActivated(async () => {
-  await fetchList({ forceRefresh: true })
-})
-```
+`onMounted` and `onActivated` both run on a kept-alive component's initial mount.
+Use the guarded activation above so that first appearance fetches once. Deactivate
+page-owned listeners and pending refresh timers when the page is hidden; activation
+resubscribes and catches up. Shared domain stores may retain their own subscriptions.
+Fetch/reducer code must follow the [realtime policy](../../../docs/engineering-policy.md#realtime-contracts-and-ownership)
+for event races, reconnects, identity changes, and stale responses.
 
 ### 4. Subscribe per-room when the gateway requires it
 
-Posts, articles, spaces, and radio gate event delivery on a `subscribe*` call so the server doesn't fire firehose-of-everything at every socket. Always pair with `unsubscribe*` and re-subscribe when the route param changes:
-
-```ts
-onMounted(() => {
-  addPostsCallback(postsCb)
-  if (postId.value) subscribePosts([postId.value])
-})
-
-watch(() => postId.value, (pid, prev) => {
-  if (prev) unsubscribePosts([prev])
-  if (pid) subscribePosts([pid])
-})
-
-onBeforeUnmount(() => {
-  removePostsCallback(postsCb)
-  if (postId.value) unsubscribePosts([postId.value])
-})
-```
+Posts, articles, spaces, and radio use `subscribe*` to scope event delivery. Add
+room subscriptions in the guarded activation function and pair them with
+`unsubscribe*` in deactivation. When a route ID changes, leave the old room, clear
+its scoped state, and join the new room only if active. Avoid a second independent
+mount/activation registration alongside the lifecycle above.
 
 ### 5. Patch in place, don't refetch on every event
 
-The websocket payload mirrors the HTTP DTO. Splice it into your local list directly — refetching defeats the point of the socket.
+Choose the snapshot, typed patch, removal, or invalidation shape from the [realtime policy](../../../docs/engineering-policy.md#realtime-contracts-and-ownership). The example below merges a complete notification snapshot; a partial event must use its declared patch type.
 
 ```ts
 function patchNotification(updated: Notification) {
@@ -112,7 +109,7 @@ function patchNotification(updated: Notification) {
 }
 ```
 
-Refetch only when the event tells you the cache can't be patched (e.g. structural reorder, deletion of an entity you don't have, "the world changed" signals like `notifications:undelivered-count` jumping by >1).
+When an event cannot safely recompute an aggregate, filter it to the visible scope and coalesce the refetch. If a request is already running, preserve a dirty flag and perform one follow-up refresh after it completes. Clear queued work on deactivation or identity changes.
 
 ### 6. Optimistic UI for viewer-initiated changes
 
@@ -131,11 +128,11 @@ async function onAcceptGroupInvite() {
 
 ### Forgetting `onActivated`
 
-Symptom: "I navigated away and back, and now I'm missing the events that happened in between." Fix: add `onActivated(() => fetchList({ forceRefresh: true }))`.
+Symptom: "I navigated away and back, and now I'm missing the events that happened in between." Fix: use the guarded activation/deactivation lifecycle above.
 
 ### Subscribing without unsubscribing
 
-Symptom: socket fan-out grows unbounded; old pages keep receiving events; leaked listeners cause double-renders. Fix: every `subscribe*` and `add*Callback` MUST have a paired `unsubscribe*` / `remove*Callback` in `onBeforeUnmount`.
+Symptom: socket fan-out grows unbounded; old pages keep receiving events; leaked listeners cause double-renders. Fix: pair page-owned `subscribe*` / `add*Callback` calls with `unsubscribe*` / `remove*Callback` on deactivation and unmount; keep cleanup idempotent.
 
 ### Refetching on every event
 
