@@ -14,6 +14,24 @@ Render already boots the new instance next to the live one. We gate the traffic 
 
 If the service is not picking up Blueprint fields, set them once in the Render Dashboard (Settings): Health Check Path = `/health`, Max Shutdown Delay = `120`.
 
+### Build memory
+
+Nuxt typechecking runs `vue-tsc` in a child process. The project [.npmrc](.npmrc)
+sets `node-options=--max-old-space-size=6144` so both `npx nuxi typecheck` and
+the `npm run build` prebuild checks inherit the same heap budget as the build.
+An option on the `build` script alone does not reach a preceding typecheck.
+This addresses the V8 heap-limit failure around 2 GB without skipping checks.
+
+Use `npm ci --no-audit --no-fund && npm run build` in Render. The prebuild hook
+already performs typechecking, API contract validation, and tests; listing
+those checks again before `npm run build` duplicates the work. Existing dashboard
+commands that invoke `npx nuxi typecheck` separately also inherit the project setting.
+
+The heap budget is for build tooling. Render starts the server directly with
+`node .output/server/index.mjs`, which does not read `.npmrc`. Do not set a
+service-wide 6 GB `NODE_OPTIONS` on the 2 GB runtime instance. Build compute is
+separate from the runtime plan; see [Render's build pipeline](https://render.com/docs/build-pipeline).
+
 ### Pipeline minutes
 
 Render’s free tier includes 500 pipeline minutes/month. To reduce usage:
@@ -24,7 +42,7 @@ Render’s free tier includes 500 pipeline minutes/month. To reduce usage:
 - **Spend control:** In Render dashboard you can set a custom pipeline minute limit so builds pause instead of incurring overage.
 
 - **Plan:** Standard (2GB RAM / 1 CPU) — recommended for SSR at ~1k DAU.
-- **Build:** `npm ci && npm run build`
+- **Build:** `npm ci --no-audit --no-fund && npm run build`
 - **Start:** `node .output/server/index.mjs`
 
 ## CDN
