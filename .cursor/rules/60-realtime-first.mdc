@@ -1,6 +1,6 @@
 ---
 description: Real-time first — pages must reflect server-side changes live via websockets, with HTTP fetch as the on-mount sync.
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Real-time First (Web)
@@ -99,4 +99,4 @@ The other side of this lives in the API repo: `menofhunger-api/.cursor/rules/60-
 
 ## Skill
 
-For the full pattern (callback shapes, common pitfalls, deduping, badge counts), read `.cursor/skills/realtime-page-sync/SKILL.md`.
+For the full pattern (callback shapes, common pitfalls, deduping, badge counts), read `.agents/skills/realtime-page-sync/SKILL.md`.

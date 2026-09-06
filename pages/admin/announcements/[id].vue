@@ -145,7 +145,6 @@ import { getSafeUserErrorMessage } from '~/utils/api-error'
 definePageMeta({
   layout: 'app',
   middleware: 'admin',
-  ssr: false,
 })
 
 const route = useRoute()

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'app', title: 'Coin Receipt', ssr: false, hideTopBar: true })
+definePageMeta({ layout: 'app', title: 'Coin Receipt', hideTopBar: true })
 
 import type { CoinTransferItem, CoinTransferReceipt } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'

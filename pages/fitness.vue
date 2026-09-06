@@ -586,7 +586,6 @@ definePageMeta({
   layout: 'app',
   requiresAuth: true,
   requiresVerified: true,
-  ssr: false,
 })
 
 usePageSeo({

@@ -1,6 +1,6 @@
 ---
 description: Pages must feel edge-to-edge. Never wrap an entire page or full section in a single bordered/rounded card.
-globs: pages/**/*.vue
+globs: "pages/**/*.vue"
 alwaysApply: false
 ---
 

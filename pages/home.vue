@@ -114,6 +114,8 @@
       </div>
     </div>
 
+    <ClientOnly><AppConversationInsights v-if="isAuthed" :key="'weekly-conversations'" /></ClientOnly>
+
     <!-- Welcome card: shown to all new users who haven't dismissed it (localStorage) -->
     <ClientOnly>
       <AppFeedHomeWelcomeCard

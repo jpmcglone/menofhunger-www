@@ -329,7 +329,6 @@ definePageMeta({
   layout: 'app',
   title: 'Marv (admin)',
   middleware: 'admin',
-  ssr: false,
 })
 
 usePageSeo({

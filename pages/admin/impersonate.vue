@@ -121,7 +121,6 @@ definePageMeta({
   layout: 'app',
   title: 'Log in as user',
   middleware: 'admin',
-  ssr: false,
 })
 
 usePageSeo({

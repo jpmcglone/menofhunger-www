@@ -413,7 +413,6 @@ definePageMeta({
   layout: 'app',
   title: 'Jobs',
   middleware: 'admin',
-  ssr: false,
 })
 
 usePageSeo({

@@ -61,7 +61,6 @@ definePageMeta({
   layout: 'app',
   title: 'Push Notifications',
   middleware: 'admin',
-  ssr: false,
 })
 
 usePageSeo({

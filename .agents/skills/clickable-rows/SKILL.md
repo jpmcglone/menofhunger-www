@@ -2,7 +2,7 @@
 name: clickable-rows
 description: >-
   Build full-row clickable cards, feed rows, notification rows, and table rows
-  in Nuxt 3 that support right-click "Open in new tab", cmd/ctrl+click, and
+  in Nuxt that support right-click "Open in new tab", cmd/ctrl+click, and
   middle-click. Use when adding a list item, feed row, notification row, card,
   or table row that navigates somewhere when clicked.
 ---

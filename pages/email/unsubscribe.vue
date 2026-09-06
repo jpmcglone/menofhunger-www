@@ -55,7 +55,6 @@
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
-  ssr: false,
 })
 
 usePageSeo({

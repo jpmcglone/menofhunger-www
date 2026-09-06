@@ -75,7 +75,7 @@ import type { ScheduledPost } from '~/types/api'
 import { VOICE } from '~/config/voice'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 
-definePageMeta({ layout: 'app', middleware: 'premium', ssr: false })
+definePageMeta({ layout: 'app', middleware: 'premium' })
 usePageSeo({ title: 'Scheduled Posts' })
 
 const confirm = useAppConfirm()

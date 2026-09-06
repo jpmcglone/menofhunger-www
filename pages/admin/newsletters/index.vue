@@ -63,7 +63,6 @@ import { summarizeAudienceFilters } from '~/utils/newsletter-audience'
 definePageMeta({
   layout: 'app',
   middleware: 'admin',
-  ssr: false,
 })
 
 usePageSeo({

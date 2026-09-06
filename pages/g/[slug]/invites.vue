@@ -121,7 +121,7 @@ import { formatRelativeTime } from '~/utils/time-format'
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
 
-definePageMeta({ layout: 'app', title: 'Pending invites', hideTopBar: true, ssr: false })
+definePageMeta({ layout: 'app', title: 'Pending invites', hideTopBar: true })
 
 const { apiFetchData } = useApiClient()
 const { confirm } = useAppConfirm()

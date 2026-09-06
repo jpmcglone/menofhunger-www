@@ -1,6 +1,6 @@
 ---
 name: moh-designer
-description: Design Men of Hunger screens with Apple simplicity and Linear.app function. Use when designing or reviewing UI, layout, hierarchy, density, chrome, empty states, feed/list rows, navigation, or when the user mentions Apple, Linear, taste, visual design, "feels like a dashboard", "too sparse", "too busy", or "design this screen."
+description: Design or revise Men of Hunger screen structure, hierarchy, density, and navigation using existing tokens. Use for layout and visual design; use make-interfaces-feel-better for small polish fixes.
 ---
 
 # Men of Hunger Designer

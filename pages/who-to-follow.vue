@@ -85,7 +85,6 @@
 definePageMeta({
   layout: 'app',
   title: 'Who to follow',
-  ssr: false,
 })
 
 usePageSeo({

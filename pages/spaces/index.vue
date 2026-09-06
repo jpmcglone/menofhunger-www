@@ -67,7 +67,6 @@ definePageMeta({
   title: 'Spaces',
   hideTopBar: true,
   middleware: ['verified'],
-  ssr: false,
 })
 
 usePageSeo({

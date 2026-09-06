@@ -101,6 +101,8 @@
         />
       </div>
 
+      <AppConversationInsights v-if="post.author.id === user?.id && !post.parentId && !isOnlyMe && !post.deletedAt && post.kind !== 'repost'" :key="post.id" :post-id="post.id" />
+      <AppPostContribution :key="`contribution-${post.id}`" :post="post" />
       <template v-if="!isOnlyMe && !isGatedPost">
         <div v-if="showReplyComposer" class="border-b border-gray-200 dark:border-zinc-800">
           <AppPostComposer

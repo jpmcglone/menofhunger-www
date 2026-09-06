@@ -146,7 +146,6 @@ import SettingsFitnessSection from '~/components/settings/sections/SettingsFitne
 definePageMeta({
   layout: 'app',
   title: 'Settings',
-  ssr: false,
 })
 
 usePageSeo({

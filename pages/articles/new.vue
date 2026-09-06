@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import type { Article } from '~/types/api'
 
-definePageMeta({ layout: 'app', title: 'New Article', hideTopBar: true, ssr: false })
+definePageMeta({ layout: 'app', title: 'New Article', hideTopBar: true })
 
 usePageSeo({ title: 'New Article', noindex: true })
 

@@ -1,6 +1,6 @@
 ---
 description: List row separators use moh-divide (low-contrast). Never Tailwind divide-y.
-globs: **/*.{vue,css}
+globs: "**/*.{vue,css}"
 alwaysApply: false
 ---
 

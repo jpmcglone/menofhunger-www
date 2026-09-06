@@ -164,7 +164,6 @@ definePageMeta({
   layout: 'app',
   title: 'Online',
   hideTopBar: true,
-  ssr: false,
 })
 
 usePageSeo({

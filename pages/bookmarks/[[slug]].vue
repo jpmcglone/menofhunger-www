@@ -160,7 +160,6 @@ function bookmarkFeedGroup(post: FeedPost) {
 definePageMeta({
   layout: 'app',
   title: 'Bookmarks',
-  ssr: false,
 })
 
 const route = useRoute()

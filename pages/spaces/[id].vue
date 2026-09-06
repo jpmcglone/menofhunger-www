@@ -11,7 +11,6 @@ definePageMeta({
   layout: 'app',
   title: 'Space',
   middleware: ['verified'],
-  ssr: false,
 })
 
 const route = useRoute()

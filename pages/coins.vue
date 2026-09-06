@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'app', title: 'Coins', ssr: false, hideTopBar: true })
+definePageMeta({ layout: 'app', title: 'Coins', hideTopBar: true })
 
 usePageSeo({ title: 'Coins', description: 'Send and receive coins on Men of Hunger.', noindex: true })
 

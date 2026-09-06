@@ -282,7 +282,6 @@ definePageMeta({
   layout: 'app',
   title: 'Media review',
   middleware: 'admin',
-  ssr: false,
 })
 
 usePageSeo({

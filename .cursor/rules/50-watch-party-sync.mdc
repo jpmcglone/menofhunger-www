@@ -1,6 +1,6 @@
 ---
 description: Watch Party sync model for SpaceYouTubePlayer and related composables. Read when working on Spaces, watch-party playback, applyState, owner/viewer sync, or useWatchParty/usePresence for watch party events.
-globs: components/SpaceYouTubePlayer.vue,composables/useWatchParty.ts,composables/usePresence.ts,utils/watchPartyMath.ts,pages/s/**
+globs: "components/SpaceYouTubePlayer.vue,composables/useWatchParty.ts,composables/usePresence.ts,utils/watchPartyMath.ts,pages/s/**"
 alwaysApply: false
 ---
 

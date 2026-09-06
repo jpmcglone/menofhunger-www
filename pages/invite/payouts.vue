@@ -112,7 +112,7 @@
 <script setup lang="ts">
 import { AFFILIATE_PILOT, formatAffiliateCents } from '~/utils/affiliate-pilot'
 
-definePageMeta({ layout: 'app', ssr: false })
+definePageMeta({ layout: 'app' })
 
 useHead({ title: 'Referral Pilot payouts' })
 

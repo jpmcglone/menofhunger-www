@@ -3,7 +3,7 @@ name: realtime-page-sync
 description: Wire pages to real-time websocket events with HTTP fetch as on-mount sync. Use when adding or editing a Nuxt page/component that displays mutable server state (notifications, feeds, invites, posts, presence, badges, group/crew membership, watch parties), when the user reports "I had to refresh to see X", when adding a new domain that emits realtime events from the API, or when wiring a new `usePresence()` callback registry.
 ---
 
-# Real-time page sync (Nuxt 3 + usePresence)
+# Real-time page sync (Nuxt + usePresence)
 
 This is the canonical pattern for "the page should update without a refresh". It's how every server-driven surface in this app is supposed to behave by default — `60-realtime-first.mdc` is the rule, this skill is the recipe.
 

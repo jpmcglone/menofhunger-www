@@ -665,7 +665,12 @@ export type PostVideoEmbed = {
   height: number
 }
 
+export type ConversationInsights = Contracts.ConversationInsightsDto
+export type ConversationContext = Contracts.ConversationContextDto
+export type ConversationDay = Contracts.ConversationDayDto
+
 export type FeedPost = {
+  conversationContext?: ConversationContext
   id: string
   createdAt: string
   editedAt?: string | null

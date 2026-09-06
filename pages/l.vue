@@ -62,7 +62,6 @@ import { memberCountLabel } from '~/utils/member-count-label'
 
 definePageMeta({
   layout: 'app',
-  ssr: false,
 })
 
 const route = useRoute()

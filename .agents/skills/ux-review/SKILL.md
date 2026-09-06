@@ -1,6 +1,6 @@
 ---
 name: ux-review
-description: Full UI/UX review of one platform (web or iOS) using HIG, modern UX heuristics, and Men of Hunger taste. Use when asked to review UI/UX, audit screens, do a design review, or recommend UX changes. Look and recommend only — do not implement during the review.
+description: Audit web or iOS UI/UX and recommend prioritized changes. Use for explicit UX reviews or screen audits; implement only when the user requests implementation.
 ---
 
 # UX Review

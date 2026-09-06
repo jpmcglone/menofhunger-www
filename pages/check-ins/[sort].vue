@@ -100,7 +100,6 @@ definePageMeta({
   title: 'Check-ins',
   hideTopBar: true,
   middleware: ['verified'],
-  ssr: false,
 })
 
 usePageSeo({

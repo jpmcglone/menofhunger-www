@@ -31,7 +31,6 @@ definePageMeta({
   layout: 'app',
   title: 'Verify email',
   // We want this page available but require login before confirmation.
-  ssr: false,
 })
 
 usePageSeo({

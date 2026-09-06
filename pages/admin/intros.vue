@@ -103,7 +103,6 @@ definePageMeta({
   layout: 'app',
   title: 'Intros (admin)',
   middleware: 'admin',
-  ssr: false,
 })
 
 usePageSeo({

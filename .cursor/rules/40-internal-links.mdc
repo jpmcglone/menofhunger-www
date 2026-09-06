@@ -1,6 +1,6 @@
 ---
 description: Internal navigation must render a real <a> element for cmd/middle/right-click "Open in new tab" to work
-alwaysApply: true
+alwaysApply: false
 ---
 
 ## Internal links must be real anchors
@@ -25,7 +25,7 @@ Every navigation to another route in this app MUST produce a real `<a>` element 
 </Button>
 ```
 
-**Full-row / full-card click targets that contain inner links or buttons** — use the **background NuxtLink overlay** pattern (see `.cursor/skills/clickable-rows/SKILL.md`):
+**Full-row / full-card click targets that contain inner links or buttons** — use the **background NuxtLink overlay** pattern (see `.agents/skills/clickable-rows/SKILL.md`):
 ```vue
 <div class="relative cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900"
      role="link" tabindex="0"

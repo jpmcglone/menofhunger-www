@@ -95,7 +95,7 @@
 import type { AdminAffiliateUser, AdminAffiliateSettle } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
-definePageMeta({ layout: 'app', title: 'Referral Pilot', middleware: 'admin', ssr: false })
+definePageMeta({ layout: 'app', title: 'Referral Pilot', middleware: 'admin' })
 
 useHead({ title: 'Referral Pilot — Admin' })
 

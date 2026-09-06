@@ -195,7 +195,6 @@ definePageMeta({
   title: 'Leaderboard',
   hideTopBar: true,
   middleware: ['verified'],
-  ssr: false,
 })
 
 usePageSeo({

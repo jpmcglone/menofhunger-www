@@ -1039,7 +1039,7 @@ import { Chart, registerables } from 'chart.js'
 import type { AdminAnalytics, AdminAnalyticsBrief, AdminReferralAnalytics, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
-definePageMeta({ middleware: 'admin', layout: 'app', ssr: false })
+definePageMeta({ middleware: 'admin', layout: 'app' })
 
 Chart.register(...registerables)
 

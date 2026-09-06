@@ -1,6 +1,10 @@
 # menofhunger-www
 
+Run `./init.sh` for local setup, or `./init.sh --setup-only` to prepare without launching. See [Getting started](docs/getting-started.md) for prerequisites and the full walkthrough.
+
 Public-facing Nuxt 4 website for Men of Hunger. Talks to [`menofhunger-api`](../menofhunger-api) over a cookie-authenticated JSON API.
+
+New here? Start with [Getting started](docs/getting-started.md) for local setup, eight core concepts, authentication, and troubleshooting.
 
 ## Architecture at a glance
 

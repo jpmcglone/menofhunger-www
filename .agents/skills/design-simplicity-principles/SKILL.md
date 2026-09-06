@@ -1,6 +1,6 @@
 ---
 name: design-simplicity-principles
-description: Core design and product principles for Men of Hunger — prioritize ruthlessly, ship simple, defend clarity. Use when designing or reviewing any user-facing feature, screen, component, API surface, or copy across web (Nuxt), iOS (SwiftUI), and API (NestJS). Triggers on UI design decisions, "should we add this", "feels cluttered", "feels overwhelming", "MVP scope", "feature creep", parity, completeness, product surface, core loop, Elon algorithm, new screen/page/endpoint design, PRs that add buttons/options/fields/tabs/menus, review for polish, "what would Jobs do", grandma test, simplicity, less is more, and copy / microcopy choices.
+description: Evaluate product scope, complexity, feature additions, and microcopy for Men of Hunger. Use for scope decisions or simplification; use moh-designer for layout and ux-review for an audit.
 ---
 
 # Design Simplicity Principles
@@ -97,7 +97,7 @@ Ask these out loud about any user-facing change:
 
 How "less, but better" cashes out in each codebase:
 
-### Web (`menofhunger-www`, Nuxt 3 + Tailwind)
+### Web (`menofhunger-www`, Nuxt + Tailwind)
 
 - **Components:** prefer fewer props with smart defaults. A new prop must justify itself. If you're adding `variant="X" | "Y" | "Z"`, ask whether one of those should just be a separate component.
 - **Pages:** one primary action per route. Secondary actions live in menus, not in the header.

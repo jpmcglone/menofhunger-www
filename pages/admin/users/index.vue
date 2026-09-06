@@ -873,7 +873,6 @@ definePageMeta({
   layout: 'app',
   title: 'Users',
   middleware: 'admin',
-  ssr: false,
 })
 
 usePageSeo({

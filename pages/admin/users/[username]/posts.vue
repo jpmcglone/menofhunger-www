@@ -50,7 +50,6 @@ definePageMeta({
   layout: 'app',
   title: 'User Posts',
   middleware: 'admin',
-  ssr: false,
 })
 
 const route = useRoute()

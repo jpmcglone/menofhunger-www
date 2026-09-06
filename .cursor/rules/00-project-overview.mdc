@@ -1,6 +1,6 @@
 ---
 description: menofhunger-www core conventions (Nuxt + PrimeVue)
-alwaysApply: true
+alwaysApply: false
 ---
 
 ## Backend + API calling
@@ -22,10 +22,10 @@ alwaysApply: true
 - List row separators: `moh-divide` only. Never Tailwind `divide-y` (currentColor = high-contrast white in dark mode). See `56-list-dividers.mdc`.
 
 ## Links
-- Every internal navigation MUST render a real `<a>` so right-click / cmd+click / middle-click "Open in new tab" works. See rule `40-internal-links.mdc` and skill `.cursor/skills/clickable-rows/SKILL.md`.
+- Every internal navigation MUST render a real `<a>` so right-click / cmd+click / middle-click "Open in new tab" works. See rule `40-internal-links.mdc` and skill `.agents/skills/clickable-rows/SKILL.md`.
 
 ## Real-time first
-- Pages that show mutable server state must wire a websocket subscription via `usePresence()` AND fetch on mount/activation. HTTP is the on-load sync; sockets are the live feed. See rule `60-realtime-first.mdc` and skill `.cursor/skills/realtime-page-sync/SKILL.md`.
+- Pages that show mutable server state must wire a websocket subscription via `usePresence()` AND fetch on mount/activation. HTTP is the on-load sync; sockets are the live feed. See rule `60-realtime-first.mdc` and skill `.agents/skills/realtime-page-sync/SKILL.md`.
 
 ## Admin
 - Hide admin pages from non-admins (**404** in middleware)

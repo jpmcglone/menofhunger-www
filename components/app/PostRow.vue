@@ -251,6 +251,8 @@
           :visibility="postView.visibility"
         />
 
+        <AppConversationContext v-if="!isDeletedPost && !isGatedPost && postView.conversationContext" :post-id="postView.id" :context="postView.conversationContext" />
+
         <AppPostPoll
           v-if="!isDeletedPost && !isGatedPost && postView.poll"
           :post-id="postView.id"

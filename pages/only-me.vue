@@ -76,7 +76,6 @@ import { needsOnboarding } from '~/utils/onboarding'
 definePageMeta({
   layout: 'app',
   title: 'Only me',
-  ssr: false,
 })
 
 usePageSeo({

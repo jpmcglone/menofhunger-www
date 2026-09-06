@@ -85,7 +85,6 @@ definePageMeta({
   title: 'Check-in Day',
   hideTopBar: true,
   middleware: ['verified'],
-  ssr: false,
 })
 
 const route = useRoute()

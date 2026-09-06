@@ -116,7 +116,7 @@ const { apiFetchData } = useApiClient()
 const { invalidate: invalidateMyGroups } = useMyGroups()
 const { addGroupFeedCallback, removeGroupFeedCallback, subscribeGroups, unsubscribeGroups } = usePresence()
 
-definePageMeta({ layout: 'app', title: 'Group settings', hideTopBar: true, ssr: false })
+definePageMeta({ layout: 'app', title: 'Group settings', hideTopBar: true })
 
 const shell = ref<CommunityGroupShell | null>(null)
 const shellLoading = ref(true)

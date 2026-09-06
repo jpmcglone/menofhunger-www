@@ -400,7 +400,7 @@ export default defineNuxtConfig({
     '/privacy': { prerender: true },
     '/about': { prerender: true },
 
-    // App-shell: enable SSR to reduce client-side "data flicker" on first paint.
+    // Public discovery retains SSR; private browser tools use client rendering.
     // These pages already gate browser-only logic behind onMounted/import.meta.client.
     //
     // IMPORTANT — no-store on HTML responses:
@@ -425,6 +425,15 @@ export default defineNuxtConfig({
     '/groups/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/g': { ssr: true, headers: { 'cache-control': 'no-store' } },
     '/g/**': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    // Private editors/tools load viewer data after mounting. Rendering lives here, not PageMeta.
+    '/fitness': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
+    '/fitness/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
+    '/scheduled': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
+    '/invite': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
+    '/invite/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
+    '/g/*/settings': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
+    '/g/*/pending': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
+    '/g/*/invites': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
     '/only-me': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/online': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
     '/new-posts': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
