@@ -76,6 +76,7 @@ export function usePostCache() {
         viewerHasBookmarked: p.viewerHasBookmarked,
         repostCount: p.repostCount,
         viewerHasReposted: p.viewerHasReposted,
+        viewerHasCommented: p.viewerHasCommented,
       }
     }
   }

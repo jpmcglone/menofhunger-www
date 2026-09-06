@@ -82,3 +82,11 @@ export function filterPillClasses(kind: ProfilePostsFilter, active: boolean): st
     : 'moh-pill-premium'
 }
 
+
+/** Selected reposts inherit content visibility; public content remains neutral. */
+export function postActionVisibilityColor(visibility: string): string {
+  if (visibility === 'premiumOnly') return 'var(--moh-premium)'
+  if (visibility === 'verifiedOnly') return 'var(--moh-verified)'
+  if (visibility === 'onlyMe') return 'var(--moh-onlyme)'
+  return 'var(--moh-text)'
+}

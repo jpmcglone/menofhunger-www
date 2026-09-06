@@ -2,7 +2,7 @@
   <div>
     <!-- Full-bleed profile header (cancel app layout padding) -->
     <div class="relative">
-      <div class="group relative aspect-[3.25/1] w-full bg-gray-200 dark:bg-zinc-900">
+      <div class="group relative aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900">
         <img
           v-if="profileBannerUrl"
           v-show="!hideBannerThumb"
@@ -26,41 +26,11 @@
           aria-label="View banner"
           @click="emit('openImage', { event: $event, url: profileBannerUrl, title: 'Banner', kind: 'banner' })"
         />
-        <div class="absolute right-4 bottom-0 translate-y-[36px] flex items-center gap-1.5">
-          <button
-            v-if="isAdminOverride"
-            v-tooltip.bottom="tinyTooltip('Edit as site admin')"
-            type="button"
-            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold shadow-sm backdrop-blur-sm bg-amber-500/90 text-white hover:bg-amber-500 transition-colors"
-            aria-label="Edit as admin"
-            @click="emit('edit')"
-          >
-            <Icon name="tabler:shield" class="text-[10px]" aria-hidden="true" />
-            Edit
-          </button>
-          <div
-            v-if="showOnlineNow || showLastOnline"
-            v-tooltip.bottom="showLastOnline ? tinyTooltip(lastOnlineTooltip) : undefined"
-            class="rounded-full px-2 py-0.5 text-[11px] shadow-sm backdrop-blur-sm"
-            :class="
-              showOnlineNow
-                ? 'bg-green-600/90 text-white dark:bg-green-500/20 dark:text-green-200'
-                : 'bg-white/70 text-gray-600 dark:bg-black/60 dark:text-gray-400 tabular-nums'
-            "
-          >
-            <template v-if="showOnlineNow">
-              Online now
-            </template>
-            <template v-else>
-              Last online {{ lastOnlineShort }}
-            </template>
-          </div>
-        </div>
         <!-- Nudge overlay (top-right), fully inside banner with consistent margin -->
         <div v-if="showNudge" class="pointer-events-none absolute inset-4 z-20 flex justify-end">
           <div
-            class="pointer-events-auto"
             v-tooltip.bottom="nudgeDisabledTooltip"
+            class="pointer-events-auto"
           >
             <!-- Nudge back split-button (primary action + caret menu) -->
             <div
@@ -90,8 +60,8 @@
                 </template>
               </Button>
               <Menu v-if="nudgeMenuMounted" ref="nudgeMenuRef" :model="nudgeMenuItems" popup>
-                <template #item="{ item, props }">
-                  <a v-bind="props.action" class="flex items-center gap-2">
+                <template #item="{ item, props: itemProps }">
+                  <a v-bind="itemProps.action" class="flex items-center gap-2">
                     <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
                     <span
                       v-tooltip.bottom="
@@ -101,7 +71,7 @@
                             ? tinyTooltip(gotItNudgeTooltip)
                             : undefined
                       "
-                      v-bind="props.label"
+                      v-bind="itemProps.label"
                       class="flex-1"
                     >
                       {{ item.label }}
@@ -128,21 +98,21 @@
 
       <div
         :class="[
-          'absolute left-4 bottom-0 translate-y-1/2 transition-opacity duration-200',
+          'absolute left-5 sm:left-6 bottom-0 translate-y-[64px] transition-opacity duration-200',
           hideAvatarDuringBanner ? 'opacity-0 pointer-events-none' : 'opacity-100'
         ]"
       >
         <div
           ref="avatarWrapperRef"
           :class="[
-            'group relative inline-flex leading-none ring-4 ring-white dark:ring-black',
+            'group relative inline-flex leading-none ring-4 ring-[var(--moh-bg)]',
             avatarRoundClass
           ]"
         >
           <AppUserAvatar
             v-show="!hideAvatarThumb"
             :user="profile"
-            size-class="h-32 w-32"
+            size-class="h-28 w-28"
             bg-class="bg-gray-200 dark:bg-zinc-800"
             :presence-scale="0.15"
             :presence-inset-ratio="0.25"
@@ -150,7 +120,8 @@
             :show-status="!activeStatus"
             :status-behavior="canSetStatus ? 'custom' : 'view'"
             :status-position-class="isSelf ? '-right-2 -top-2' : '-right-1 -top-1'"
-            :status-size-class="isSelf ? 'h-8 w-8' : 'h-5 w-5'"
+            :status-size-class="'h-11 w-11'"
+            status-appearance="surface"
             :status-icon-class="isSelf ? 'text-[18px]' : 'text-[13px]'"
             @status-click="openStatusEditor"
           />
@@ -212,11 +183,93 @@
       </ClientOnly>
     </div>
 
-    <div class="px-4 pb-5 pt-20">
-      <div class="flex flex-wrap items-start gap-x-4 gap-y-2 mt-1">
+    <div class="px-5 sm:px-6 pb-6">
+      <div class="flex flex-wrap items-end justify-end gap-2 min-h-16 pl-32">
+        <div class="flex items-center gap-1.5 min-h-11">
+          <AppActionButton
+            v-if="isAdminOverride"
+            v-tooltip.bottom="tinyTooltip('Edit as site admin')"
+            label="Edit"
+            kind="outline"
+            aria-label="Edit as admin"
+            @click="emit('edit')"
+          />
+          <div
+            v-if="showOnlineNow || showLastOnline"
+            v-tooltip.bottom="showLastOnline ? tinyTooltip(lastOnlineTooltip) : undefined"
+            class="text-xs"
+            :class="
+              showOnlineNow
+                ? 'text-[var(--moh-online)]'
+                : 'moh-text-muted tabular-nums'
+            "
+          >
+            <template v-if="showOnlineNow">
+              Online now
+            </template>
+            <template v-else>
+              Last online {{ lastOnlineShort }}
+            </template>
+          </div>
+        </div>
+          <AppActionButton
+            v-if="isSelf && !isAdminOverride"
+            label="Edit profile"
+            kind="secondary"
+            :class="showEditProfileNudge ? ['moh-edit-profile-nudge', editProfileNudgeToneClass] : ''"
+            @click="emit('edit')"
+          >
+            <template #default>
+              <AppIconGlyph name="write" class="size-5" aria-hidden="true" />
+            Edit profile
+            </template>
+          </AppActionButton>
+      </div>
+      <div v-if="!isSelf" class="profile-visitor-actions flex flex-wrap items-center gap-2 mt-4">
+          <AppActionButton
+            v-if="showChatButton"
+            label="Message"
+            kind="secondary"
+            @click="onChatClick"
+          />
+          <AppFollowButton
+            v-if="isAuthed && profile?.id && !isSelf"
+            :user-id="profile.id"
+            :username="profile.username"
+            :initial-relationship="followRelationship"
+            :show-icon="false"
+            button-class="!min-h-11"
+            @followed="emit('followed')"
+            @unfollowed="emit('unfollowed')"
+          />
+          <Button
+            v-else-if="!isAuthed && profile?.id"
+            label="Follow"
+            rounded
+            size="small"
+            @click="showAuthActionModal({ kind: 'login', action: 'follow' })"
+          />
+          <AppActionButton
+            v-if="showPostBell"
+            v-tooltip.bottom="tinyTooltip(bellEnabled ? 'You’ll get their replies too' : 'Get their replies too')"
+            label="Post notifications"
+            kind="outline"
+            :disabled="bellInflight"
+            :aria-pressed="bellEnabled"
+            @click="togglePostBell"
+          />
+          <AppActionButton
+            v-if="canOpenMenu"
+            label="More"
+            kind="ghost"
+            aria-haspopup="menu"
+            @click="toggleMenu"
+          />
+      </div>
+      <div class="flex flex-wrap items-start gap-x-4 gap-y-2 mt-6">
         <div class="min-w-0" style="flex: 1 1 10rem">
-          <div class="flex items-center gap-2 min-w-0">
-            <div class="text-xl font-bold leading-none text-gray-900 dark:text-gray-50 truncate">
+          <div class="flex flex-wrap items-center gap-2 min-w-0">
+            <div class="text-2xl font-bold leading-tight moh-text break-words">
               {{ profileName }}
             </div>
             <AppVerifiedBadge
@@ -245,98 +298,17 @@
           </div>
         </div>
 
-        <div class="shrink-0 flex flex-wrap items-center gap-2">
-          <Button
-            v-if="isSelf && !isAdminOverride"
-            label="Edit profile"
-            severity="secondary"
-            rounded
-            :class="showEditProfileNudge ? ['moh-edit-profile-nudge', editProfileNudgeToneClass] : ''"
-            @click="emit('edit')"
-          >
-            <template #icon>
-              <Icon name="tabler:pencil" aria-hidden="true" />
-            </template>
-          </Button>
-          <Button
-            v-if="showChatButton"
-            v-tooltip.bottom="tinyTooltip('Message')"
-            type="button"
-            severity="secondary"
-            rounded
-            text
-            class="!px-2"
-            aria-label="Send message"
-            @click="onChatClick"
-          >
-            <template #icon>
-              <Icon name="tabler:message-circle-2" aria-hidden="true" />
-            </template>
-          </Button>
-          <Button
-            v-if="showPostBell"
-            v-tooltip.bottom="tinyTooltip(bellEnabled ? 'You’ll get their replies too' : 'Get their replies too')"
-            type="button"
-            severity="secondary"
-            rounded
-            text
-            class="!px-2"
-            :disabled="bellInflight"
-            :aria-label="bellEnabled ? `Turn off reply notifications for @${profile?.username ?? 'this user'}` : `Turn on reply notifications for @${profile?.username ?? 'this user'}`"
-            @click="togglePostBell"
-          >
-            <template #icon>
-              <!--
-                Tabler's bell is 16 grid units wide against message-circle's 18, so at a
-                shared 1em it reads smaller than the icons beside it. Colour is inherited
-                like its neighbours; filled vs outline carries the on/off state.
-              -->
-              <Icon
-                :name="bellEnabled ? 'tabler:bell-filled' : 'tabler:bell'"
-                class="text-[1.1em]"
-                aria-hidden="true"
-              />
-            </template>
-          </Button>
-          <AppFollowButton
-            v-if="isAuthed && profile?.id && !isSelf"
-            :user-id="profile.id"
-            :username="profile.username"
-            :initial-relationship="followRelationship"
-            @followed="emit('followed')"
-            @unfollowed="emit('unfollowed')"
-          />
-          <Button
-            v-else-if="!isAuthed && profile?.id"
-            label="Follow"
-            rounded
-            size="small"
-            @click="showAuthActionModal({ kind: 'login', action: 'follow' })"
-          />
-          <Button
-            v-if="canOpenMenu"
-            type="button"
-            severity="secondary"
-            rounded
-            text
-            aria-label="More"
-            @click="toggleMenu"
-          >
-            <template #icon>
-              <Icon name="tabler:dots-vertical" aria-hidden="true" />
-            </template>
-          </Button>
-        </div>
+
       </div>
 
-      <div v-if="profile?.bio" class="mt-4 text-gray-800 dark:text-gray-200">
+      <div v-if="profile?.bio" class="mt-4 text-[15px] leading-[1.5] moh-text">
         <AppBioText :text="profile.bio" />
       </div>
       <div v-else class="mt-4 text-sm text-gray-500 dark:text-gray-400">
         No bio yet.
       </div>
 
-      <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600 dark:text-gray-300">
+      <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] moh-text-muted">
         <NuxtLink
           v-if="locationLabel && locationTo"
           :to="locationTo"
@@ -377,22 +349,22 @@
           rel="noopener noreferrer nofollow"
           class="inline-flex items-center gap-1.5 min-w-0 text-[var(--moh-link)] hover:underline underline-offset-2"
         >
-          <Icon name="tabler:link" class="shrink-0" aria-hidden="true" />
-          <span class="truncate max-w-[18rem]">{{ websiteLabel }}</span>
+          <AppIconGlyph name="link" class="size-4 shrink-0" aria-hidden="true" />
+          <span class="break-all">{{ websiteLabel }}</span>
         </a>
 
         <a
           v-for="link in socialLinks"
           :key="link.network"
+          v-tooltip.bottom="tinyTooltip(link.label)"
           :href="link.href"
           target="_blank"
           rel="noopener noreferrer nofollow"
-          v-tooltip.bottom="tinyTooltip(link.label)"
           class="inline-flex items-center gap-1.5 min-w-0 text-[var(--moh-link)] hover:underline underline-offset-2"
         >
           <Icon v-if="link.icon" :name="link.icon" class="shrink-0 text-gray-600 dark:text-gray-300" aria-hidden="true" />
-          <img v-else :src="link.image!" class="h-4 w-4 shrink-0 rounded-[3px]" alt="" aria-hidden="true" />
-          <span class="truncate max-w-[12rem]">@{{ link.handle }}</span>
+          <img v-else :src="link.image!" class="h-4 w-4 shrink-0 rounded-[3px]" alt="" aria-hidden="true" >
+          <span class="break-all">@{{ link.handle }}</span>
         </a>
 
         <div v-if="birthdayLabel" class="inline-flex items-center gap-1.5 min-w-0">
@@ -401,7 +373,7 @@
         </div>
 
         <div v-if="joinedLabel" class="inline-flex items-center gap-1.5 min-w-0">
-          <Icon name="tabler:calendar" class="shrink-0" aria-hidden="true" />
+          <AppIconGlyph name="calendar" class="size-4 shrink-0" aria-hidden="true" />
           <span class="truncate">Joined {{ joinedLabel }}</span>
         </div>
       </div>
@@ -417,10 +389,11 @@
         </button>
       </div>
 
+      <div class="mt-4 flex flex-wrap items-center gap-2">
       <NuxtLink
         v-if="crewPill"
         :to="`/c/${encodeURIComponent(crewPill.slug)}`"
-        class="mt-3 inline-flex items-center gap-2 rounded-full border moh-border pl-1.5 pr-3 py-1 max-w-full hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
+        class="min-h-11 inline-flex items-center gap-2 rounded-full border moh-border pl-1.5 pr-3 py-1 max-w-full hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors"
         :aria-label="`View Crew: ${crewPillName}`"
         @mouseenter="onCrewPillEnter"
         @mouseleave="onCrewPillLeave"
@@ -441,24 +414,26 @@
         </span>
         <span class="text-xs font-medium moh-text truncate">{{ crewPillName }}</span>
       </NuxtLink>
+        <slot name="utilities" />
+      </div>
     </div>
   </div>
 
   <Menu v-if="canOpenMenu" ref="menuRef" :model="menuItems" popup>
-    <template #item="{ item, props }">
-      <a v-bind="props.action" class="flex items-center gap-2" :class="item.class">
+    <template #item="{ item, props: itemProps }">
+      <a v-bind="itemProps.action" class="flex items-center gap-2" :class="item.class">
         <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
-        <span v-bind="props.label">{{ item.label }}</span>
+        <span v-bind="itemProps.label">{{ item.label }}</span>
       </a>
     </template>
   </Menu>
 
   <!-- Avatar context menu: shown when on own profile and optionally in a space -->
   <Menu ref="avatarMenuRef" :model="avatarMenuItems" popup>
-    <template #item="{ item, props }">
-      <a v-bind="props.action" class="flex items-center gap-2">
+    <template #item="{ item, props: itemProps }">
+      <a v-bind="itemProps.action" class="flex items-center gap-2">
         <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
-        <span v-bind="props.label">{{ item.label }}</span>
+        <span v-bind="itemProps.label">{{ item.label }}</span>
       </a>
     </template>
   </Menu>
@@ -525,7 +500,6 @@
 </template>
 
 <script setup lang="ts">
-import AppImg from '~/components/app/AppImg.vue'
 import type { FollowRelationship, NudgeState, PublicProfile } from '~/types/api'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { buildSocialLinks } from '~/utils/social-links'
@@ -575,11 +549,7 @@ const emit = defineEmits<{
       originRect?: { left: number; top: number; width: number; height: number }
     },
   ): void
-  (e: 'edit'): void
-  (e: 'followed'): void
-  (e: 'unfollowed'): void
-  (e: 'openFollowers'): void
-  (e: 'openFollowing'): void
+  (e: 'edit' | 'followed' | 'unfollowed' | 'openFollowers' | 'openFollowing'): void
   (e: 'nudge-updated', payload: NudgeState | null): void
 }>()
 
@@ -608,7 +578,6 @@ const followRelationship = computed(() => {
 })
 const nudgeFromProps = computed(() => props.nudge ?? null)
 const showFollowCounts = computed(() => Boolean(props.showFollowCounts))
-const followerCount = computed(() => props.followerCount ?? null)
 const followingCount = computed(() => props.followingCount ?? null)
 const hideBannerThumb = computed(() => Boolean(props.hideBannerThumb))
 const hideAvatarThumb = computed(() => Boolean(props.hideAvatarThumb))
@@ -1096,8 +1065,6 @@ function openInviteToCrew() {
   inviteToCrewOpen.value = true
 }
 
-// Exclude IDs for the invite dialog: just the profile user (pre-selected)
-const inviteToCrewExcludeIds = computed<string[]>(() => [])
 
 const menuItems = computed<MenuItemWithIcon[]>(() => {
   if (!canOpenMenu.value) return []
@@ -1311,3 +1278,7 @@ const lastOnlineTooltip = computed(() => {
 }
 </style>
 
+
+<style scoped>
+.profile-visitor-actions :deep(button) { min-height: 44px; }
+</style>

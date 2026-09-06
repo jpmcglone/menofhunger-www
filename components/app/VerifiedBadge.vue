@@ -5,16 +5,17 @@
       v-else-if="isVerified"
       ref="verifiedEl"
       :class="['inline-block', sizeClass]"
-      :style="iconStyle"
+      :style="{ color: badgeColor }"
       v-tooltip="tooltip"
       :aria-label="ariaLabel"
       @mouseenter="updateTooltipPlacement"
-    />
+    >
+      <AppIconGlyph :name="badgeIcon" class="h-full w-full" />
+    </span>
   </span>
 </template>
 
 <script setup lang="ts">
-import badgeUrl from '~/assets/images/verified-badge.png'
 import { PRIMARY_PREMIUM_ORANGE } from '~/utils/theme-tint'
 type VerifiedStatus = 'none' | 'identity' | 'manual'
 type Size = 'xs' | 'sm' | 'md'
@@ -113,19 +114,5 @@ const sizeClass = computed(() => {
   return 'h-[1em] w-[1em]'
 })
 
-const iconStyle = computed<Record<string, string>>(() => {
-  // Treat the PNG as an alpha mask so we can tint it any color cleanly.
-  const url = `url(${badgeUrl})`
-  return {
-    backgroundColor: badgeColor.value,
-    WebkitMaskImage: url,
-    maskImage: url,
-    WebkitMaskRepeat: 'no-repeat',
-    maskRepeat: 'no-repeat',
-    WebkitMaskPosition: 'center',
-    maskPosition: 'center',
-    WebkitMaskSize: 'contain',
-    maskSize: 'contain',
-  }
-})
+const badgeIcon = computed(() => isOrganization.value ? 'badgeOrganization' : isPremium.value ? 'badgePremium' : 'badgeVerified')
 </script>

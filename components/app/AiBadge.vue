@@ -3,19 +3,13 @@
     ref="badgeEl"
     :class="[
       'inline-flex shrink-0 items-center justify-center rounded-[3px] align-middle',
-      'bg-gradient-to-br from-violet-500 to-indigo-600',
       sizeClass,
     ]"
     v-tooltip="tooltip"
     aria-label="AI assistant"
     @mouseenter="updateTooltipPlacement"
   >
-    <Icon
-      name="tabler:sparkles"
-      class="text-white"
-      :style="iconSizeStyle"
-      aria-hidden="true"
-    />
+    <AppMarvMark class="h-full w-full" />
   </span>
 </template>
 
@@ -61,9 +55,4 @@ const sizeClass = computed(() => {
   return 'h-[1em] w-[1em]'
 })
 
-const iconSizeStyle = computed(() => {
-  if (props.size === 'xs') return { fontSize: '0.55em' }
-  if (props.size === 'md') return { fontSize: '0.72em' }
-  return { fontSize: '0.62em' }
-})
 </script>

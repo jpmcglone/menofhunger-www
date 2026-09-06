@@ -1,3 +1,4 @@
+import { pickTextColorForBg } from '~/utils/color-contrast'
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
@@ -54,56 +55,6 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
 }
 
-function parseHexColor(input: string): { r: number; g: number; b: number } | null {
-  const s = (input || '').trim()
-  if (!s) return null
-  const hex = s.startsWith('#') ? s.slice(1) : s
-  if (hex.length === 3) {
-    const r1 = hex.slice(0, 1)
-    const g1 = hex.slice(1, 2)
-    const b1 = hex.slice(2, 3)
-    const r = parseInt(r1 + r1, 16)
-    const g = parseInt(g1 + g1, 16)
-    const b = parseInt(b1 + b1, 16)
-    if ([r, g, b].some((v) => Number.isNaN(v))) return null
-    return { r, g, b }
-  }
-  if (hex.length === 6) {
-    const r = parseInt(hex.slice(0, 2), 16)
-    const g = parseInt(hex.slice(2, 4), 16)
-    const b = parseInt(hex.slice(4, 6), 16)
-    if ([r, g, b].some((v) => Number.isNaN(v))) return null
-    return { r, g, b }
-  }
-  return null
-}
-
-function relLuminance(rgb: { r: number; g: number; b: number }): number {
-  // WCAG relative luminance for sRGB.
-  const toLin = (c255: number) => {
-    const c = c255 / 255
-    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-  }
-  const r = toLin(rgb.r)
-  const g = toLin(rgb.g)
-  const b = toLin(rgb.b)
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
-}
-
-function contrastRatio(l1: number, l2: number): number {
-  const a = Math.max(l1, l2)
-  const b = Math.min(l1, l2)
-  return (a + 0.05) / (b + 0.05)
-}
-
-export function pickTextColorForBg(bgHex: string): '#ffffff' | '#111827' {
-  const rgb = parseHexColor(bgHex)
-  if (!rgb) return '#ffffff'
-  const lum = relLuminance(rgb)
-  const cWhite = contrastRatio(lum, 1)
-  const cBlack = contrastRatio(lum, 0)
-  return cWhite >= cBlack ? '#ffffff' : '#111827'
-}
 
 function toneToBg(tone: AppToastTone): string {
   if (tone === 'verifiedOnly') return PRIMARY_VERIFIED_BLUE[500]

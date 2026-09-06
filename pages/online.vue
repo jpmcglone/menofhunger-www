@@ -39,7 +39,7 @@
       tag="div"
       class="moh-divide transition-opacity duration-150"
     >
-      <AppUserRow v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" :platforms="u.platforms" :in-call="u.inCall === true" />
+      <AppUserRow show-presence v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" :platforms="u.platforms" :in-call="u.inCall === true" />
     </TransitionGroup>
 
     <!-- Recently / older online (authenticated viewers only) -->
@@ -84,7 +84,7 @@
           tag="div"
           class="moh-divide transition-opacity duration-150"
         >
-          <AppUserRow
+          <AppUserRow show-presence
             v-for="u in recentlyOnlineUsers"
             :key="u.id"
             :user="u"
@@ -112,7 +112,7 @@
           tag="div"
           class="moh-divide transition-opacity duration-150"
         >
-          <AppUserRow
+          <AppUserRow show-presence
             v-for="u in olderOnlineUsers"
             :key="u.id"
             :user="u"
@@ -224,9 +224,9 @@ function recentLastOnlineLabel(lastOnlineAt: string | null) {
   if (!viewerCanSeeLastOnline.value) return null
   const t = formatListTime(lastOnlineAt, nowMs.value)
   if (!t || t === '—') return null
-  if (t === 'now') return '· <1m ago'
-  if (/^\d+[mhd]$/.test(t)) return `· ${t} ago`
-  return `· ${t}`
+  if (t === 'now') return '<1m ago'
+  if (/^\d+[mhd]$/.test(t)) return `${t} ago`
+  return t
 }
 
 const feedCallback: {

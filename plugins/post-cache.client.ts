@@ -19,6 +19,11 @@ export default defineNuxtPlugin(() => {
   const { user: authUser } = useAuth()
 
   const globalCacheCb = {
+    onCommentAdded: (payload: import('~/types/api').WsPostsCommentAddedPayload) => {
+      if (payload.comment.author.id === authUser.value?.id) {
+        postCache.patch(payload.parentPostId, { viewerHasCommented: true })
+      }
+    },
     onLiveUpdated: (payload: import('~/types/api').WsPostsLiveUpdatedPayload) => {
       const postId = String(payload?.postId ?? '').trim()
       if (!postId) return
@@ -31,6 +36,7 @@ export default defineNuxtPlugin(() => {
       if (patch.deletedAt !== undefined) delta.deletedAt = patch.deletedAt
       if (typeof patch.commentCount === 'number') {
         delta.commentCount = patch.commentCount
+        if (patch.commentCount === 0) delta.viewerHasCommented = false
         // Clear optimistic bumps now that the server has confirmed the real count.
         clearBumpsForPostIds([postId])
       }

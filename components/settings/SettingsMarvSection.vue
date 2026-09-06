@@ -23,7 +23,7 @@
       class="rounded-xl border border-amber-200/80 bg-amber-50/60 p-4 text-sm dark:border-amber-500/30 dark:bg-amber-500/10"
     >
       <div class="flex items-start gap-3">
-        <Icon name="tabler:sparkles" class="text-amber-600 dark:text-amber-300 text-base mt-0.5" aria-hidden="true" />
+        <AppMarvMark :size="16" />
         <div class="flex-1">
           <p class="font-semibold moh-text">M.A.R.V is a premium benefit.</p>
           <p class="mt-1 text-gray-700 dark:text-gray-300">

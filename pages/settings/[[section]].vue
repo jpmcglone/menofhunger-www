@@ -155,16 +155,9 @@ usePageSeo({
   noindex: true
 })
 
-// Top-level Settings has five sections:
-//   account              — username, email, profile, location, interests, verification, useful links
-//   notifications        — push permission + per-event notification matrix
-//   privacy              — visibility settings + blocked users
-//   billing              — Premium subscription management
-//   marv                 — AI helper preferences
-// The previous narrower keys (`verification`, `blocked`, `links`) are kept as
-// "blocks" that the merged sections compose (see `composedBlocks` below) and
-// as legacy URL aliases that redirect to their new home.
-type SettingsSection = 'account' | 'notifications' | 'privacy' | 'billing' | 'marv' | 'fitness'
+// Verification has its own destination so signup and verification prompts open
+// the agreement flow directly instead of burying it among account fields.
+type SettingsSection = 'account' | 'verification' | 'notifications' | 'privacy' | 'billing' | 'marv' | 'fitness'
 type SettingsBlock =
   | 'account'
   | 'verification'
@@ -220,12 +213,11 @@ onMounted(() => {
 const allowedSections = computed<SettingsSection[]>(() =>
   isPageAccount.value
     ? ['account', 'notifications', 'privacy', 'marv']
-    : ['account', 'notifications', 'privacy', 'billing', 'marv', 'fitness'],
+    : ['account', 'verification', 'notifications', 'privacy', 'billing', 'marv', 'fitness'],
 )
 
 // Old narrower URL keys redirect into one of the top-level sections.
 const sectionAlias: Record<string, SettingsSection> = {
-  verification: 'account',
   links: 'account',
   blocked: 'privacy',
 }
@@ -254,7 +246,7 @@ const rawRouteParam = typeof route.params.section === 'string' ? route.params.se
 if (rawRouteParam && rawRouteParam in sectionAlias) {
   await navigateTo(`/settings/${sectionAlias[rawRouteParam]}`, { replace: true })
 }
-if (isPageAccount.value && (rawRouteParam === 'billing' || rawRouteParam === 'fitness')) {
+if (isPageAccount.value && (rawRouteParam === 'billing' || rawRouteParam === 'fitness' || rawRouteParam === 'verification')) {
   await navigateTo('/settings/account', { replace: true })
 }
 
@@ -280,7 +272,12 @@ const sections = computed(() => {
       label: 'Your account',
       description: isPageAccount.value
         ? 'Username, email, profile, and helpful links.'
-        : 'Username, email, profile, verification, and helpful links.',
+        : 'Username, email, profile, and helpful links.',
+    },
+    {
+      key: 'verification' as const,
+      label: 'Verification',
+      description: 'Your verified profile and video-call request.',
     },
     {
       key: 'notifications' as const,
@@ -311,7 +308,8 @@ const sections = computed(() => {
 // narrower sections). Rendering them as independent `v-if` siblings (instead of
 // a single `v-if/v-else-if` chain) lets us mount multiple blocks under one URL.
 const sectionToBlocks: Record<SettingsSection, ReadonlyArray<SettingsBlock>> = {
-  account: ['account', 'verification', 'links', 'danger'],
+  account: ['account', 'links', 'danger'],
+  verification: ['verification'],
   notifications: ['notifications'],
   privacy: ['privacy', 'blocked'],
   billing: ['billing'],

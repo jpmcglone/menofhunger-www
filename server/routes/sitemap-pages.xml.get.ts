@@ -1,8 +1,7 @@
 /**
  * Static Pages Sitemap — GET /sitemap-pages.xml
  *
- * All public, non-dynamic pages. Higher priority / lower change frequency
- * means Googlebot spends crawl budget on pages that change meaningfully.
+ * Public, canonical pages only. Private/noindex routes stay out of discovery.
  */
 const SITE_URL = 'https://menofhunger.com'
 
@@ -10,8 +9,6 @@ const PAGES = [
   { path: '/',              changefreq: 'weekly',  priority: '1.0' },
   { path: '/articles',     changefreq: 'hourly',  priority: '0.9' },
   { path: '/explore',      changefreq: 'hourly',  priority: '0.8' },
-  { path: '/leaderboard',  changefreq: 'daily',   priority: '0.7' },
-  { path: '/who-to-follow',changefreq: 'daily',   priority: '0.6' },
   { path: '/tiers',        changefreq: 'monthly', priority: '0.6' },
   { path: '/about',        changefreq: 'monthly', priority: '0.6' },
   { path: '/api',          changefreq: 'monthly', priority: '0.5' },
@@ -23,10 +20,7 @@ const PAGES = [
 ]
 
 export default defineEventHandler((event) => {
-  const today = new Date().toISOString().slice(0, 10)
-
   const entries = PAGES.map((p) => urlEntry(`${SITE_URL}${p.path}`, {
-    lastmod: today,
     changefreq: p.changefreq,
     priority: p.priority,
   }))

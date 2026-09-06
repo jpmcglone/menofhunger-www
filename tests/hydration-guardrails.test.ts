@@ -634,8 +634,10 @@ describe('hydration guardrails (structural)', () => {
     expect(row).not.toMatch(/w-\[5\.25rem\]/)
     // Must NOT have overflow-visible on the avatar container (avatars should stay inside their column)
     expect(row).not.toMatch(/overflow-visible/)
-    // Must still have the avatar cap (two actors + optional overflow chip)
-    expect(row).toMatch(/actors\.slice\(0,\s*2\)/)
+    // Actor strips live in the content column and share the same bounded renderer.
+    expect(row).toContain('AppNotificationActors')
+    const actors = readFromRepo('components/app/NotificationActors.vue')
+    expect(actors).toMatch(/actors\.slice\(0,\s*4\)/)
   })
 
   it('useKeyboardHeight infers keyboard height from a baseline, not from window.innerHeight', () => {

@@ -117,8 +117,9 @@
               role="menuitem"
               @click="closeMenu"
             >
-              <Icon v-if="item.iconName" :name="item.iconName" class="text-[15px] shrink-0" aria-hidden="true" />
-              <span>{{ item.label }}</span>
+              <AppIconGlyph v-if="item.glyph" :name="item.glyph" :selected="Boolean(item.to && route.path === item.to)" :size="18" class="shrink-0" aria-hidden="true" />
+              <Icon v-else-if="item.iconName" :name="item.iconName" class="text-[15px] shrink-0" aria-hidden="true" />
+              <span>{{ item.label }}</span><span v-if="item.to === '/admin' && pendingVerifications" class="ml-auto rounded-full moh-surface-2 px-2 text-xs font-semibold tabular-nums" :aria-label="`${pendingVerifications} pending verification requests`">{{ pendingVerifications }}</span>
             </NuxtLink>
             <button
               v-else
@@ -127,7 +128,8 @@
               role="menuitem"
               @click="onMenuAction(item)"
             >
-              <Icon v-if="item.iconName" :name="item.iconName" class="text-[15px] shrink-0" aria-hidden="true" />
+              <AppIconGlyph v-if="item.glyph" :name="item.glyph" :selected="Boolean(item.to && route.path === item.to)" :size="18" class="shrink-0" aria-hidden="true" />
+              <Icon v-else-if="item.iconName" :name="item.iconName" class="text-[15px] shrink-0" aria-hidden="true" />
               <span>{{ item.label }}</span>
             </button>
           </template>
@@ -153,10 +155,12 @@
 </template>
 
 <script setup lang="ts">
+const { pending: pendingVerifications } = useAdminVerificationCount()
+import type catalog from '~/design/icon-catalog.json'
 import type { MenuItem } from 'primevue/menuitem'
 import { getApiErrorMessage } from '~/utils/api-error'
 
-type MenuRow = MenuItem & { iconName?: string; to?: string; key?: string }
+type MenuRow = MenuItem & { iconName?: string; glyph?: keyof typeof catalog; to?: string; key?: string }
 
 const props = withDefaults(
   defineProps<{
@@ -242,7 +246,7 @@ const extraMenuItems = computed<MenuRow[]>(() => {
         {
           key: 'status',
           label: activeStatus.value ? 'Update status' : 'Set status',
-          iconName: 'tabler:message-circle',
+          iconName: 'tabler:message-circle', glyph: 'reply',
           command: () => openStatusEditor(),
         },
         { separator: true },
@@ -257,7 +261,7 @@ const extraMenuItems = computed<MenuRow[]>(() => {
     {
       key: 'space',
       label: 'Go to space',
-      iconName: 'tabler:layout-grid',
+      iconName: 'tabler:layout-grid', glyph: 'navSpaces',
       to: `/s/${encodeURIComponent(ownerUsername)}`,
     },
     { separator: true },

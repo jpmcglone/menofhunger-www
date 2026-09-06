@@ -1,8 +1,8 @@
 <template>
-  <section class="border-t moh-border pt-5">
+  <section v-if="data?.suggestions.length" class="border-t moh-border pt-5">
     <h3 class="text-sm font-semibold">Join the conversation</h3>
     <p class="mt-1 text-xs moh-text-muted">A few places where your perspective could help.</p>
-    <div v-if="loading && !data" class="mt-4 space-y-3" aria-label="Finding conversations"><Skeleton v-for="n in 3" :key="n" height="4rem" /></div>
+    <div v-if="loading && !data" class="mt-4 space-y-3" aria-label="Finding conversations"><AppMarvMark :size="28" loading /><span class="moh-text-muted">Finding conversations…</span></div>
     <div v-else-if="data?.suggestions.length" class="mt-2 moh-divide">
       <NuxtLink v-for="suggestion in data.suggestions" :key="suggestion.postId" :to="`/p/${suggestion.postId}`" class="block py-4" @click="$emit('navigate')"><span class="text-xs moh-text-muted">{{ suggestion.reason }}</span><p class="mt-1 text-sm font-medium">{{ suggestion.name || `@${suggestion.username}` }}</p><p class="mt-1 line-clamp-2 text-sm moh-text-muted">{{ suggestion.body || 'Open the conversation' }}</p><span class="mt-2 inline-block text-xs font-medium">Read & reply →</span></NuxtLink>
     </div>

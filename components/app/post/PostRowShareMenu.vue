@@ -9,31 +9,7 @@
       aria-label="Share"
       @click="onShareButtonClick"
     >
-      <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
-        <path
-          d="M12 3v10"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.9"
-          stroke-linecap="round"
-        />
-        <path
-          d="M7.5 7.5L12 3l4.5 4.5"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.9"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-        <path
-          d="M5 11.5v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18.5v-7"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.9"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
+      <AppIconGlyph name="share" :size="20" />
     </button>
 
     <Menu v-if="mounted" ref="menuRef" :model="menuItems" popup>

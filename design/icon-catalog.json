@@ -1,0 +1,594 @@
+{
+  "home": {
+    "web": "home",
+    "webSelected": "home-filled",
+    "ios": "house",
+    "iosSelected": "house.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "search": {
+    "web": "search",
+    "webSelected": "search",
+    "ios": "magnifyingglass",
+    "iosSelected": "magnifyingglass",
+    "selectedTreatment": "lens",
+    "iosSelectedTreatment": "lens"
+  },
+  "notifications": {
+    "web": "bell",
+    "webSelected": "bell-filled",
+    "ios": "bell",
+    "iosSelected": "bell.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "messages": {
+    "web": "message-circle",
+    "webSelected": "message-circle-filled",
+    "ios": "bubble.left",
+    "iosSelected": "bubble.left.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "profile": {
+    "web": "user",
+    "webSelected": "user-filled",
+    "ios": "person",
+    "iosSelected": "person.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "members": {
+    "web": "users",
+    "webSelected": "users",
+    "ios": "person.2",
+    "iosSelected": "person.2.fill",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "fill"
+  },
+  "bookmark": {
+    "web": "bookmark",
+    "webSelected": "bookmark-filled",
+    "ios": "bookmark",
+    "iosSelected": "bookmark.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "reply": {
+    "web": "message-circle",
+    "webSelected": "message-circle-filled",
+    "ios": "bubble.left",
+    "iosSelected": "bubble.left.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "repost": {
+    "web": "repeat",
+    "webSelected": "repeat",
+    "ios": "arrow.2.squarepath",
+    "iosSelected": "arrow.2.squarepath",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "boost": {
+    "web": "arrow-big-up",
+    "webSelected": "arrow-big-up-filled",
+    "ios": "arrow.up",
+    "iosSelected": "arrow.up",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "share": {
+    "web": "CUSTOM",
+    "webSelected": "CUSTOM",
+    "ios": "square.and.arrow.up",
+    "iosSelected": "square.and.arrow.up",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "more": {
+    "web": "dots",
+    "webSelected": "dots-filled",
+    "ios": "ellipsis",
+    "iosSelected": "ellipsis",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "checkin": {
+    "web": "calendar-check",
+    "webSelected": "calendar-check",
+    "ios": "calendar.badge.checkmark",
+    "iosSelected": "calendar.badge.checkmark",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "calendar": {
+    "web": "calendar",
+    "webSelected": "calendar-filled",
+    "ios": "calendar",
+    "iosSelected": "calendar",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "settings": {
+    "web": "settings",
+    "webSelected": "settings-filled",
+    "ios": "gearshape",
+    "iosSelected": "gearshape.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "admin": {
+    "web": "shield-check",
+    "webSelected": "shield-check-filled",
+    "ios": "checkmark.shield",
+    "iosSelected": "checkmark.shield.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "logout": {
+    "web": "logout",
+    "webSelected": "logout",
+    "ios": "rectangle.portrait.and.arrow.right",
+    "iosSelected": "rectangle.portrait.and.arrow.right",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "invite": {
+    "web": "gift",
+    "webSelected": "gift-filled",
+    "ios": "gift",
+    "iosSelected": "gift.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "coins": {
+    "web": "coin",
+    "webSelected": "coin-filled",
+    "ios": "dollarsign.circle",
+    "iosSelected": "dollarsign.circle.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "premium": {
+    "web": "crown",
+    "webSelected": "crown-filled",
+    "ios": "crown",
+    "iosSelected": "crown.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "verified": {
+    "web": "rosette-discount-check",
+    "webSelected": "rosette-discount-check-filled",
+    "ios": "checkmark.seal",
+    "iosSelected": "checkmark.seal.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "marv": {
+    "web": "sparkles",
+    "webSelected": "sparkles-filled",
+    "ios": "sparkles",
+    "iosSelected": "sparkles",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "article": {
+    "web": "article",
+    "webSelected": "article-filled",
+    "ios": "doc.text",
+    "iosSelected": "doc.text.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "write": {
+    "web": "pencil",
+    "webSelected": "pencil-filled",
+    "ios": "square.and.pencil",
+    "iosSelected": "square.and.pencil",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "image": {
+    "web": "photo",
+    "webSelected": "photo-filled",
+    "ios": "photo",
+    "iosSelected": "photo.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "camera": {
+    "web": "camera",
+    "webSelected": "camera-filled",
+    "ios": "camera",
+    "iosSelected": "camera.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "video": {
+    "web": "video",
+    "webSelected": "video-filled",
+    "ios": "video",
+    "iosSelected": "video.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "microphone": {
+    "web": "microphone",
+    "webSelected": "microphone-filled",
+    "ios": "mic",
+    "iosSelected": "mic.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "audio": {
+    "web": "volume",
+    "webSelected": "volume",
+    "ios": "speaker.wave.2",
+    "iosSelected": "speaker.wave.2.fill",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "fill"
+  },
+  "play": {
+    "web": "player-play",
+    "webSelected": "player-play-filled",
+    "ios": "play",
+    "iosSelected": "play.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "pause": {
+    "web": "player-pause",
+    "webSelected": "player-pause-filled",
+    "ios": "pause",
+    "iosSelected": "pause.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "close": {
+    "web": "x",
+    "webSelected": "x-filled",
+    "ios": "xmark",
+    "iosSelected": "xmark",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "back": {
+    "web": "arrow-left",
+    "webSelected": "arrow-left",
+    "ios": "arrow.left",
+    "iosSelected": "arrow.left",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "forward": {
+    "web": "arrow-right",
+    "webSelected": "arrow-right",
+    "ios": "arrow.right",
+    "iosSelected": "arrow.right",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "expand": {
+    "web": "chevron-down",
+    "webSelected": "chevron-down-filled",
+    "ios": "chevron.down",
+    "iosSelected": "chevron.down",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "check": {
+    "web": "check",
+    "webSelected": "check-filled",
+    "ios": "checkmark",
+    "iosSelected": "checkmark",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "add": {
+    "web": "plus",
+    "webSelected": "plus-filled",
+    "ios": "plus",
+    "iosSelected": "plus",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "remove": {
+    "web": "minus",
+    "webSelected": "minus",
+    "ios": "minus",
+    "iosSelected": "minus",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "link": {
+    "web": "link",
+    "webSelected": "link-filled",
+    "ios": "link",
+    "iosSelected": "link",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "copy": {
+    "web": "copy",
+    "webSelected": "copy-filled",
+    "ios": "doc.on.doc",
+    "iosSelected": "doc.on.doc.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "delete": {
+    "web": "trash",
+    "webSelected": "trash-filled",
+    "ios": "trash",
+    "iosSelected": "trash.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "flag": {
+    "web": "flag",
+    "webSelected": "flag-filled",
+    "ios": "flag",
+    "iosSelected": "flag.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "visibility": {
+    "web": "eye",
+    "webSelected": "eye-filled",
+    "ios": "eye",
+    "iosSelected": "eye.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "private": {
+    "web": "lock",
+    "webSelected": "lock-filled",
+    "ios": "lock",
+    "iosSelected": "lock.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "globe": {
+    "web": "world",
+    "webSelected": "world-filled",
+    "ios": "globe",
+    "iosSelected": "globe",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "group": {
+    "web": "users-group",
+    "webSelected": "users-group",
+    "ios": "person.3",
+    "iosSelected": "person.3.fill",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "fill"
+  },
+  "spaces": {
+    "web": "broadcast",
+    "webSelected": "broadcast",
+    "ios": "dot.radiowaves.left.and.right",
+    "iosSelected": "dot.radiowaves.left.and.right",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "nudge": {
+    "web": "hand-click",
+    "webSelected": "hand-click",
+    "ios": "hand.point.right",
+    "iosSelected": "hand.point.right.fill",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "fill"
+  },
+  "quote": {
+    "web": "quote",
+    "webSelected": "quote-filled",
+    "ios": "quote.bubble",
+    "iosSelected": "quote.bubble.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "word": {
+    "web": "book",
+    "webSelected": "book-filled",
+    "ios": "book",
+    "iosSelected": "book.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "history": {
+    "web": "history",
+    "webSelected": "history",
+    "ios": "clock.arrow.circlepath",
+    "iosSelected": "clock.arrow.circlepath",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "analytics": {
+    "web": "chart-bar",
+    "webSelected": "chart-bar",
+    "ios": "chart.bar",
+    "iosSelected": "chart.bar.fill",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "fill"
+  },
+  "location": {
+    "web": "map-pin",
+    "webSelected": "map-pin-filled",
+    "ios": "mappin",
+    "iosSelected": "mappin",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "mail": {
+    "web": "mail",
+    "webSelected": "mail-filled",
+    "ios": "envelope",
+    "iosSelected": "envelope.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "help": {
+    "web": "help-circle",
+    "webSelected": "help-circle-filled",
+    "ios": "questionmark.circle",
+    "iosSelected": "questionmark.circle.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "warning": {
+    "web": "alert-triangle",
+    "webSelected": "alert-triangle-filled",
+    "ios": "exclamationmark.triangle",
+    "iosSelected": "exclamationmark.triangle.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "success": {
+    "web": "circle-check",
+    "webSelected": "circle-check-filled",
+    "ios": "checkmark.circle",
+    "iosSelected": "checkmark.circle.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
+  "filter": {
+    "web": "adjustments-horizontal",
+    "webSelected": "adjustments-horizontal-filled",
+    "ios": "slider.horizontal.3",
+    "iosSelected": "slider.horizontal.3",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "refresh": {
+    "web": "refresh",
+    "webSelected": "refresh",
+    "ios": "arrow.clockwise",
+    "iosSelected": "arrow.clockwise",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "download": {
+    "web": "download",
+    "webSelected": "download-filled",
+    "ios": "arrow.down.to.line",
+    "iosSelected": "arrow.down.to.line",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "bold"
+  },
+  "badgeVerified": {
+    "web": "circle-check-filled",
+    "webSelected": "circle-check-filled",
+    "ios": "checkmark.circle.fill",
+    "iosSelected": "checkmark.circle.fill",
+    "selectedTreatment": "identity",
+    "iosSelectedTreatment": "identity"
+  },
+  "badgePremium": {
+    "web": "circle-check-filled",
+    "webSelected": "circle-check-filled",
+    "ios": "checkmark.seal.fill",
+    "iosSelected": "checkmark.seal.fill",
+    "selectedTreatment": "identity",
+    "iosSelectedTreatment": "identity"
+  },
+  "badgeOrganization": {
+    "web": "circle-check-filled",
+    "webSelected": "circle-check-filled",
+    "ios": "checkmark.square.fill",
+    "iosSelected": "checkmark.square.fill",
+    "selectedTreatment": "identity",
+    "iosSelectedTreatment": "identity"
+  },
+  "platformWeb": {
+    "web": "world",
+    "webSelected": "world",
+    "ios": "globe",
+    "iosSelected": "globe",
+    "selectedTreatment": "brand",
+    "iosSelectedTreatment": "brand"
+  },
+  "platformIOS": {
+    "web": "brand-apple-filled",
+    "webSelected": "brand-apple-filled",
+    "ios": "apple.logo",
+    "iosSelected": "apple.logo",
+    "selectedTreatment": "brand",
+    "iosSelectedTreatment": "brand"
+  },
+  "platformAndroid": {
+    "web": "brand-android",
+    "webSelected": "brand-android",
+    "ios": "android",
+    "iosSelected": "android",
+    "selectedTreatment": "brand",
+    "iosSelectedTreatment": "brand"
+  },
+  "catchup": {
+    "web": "history",
+    "webSelected": "history",
+    "ios": "clock.arrow.circlepath",
+    "iosSelected": "clock.arrow.circlepath",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "gif": {
+    "web": "gif",
+    "webSelected": "gif",
+    "ios": "rectangle",
+    "iosSelected": "rectangle.fill",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "streak": {
+    "web": "flame",
+    "webSelected": "flame-filled",
+    "figma": true,
+    "selectedTreatment": "fill"
+  },
+  "fitness": {
+    "web": "device-heart-monitor",
+    "webSelected": "device-heart-monitor-filled",
+    "figma": true,
+    "selectedTreatment": "fill"
+  },
+  "navSpaces": {
+    "web": "layout-grid",
+    "webSelected": "layout-grid-filled",
+    "figma": true,
+    "selectedTreatment": "fill"
+  },
+  "scheduled": {
+    "web": "calendar-time",
+    "webSelected": "calendar-filled",
+    "figma": true,
+    "selectedTreatment": "fill"
+  },
+  "onlyMe": {
+    "web": "eye-off",
+    "webSelected": "eye-off",
+    "figma": true,
+    "selectedTreatment": "fill"
+  },
+  "ideas": {
+    "web": "bulb",
+    "webSelected": "bulb-filled",
+    "figma": true,
+    "selectedTreatment": "fill"
+  },
+  "crew": {
+    "web": "shield-check",
+    "webSelected": "shield-check-filled",
+    "figma": true,
+    "selectedTreatment": "fill"
+  },
+  "moderation": {
+    "web": "shield",
+    "webSelected": "shield-filled",
+    "figma": true,
+    "selectedTreatment": "fill"
+  }
+}

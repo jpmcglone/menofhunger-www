@@ -34,7 +34,7 @@
             aria-label="AI"
             title="AI helper"
           >
-            <Icon name="tabler:sparkles" class="text-[9px]" aria-hidden="true" />
+            <AppMarvMark :size="16" />
           </span>
         </div>
 
@@ -107,7 +107,7 @@
             class="moh-marv-ai-spark pointer-events-none absolute -bottom-0.5 -right-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-amber-400 via-rose-400 to-violet-500 text-white shadow-sm dark:border-zinc-950"
             aria-hidden="true"
           >
-            <Icon name="tabler:sparkles" class="text-[9px]" aria-hidden="true" />
+            <AppMarvMark :size="16" />
           </span>
         </div>
         <div class="min-w-0 flex-1">

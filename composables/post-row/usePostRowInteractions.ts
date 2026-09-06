@@ -1,3 +1,5 @@
+import { userActionColor } from '~/utils/user-tier'
+import { postActionVisibilityColor } from '~/utils/post-visibility'
 import type { ComputedRef } from 'vue'
 import type { FeedPost } from '~/types/api'
 import type { MenuItem } from 'primevue/menuitem'
@@ -172,13 +174,8 @@ export function usePostRowInteractions(opts: {
   const repostEntry = computed(() => repostState.get(postView.value))
   const isReposted = computed(() => repostEntry.value.viewerHasReposted)
   const repostCount = computed(() => repostEntry.value.repostCount)
-  const repostActiveColor = computed(() => {
-    const v = postView.value.visibility
-    if (v === 'verifiedOnly') return 'var(--moh-verified)'
-    if (v === 'premiumOnly') return 'var(--moh-premium)'
-    if (v === 'onlyMe') return 'var(--moh-onlyme)'
-    return 'var(--p-primary-color)'
-  })
+  const repostActiveColor = computed(() => isReposted.value ? postActionVisibilityColor(postView.value.visibility) : 'var(--moh-text)')
+  const boostActiveColor = computed(() => isBoosted.value ? userActionColor(user.value) : 'var(--moh-text)')
   const repostTooltip = computed(() => {
     if (!isAuthed.value) return tinyTooltip('Log in to repost')
     if (!viewerIsVerified.value) return tinyTooltip('Verify to repost')
@@ -375,6 +372,7 @@ export function usePostRowInteractions(opts: {
     isReposted,
     repostCount,
     repostActiveColor,
+    boostActiveColor,
     repostTooltip,
     onRepostClick,
     onRepostMenuRepost,

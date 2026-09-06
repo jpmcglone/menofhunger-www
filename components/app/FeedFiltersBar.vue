@@ -2,13 +2,14 @@
   <div ref="filterWrapEl">
     <button
       type="button"
-      class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:opacity-80"
-      :class="filter === 'all' ? 'ring-1 ring-current/40' : ''"
+      class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full transition-colors hover:opacity-80"
+      :class="[label ? 'min-h-11 px-5 text-sm font-semibold border moh-border' : 'h-8 w-8', !label && filter === 'all' ? 'ring-1 ring-current/40' : '']"
       :style="filterButtonStyle"
       aria-label="Feed filters"
       @click="toggleFilterPopover"
     >
-      <Icon :name="sortIconName" class="text-[22px]" aria-hidden="true" />
+      <Icon v-if="!label" :name="sortIconName" class="text-[22px]" aria-hidden="true" />
+      <span v-if="label">{{ label }}</span>
     </button>
 
     <Teleport to="body">
@@ -127,6 +128,7 @@ import { feedFilterButtonColor, feedFilterButtonBg } from '~/utils/post-visibili
 
 const props = withDefaults(
   defineProps<{
+    label?: string
     sort: 'new' | 'trending'
     filter: ProfilePostsFilter
     viewerIsVerified: boolean
@@ -144,6 +146,7 @@ const props = withDefaults(
     hideSort?: boolean
   }>(),
   {
+    label: undefined,
     sortNoun: undefined,
     sortCount: null,
     showVisibilityFilter: true,

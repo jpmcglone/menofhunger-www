@@ -151,7 +151,7 @@
               aria-label="Catch me up with M.A.R.V"
               @click.stop="onCatchMeUp"
             >
-              <AppMarvMark :size="18" :tone="catchUpResultReady ? 'active' : 'muted'" />
+              <AppIconGlyph name="catchup" :size="18" :selected="catchUpResultReady" :class="catchUpResultReady ? 'text-[var(--moh-marv)]' : 'moh-text'" />
             </button>
           </div>
 
@@ -659,6 +659,9 @@ watch(
   },
 )
 // Combined: high-contrast icon when a result is either in-session or should still be cached.
+watch(catchUpSessionReady, (ready) => {
+  if (ready) catchUpPersistedReady.value = true
+})
 const catchUpResultReady = computed(() => catchUpSessionReady.value || catchUpPersistedReady.value)
 function onCatchMeUp() {
   showCatchUp(postView.value)

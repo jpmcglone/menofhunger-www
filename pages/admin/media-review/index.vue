@@ -73,12 +73,12 @@
         </template>
       </Button>
       <Button
+        v-tooltip.bottom="{ value: 'Index recent objects from storage', class: 'moh-tooltip-tiny', position: 'bottom' }"
         label="Sync"
         text
         severity="secondary"
         :loading="mediaSyncing"
         :disabled="mediaLoading || mediaSyncing"
-        v-tooltip.bottom="{ value: 'Index recent objects from storage', class: 'moh-tooltip-tiny', position: 'bottom' }"
         @click="syncMedia()"
       >
         <template #icon>
@@ -195,7 +195,7 @@
             alt=""
             loading="lazy"
             decoding="async"
-          />
+          >
           <div
             v-else
             class="absolute inset-0 flex items-center justify-center"
@@ -311,7 +311,7 @@
               alt=""
               loading="lazy"
               decoding="async"
-            />
+            >
             <div v-else class="flex items-center justify-center h-[22rem]">
               <div class="text-center text-sm moh-text-muted">
                 <Icon
@@ -358,6 +358,8 @@
                   </NuxtLink>
                 </div>
               </div>
+
+              <AppAdminMediaPublicationReferences :references="details.references" @navigate="detailsOpen = false" />
 
               <div class="pt-2 border-t moh-border">
                 <div class="font-semibold">Profiles</div>
@@ -551,6 +553,12 @@ function mediaCaption(it: AdminImageReviewListItem): { to: string; label: string
       label: it.belongsToSummary === 'article_inline' ? 'Article (inline)' : 'Article',
     }
   }
+  if (it.announcementId) {
+    return { to: `/admin/announcements/${encodeURIComponent(it.announcementId)}`, label: 'Announcement' }
+  }
+  if (it.newsletterId) {
+    return { to: `/admin/newsletters/${encodeURIComponent(it.newsletterId)}`, label: 'Newsletter' }
+  }
   if (it.messageId) {
     return { to: `/admin/media-review/${encodeURIComponent(it.id)}`, label: 'Message media' }
   }
@@ -602,16 +610,22 @@ async function executeBulkDelete() {
   bulkDeleteError.value = null
   try {
     const ids = [...selectedIds.value]
-    await apiFetch('/admin/media-review/bulk-delete', {
+    const result = await apiFetchData<{ deleted: number; skipped: number; errors: Array<{ id: string; message: string }> }>('/admin/media-review/bulk-delete', {
       method: 'POST',
-      body: { ids, reason: bulkDeleteReason.value.trim() },
+      body: { ids, reason: bulkDeleteReason.value.trim(), onlyOrphans: mediaOnlyOrphans.value },
     })
-    // Remove deleted items from the grid and clear selection
-    const deletedSet = new Set(ids)
-    mediaItems.value = mediaItems.value.filter((it) => !deletedSet.has(it.id))
-    selectedIds.value = new Set()
-    bulkDeleteConfirmOpen.value = false
-    selectionMode.value = false
+    // The API can reject individual stale/protected selections. Keep those visible
+    // and selected, and surface their reasons instead of claiming all were deleted.
+    const failedIds = new Set(result.errors.map((error) => error.id))
+    const deletedSet = new Set(ids.filter((id) => !failedIds.has(id)))
+    mediaItems.value = mediaItems.value.filter((item) => !deletedSet.has(item.id))
+    selectedIds.value = failedIds
+    if (result.errors.length) {
+      bulkDeleteError.value = `${result.errors.length} could not be deleted. ${[...new Set(result.errors.map((error) => error.message))].join(' ')}`
+    } else {
+      bulkDeleteConfirmOpen.value = false
+      selectionMode.value = false
+    }
   } catch (e: unknown) {
     bulkDeleteError.value = getApiErrorMessage(e) || 'Bulk delete failed.'
   } finally {

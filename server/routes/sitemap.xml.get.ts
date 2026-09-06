@@ -8,14 +8,13 @@
  */
 export default defineEventHandler((event) => {
   const SITE_URL = 'https://menofhunger.com'
-  const now = new Date().toISOString().slice(0, 10)
 
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    entry(`${SITE_URL}/sitemap-pages.xml`, now),
-    entry(`${SITE_URL}/sitemap-articles.xml`, now),
-    entry(`${SITE_URL}/sitemap-profiles.xml`, now),
+    entry(`${SITE_URL}/sitemap-pages.xml`),
+    entry(`${SITE_URL}/sitemap-articles.xml`),
+    entry(`${SITE_URL}/sitemap-profiles.xml`),
     '</sitemapindex>',
   ].join('\n')
 
@@ -24,6 +23,6 @@ export default defineEventHandler((event) => {
   return xml
 })
 
-function entry(loc: string, lastmod: string) {
-  return `  <sitemap>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </sitemap>`
+function entry(loc: string) {
+  return `  <sitemap>\n    <loc>${loc}</loc>\n  </sitemap>`
 }

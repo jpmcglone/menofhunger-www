@@ -13,25 +13,16 @@ type UserRow = {
   createdAt?: string | null
 }
 
-function escapeXml(s: string) {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
-}
+import { escapeSitemapXml as escapeXml } from '../../utils/sitemap'
 
-function urlEntry(user: UserRow, today: string): string {
+function urlEntry(user: UserRow): string {
   const username = (user.username ?? '').trim()
   if (!username) return ''
   const loc = `${SITE_URL}/u/${encodeURIComponent(username)}`
-  const lastmod = (user.createdAt ?? today).slice(0, 10)
 
   const lines = [
     `  <url>`,
     `    <loc>${loc}</loc>`,
-    `    <lastmod>${lastmod}</lastmod>`,
     `    <changefreq>weekly</changefreq>`,
     `    <priority>0.6</priority>`,
   ]
@@ -57,23 +48,23 @@ export default defineEventHandler(async (event) => {
   try {
     // Top-users endpoint returns the most-followed members — ideal for profile discovery.
     const res = await $fetch<{ data: UserRow[] } | UserRow[]>(`${apiBase}/follows/top-users`, {
-      query: { limit: 500 },
+      query: { limit: 50 },
       timeout: 8_000,
     })
-    const rows = Array.isArray(res) ? res : (Array.isArray((res as any)?.data) ? (res as any).data : [])
+    const rows = Array.isArray(res) ? res : res?.data
+    if (!Array.isArray(rows)) throw new Error('Invalid profile sitemap response')
     users = rows.filter((u: UserRow) => u?.username)
   } catch {
-    // Return valid empty sitemap on API failure.
+    setResponseHeader(event, 'Cache-Control', 'no-store')
+    throw createError({ statusCode: 503, statusMessage: 'Profile sitemap temporarily unavailable' })
   }
-
-  const today = new Date().toISOString().slice(0, 10)
 
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset',
     '  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
     '  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
-    ...users.map((u) => urlEntry(u, today)).filter(Boolean),
+    ...users.map((u) => urlEntry(u)).filter(Boolean),
     '</urlset>',
   ].join('\n')
 

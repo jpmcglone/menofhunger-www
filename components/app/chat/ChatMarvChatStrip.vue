@@ -30,7 +30,8 @@
           class="flex h-4 w-4 items-center justify-center rounded-md text-[11px] transition-colors"
           :class="modeIconBg(preferredMode ?? 'auto', true)"
         >
-          <Icon :name="modeIcon(preferredMode ?? 'auto')" aria-hidden="true" />
+          <AppMarvMark v-if="(preferredMode ?? 'auto') === 'auto'" :size="16" />
+          <Icon v-else :name="modeIcon(preferredMode ?? 'auto')" aria-hidden="true" />
         </span>
         <span class="font-semibold text-gray-800 dark:text-gray-100">{{ modeLabel(preferredMode ?? 'auto') }}</span>
         <Icon
@@ -76,7 +77,8 @@
               class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[13px] transition-colors"
               :class="modeIconBg(mode, preferredMode === mode)"
             >
-              <Icon :name="modeIcon(mode)" aria-hidden="true" />
+              <AppMarvMark v-if="mode === 'auto'" :size="18" />
+              <Icon v-else :name="modeIcon(mode)" aria-hidden="true" />
             </span>
             <span class="font-semibold">{{ modeLabel(mode) }}</span>
             <span class="ml-auto font-normal text-gray-400 dark:text-gray-500">{{ modeSubtitle(mode) }}</span>

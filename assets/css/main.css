@@ -133,6 +133,7 @@ html.dark .moh-vignette::after {
   --moh-thread-line: rgba(20, 18, 16, 0.12);
 
   /* Text */
+  --moh-online: #15803d;
   --moh-text: #141210; /* warm near-black */
   --moh-text-muted: #5f5a55; /* warm muted */
   --moh-text-soft: #7a746e; /* tertiary */
@@ -237,6 +238,7 @@ html.dark {
   --moh-thread-line: rgb(63 63 70); /* zinc-700 */
 
   /* Text */
+  --moh-online: #4ade80;
   --moh-text: #f4f4f5; /* Slightly brighter body for confidence */
   --moh-text-muted: #A3AAB4; /* metadata */
   --moh-text-soft: #7f8792; /* tertiary */
@@ -1415,3 +1417,23 @@ html.dark .moh-avatar-initial {
 .marv-markdown .markdown-table { overflow-x: auto; }
 .marv-markdown table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
 .marv-markdown th, .marv-markdown td { padding: 0.5em 0.7em; border-bottom: 1px solid var(--moh-border); text-align: left; }
+
+/* Figma brand/marv-orange: cached summary availability, independent of tier. */
+:root { --moh-marv: #c45b00; }
+.dark { --moh-marv: #ff8500; }
+
+/* Figma Button semantic fills and contrast-calculated foregrounds. */
+:root {
+  --moh-button-primary-fill: #141210; --moh-button-primary-label: #fff;
+  --moh-button-secondary-fill: #edeae5; --moh-button-secondary-label: #000;
+  --moh-button-brand-label: #000;
+  --moh-button-danger-fill: #c62828; --moh-button-danger-label: #fff;
+  --moh-button-disabled-fill: #e4e0db; --moh-button-disabled-label: #000;
+}
+.dark {
+  --moh-button-primary-fill: #f4f4f5; --moh-button-primary-label: #000;
+  --moh-button-secondary-fill: #242a31; --moh-button-secondary-label: #fff;
+  --moh-button-brand-label: #000;
+  --moh-button-danger-fill: #f26464; --moh-button-danger-label: #000;
+  --moh-button-disabled-fill: #30363d; --moh-button-disabled-label: #fff;
+}

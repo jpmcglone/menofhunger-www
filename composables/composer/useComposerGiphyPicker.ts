@@ -48,11 +48,9 @@ export function useComposerGiphyPicker(opts: {
     }
   }
 
-  function openGiphyPicker(initialQuery?: string) {
+  function openGiphyPicker() {
     if (!opts.canAddMoreMedia.value) return
     resetState()
-    const initial = (initialQuery ?? '').trim().slice(0, 120)
-    if (initial) giphyQuery.value = initial
     giphyOpen.value = true
     void nextTick().then(() => focusInput())
     void searchGiphy()

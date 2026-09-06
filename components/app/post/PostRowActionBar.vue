@@ -38,7 +38,7 @@
         aria-label="Reply"
         @click.stop="onCommentClick"
       >
-        <Icon name="tabler:message-circle" class="text-[18px]" aria-hidden="true" />
+        <AppIconGlyph name="reply" :selected="post.viewerHasCommented === true" :size="18" class="moh-text" />
       </button>
       <NuxtLink
         :to="postPermalink"
@@ -62,12 +62,7 @@
         :aria-label="isReposted ? 'Repost options' : 'Repost'"
         @click.stop="onRepostClick"
       >
-        <Icon
-          name="tabler:repeat"
-          class="text-[19px]"
-          aria-hidden="true"
-          :style="isReposted ? { color: repostActiveColor } : undefined"
-        />
+        <AppIconGlyph name="repost" :selected="isReposted" :size="19" :style="{ color: repostActiveColor }" />
       </button>
       <button
         v-if="repostCount > 0"
@@ -104,26 +99,7 @@
         :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
         @click.stop="onBoostClick"
       >
-        <svg
-          viewBox="0 0 24 24"
-          class="h-5 w-5"
-          aria-hidden="true"
-          :style="isBoosted ? { color: 'var(--p-primary-color)' } : undefined"
-        >
-          <path
-            v-if="isBoosted"
-            fill="currentColor"
-            d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
-          />
-          <path
-            v-else
-            d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.9"
-            stroke-linejoin="round"
-          />
-        </svg>
+        <AppIconGlyph name="boost" :selected="isBoosted" :size="20" :style="{ color: boostActiveColor }" />
       </button>
       <span
         class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
@@ -217,7 +193,7 @@ const {
   onCommentClick,
   isReposted,
   repostCount,
-  repostActiveColor,
+  repostActiveColor, boostActiveColor,
   repostTooltip,
   onRepostClick,
   onRepostMenuRepost,

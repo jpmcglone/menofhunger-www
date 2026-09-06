@@ -1,3 +1,4 @@
+import { pickTextColorForBg } from './color-contrast'
 type PrimaryPalette = {
   50: string
   100: string
@@ -121,11 +122,17 @@ export function spacesGradientStyle(): { background: string } {
   return { background: SPACES_GRADIENT }
 }
 
-export function primaryPaletteToCssVars(p: PrimaryPalette, selector: string, contrastColor: string): string {
+export function primaryPaletteToCssVars(p: PrimaryPalette, selector: string): string {
+  const contrastColor = pickTextColorForBg(p[500])
   // PrimeVue semantic token naming: var(--p-primary-500), etc.
   // Use `!important` to ensure these overrides win over theme CSS.
   return [
     `${selector}{`,
+    ...([['', 500], ['hover-', 600], ['active-', 700]] as const).flatMap(([state, shade]) => [
+      `--p-button-primary-${state}background:${p[shade]} !important;`,
+      `--p-button-primary-${state}border-color:${p[shade]} !important;`,
+      `--p-button-primary-${state}color:${pickTextColorForBg(p[shade])} !important;`,
+    ]),
     // PrimeVue v4+ convenience tokens
     `--p-primary-color:${p[500]} !important;`,
     `--p-primary-contrast-color:${contrastColor} !important;`,
@@ -155,23 +162,23 @@ export function primaryColor500ForUser(user: { verifiedStatus?: string | null; p
 
 export function primaryTintCssForUser(user: { verifiedStatus?: string | null; premium?: boolean | null } | null): string {
   if (user?.premium) {
-    // Premium orange uses white text for clear contrast.
+    // Label contrast follows the actual fill in either theme.
     return (
-      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html', '#ffffff') +
-      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html.dark', '#ffffff')
+      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html') +
+      primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, 'html.dark')
     )
   }
   if (user?.verifiedStatus && user.verifiedStatus !== 'none') {
-    // Verified blue works best with white text in both modes (X-like).
+    // Use the same contrast calculation for verification blue.
     return (
-      primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, 'html', '#ffffff') +
-      primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, 'html.dark', '#ffffff')
+      primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, 'html') +
+      primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, 'html.dark')
     )
   }
   // Default: follow text color (light vs dark).
   return (
-    primaryPaletteToCssVars(PRIMARY_TEXT_LIGHT, 'html', '#ffffff') +
-    primaryPaletteToCssVars(PRIMARY_TEXT_DARK, 'html.dark', '#000000')
+    primaryPaletteToCssVars(PRIMARY_TEXT_LIGHT, 'html') +
+    primaryPaletteToCssVars(PRIMARY_TEXT_DARK, 'html.dark')
   )
 }
 

@@ -98,6 +98,7 @@ const props = withDefaults(
     showEmptyStatus?: boolean
     /** Use `custom` when the parent wants to open an editor instead of the read-only status card. */
     statusBehavior?: 'view' | 'custom'
+    statusAppearance?: 'contrast' | 'surface'
     /** Override the status bubble position for larger avatar contexts. */
     statusPositionClass?: string
     /** Override the status bubble size for larger avatar contexts. */
@@ -119,9 +120,11 @@ const props = withDefaults(
     showStatus: true,
     showEmptyStatus: false,
     statusBehavior: 'view',
+    statusAppearance: 'contrast',
     statusPositionClass: '-right-1 -top-1',
     statusSizeClass: 'h-5 w-5',
     statusIconClass: 'text-[13px]',
+    presenceStatusOverride: undefined,
     presenceScale: 0.25,
     presenceInsetRatio: 0.5,
   },
@@ -188,7 +191,9 @@ const statusButtonClass = computed(() => [
   'moh-avatar-status-bubble moh-focus absolute z-20 inline-flex items-center justify-center rounded-full transition-[transform,opacity] duration-150 hover:scale-[1.04] active:scale-[0.96]',
   props.statusPositionClass,
   props.statusSizeClass,
-  activeStatus.value
+  props.statusAppearance === 'surface'
+    ? 'border moh-border bg-[var(--moh-surface-2)] moh-text-muted'
+    : activeStatus.value
     ? 'bg-zinc-950 text-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] ring-1 ring-white/20 dark:bg-black dark:text-white dark:ring-white/25'
     : 'border border-dashed border-white/80 bg-zinc-950 text-white shadow-[0_2px_8px_rgba(0,0,0,0.22)] ring-1 ring-white/20 dark:border-white/80 dark:bg-black dark:text-white',
 ])

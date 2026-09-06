@@ -195,7 +195,7 @@
           <div class="text-sm font-mono">{{ formatDateTime(selected.reviewedAt) }}</div>
 
           <div class="text-xs moh-text-muted">Provider</div>
-          <div class="text-sm font-mono">{{ selected.provider || '—' }}</div>
+          <div class="text-sm font-mono">{{ selected.provider === 'moh_video_call' ? 'Agreed to an in-app video call' : selected.provider || 'Video-call agreement not recorded' }}</div>
 
           <div class="text-xs moh-text-muted">Provider request ID</div>
           <div class="text-sm font-mono">{{ selected.providerRequestId || '—' }}</div>

@@ -32,9 +32,9 @@
           />
           <span
             v-else
+            v-tooltip.bottom="scopeTagTooltip"
             class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
             :class="scopeTagClass ? scopeTagClass : 'moh-text-muted border-gray-300 dark:border-zinc-600'"
-            v-tooltip.bottom="scopeTagTooltip"
             aria-label="Reply visibility"
           >
             <Icon
@@ -75,11 +75,11 @@
         <!-- Right: scheduled time — shown when a time is confirmed (not applicable for check-ins) -->
         <button
           v-else-if="scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
+          v-tooltip.bottom="`Click to change schedule`"
           type="button"
           class="inline-flex items-center gap-1 text-[11px] font-semibold moh-focus"
           :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
           :aria-label="`Scheduled for ${scheduledAtDisplay}. Click to change.`"
-          v-tooltip.bottom="`Click to change schedule`"
           @click="openSchedulePicker"
         >
           <Icon name="tabler:calendar-time" class="text-[12px]" aria-hidden="true" />
@@ -133,7 +133,7 @@
           aria-hidden="true"
           disabled
           @change="onMediaFilesSelected"
-        />
+        >
 
         <!-- Drop zone: textarea + attachments -->
         <div
@@ -226,57 +226,52 @@
                 class="h-full w-full rounded-lg border moh-border object-cover bg-black/5 dark:bg-white/5 shadow-2xl"
                 alt=""
                 draggable="false"
-              />
+              >
             </div>
           </Teleport>
         </ClientOnly>
 
         <div :class="composerMedia.length ? 'mt-5' : 'mt-3'" class="flex flex-col gap-1">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+          <AppComposerActionBar>
+            <template #tools>
               <template v-if="!disableMedia">
                 <Button
+                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Remove poll to add media' : (canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments'))"
                   text
                   rounded
                   severity="secondary"
                   aria-label="Add media"
                   :disabled="!canAddMoreMedia || hasPoll"
                   class="moh-focus"
-                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Remove poll to add media' : (canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments'))"
                   @click="onClickAddMedia"
                 >
                   <template #icon>
-                    <Icon name="tabler:photo" aria-hidden="true" />
+                    <AppIconGlyph name="image" :size="22" />
                   </template>
                 </Button>
                 <Button
+                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Remove poll to add media' : (canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments'))"
                   text
                   rounded
                   severity="secondary"
                   class="moh-focus"
                   aria-label="Add GIF"
                   :disabled="!canAddMoreMedia || hasPoll"
-                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Remove poll to add media' : (canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments'))"
                   @click="onClickAddGiphy"
                 >
                   <template #icon>
-                    <span
-                      class="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md border border-current/30 bg-transparent text-[10px] font-black leading-none"
-                      aria-hidden="true"
-                    >
-                      GIF
-                    </span>
+                    <AppIconGlyph name="gif" :size="22" />
                   </template>
                 </Button>
                 <Button
                   v-if="!replyTo && !disablePoll"
+                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Poll added' : ((isPremium && composerMedia.length > 0) ? 'Remove media to add a poll' : 'Add poll'))"
                   text
                   rounded
                   severity="secondary"
                   class="moh-focus"
                   aria-label="Add poll"
                   :disabled="hasPoll || (isPremium && composerMedia.length > 0)"
-                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Poll added' : ((isPremium && composerMedia.length > 0) ? 'Remove media to add a poll' : 'Add poll'))"
                   @click="onClickAddPoll"
                 >
                   <template #icon>
@@ -291,19 +286,6 @@
                 persistent
                 @select="insertEmoji"
               />
-              <!-- Marv mode is always auto in post threads — no picker shown. -->
-            </div>
-            <div class="flex items-center gap-2">
-            <div
-              class="moh-meta tabular-nums"
-              :class="
-                postCharCount > postMaxLen
-                  ? 'text-red-600 dark:text-red-400 font-semibold'
-                  : ''
-              "
-            >
-              {{ postCharCount }}/{{ postMaxLen }}
-            </div>
             <!-- Group audience picker: only when composing a top-level post outside a group wall -->
             <AppComposerGroupAudiencePicker
               v-if="mode === 'create' && !replyTo && !quotedPost && !communityGroupId && isAuthed && myGroups.length > 0"
@@ -319,17 +301,17 @@
               class="relative inline-flex"
             >
               <Button
+                v-tooltip.bottom="scheduledAt ? 'Click to change schedule' : 'Schedule post'"
                 text
                 rounded
                 severity="secondary"
                 class="moh-focus"
                 :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
                 :aria-label="scheduledAt ? `Scheduled: ${scheduledAtDisplay}` : (scheduledCount > 0 ? `Schedule post. You have ${scheduledCount} scheduled.` : 'Schedule post')"
-                v-tooltip.bottom="scheduledAt ? 'Click to change schedule' : 'Schedule post'"
                 @click="openSchedulePicker"
               >
                 <template #icon>
-                  <Icon name="tabler:calendar-time" aria-hidden="true" />
+                  <AppIconGlyph name="scheduled" :size="22" />
                 </template>
               </Button>
               <span
@@ -340,12 +322,26 @@
                 {{ scheduledCount > 99 ? '99+' : scheduledCount }}
               </span>
             </div>
+            </template>
+            <template #count>
+            <div
+              class="moh-meta tabular-nums"
+              :class="
+                postCharCount > postMaxLen
+                  ? 'text-red-600 dark:text-red-400 font-semibold'
+                  : ''
+              "
+            >
+              {{ postCharCount }}/{{ postMaxLen }}
+            </div>
+            </template>
+            <template #submit>
             <Button
               :label="mode === 'edit' && scheduledEditId ? 'Save' : (scheduledAt ? 'Schedule' : (mode === 'edit' ? 'Save' : (replyTo ? 'Reply' : 'Post')))"
               rounded
               :outlined="postButtonOutlined"
               severity="secondary"
-              :class="[postButtonClass, 'moh-pressable !rounded-full !min-h-0 !py-1.5 !px-5 !text-sm !font-semibold']"
+              :class="[postButtonClass, 'moh-pressable !rounded-full !min-h-11 !py-1.5 !px-5 !text-sm !font-semibold']"
               :disabled="
                 submitting ||
                 !canPost ||
@@ -362,8 +358,8 @@
               :loading="submitting"
               @click="submit"
             />
-          </div>
-          </div>
+            </template>
+          </AppComposerActionBar>
           <p
             v-if="composerHasFailedMedia || pollHasFailed"
             class="text-xs text-amber-600 dark:text-amber-400"
@@ -423,12 +419,12 @@
           <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 opacity-40">
             <Button text rounded severity="secondary" disabled aria-hidden="true">
               <template #icon>
-                <Icon name="tabler:photo" aria-hidden="true" />
+                <AppIconGlyph name="image" :size="22" />
               </template>
             </Button>
             <Button text rounded severity="secondary" disabled aria-hidden="true">
               <template #icon>
-                <span class="inline-flex h-[22px] w-[22px] items-center justify-center rounded-md border border-current/30 bg-transparent text-[10px] font-black leading-none" aria-hidden="true">GIF</span>
+                <AppIconGlyph name="gif" :size="22" />
               </template>
             </Button>
             <Button text rounded severity="secondary" disabled aria-hidden="true">
@@ -513,7 +509,7 @@
         This time is in the past — post will go live immediately unless you update it.
       </p>
       <label class="flex items-center gap-2 cursor-pointer select-none text-sm moh-text-muted">
-        <input v-model="scheduleMore" type="checkbox" class="accent-current rounded" />
+        <input v-model="scheduleMore" type="checkbox" class="accent-current rounded" >
         Schedule more after posting
       </label>
       <NuxtLink
@@ -554,6 +550,7 @@
 </template>
 
 <script setup lang="ts">
+import AppComposerActionBar from '~/components/app/composer/ActionBar.vue'
 import { makeLocalId } from '~/composables/composer/types'
 import type { CreatePostData, PostStreakReward, PostVisibility, FeedPost, PostAuthor, ScheduledPost } from '~/types/api'
 import { seedPermalinkPost } from '~/utils/permalink-seed'
@@ -589,9 +586,9 @@ const _scheduleMore = ref(false)
 type CachedComposerDraft = {
   body: string
   // Keep as-is (may include non-serializable objects); never SSR-serialized.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   media: any[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   poll: any | null
 }
 const COMPOSER_DRAFT_CACHE = new Map<string, CachedComposerDraft>()
@@ -741,12 +738,6 @@ const toast = useAppToast()
 // Shared count of the user's scheduled posts — drives the badge on the
 // Schedule button and the "View scheduled posts" link inside the picker.
 const { count: scheduledCount, increment: incScheduledCount, refresh: refreshScheduledCount } = useScheduledPostsCount()
-
-// ─── Marv: detect @marv mention ──────────────────────────────────────────────
-// Mode is always auto in post threads — no picker, no header sent.
-const marv = useMarv()
-
-const marvUsernameLower = computed(() => (marv.marvUsername.value ?? '').toLowerCase())
 
 const STREAK_MULTIPLIER_MILESTONES = new Set([8, 15, 22])
 function pushStreakToast(reward: PostStreakReward) {
@@ -983,21 +974,6 @@ const composerEditorEl = ref<{ focus: () => void; insertAtCursor: (text: string)
 const emojiPickerEl = ref<{ close: () => void } | null>(null)
 const initialTextApplied = ref(false)
 
-/**
- * True iff the body contains @marv (case-insensitive). We re-derive directly
- * from the draft text so the pill appears the instant the user finishes typing
- * the username.
- */
-const bodyMentionsMarv = computed(() => {
-  const lower = marvUsernameLower.value
-  if (!lower) return false
-  const text = (draft.value ?? '').toLowerCase()
-  if (!text.includes(`@${lower}`)) return false
-  // Word-boundary check so `@marvelous` doesn't match `@marv`.
-  const re = new RegExp(`(^|[^a-z0-9_])@${lower}([^a-z0-9_]|$)`, 'i')
-  return re.test(draft.value ?? '')
-})
-
 /** Hashtag color passed to StyledTextarea, derived from effective visibility. */
 const composerHashtagColor = computed(() => {
   if (useGroupScopeChrome.value) return 'var(--moh-group)'
@@ -1123,7 +1099,7 @@ function onClickAddGiphy() {
     toast.push({ title: 'Verify your account to use GIF search', to: '/tiers', durationMs: 3000 })
     return
   }
-  openGiphyPicker((draft.value || '').trim().slice(0, 120))
+  openGiphyPicker()
 }
 
 function clearPoll() {
@@ -1262,21 +1238,21 @@ const composerTintCss = computed(() => {
   const darkSel = 'html.dark .moh-composer-tint'
   if (useGroupScopeChrome.value) {
     return (
-      primaryPaletteToCssVars(PRIMARY_GROUP_SKY, baseSel, '#ffffff') +
-      primaryPaletteToCssVars(PRIMARY_GROUP_SKY, darkSel, '#000000')
+      primaryPaletteToCssVars(PRIMARY_GROUP_SKY, baseSel) +
+      primaryPaletteToCssVars(PRIMARY_GROUP_SKY, darkSel)
     )
   }
   const v = effectiveVisibility.value
   if (v === 'verifiedOnly') {
-    return primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, baseSel, '#ffffff') + primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, darkSel, '#000000')
+    return primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, baseSel) + primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, darkSel)
   }
   if (v === 'premiumOnly') {
-    return primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, baseSel, '#ffffff') + primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, darkSel, '#000000')
+    return primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, baseSel) + primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, darkSel)
   }
   if (v === 'onlyMe') {
-    return primaryPaletteToCssVars(PRIMARY_ONLYME_PURPLE, baseSel, '#ffffff') + primaryPaletteToCssVars(PRIMARY_ONLYME_PURPLE, darkSel, '#000000')
+    return primaryPaletteToCssVars(PRIMARY_ONLYME_PURPLE, baseSel) + primaryPaletteToCssVars(PRIMARY_ONLYME_PURPLE, darkSel)
   }
-  return primaryPaletteToCssVars(PRIMARY_TEXT_LIGHT, baseSel, '#ffffff') + primaryPaletteToCssVars(PRIMARY_TEXT_DARK, darkSel, '#000000')
+  return primaryPaletteToCssVars(PRIMARY_TEXT_LIGHT, baseSel) + primaryPaletteToCssVars(PRIMARY_TEXT_DARK, darkSel)
 })
 useHead({ style: [{ key: 'moh-composer-tint', textContent: () => composerTintCss.value }] })
 
@@ -1394,7 +1370,7 @@ function restoreDraftFromCacheIfNeeded() {
   if (hasAny) return
 
   draft.value = String(cached.body ?? '')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   composerMedia.value = (cached.media ?? []) as any
   poll.value = (cached.poll ?? null) as any
 }
@@ -1407,9 +1383,9 @@ watch(
     if (!key) return
     COMPOSER_DRAFT_CACHE.set(key, {
       body: String(draft.value ?? ''),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       media: (composerMedia.value ?? []) as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       poll: (poll.value ?? null) as any,
     })
   },

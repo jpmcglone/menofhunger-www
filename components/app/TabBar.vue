@@ -35,9 +35,9 @@
             @click="(e) => { haptics.tap(); onNavClick(item.to, e) }"
           >
             <div class="relative h-10 w-10 flex items-center justify-center">
-              <Icon
-                :name="isActive(item.to) ? (item.iconActive || item.icon) : item.icon"
-                size="24"
+              <AppNavIcon
+                :item="item" :selected="isActive(item.to)"
+                :size="24"
                 :class="['opacity-90', item.iconClass, item.key === 'check-ins' ? '!opacity-100' : '']"
                 :style="item.key === 'check-ins'
                   ? `color: var(--moh-checkin); opacity: ${viewerCrewMembership !== null ? '1' : '0.75'}`

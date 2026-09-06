@@ -9,28 +9,10 @@
  */
 const SITE_URL = 'https://menofhunger.com'
 
-type ArticleRow = {
-  id: string
-  title: string
-  thumbnailUrl?: string | null
-  publishedAt?: string | null
-  editedAt?: string | null
-  createdAt?: string | null
-  author?: { name?: string | null; username?: string | null }
-  readingTimeMinutes?: number | null
-}
+import { escapeSitemapXml as escapeXml, loadSitemapArticles, sitemapDate, type SitemapArticle as ArticleRow, type SitemapArticlePage } from '../../utils/sitemap'
 
-function escapeXml(s: string) {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
-}
-
-function urlEntry(article: ArticleRow, today: string): string {
-  const lastmod = (article.editedAt ?? article.publishedAt ?? article.createdAt ?? today).slice(0, 10)
+function urlEntry(article: ArticleRow): string {
+  const lastmod = sitemapDate(article.editedAt ?? article.publishedAt ?? article.createdAt)
   const loc = `${SITE_URL}/a/${encodeURIComponent(article.id)}`
   const thumb = (article.thumbnailUrl ?? '').trim()
   const title = escapeXml((article.title ?? '').trim())
@@ -38,7 +20,7 @@ function urlEntry(article: ArticleRow, today: string): string {
   const lines = [
     `  <url>`,
     `    <loc>${loc}</loc>`,
-    `    <lastmod>${lastmod}</lastmod>`,
+    ...(lastmod ? [`    <lastmod>${lastmod}</lastmod>`] : []),
     `    <changefreq>weekly</changefreq>`,
     `    <priority>0.8</priority>`,
   ]
@@ -62,23 +44,22 @@ export default defineEventHandler(async (event) => {
 
   let articles: ArticleRow[] = []
   try {
-    const res = await $fetch<{ data: ArticleRow[] }>(`${apiBase}/articles`, {
-      query: { limit: 5000, sort: 'newest', visibility: 'public' },
+    articles = await loadSitemapArticles((cursor) => $fetch<SitemapArticlePage>(`${apiBase}/articles`, {
+      query: { limit: 50, sort: 'new', visibility: 'public', cursor },
       timeout: 10_000,
-    })
-    articles = Array.isArray(res?.data) ? res.data : []
+    }))
   } catch {
-    // Return a valid but empty sitemap if the API is down — never 500.
+    // A transient API failure must not advertise that all article URLs disappeared.
+    setResponseHeader(event, 'Cache-Control', 'no-store')
+    throw createError({ statusCode: 503, statusMessage: 'Article sitemap temporarily unavailable' })
   }
-
-  const today = new Date().toISOString().slice(0, 10)
 
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<urlset',
     '  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
     '  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
-    ...articles.map((a) => urlEntry(a, today)),
+    ...articles.map((a) => urlEntry(a)),
     '</urlset>',
   ].join('\n')
 

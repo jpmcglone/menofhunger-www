@@ -1,3 +1,4 @@
+import type catalog from '~/design/icon-catalog.json'
 import type { MenuItem } from 'primevue/menuitem'
 
 export function useUserMenu() {
@@ -22,7 +23,7 @@ export function useUserMenu() {
     return navigateTo('/settings')
   }
 
-  type MenuItemWithIcon = MenuItem & { iconName?: string }
+  type MenuItemWithIcon = MenuItem & { iconName?: string; glyph?: keyof typeof catalog }
 
   const profileUrl = computed(() => {
     const username = (user.value?.username ?? '').trim()
@@ -34,7 +35,7 @@ export function useUserMenu() {
       ? ([
           {
             label: 'Admin',
-            iconName: 'tabler:shield',
+            iconName: 'tabler:shield', glyph: 'moderation',
             url: '/admin',
             command: () => navigateTo('/admin'),
           },
@@ -43,7 +44,7 @@ export function useUserMenu() {
       : []),
     {
       label: 'View profile',
-      iconName: 'tabler:user',
+      iconName: 'tabler:user', glyph: 'profile',
       url: profileUrl.value,
       command: () => viewProfile(),
     },
@@ -51,7 +52,7 @@ export function useUserMenu() {
       ? ([
           {
             label: 'Coins',
-            iconName: 'tabler:coin',
+            iconName: 'tabler:coin', glyph: 'coins',
             url: '/coins',
             command: () => navigateTo('/coins'),
           },
@@ -62,7 +63,7 @@ export function useUserMenu() {
       ? ([
           {
             label: 'Invite friends',
-            iconName: 'tabler:gift',
+            iconName: 'tabler:gift', glyph: 'invite',
             url: '/invite',
             command: () => navigateTo('/invite'),
           },
@@ -70,7 +71,7 @@ export function useUserMenu() {
       : []),
     {
       label: 'Feature requests',
-      iconName: 'tabler:bulb',
+      iconName: 'tabler:bulb', glyph: 'ideas',
       url: '/feedback',
       command: () => navigateTo('/feedback'),
     },
@@ -78,7 +79,7 @@ export function useUserMenu() {
       ? ([
           {
             label: 'Upgrade',
-            iconName: 'tabler:sparkles',
+            iconName: 'tabler:sparkles', glyph: 'premium',
             url: '/tiers',
             command: () => navigateTo('/tiers'),
           },
@@ -86,14 +87,14 @@ export function useUserMenu() {
       : []),
     {
       label: 'Settings & privacy',
-      iconName: 'tabler:settings',
+      iconName: 'tabler:settings', glyph: 'settings',
       url: '/settings',
       command: () => navigateTo('/settings'),
     },
     { separator: true },
     {
       label: 'Log out',
-      iconName: 'tabler:door-exit',
+      iconName: 'tabler:door-exit', glyph: 'logout',
       command: () => requestLogout(),
     },
   ])

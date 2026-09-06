@@ -47,7 +47,7 @@
       <ClientOnly>
         <template #fallback>
           <div>
-            <div class="aspect-[3.25/1] w-full bg-gray-200 dark:bg-zinc-900" />
+            <div class="aspect-[3/1] w-full bg-gray-200 dark:bg-zinc-900" />
             <div class="px-4 pb-5 pt-20">
               <div class="h-20" />
             </div>
@@ -77,19 +77,18 @@
           @followed="onFollowed"
           @unfollowed="onUnfollowed"
           @nudge-updated="onNudgeUpdated"
-        />
-      </ClientOnly>
-
-      <div v-if="profile" class="px-4 mt-3">
-        <div class="flex items-center gap-2">
+        >
+          <template #utilities>
+      <div v-if="profile" class="contents">
+        <div class="flex flex-wrap items-center gap-2">
           <!-- Streaks popover — hidden on page profiles (they don't check in). -->
           <div v-if="showsProfileStreaks" ref="streaksWrapperEl" class="relative inline-block">
             <button
               type="button"
-              class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface moh-text hover:opacity-80 transition-opacity"
+              class="inline-flex items-center gap-1.5 rounded-full min-h-11 px-5 py-2 text-sm font-semibold border moh-border moh-surface moh-text hover:opacity-80 transition-opacity"
               @click="toggleStreaks"
             >
-              <Icon name="tabler:flame" class="text-[14px] moh-text-muted" aria-hidden="true" />
+              <AppIconGlyph name="streak" class="size-4 moh-text-muted" aria-hidden="true" />
               Streaks
             </button>
             <Transition
@@ -141,14 +140,28 @@
           <button
             v-if="hasEarnedBadges"
             type="button"
-            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border moh-border moh-surface moh-text hover:opacity-80 transition-opacity"
+            class="inline-flex items-center gap-1.5 rounded-full min-h-11 px-5 py-2 text-sm font-semibold border moh-border moh-surface moh-text hover:opacity-80 transition-opacity"
             @click="badgesOpen = true"
           >
-            <Icon name="tabler:award" class="text-[14px] moh-text-muted" aria-hidden="true" />
+            <AppIconGlyph name="premium" class="size-4 moh-text-muted" aria-hidden="true" />
             Badges
           </button>
         </div>
       </div>
+
+        <AppFeedFiltersBar
+          label="Feed filters"
+          :sort="profileSort"
+          :filter="profileFilter"
+          :viewer-is-verified="profileViewerIsVerified"
+          :viewer-is-premium="profileViewerIsPremium"
+          :show-visibility-filter="activeProfileTab !== 'media'"
+          @update:sort="onUserPostsSortChange"
+          @update:filter="onUserPostsFilterChange"
+        />
+          </template>
+        </AppProfileHeader>
+      </ClientOnly>
 
       <!-- Pinned post -->
       <div v-if="showPinnedPost" class="mt-3 mb-4">
@@ -209,19 +222,6 @@
             Unblock
           </button>
         </div>
-      </div>
-
-      <!-- Filter bar above tabs, right-aligned -->
-      <div class="moh-surface flex items-center justify-end px-3 py-1 border-b border-gray-200 dark:border-zinc-800">
-        <AppFeedFiltersBar
-          :sort="profileSort"
-          :filter="profileFilter"
-          :viewer-is-verified="profileViewerIsVerified"
-          :viewer-is-premium="profileViewerIsPremium"
-          :show-visibility-filter="activeProfileTab !== 'media'"
-          @update:sort="onUserPostsSortChange"
-          @update:filter="onUserPostsFilterChange"
-        />
       </div>
 
       <!-- Animated tab bar -->
@@ -430,7 +430,7 @@
                   class="absolute inset-0 h-full w-full object-cover moh-img-outline"
                   :class="item.viewerCanAccess === false ? 'blur-sm scale-110' : ''"
                   loading="lazy"
-                />
+                >
                 <!-- Video play overlay -->
                 <div v-if="item.kind === 'video' && item.viewerCanAccess !== false" class="absolute inset-0 flex items-center justify-center">
                   <div class="rounded-full bg-black/50 p-2">
@@ -514,7 +514,6 @@ import type { PublicProfile } from '~/composables/usePublicProfile'
 import type { FollowRelationship } from '~/types/api'
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { visibilityTagClasses, postHighlightClasses } from '~/utils/post-visibility'
-import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { UserPostsFilter } from '~/composables/useUserPosts'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 import { hasAnyBadge } from '~/config/milestones'
@@ -535,7 +534,6 @@ definePageMeta({
 })
 
 const route = useRoute()
-const router = useRouter()
 const usernameParam = computed(() => String(route.params.username || ''))
 const normalizedUsername = computed(() => usernameParam.value.trim().toLowerCase())
 const baseProfilePath = computed(() => `/u/${encodeURIComponent(usernameParam.value)}`)
@@ -586,7 +584,7 @@ async function pushProfilePath(path: string) {
 const isFollowersRoute = computed(() => /\/followers\/?$/.test(currentPathname.value))
 const isFollowingRoute = computed(() => /\/following\/?$/.test(currentPathname.value))
 
-const { user: authUser, me: refetchMe, isAuthed, isPageAccount } = useAuth()
+const { user: authUser, me: refetchMe, isPageAccount } = useAuth()
 
 const {
   profile: loadedProfile,
@@ -701,6 +699,10 @@ function formatCount(n: unknown): string {
 
 const streaksOpen = ref(false)
 const badgesOpen = ref(false)
+// Native profile handoff opens the existing badge collection directly.
+watch([() => route.query.profilePanel, () => profile.value?.longestStreakDays], ([panel, longest]) => {
+  if (panel === 'badges' && hasAnyBadge(Number(longest ?? 0))) badgesOpen.value = true
+}, { immediate: true })
 const streaksWrapperEl = ref<HTMLElement | null>(null)
 
 const showsProfileStreaks = computed(() => {
@@ -766,8 +768,6 @@ const {
   viewerIsVerified: profileViewerIsVerified,
   viewerIsPremium: profileViewerIsPremium,
   ctaKind: profileCtaKind,
-  isFiltered: profileIsFiltered,
-  resetFilters: resetProfileFilters,
 } = useUrlFeedFilters({ historyBacked: true })
 
 // ─── Tab state ────────────────────────────────────────────────────────────────
@@ -873,10 +873,8 @@ const {
 const repliesEnabled = computed(() => !notFound.value && tabActivated.replies)
 const {
   posts: profilePosts,
-  displayPosts: profileDisplayPosts,
   displayItems: profileDisplayItems,
   collapsedSiblingReplyCountFor: profileCollapsedSiblingReplyCountFor,
-  counts: profileCounts,
   loading: profileLoading,
   loadingMore: profileLoadingMore,
   error: profileError,
@@ -948,7 +946,6 @@ function onProfilePostEdited(payload: { id: string; post: import('~/types/api').
 const {
   pinnedPostForDisplay,
   pinnedReplyToUsername,
-  pinnedPostData,
   refreshPinnedPost,
 } = useProfilePinnedPost({
   normalizedUsername,
@@ -985,7 +982,6 @@ async function onPinnedPostDeleted(id: string) {
   profileRemovePost(id)
 }
 
-const { apiFetch } = useApiClient()
 const {
   data: followSummaryData,
   refresh: refreshFollowSummary,
@@ -1306,11 +1302,6 @@ function onUserPostsSortChange(next: 'new' | 'trending') {
 function onUserPostsFilterChange(next: ProfilePostsFilter) {
   // onlyMe is not a valid feed filter; treat it as 'all'
   profileFilter.value = next === 'onlyMe' ? 'all' : (next as 'all' | 'public' | 'verifiedOnly' | 'premiumOnly')
-  scrollFeedToTop()
-}
-
-function onUserPostsReset() {
-  resetProfileFilters()
   scrollFeedToTop()
 }
 

@@ -1,92 +1,20 @@
 <template>
-  <div
-    :class="[
-      // `transition-colors` handles the only property that actually changes on
-      // this row (background/border tier tint). Don't use `transition-all` — it
-      // also picks up `padding`/`color` and triggers extra paints per render.
-      'relative flex',
-      shouldAnimate ? 'transition-colors duration-150 ease-out' : 'transition-colors',
-      subjectTierRowClass(group),
-    ]"
-  >
-    <!-- Column 1: unread indicator bar (animates in/out) -->
-    <div
-      :class="[
-        'shrink-0 self-stretch origin-left',
-        group.readAt ? 'w-0 opacity-0 mr-0' : 'w-1 opacity-100 mr-4',
-        shouldAnimate ? 'transition-[width,margin-right,opacity] duration-150 ease-out' : '',
-        actorTierIconBgClass(group),
-      ]"
-      aria-hidden="true"
-    />
-
-    <!-- Column 2 -->
-    <div
-      :class="[
-        'flex min-w-0 flex-1 gap-4 ml-1',
-        group.readAt ? 'px-4 py-4' : 'pr-4 py-4',
-        shouldAnimate ? 'transition-[padding] duration-150 ease-out' : '',
-      ]"
-    >
-      <!-- Left rail: notification icon + actors. Let content size the rail so avatars
-           never overflow into the adjacent text column. -->
-      <div class="flex shrink-0 items-start gap-2">
-        <div class="flex h-8 w-8 shrink-0 items-center justify-center" aria-hidden="true">
-          <svg v-if="group.kind === 'boost'" viewBox="0 0 24 24" :class="['h-5 w-5', actorTierIconTextClass(group)]">
-            <path fill="currentColor" d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z" />
-          </svg>
-          <Icon v-else :name="groupIconName(group)" :class="['text-[22px]', actorTierIconTextClass(group)]" aria-hidden="true" />
-        </div>
-
-        <!-- Actor avatars: max 2 + overflow chip so the stack never bleeds into text. -->
-        <div class="relative flex shrink-0 items-start" @click.stop>
-          <div class="flex shrink-0 -space-x-2">
-            <template v-for="(a, idx) in group.actors.slice(0, 2)" :key="a.id">
-              <NuxtLink
-                v-if="a.id && a.username"
-                :to="`/u/${a.username}`"
-                class="block ring-2 ring-[var(--moh-bg)]"
-                :class="avatarRoundClass(Boolean(a.isOrganization))"
-                :style="{ zIndex: 2 - idx }"
-                @click.stop
-              >
-                <AppUserAvatar
-                  :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl, isOrganization: a.isOrganization }"
-                  size-class="h-8 w-8"
-                  :show-status="false"
-                />
-              </NuxtLink>
-              <AppUserAvatar
-                v-else-if="a.id"
-                class="ring-2 ring-[var(--moh-bg)]"
-                :class="avatarRoundClass(Boolean(a.isOrganization))"
-                :style="{ zIndex: 2 - idx }"
-                :user="{ id: a.id, username: a.username, name: a.name, avatarUrl: a.avatarUrl, isOrganization: a.isOrganization }"
-                size-class="h-8 w-8"
-                :show-status="false"
-              />
-            </template>
-            <div
-              v-if="group.actorCount > 2"
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-[11px] font-semibold tabular-nums text-gray-700 ring-2 ring-[var(--moh-bg)] dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-200"
-              aria-hidden="true"
-            >
-              +{{ group.actorCount - 2 }}
-            </div>
-          </div>
-        </div>
-      </div>
-
+  <div class="relative transition-colors" :class="subjectTierRowClass(group)">
+    <div v-if="!group.readAt" class="absolute inset-y-0 left-0 w-0.5 bg-[var(--moh-brass)]" aria-hidden="true" />
+    <div class="flex min-w-0 gap-3 px-4 py-4" :class="{ 'items-center': group.kind === 'follow' }">
+      <AppNotificationActors v-if="group.kind === 'follow'" :actors="group.actors.slice(0, 1)" :size="40" class="shrink-0" />
+      <AppNotificationEventIcon v-else :kind="group.kind" :actors="group.actors" />
       <!-- Center -->
       <div class="min-w-0 flex-1">
-        <div class="flex items-start justify-between gap-4">
+        <AppNotificationActors v-if="group.kind !== 'follow'" :actors="group.actors" :actor-count="group.actorCount" class="mb-2" />
+        <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
           <div class="min-w-0 flex-1">
-            <div :class="['min-w-0 max-w-full line-clamp-2 text-sm', group.readAt ? 'font-medium' : 'font-semibold']">
+            <div class="min-w-0 max-w-full text-[15px] leading-snug moh-text">
               <template v-if="group.kind === 'followed_post' && group.actorCount === 1 && group.count > 1">
                 <span class="whitespace-nowrap tabular-nums">{{ group.count }} posts</span>
                 <span class="ml-1">from</span>
                 <span
-                  class="ml-1 whitespace-nowrap"
+                  class="ml-1 font-semibold"
                   @mouseenter="(e) => multiTrigger.onEnter(group.actors?.[0]?.username, e)"
                   @mousemove="multiTrigger.onMove"
                   @mouseleave="multiTrigger.onLeave"
@@ -94,7 +22,7 @@
               </template>
               <template v-else-if="group.kind === 'nudge' && group.count > 1">
                 <span
-                  class="whitespace-nowrap"
+                  class="font-semibold"
                   @mouseenter="(e) => multiTrigger.onEnter(group.actors?.[0]?.username, e)"
                   @mousemove="multiTrigger.onMove"
                   @mouseleave="multiTrigger.onLeave"
@@ -106,7 +34,7 @@
                 <span v-for="(part, idx) in actorDisplayParts(group)" :key="actorDisplayPartKey(part, idx)">
                   <span
                     v-if="part.kind === 'actor'"
-                    class="whitespace-nowrap"
+                    class="font-semibold"
                     :class="idx > 0 ? 'ml-1' : ''"
                     @mouseenter="(e) => multiTrigger.onEnter(part.username, e)"
                     @mousemove="multiTrigger.onMove"
@@ -129,19 +57,16 @@
               </ClientOnly>
             </div>
             <div
-              v-if="group.kind === 'comment' && group.latestBody"
-              class="mt-0.5 line-clamp-2 text-sm text-gray-600 dark:text-gray-300"
+              v-if="!isGroupBoostOfStatus(group) && (group.latestSubjectPostPreview?.bodySnippet || group.latestBody)"
+              class="mt-1 line-clamp-2 text-[15px] leading-snug moh-text-muted"
             >
-              {{ group.latestBody }}
+              {{ group.latestSubjectPostPreview?.bodySnippet || group.latestBody }}
             </div>
             <AppStatusBubble
               v-else-if="isGroupBoostOfStatus(group) && groupStatusBoostText(group)"
               :text="groupStatusBoostText(group)!"
               class="mt-1.5"
             />
-            <div v-else-if="!group.latestBody && !group.latestSubjectPostPreview?.media?.length && !isGroupBoostOfStatus(group)" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ contextLabel(group) }}
-            </div>
             <div v-if="group.latestSubjectPostPreview?.media?.length" class="mt-2 flex shrink-0 -space-x-2">
               <template v-for="(m, idx) in group.latestSubjectPostPreview.media.slice(0, 4)" :key="groupMediaPreviewKey(m, idx)">
                 <img
@@ -240,20 +165,11 @@
 import type { FollowSummaryResponse, NotificationActor, NotificationGroup } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'
-import { userColorTier, userTierBgClass, userTierTextClass, type UserColorTier } from '~/utils/user-tier'
 import { stableListKey } from '~/utils/stable-list-key'
-import { avatarRoundClass } from '~/utils/avatar-rounding'
 
 const multiTrigger = useUserPreviewMultiTrigger()
 
 const { formatWhen, formatWhenFull } = useNotifications()
-
-const shouldAnimate = ref(false)
-onMounted(() => {
-  requestAnimationFrame(() => {
-    shouldAnimate.value = true
-  })
-})
 
 const props = defineProps<{
   group: NotificationGroup
@@ -356,34 +272,6 @@ async function onNudgeBack() {
   }
 }
 
-function actorTierIconBgClass(g: NotificationGroup): string {
-  const actors = g.actors ?? []
-  // Highest tier wins (organization > premium > verified > normal).
-  const hasTier = (tier: UserColorTier) => actors.some((a) => userColorTier(a as any) === tier)
-  const topTier: UserColorTier = hasTier('organization')
-    ? 'organization'
-    : hasTier('premium')
-      ? 'premium'
-      : hasTier('verified')
-        ? 'verified'
-        : 'normal'
-  return userTierBgClass(topTier, { fallback: 'bg-gray-500' })
-}
-
-function actorTierIconTextClass(g: NotificationGroup): string {
-  const actors = g.actors ?? []
-  // Highest tier wins (organization > premium > verified > normal).
-  const hasTier = (tier: UserColorTier) => actors.some((a) => userColorTier(a as any) === tier)
-  const topTier: UserColorTier = hasTier('organization')
-    ? 'organization'
-    : hasTier('premium')
-      ? 'premium'
-      : hasTier('verified')
-        ? 'verified'
-        : 'normal'
-  return userTierTextClass(topTier, { fallback: 'text-rose-500' })
-}
-
 function subjectTierRowClass(g: NotificationGroup): string {
   if (g.readAt) return ''
   const t = g.subjectTier ?? null
@@ -393,8 +281,8 @@ function subjectTierRowClass(g: NotificationGroup): string {
 }
 
 function actorLabel(a: NotificationActor): string {
+  if (a?.name?.trim()) return a.name.trim()
   if (a?.username) return `@${a.username}`
-  if (a?.name) return a.name
   return 'Someone'
 }
 
@@ -438,6 +326,8 @@ function titleSuffix(g: NotificationGroup): string {
       return g.latestSubjectPostPreview?.kind === 'status'
         ? 'boosted your status'
         : 'boosted your post'
+    case 'repost':
+      return 'reposted your post'
     case 'comment':
       return 'replied to your post'
     case 'follow':
@@ -464,36 +354,4 @@ function groupStatusBoostText(g: NotificationGroup): string | null {
   return fromBody || null
 }
 
-function contextLabel(g: NotificationGroup): string {
-  switch (g.kind) {
-    case 'boost':
-      return isGroupBoostOfStatus(g) ? 'Status' : 'Boost'
-    case 'comment':
-      return 'Reply'
-    case 'follow':
-      return 'New followers'
-    case 'followed_post':
-      return 'Posts'
-    case 'nudge':
-      return 'Nudge'
-    default:
-      return ''
-  }
-}
-
-function groupIconName(g: NotificationGroup): string {
-  switch (g.kind) {
-    case 'comment':
-      return 'tabler:message-circle'
-    case 'follow':
-      return 'tabler:user-plus'
-    case 'followed_post':
-      return 'tabler:file-text'
-    case 'nudge':
-      return 'tabler:hand-click'
-    default:
-      return 'tabler:bell'
-  }
-}
 </script>
-

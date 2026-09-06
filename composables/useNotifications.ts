@@ -464,7 +464,7 @@ export function useNotifications() {
 
   function actorDisplay(n: Notification): string {
     const actor = n.actor?.id ? (usersStore.overlay(n.actor as any) as any) : n.actor
-    return actor?.username ? `@${actor.username}` : (actor?.name ?? 'Someone')
+    return actor?.name?.trim() || (actor?.username ? `@${actor.username}` : 'Someone')
   }
 
   /** Tailwind class for actor username by tier (premium > verified > default). Use ! so it wins over layout text color. */

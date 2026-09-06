@@ -2,7 +2,7 @@
   <section class="flex min-h-full flex-col">
     <AppPageHeader class="px-4 pt-4 pb-3" title="Ask MARV" description="Your private admin workspace.">
       <template #trailing>
-        <Button label="Refresh" text severity="secondary" :loading="loading" @click="refresh()" />
+        <Button label="Refresh" text severity="secondary" :loading="loading" @click="refresh()" ><template #loadingicon><AppMarvMark :size="18" loading /></template></Button>
       </template>
     </AppPageHeader>
     <div class="px-4 pb-3 text-xs moh-text-muted">
@@ -10,7 +10,7 @@
       <span class="block mt-1">MARV reads live data and prepares changes for your review. Only you can apply them.</span>
     </div>
     <div v-if="error" class="px-4 pb-3"><AppInlineAlert severity="danger">{{ error }}</AppInlineAlert></div>
-    <div v-if="loading && !workspace" class="px-4 py-8 moh-text-muted" role="status">Loading your workspace…</div>
+    <div v-if="loading && !workspace" class="px-4 py-8 moh-text-muted" role="status"><AppMarvMark :size="24" loading /> Loading your workspace…</div>
     <template v-if="workspace">
       <details class="mx-4 py-3 border-y moh-border">
         <summary class="cursor-pointer font-semibold py-1">All admin tools</summary>
@@ -35,7 +35,7 @@
       <div class="moh-divide flex-1" aria-live="polite" aria-relevant="additions text">
         <article v-for="turn in workspace.turns" :key="turn.id" class="px-4 py-5 space-y-4">
           <div><div class="text-xs moh-text-muted mb-1">You</div><p class="whitespace-pre-wrap break-words font-semibold">{{ turn.question }}</p></div>
-          <div><div class="text-xs moh-text-muted mb-1">MARV · {{ turn.status }}</div><AppMarvMarkdown v-if="turn.answer" :text="turn.answer" /><p v-else class="whitespace-pre-wrap break-words">{{ (turn.status === 'interrupted' ? 'This request was interrupted. Check any proposals below, then ask again.' : 'Checking the admin tools… You can leave this screen and return to check the result.') }}</p></div>
+          <div><div class="mb-1 flex items-center gap-2 text-xs moh-text-muted"><AppMarvMark :size="16" :loading="turn.status === 'running'" />MARV · {{ turn.status }}</div><AppMarvMarkdown v-if="turn.answer" :text="turn.answer" /><p v-else class="whitespace-pre-wrap break-words">{{ (turn.status === 'interrupted' ? 'This request was interrupted. Check any proposals below, then ask again.' : 'Checking the admin tools… You can leave this screen and return to check the result.') }}</p></div>
           <details v-if="turn.sources.length" class="text-sm moh-text-muted">
             <summary class="cursor-pointer">Sources checked ({{ turn.sources.length }})</summary>
             <ul class="mt-2 space-y-1"><li v-for="(source, index) in turn.sources" :key="index">{{ source.tool }} · {{ source.fetchedAt }}<span v-if="source.url" class="block break-all text-xs">{{ source.url }}</span></li></ul>
@@ -47,7 +47,7 @@
             <dl class="space-y-2"><div v-for="field in adminReviewFields(action.changes)" :key="field.label"><dt class="text-xs moh-text-muted">{{ field.label }}</dt><dd class="whitespace-pre-wrap break-words text-sm">{{ field.value }}</dd></div></dl>
             <div class="flex flex-wrap items-center gap-2">
               <template v-if="action.status === 'pending'">
-                <Button label="Apply this change" :loading="deciding === action.id" :disabled="!!deciding" @click="decide(action, 'confirm')" />
+                <Button label="Apply this change" :loading="deciding === action.id" :disabled="!!deciding" @click="decide(action, 'confirm')" ><template #loadingicon><AppMarvMark :size="18" loading /></template></Button>
                 <Button label="Cancel" text severity="secondary" :disabled="!!deciding" @click="decide(action, 'cancel')" />
               </template>
               <NuxtLink :to="action.path" class="text-sm underline">Open admin tool</NuxtLink>
@@ -62,7 +62,7 @@
         <Textarea id="admin-marv-message" v-model="draft" class="w-full" rows="3" maxlength="6000" placeholder="Ask about Men of Hunger, or describe a change…" :disabled="sending || !workspace.configured" />
         <div class="flex justify-between items-center gap-3">
           <span class="text-xs moh-text-muted">Changes require review. Sending a question does not approve an action.</span>
-          <Button type="submit" label="Ask MARV" :loading="sending" :disabled="!draft.trim() || sending || !workspace.configured" />
+          <Button type="submit" label="Ask MARV" :loading="sending" :disabled="!draft.trim() || sending || !workspace.configured" ><template #loadingicon><AppMarvMark :size="18" loading /></template></Button>
         </div>
       </form>
     </template>

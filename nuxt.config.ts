@@ -349,6 +349,10 @@ export default defineNuxtConfig({
   },
 
   routeRules: {
+    // Retired public entry points still found in search and old article links.
+    '/register': { redirect: { to: '/login', statusCode: 301 } },
+    '/a': { redirect: { to: '/articles', statusCode: 301 } },
+    '/a/': { redirect: { to: '/articles', statusCode: 301 } },
     // ——— iOS universal links ———
     // Apple's CDN requires the AASA file served as application/json with no redirect.
     // The file lives in public/.well-known/ (extensionless, so Nitro won't infer a type).

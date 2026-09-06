@@ -53,7 +53,7 @@
             >
               Log in
             </NuxtLink>
-            <NuxtLink to="/register" class="text-sm text-gray-500 hover:underline dark:text-zinc-400">
+            <NuxtLink to="/login" class="text-sm text-gray-500 hover:underline dark:text-zinc-400">
               or create a free account →
             </NuxtLink>
           </div>

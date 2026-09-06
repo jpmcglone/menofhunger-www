@@ -38,6 +38,9 @@ class FakePeerConnection {
 
   addTransceiver(kind?: string) {
     const t = {
+      mid: null as string | null,
+      direction: 'sendrecv',
+      stop: vi.fn(),
       sender: {
         replaceTrack: vi.fn(async () => undefined),
         getParameters: () => ({ encodings: [{}] }),
@@ -157,6 +160,29 @@ describe('PeerToPeerCallTransport reconnect alignment', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.useRealTimers()
+  })
+
+  it('uses the negotiated camera and screen slots when an offer creates new transceivers', async () => {
+    const { transport } = makeTransport({ selfUserId: 'a' })
+    transport.setPeers(['zed'])
+    await flushMicrotasks()
+    const pc = FakePeerConnection.instances[0]!
+    const old = [...pc.transceivers]
+    const negotiated = ['audio', 'video', 'video'].map((kind, index) => {
+      const slot = pc.addTransceiver(kind)
+      slot.mid = String(index)
+      return slot
+    })
+    const sdp = ['m=audio 9 UDP 111', 'a=mid:0', 'm=video 9 UDP 96', 'a=mid:1', 'm=video 9 UDP 96', 'a=mid:2'].join('\r\n')
+    await transport.handleSignal({ callId: 'call-1', fromUserId: 'zed', description: { type: 'offer', sdp } })
+    const camera = { kind: 'video', id: 'face', contentHint: '' } as MediaStreamTrack
+    const screen = { kind: 'video', id: 'slides', contentHint: 'detail' } as MediaStreamTrack
+    await transport.setLocalTrack('video', camera)
+    await transport.setLocalTrack('screen', screen)
+    expect(negotiated[1]!.sender.replaceTrack).toHaveBeenLastCalledWith(camera)
+    expect(negotiated[2]!.sender.replaceTrack).toHaveBeenLastCalledWith(screen)
+    expect((old[1]!.sender as { replaceTrack: unknown }).replaceTrack).not.toHaveBeenCalledWith(camera)
+    transport.destroy()
   })
 
   it('emits a new stream object per arriving track so bound <video> elements re-attach', () => {

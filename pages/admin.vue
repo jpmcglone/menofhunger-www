@@ -27,7 +27,7 @@
                     <div class="flex items-center gap-3">
                       <Icon :name="item.icon" class="text-lg" aria-hidden="true" />
                       <div class="min-w-0 flex-1">
-                        <div class="font-semibold truncate">{{ item.label }}</div>
+                        <div class="flex items-center justify-between gap-2 font-semibold"><span class="truncate">{{ item.label }}</span><span v-if="item.key === 'verification' && pendingVerifications" class="rounded-full moh-surface-2 px-2 text-sm tabular-nums" :aria-label="`${pendingVerifications} pending requests`">{{ pendingVerifications }}</span></div>
                         <div class="text-sm text-gray-600 dark:text-gray-300 truncate">{{ item.description }}</div>
                       </div>
                     </div>
@@ -41,6 +41,11 @@
         <!-- Right pane: child route, or the mobile-only home list -->
         <main class="h-full overflow-y-auto">
           <template v-if="route.path === '/admin'">
+            <NuxtLink v-if="pendingVerifications" to="/admin/verification" class="flex items-center gap-3 border-b moh-border p-4 hover:bg-black/5 dark:hover:bg-white/5">
+              <AppIconGlyph name="badgeVerified" :size="24" class="text-[var(--moh-verified)]" />
+              <span class="flex-1"><strong class="block">Verification requests</strong><span class="text-sm moh-text-muted">Members waiting to arrange a video call</span></span>
+              <strong class="text-2xl tabular-nums">{{ pendingVerifications }}</strong>
+            </NuxtLink>
             <AdminAssistantWorkspace />
           </template>
           <template v-else>
@@ -59,6 +64,7 @@ definePageMeta({
 })
 
 const route = useRoute()
+const { pending: pendingVerifications } = useAdminVerificationCount()
 
 interface AdminNavItem {
   key: string

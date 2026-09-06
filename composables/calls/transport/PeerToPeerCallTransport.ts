@@ -132,6 +132,31 @@ export class PeerToPeerCallTransport implements CallTransport {
     })
   }
 
+  private async adoptNegotiatedTransceivers(peer: Peer, sdp: string): Promise<void> {
+    const sections = sdp.split(/(?=^m=)/m).filter((section) => /^m=(audio|video) /.test(section) && !/^m=\w+ 0 /.test(section))
+    const mids = (kind: string) => sections.filter((s) => s.startsWith(`m=${kind} `)).map((s) => /^a=mid:(.+)$/m.exec(s)?.[1]?.trim())
+    const audioMid = mids('audio')[0]
+    const [cameraMid, screenMid] = mids('video')
+    const adopt = async (mid: string | undefined, oldSender: RTCRtpSender, track: MediaStreamTrack | null) => {
+      const transceiver = peer.pc.getTransceivers().find((t) => mid != null && t.mid === mid)
+      if (!transceiver) return null
+      if (oldSender !== transceiver.sender) {
+        await oldSender.replaceTrack(null)
+        const unused = peer.pc.getTransceivers().find((t) => t.sender === oldSender && t.mid == null)
+        unused?.stop()
+      }
+      await transceiver.sender.replaceTrack(track)
+      transceiver.direction = 'sendrecv'
+      return transceiver
+    }
+    const audio = await adopt(audioMid, peer.audioSender, this.localAudio)
+    const camera = await adopt(cameraMid, peer.videoSender, this.localVideo)
+    const screen = await adopt(screenMid, peer.screenSender, this.localScreen)
+    if (audio) peer.audioSender = audio.sender
+    if (camera) { peer.videoTransceiver = camera; peer.videoSender = camera.sender }
+    if (screen) { peer.screenTransceiver = screen; peer.screenSender = screen.sender }
+  }
+
   private async replay(signals: WsRtcSignalPayload[]): Promise<void> {
     for (const s of signals) await this.handleSignal(s)
   }
@@ -255,6 +280,7 @@ export class PeerToPeerCallTransport implements CallTransport {
         peer.isSettingRemoteAnswerPending = description.type === 'answer'
         await pc.setRemoteDescription(description)
         peer.isSettingRemoteAnswerPending = false
+        if (description.type === 'offer') await this.adoptNegotiatedTransceivers(peer, description.sdp ?? '')
 
         // Candidates that arrived before the remote description can now be applied.
         const queued = peer.pendingCandidates.splice(0)

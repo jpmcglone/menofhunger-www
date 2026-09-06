@@ -1,28 +1,34 @@
 <template>
-  <!-- M.A.R.V glyph — bare icon, no box. Callers provide the accessible label. -->
-  <Icon name="tabler:news" :class="['shrink-0', toneClass]" :style="iconStyle" aria-hidden="true" />
+  <svg
+    viewBox="0 0 24 24"
+    :width="size"
+    :height="size"
+    class="marv-mark shrink-0"
+    :class="{ 'marv-mark--loading': loading }"
+    aria-hidden="true"
+  >
+    <path v-for="(segment, index) in segments" :key="index" :d="segment.d" :class="`marv-mark__${segment.role}`" />
+  </svg>
 </template>
 
 <script setup lang="ts">
-/**
- * M.A.R.V logo mark — the single glyph for "Catch me up", wherever it's triggered from.
- * Purely presentational; callers provide the accessible label.
- *
- * `tone`:
- *  - `muted` (default) — dim, for a resting affordance on a post row.
- *  - `active` — full contrast, signalling a summary is already waiting for this post.
- *  - `inherit` — takes the parent's colour, for use inside an already-coloured control.
- */
-const props = withDefaults(
-  defineProps<{ size?: number; tone?: 'muted' | 'active' | 'inherit' }>(),
-  { size: 20, tone: 'muted' },
-)
-
-const toneClass = computed(() => {
-  if (props.tone === 'active') return 'text-violet-500 dark:text-violet-400'
-  if (props.tone === 'inherit') return ''
-  return 'moh-text-muted'
-})
-
-const iconStyle = computed(() => ({ fontSize: `${props.size}px` }))
+import mark from '~/design/marv-mark.json'
+// `tone` remains accepted for existing callers; the brand always retains both colors.
+const props = withDefaults(defineProps<{
+  size?: number
+  tone?: 'muted' | 'active' | 'inherit'
+  loading?: boolean
+  thick?: boolean
+}>(), { size: 20, tone: 'muted', loading: false, thick: false })
+const segments = computed(() => mark.shapes[props.loading || props.thick ? 'loading' : 'standard'])
 </script>
+
+<style scoped>
+.marv-mark { display: inline-block; vertical-align: middle; }
+.marv-mark__neutral { fill: var(--moh-text); }
+.marv-mark__orange { fill: #c45b00; }
+:global(html.dark) .marv-mark__orange { fill: #ff8500; }
+.marv-mark--loading { animation: marv-rotate 1.2s linear infinite; transform-origin: center; }
+@keyframes marv-rotate { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .marv-mark--loading { animation: none; } }
+</style>

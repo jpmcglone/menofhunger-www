@@ -55,3 +55,8 @@ export function userTierBgClass(tier: UserColorTier, opts?: { fallback?: string 
   if (tier === 'verified') return 'bg-[var(--moh-verified)]'
   return opts?.fallback ?? 'bg-gray-500'
 }
+
+/** Interactive action color belongs to the acting user, never the content audience. */
+export function userActionColor(user: UserTierLike | null | undefined): string {
+  return userTierColorVar(userColorTier(user)) ?? 'var(--moh-text)'
+}

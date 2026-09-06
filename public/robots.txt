@@ -33,8 +33,8 @@ Disallow: /admin/
 Disallow: /articles/new
 Disallow: /articles/edit/
 
-# ——— Nuxt internals ———
-Disallow: /_nuxt/
+# Google must load the public CSS, fonts, images, and JavaScript to render pages.
+Allow: /_nuxt/
 
 # Sitemap index
 Sitemap: https://menofhunger.com/sitemap.xml

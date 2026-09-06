@@ -11,32 +11,37 @@
       >
         <div
           v-if="open"
-          class="fixed inset-0 z-[9999] flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
+          class="fixed"
+          :class="isCheckin
+            ? 'pointer-events-none inset-x-0 bottom-[calc(var(--moh-tabbar-height,4rem)+var(--moh-safe-bottom,0px))] z-[80] px-3 pb-3 md:bottom-0 md:px-4 md:pb-4'
+            : 'inset-0 z-[9999] flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6'"
           role="presentation"
-          @click.self="close"
+          @click.self="!isCheckin && close()"
         >
           <Transition
             appear
-            enter-active-class="transition-[opacity,transform] duration-200 ease-out"
+            enter-active-class="transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none"
             enter-from-class="opacity-0 translate-y-4 sm:translate-y-2 sm:scale-95"
             enter-to-class="opacity-100 translate-y-0 sm:scale-100"
-            leave-active-class="transition-[opacity,transform] duration-150 ease-in"
+            leave-active-class="transition-[opacity,transform] duration-150 ease-in motion-reduce:transition-none"
             leave-from-class="opacity-100 translate-y-0 sm:scale-100"
             leave-to-class="opacity-0 translate-y-4 sm:translate-y-2 sm:scale-95"
           >
             <section
               v-if="open"
-              class="relative w-full max-w-md rounded-t-3xl bg-white text-left shadow-[0_24px_80px_rgba(0,0,0,0.35)] ring-1 ring-black/10 sm:rounded-3xl dark:bg-[color:var(--moh-surface-2)] dark:ring-white/15"
-              :style="{ paddingBottom: `calc(var(--moh-safe-bottom, 0px) + 1.5rem)` }"
-              role="dialog"
-              aria-modal="true"
+              class="relative w-full text-left"
+              :class="isCheckin
+                ? 'pointer-events-auto mx-auto grid max-w-6xl gap-x-5 rounded-xl border moh-border bg-[var(--moh-surface-2)] p-4 shadow-lg sm:grid-cols-[minmax(0,1fr)_auto] xl:max-w-7xl'
+                : 'max-w-md rounded-t-3xl bg-white shadow-[0_24px_80px_rgba(0,0,0,0.35)] ring-1 ring-black/10 sm:rounded-3xl dark:bg-[color:var(--moh-surface-2)] dark:ring-white/15'"
+              :style="isCheckin ? undefined : { paddingBottom: `calc(var(--moh-safe-bottom, 0px) + 1.5rem)` }"
+              :role="isCheckin ? 'region' : 'dialog'"
+              :aria-modal="isCheckin ? undefined : true"
               :aria-labelledby="titleId"
               @click.stop
+              @keydown.esc.stop="close"
             >
-              <!-- Header. For a check-in the streak IS the headline (the emotional payoff);
-                   otherwise it's a plain "Share this post". The prompt is intentionally not
-                   repeated here — it already shows inside the post preview below. -->
-              <header class="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+              <!-- A check-in needs a compact acknowledgement; ordinary sharing keeps its preview. -->
+              <header class="flex items-start justify-between gap-3" :class="isCheckin ? 'min-w-0 pr-9' : 'px-5 pt-5 pb-3'">
                 <div class="flex min-w-0 items-start gap-3">
                   <span
                     v-if="showStreakHero"
@@ -44,7 +49,7 @@
                     style="background-color: var(--moh-checkin-soft)"
                     aria-hidden="true"
                   >🔥</span>
-                  <div class="min-w-0">
+                  <div class="min-w-0" :role="isCheckin ? 'status' : undefined" :aria-live="isCheckin ? 'polite' : undefined">
                     <h2 :id="titleId" class="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
                       {{ headerTitle }}
                     </h2>
@@ -55,7 +60,8 @@
                 </div>
                 <button
                   type="button"
-                  class="-mr-1 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-black/5 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-50"
+                  class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-black/5 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-50"
+                  :class="isCheckin ? 'absolute right-1 top-1' : '-mr-1 -mt-1'"
                   aria-label="Close"
                   @click="close"
                 >
@@ -64,16 +70,16 @@
               </header>
 
               <!-- Post preview — tapping navigates to the post and closes the dialog -->
-              <div class="px-5" @click="close">
+              <div v-if="!isCheckin" class="px-5" @click="close">
                 <AppEmbeddedPostPreview :preloaded-post="post" />
               </div>
 
               <!-- Actions -->
-              <div class="mt-4 flex flex-col gap-2.5 px-5">
+              <div class="flex gap-2.5" :class="isCheckin ? 'mt-3 flex-wrap items-center sm:row-span-2 sm:mt-0 sm:pr-9' : 'mt-4 flex-col px-5'">
                 <button
                   type="button"
-                  class="flex w-full items-center justify-center gap-2 rounded-2xl py-3 px-4 text-sm font-semibold transition-opacity active:opacity-75"
-                  :class="shareButtonClass"
+                  class="flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-semibold transition-opacity active:opacity-75"
+                  :class="[shareButtonClass, isCheckin ? 'rounded-lg py-2' : 'w-full rounded-2xl py-3']"
                   :disabled="sharing"
                   @click="onShare"
                 >
@@ -94,7 +100,8 @@
                 <button
                   v-if="canNativeShare"
                   type="button"
-                  class="flex w-full items-center justify-center gap-2 rounded-2xl border moh-border py-3 px-4 text-sm font-semibold moh-text transition-opacity active:opacity-75 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                  class="flex min-h-11 items-center justify-center gap-2 border moh-border px-4 text-sm font-semibold moh-text transition-opacity active:opacity-75 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                  :class="isCheckin ? 'rounded-lg py-2' : 'w-full rounded-2xl py-3'"
                   :disabled="copying"
                   @click="onCopy"
                 >
@@ -108,7 +115,9 @@
               <NuxtLink
                 v-if="checkinDayKey"
                 :to="`/check-ins/day/${checkinDayKey}`"
-                class="mt-3 flex items-center justify-center gap-1.5 px-5 text-[13px] font-medium moh-text-muted transition-colors hover:moh-text"
+                class="flex min-h-11 items-center gap-1.5 text-[13px] font-medium moh-text-muted transition-colors hover:moh-text"
+                :class="isCheckin ? 'justify-self-start sm:col-start-1' : 'mt-3 justify-center px-5'"
+                @click="close"
               >
                 <span>{{ seeOthersLabel }}</span>
                 <Icon name="tabler:arrow-right" size="14" class="shrink-0" aria-hidden="true" />
@@ -155,10 +164,10 @@ const socialProofTotal = computed(() => checkinState.value?.socialProof?.totalTo
 // Header: the streak is the hero for a check-in; everything else is a plain share.
 const showStreakHero = computed(() => isCheckin.value && streakDays.value > 0)
 const headerTitle = computed(() =>
-  showStreakHero.value ? `${streakDays.value}-day streak` : 'Share this post',
+  showStreakHero.value ? `${streakDays.value}-day streak` : isCheckin.value ? 'Check-in saved' : 'Share this post',
 )
 const headerSubtitle = computed(() => {
-  if (!showStreakHero.value) return 'Invite someone into the conversation.'
+  if (!showStreakHero.value) return isCheckin.value ? 'Thanks for showing up today.' : 'Invite someone into the conversation.'
   if (streakDays.value >= 7) {
     const weeks = Math.floor(streakDays.value / 7)
     return `That's ${weeks === 1 ? 'a full week' : `${weeks} weeks`}. Keep it going.`
@@ -180,10 +189,6 @@ const shareMessage = computed(() =>
     streakDays: streakDays.value,
     commentCount: props.post.commentCount ?? 0,
   }),
-)
-
-const shareUrl = computed(() =>
-  postShareUrl(props.post.id, referralCode.value ?? null, siteConfig.url),
 )
 
 const canNativeShare = computed(() => isNativeShareSupported.value)
@@ -246,9 +251,12 @@ function close() {
   emit('update:open', false)
 }
 
-// Escape, the Android/browser Back button, and route changes all dismiss this.
-useOverlayDismiss(open, close)
-useScrollLock(open)
+// Only explicit share modals own scroll/history. The confirmation leaves normal browsing intact.
+const modalOpen = computed(() => open.value && !isCheckin.value)
+useOverlayDismiss(modalOpen, close)
+useScrollLock(modalOpen)
+const route = useRoute()
+watch(() => route.fullPath, () => { if (open.value && isCheckin.value) close() })
 
 watch(open, (isOpen) => {
   // Prime the social-proof count from cache (near-free TTL hit right after posting).

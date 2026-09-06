@@ -24,12 +24,16 @@ function toAbsoluteUrl(pathOrUrl: string): string {
 }
 
 export function useArticleSeo(article: Ref<Article | null | undefined>) {
+  const route = useRoute()
   const isRestricted = computed(() => {
     const v = article.value?.visibility
     return v === 'premiumOnly' || v === 'verifiedOnly'
   })
 
-  const canonicalPath = computed(() => `/a/${article.value?.id ?? ''}`)
+  const canonicalPath = computed(() => {
+    const id = article.value?.id || (typeof route.params.id === 'string' ? route.params.id : '')
+    return id ? `/a/${encodeURIComponent(id)}` : '/articles'
+  })
 
   const seoTitle = computed(() => {
     const a = article.value

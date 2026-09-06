@@ -8,12 +8,7 @@
       :aria-label="bookmark.hasBookmarked.value ? 'Edit bookmark' : 'Save post'"
       @click.stop="onButtonClick"
     >
-      <Icon
-        :name="bookmark.hasBookmarked.value ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
-        class="text-[18px] translate-y-[1.5px]"
-        aria-hidden="true"
-        :style="bookmark.hasBookmarked.value ? { color: 'var(--p-primary-color)' } : undefined"
-      />
+      <AppIconGlyph name="bookmark" :selected="bookmark.hasBookmarked.value" :size="18" :style="{ color: bookmark.hasBookmarked.value ? actionColor : 'var(--moh-text)' }" />
     </button>
 
     <Popover ref="popoverRef">
@@ -40,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import { userActionColor } from '~/utils/user-tier'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { usePostBookmark } from '~/composables/usePostBookmark'
 
@@ -55,7 +51,8 @@ const emit = defineEmits<{
   (e: 'bookmarkStateChanged', payload: { hasBookmarked: boolean; collectionIds: string[] }): void
 }>()
 
-const { isAuthed } = useAuth()
+const { isAuthed, user } = useAuth()
+const actionColor = computed(() => userActionColor(user.value))
 const { show: showAuthActionModal } = useAuthActionModal()
 
 const popoverRef = ref<any>(null)

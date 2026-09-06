@@ -717,6 +717,7 @@ export type FeedPost = {
   viewerHasBookmarked?: boolean
   viewerBookmarkCollectionIds?: string[]
   /** True if the viewer has flat-reposted this post. */
+  viewerHasCommented?: boolean
   viewerHasReposted?: boolean
   /** True if the viewer has viewed this post (exists in PostView table). */
   viewerHasViewed?: boolean
@@ -939,6 +940,8 @@ export type AdminImageReviewBelongsTo =
   | 'poll'
   | 'article'
   | 'article_inline'
+  | 'announcement'
+  | 'newsletter'
   | 'orphan'
 
 export type AdminImageReviewListItem = {
@@ -963,6 +966,8 @@ export type AdminImageReviewListItem = {
   articleId?: string | null
   articleSlug?: string | null
   messageId?: string | null
+  announcementId?: string | null
+  newsletterId?: string | null
 }
 
 export type FeedbackItem = {
@@ -1126,6 +1131,8 @@ export type AdminImageReviewDetailResponse = {
       pollId: string
       postId: string
     }>
+    announcements?: Array<{ id: string; title: string; status: string; isInline: boolean }>
+    newsletters?: Array<{ id: string; title: string; status: string; isInline: boolean }>
     articles: Array<{
       articleId: string
       slug: string

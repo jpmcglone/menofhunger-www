@@ -13,12 +13,13 @@
           <AppUserAvatar :user="user" size-class="h-10 w-10" :show-status="false" />
           <div class="min-w-0 flex-1">
             <AppUserIdentityLine :user="user">
-              <template v-if="nameMeta" #after-name>
+              <template v-if="nameMeta && !showPresence" #after-name>
                 <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
                   {{ nameMeta }}
                 </div>
               </template>
             </AppUserIdentityLine>
+            <AppPresencePlatforms v-if="showPresence" class="mt-1" :platforms="platforms" :recent-label="nameMeta" :is-bot="user.isBot" :in-call="inCall" />
             <div v-if="activeStatus || currentSpaceId" class="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
               <span v-if="activeStatus" class="truncate">{{ activeStatus.text }}</span>
               <span v-if="activeStatus && currentSpaceId" class="shrink-0 opacity-60">·</span>
@@ -35,12 +36,13 @@
           <AppUserAvatar :user="user" size-class="h-10 w-10" :show-status="false" />
           <div class="min-w-0 flex-1">
             <AppUserIdentityLine :user="user">
-              <template v-if="nameMeta" #after-name>
+              <template v-if="nameMeta && !showPresence" #after-name>
                 <div class="shrink-0 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
                   {{ nameMeta }}
                 </div>
               </template>
             </AppUserIdentityLine>
+            <AppPresencePlatforms v-if="showPresence" class="mt-1" :platforms="platforms" :recent-label="nameMeta" :is-bot="user.isBot" :in-call="inCall" />
             <div v-if="activeStatus || currentSpaceId" class="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
               <span v-if="activeStatus" class="truncate">{{ activeStatus.text }}</span>
               <span v-if="activeStatus && currentSpaceId" class="shrink-0 opacity-60">·</span>
@@ -52,45 +54,13 @@
 
       <div class="ml-auto shrink-0 flex items-center gap-2">
         <Icon
-          v-if="inCall"
+          v-if="inCall && !showPresence"
           name="tabler:headset"
           class="h-4 w-4 text-emerald-500 dark:text-emerald-400"
           title="In a call"
           aria-label="In a call"
           role="img"
         />
-        <div v-if="uniquePlatforms.length > 0" class="flex items-center gap-1 text-gray-400 dark:text-gray-500" aria-label="Active platforms">
-          <template v-for="p in uniquePlatforms" :key="p">
-            <Icon
-              v-if="p === 'ios'"
-              name="tabler:device-iphone"
-              class="h-3.5 w-3.5"
-              :title="'iOS'"
-              aria-hidden="true"
-            />
-            <Icon
-              v-else-if="p === 'android'"
-              name="tabler:device-mobile"
-              class="h-3.5 w-3.5"
-              :title="'Android'"
-              aria-hidden="true"
-            />
-            <Icon
-              v-else-if="p === 'web'"
-              name="tabler:world"
-              class="h-3.5 w-3.5"
-              :title="'Web'"
-              aria-hidden="true"
-            />
-            <Icon
-              v-else
-              name="tabler:device-desktop"
-              class="h-3.5 w-3.5"
-              :title="p"
-              aria-hidden="true"
-            />
-          </template>
-        </div>
         <AppFollowButton
           v-if="showFollowButton"
           :user-id="user.id"
@@ -120,6 +90,8 @@ const props = defineProps<{
   nameMeta?: string | null
   /** Deduped list of client platforms (e.g. ["ios", "web"]). Shows small icon badges. */
   platforms?: string[] | null
+  /** Online-directory metadata under the identity instead of trailing device glyphs. */
+  showPresence?: boolean
   /** Currently in a voice/video call; shows a headset. */
   inCall?: boolean
 }>()
@@ -127,16 +99,6 @@ const props = defineProps<{
 const { user } = useUserOverlay(computed(() => props.user))
 
 const { isAuthed } = useAuth()
-
-// Deduplicate platforms while preserving order (first = most recently connected).
-const uniquePlatforms = computed(() => {
-  const seen = new Set<string>()
-  return (props.platforms ?? []).filter((p) => {
-    if (seen.has(p)) return false
-    seen.add(p)
-    return true
-  })
-})
 
 // When signed out, never show follow controls anywhere.
 const showFollowButton = computed(() => props.showFollowButton !== false && (isAuthed.value || props.allowLoggedOutFollowButton === true))

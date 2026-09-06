@@ -1,213 +1,20 @@
 <template>
-  <div
-    :class="[
-      // Two-column layout:
-      // - col 1: unread bar (animates width/margin/opacity)
-      // - col 2: the rest of the content (with consistent padding)
-      // `transition-colors` handles the only property that actually changes on
-      // this row (background/border tier tint). Don't use `transition-all` — it
-      // also picks up `padding`/`color` and triggers extra paints per render.
-      'relative flex',
-      shouldAnimate ? 'transition-colors duration-150 ease-out' : 'transition-colors',
-      subjectTierRowClass(notification),
-    ]"
-  >
-    <!-- Column 1: unread indicator bar (animates in/out) -->
-    <div
-      :class="[
-        // Keep height equal to the content column (no negative margins).
-        'shrink-0 self-stretch origin-left',
-        notification.readAt ? 'w-0 opacity-0 mr-0' : 'w-1 opacity-100 mr-4',
-        shouldAnimate ? 'transition-[width,margin-right,opacity] duration-150 ease-out' : '',
-        actorTierIconBgClass(notification),
-      ]"
-      aria-hidden="true"
-    />
-
-    <!-- Column 2: the rest of the row -->
-    <div
-      :class="[
-        'flex min-w-0 flex-1 gap-3 sm:gap-4 ml-1',
-        // Content padding lives on column 2 so column 1 can be flush to the row edges.
-        // When the bar is hidden, keep a left padding so the row still feels consistent.
-        notification.readAt ? 'px-3 py-3 sm:px-4 sm:py-4' : 'pr-3 py-3 sm:pr-4 sm:py-4',
-        shouldAnimate ? 'transition-[padding] duration-150 ease-out' : '',
-      ]"
-    >
-      <!-- Left rail: notification icon + actor avatar stay centered as one unit. -->
-      <div
-        :class="[
-          'flex shrink-0 items-start gap-2',
-          (notification.kind === 'marv_not_in_group' || notification.kind === 'poll_results_ready' || notification.kind === 'status_update' || notification.kind === 'word_of_the_day' || notification.kind === 'quote_of_the_day' || notification.kind === 'account_verified' || notification.kind === 'checkin_reminder' || notification.kind === 'on_this_day' || notification.kind === 'premium_started' || notification.kind === 'premium_ended' || notification.kind === 'space_reminder_day' || notification.kind === 'space_reminder_soon' || notification.kind === 'space_live' || notification.kind === 'space_schedule_cancelled' || notification.kind === 'space_schedule_rescheduled' || notification.kind === 'followed_space')
-            ? 'w-[2.75rem]'
-            : 'w-[5.25rem]',
-        ]"
-      >
-        <!-- System notifications and status_update carry their context elsewhere; no type icon here. -->
-        <div
-          v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update' && notification.kind !== 'word_of_the_day' && notification.kind !== 'quote_of_the_day' && notification.kind !== 'account_verified' && notification.kind !== 'checkin_reminder' && notification.kind !== 'on_this_day' && notification.kind !== 'premium_started' && notification.kind !== 'premium_ended' && notification.kind !== 'space_reminder_day' && notification.kind !== 'space_reminder_soon' && notification.kind !== 'space_live' && notification.kind !== 'space_schedule_cancelled' && notification.kind !== 'space_schedule_rescheduled' && notification.kind !== 'followed_space'"
-          class="flex h-9 w-8 shrink-0 items-center justify-center sm:h-10"
-          aria-hidden="true"
-        >
-          <svg
-            v-if="notification.kind === 'boost'"
-            viewBox="0 0 24 24"
-            :class="['h-5 w-5', notificationTypeIconTextClass(notification)]"
-          >
-            <path
-              fill="currentColor"
-              d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z"
-            />
-          </svg>
-          <Icon
-            v-else
-            :name="notificationIconName(notification)"
-            :class="['text-[22px]', notificationTypeIconTextClass(notification)]"
-            aria-hidden="true"
-          />
-        </div>
-
-        <!-- Actor avatar -->
-        <div class="relative flex shrink-0 items-start" @click.stop>
-          <!-- Marv system notification: group avatar with Marv sparkle badge -->
-          <div
-            v-if="notification.kind === 'marv_not_in_group'"
-            class="relative shrink-0"
-            aria-hidden="true"
-          >
-            <!-- Group avatar (or gradient placeholder if no avatar) -->
-            <img
-              v-if="notification.subjectGroupAvatarUrl"
-              :src="notification.subjectGroupAvatarUrl"
-              class="h-9 w-9 rounded-full object-cover sm:h-10 sm:w-10 moh-img-outline"
-              alt=""
-            />
-            <div
-              v-else
-              class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 sm:h-10 sm:w-10"
-            >
-              <Icon name="tabler:sparkles" class="text-white text-base" />
-            </div>
-            <!-- Marv sparkle badge: only when showing a real group avatar -->
-            <div
-              v-if="notification.subjectGroupAvatarUrl"
-              class="absolute -bottom-1 -left-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 ring-2 ring-[var(--moh-bg)]"
-            >
-              <Icon name="tabler:sparkles" class="text-white text-[9px]" />
-            </div>
-          </div>
-          <!-- Poll results system notification: avatar shows the chart, colored by visibility -->
-          <div
-            v-else-if="notification.kind === 'poll_results_ready'"
-            :class="['flex h-9 w-9 items-center justify-center rounded-full sm:h-10 sm:w-10', notificationTypeIconBgClass(notification)]"
-            aria-hidden="true"
-          >
-            <Icon name="tabler:chart-bar" class="text-white text-base" aria-hidden="true" />
-          </div>
-          <!-- Daily content system notifications -->
-          <div
-            v-else-if="notification.kind === 'word_of_the_day'"
-            class="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 sm:h-10 sm:w-10"
-            aria-hidden="true"
-          >
-            <Icon name="tabler:book" class="text-white text-base" aria-hidden="true" />
-          </div>
-          <div
-            v-else-if="notification.kind === 'quote_of_the_day'"
-            class="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-500 sm:h-10 sm:w-10"
-            aria-hidden="true"
-          >
-            <Icon name="tabler:quote" class="text-white text-base" aria-hidden="true" />
-          </div>
-          <div
-            v-else-if="notification.kind === 'account_verified'"
-            class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--moh-verified,#2563eb)] sm:h-10 sm:w-10"
-            aria-hidden="true"
-          >
-            <Icon name="tabler:rosette-discount-check" class="text-white text-base" aria-hidden="true" />
-          </div>
-          <div
-            v-else-if="notification.kind === 'checkin_reminder'"
-            class="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 sm:h-10 sm:w-10"
-            aria-hidden="true"
-          >
-            <Icon name="tabler:calendar-event" class="text-white text-base" aria-hidden="true" />
-          </div>
-          <div
-            v-else-if="notification.kind === 'on_this_day'"
-            class="flex h-9 w-9 items-center justify-center rounded-full bg-teal-500 sm:h-10 sm:w-10"
-            aria-hidden="true"
-          >
-            <Icon name="tabler:calendar-stats" class="text-white text-base" aria-hidden="true" />
-          </div>
-          <div
-            v-else-if="notification.kind === 'premium_started'"
-            class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--moh-premium,#f59e0b)] sm:h-10 sm:w-10"
-            aria-hidden="true"
-          >
-            <Icon name="tabler:crown" class="text-white text-base" aria-hidden="true" />
-          </div>
-          <div
-            v-else-if="notification.kind === 'premium_ended'"
-            class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-400 dark:bg-zinc-600 sm:h-10 sm:w-10"
-            aria-hidden="true"
-          >
-            <Icon name="tabler:crown-off" class="text-white text-base" aria-hidden="true" />
-          </div>
-          <div
-            v-else-if="notification.kind === 'space_reminder_day' || notification.kind === 'space_reminder_soon' || notification.kind === 'space_live' || notification.kind === 'space_schedule_cancelled' || notification.kind === 'space_schedule_rescheduled' || notification.kind === 'followed_space'"
-            class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--p-primary-color)] sm:h-10 sm:w-10"
-            aria-hidden="true"
-          >
-            <Icon name="tabler:broadcast" class="text-white text-base" aria-hidden="true" />
-          </div>
-          <NuxtLink
-            v-else-if="notification.actor?.id && notification.actor?.username"
-            :to="`/u/${notification.actor.username}`"
-            class="block"
-            @click.stop
-          >
-            <AppUserAvatar
-              :show-status="false"
-              :user="{
-                id: notification.actor.id,
-                username: notification.actor.username,
-                name: notification.actor.name,
-                avatarUrl: notification.actor.avatarUrl,
-                isOrganization: notification.actor.isOrganization,
-              }"
-              size-class="h-9 w-9 sm:h-10 sm:w-10"
-            />
-          </NuxtLink>
-          <AppUserAvatar
-            v-else-if="notification.actor?.id"
-            :user="{
-              id: notification.actor.id,
-              username: notification.actor.username,
-              name: notification.actor.name,
-              avatarUrl: notification.actor.avatarUrl,
-              isOrganization: notification.actor.isOrganization,
-            }"
-            size-class="h-9 w-9 sm:h-10 sm:w-10"
-            :show-status="false"
-          />
-          <div
-            v-else
-            class="h-9 w-9 rounded-full bg-gray-200 dark:bg-zinc-800 sm:h-10 sm:w-10"
-            aria-hidden="true"
-          />
-        </div>
-      </div>
+  <div class="relative transition-colors" :class="subjectTierRowClass(notification)">
+    <div v-if="!notification.readAt" class="absolute inset-y-0 left-0 w-0.5 bg-[var(--moh-brass)]" aria-hidden="true" />
+    <div class="flex min-w-0 gap-3 px-4 py-4" :class="{ 'items-center': notification.kind === 'follow' }">
+      <AppNotificationActors v-if="notification.kind === 'follow'" :actors="notification.actor ? [notification.actor] : []" :size="40" class="shrink-0" />
+      <AppNotificationEventIcon v-else :kind="notification.kind" :actors="notification.actor ? [notification.actor] : []" />
 
       <!-- Center: main content -->
       <div class="min-w-0 flex-1">
-        <div class="flex items-start justify-between gap-4">
+        <AppNotificationActors v-if="notification.kind !== 'follow' && notificationShowsActor(notification.kind) && notification.actor" :actors="[notification.actor]" class="mb-2" />
+        <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
           <div class="min-w-0 flex-1">
             <!-- Title + quoted message: up to 2 lines with truncation -->
-            <div :class="['min-w-0 max-w-full line-clamp-2 text-[13px] sm:text-sm', notification.readAt ? 'font-medium' : 'font-semibold']">
+            <div class="min-w-0 max-w-full text-[15px] leading-snug moh-text">
               <span
-                v-if="notification.kind !== 'marv_not_in_group' && notification.kind !== 'poll_results_ready' && notification.kind !== 'word_of_the_day' && notification.kind !== 'quote_of_the_day' && notification.kind !== 'account_verified' && notification.kind !== 'checkin_reminder' && notification.kind !== 'on_this_day' && notification.kind !== 'space_reminder_day' && notification.kind !== 'space_reminder_soon' && notification.kind !== 'space_live' && notification.kind !== 'space_schedule_cancelled' && notification.kind !== 'space_schedule_rescheduled' && notification.kind !== 'followed_space'"
-                :class="actorTierClass(notification)"
+                v-if="notificationShowsActor(notification.kind) && notification.actor"
+                class="font-semibold"
                 @mouseenter="onActorEnter"
                 @mousemove="onActorMove"
                 @mouseleave="onActorLeave"
@@ -317,7 +124,7 @@
             />
             <!-- Fallback for other kinds with body (renders **bold** segments) -->
             <div
-              v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention' && notification.kind !== 'followed_article' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update' && !isBoostOfStatus(notification)"
+              v-if="notification.body && notification.kind !== 'comment' && notification.kind !== 'mention' && notification.kind !== 'followed_article' && notification.kind !== 'boost' && notification.kind !== 'repost' && notification.kind !== 'poll_results_ready' && notification.kind !== 'status_update' && !isBoostOfStatus(notification)"
               class="mt-0.5 line-clamp-2 text-[13px] sm:text-sm text-gray-600 dark:text-gray-300"
             >
               <template v-for="(seg, i) in parseBoldSegments(notification.body)" :key="i">
@@ -343,13 +150,10 @@
               {{ notification.body }}
             </div>
             <div
-              v-if="notification.kind === 'repost' && notification.subjectPostPreview?.bodySnippet"
-              class="mt-1.5 line-clamp-2 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[12px] sm:text-[13px] leading-snug text-gray-600 dark:border-zinc-700/70 dark:bg-zinc-800/60 dark:text-gray-300"
+              v-if="(notification.kind === 'repost' || notification.kind === 'boost') && !isBoostOfStatus(notification) && (notification.subjectPostPreview?.bodySnippet || notification.body)"
+              class="mt-1 line-clamp-2 text-[15px] leading-snug moh-text-muted"
             >
-              {{ notification.subjectPostPreview.bodySnippet }}
-            </div>
-            <div v-if="!notification.body && !notification.subjectPostPreview?.bodySnippet && !notification.subjectPostPreview?.media?.length && !isBoostOfStatus(notification)" class="mt-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
-              {{ notificationContext(notification) }}
+              {{ notification.subjectPostPreview?.bodySnippet || notification.body }}
             </div>
             <!-- Next line: media only (no blockquote) -->
             <div
@@ -623,6 +427,7 @@
 </template>
 
 <script setup lang="ts">
+import { notificationShowsActor } from '~/utils/notification-presentation'
 import type { CommunityGroupShell, FollowSummaryResponse, Notification } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { stableListKey } from '~/utils/stable-list-key'
@@ -630,29 +435,15 @@ import type { MenuItem } from 'primevue/menuitem'
 
 const {
   actorDisplay,
-  actorTierClass,
-  notificationTypeIconTextClass,
-  notificationTypeIconBgClass,
-  actorTierIconBgClass,
   subjectPostVisibilityTextClass,
   subjectTierRowClass,
   titleSuffix,
-  notificationContext,
   isBoostOfStatus,
   statusBoostText,
   boostSubjectNoun,
-  notificationIconName,
   formatWhen,
   formatWhenFull,
 } = useNotifications()
-
-const shouldAnimate = ref(false)
-
-onMounted(() => {
-  requestAnimationFrame(() => {
-    shouldAnimate.value = true
-  })
-})
 
 const props = defineProps<{ notification: Notification; nudgeIsTopmost?: boolean }>()
 

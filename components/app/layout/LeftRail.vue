@@ -73,21 +73,21 @@
             >
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
                 <ClientOnly v-if="item.key === 'bookmarks'">
-                  <Icon
-                    :name="(hasBookmarks || isActiveNav(item.to)) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
-                    size="28"
+                  <AppIconGlyph name="bookmark"
+                    :selected="hasBookmarks || isActiveNav(item.to)"
+                    :size="28"
                     class="opacity-90"
                     :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
                     aria-hidden="true"
                   />
                   <template #fallback>
-                    <Icon name="tabler:bookmark" size="28" class="opacity-90" aria-hidden="true" />
+                    <AppIconGlyph name="bookmark" :size="28" class="opacity-90" aria-hidden="true" />
                   </template>
                 </ClientOnly>
-                <Icon
+                <AppNavIcon
                   v-else
-                  :name="isActiveNav(item.to) ? (item.iconActive || item.icon) : item.icon"
-                  size="28"
+                  :item="item" :selected="isActiveNav(item.to)"
+                  :size="28"
                   :class="['opacity-90', item.iconClass, item.key === 'check-ins' ? '!opacity-100' : '']"
                   :style="item.key === 'check-ins'
                     ? `color: var(--moh-checkin); opacity: ${viewerCrewMembership !== null ? '1' : '0.75'}`
@@ -205,20 +205,19 @@
                 >
                   <span class="relative flex h-6 w-6 shrink-0 items-center justify-center">
                     <ClientOnly v-if="mi.key === 'bookmarks'">
-                      <Icon
-                        :name="(hasBookmarks || isActiveNav(mi.to)) ? 'tabler:bookmark-filled' : 'tabler:bookmark'"
-                        size="22"
+                      <AppIconGlyph name="bookmark"
+                        :selected="hasBookmarks || isActiveNav(mi.to)"
+                        :size="22"
                         :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
                         aria-hidden="true"
                       />
                       <template #fallback>
-                        <Icon name="tabler:bookmark" size="22" aria-hidden="true" />
+                        <AppIconGlyph name="bookmark" :size="22" aria-hidden="true" />
                       </template>
                     </ClientOnly>
-                    <Icon
-                      v-else
-                      :name="isActiveNav(mi.to) ? (mi.iconActive || mi.icon) : mi.icon"
-                      size="22"
+                    <AppNavIcon
+                      v-else :item="mi" :selected="isActiveNav(mi.to)"
+                      :size="22"
                       :class="[mi.iconClass, mi.key === 'check-ins' ? '!opacity-100' : '']"
                       :style="mi.key === 'check-ins'
                         ? `color: var(--moh-checkin); opacity: ${viewerCrewMembership !== null ? '1' : '0.75'}`

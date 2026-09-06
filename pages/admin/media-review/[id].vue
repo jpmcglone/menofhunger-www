@@ -59,7 +59,7 @@
             alt=""
             loading="lazy"
             decoding="async"
-          />
+          >
           <div v-else class="flex items-center justify-center h-[22rem]">
             <div class="text-center text-sm moh-text-muted">
               <Icon
@@ -186,6 +186,8 @@
                 </NuxtLink>
               </div>
             </div>
+
+            <AppAdminMediaPublicationReferences :references="data.references" />
 
             <div class="pt-2 border-t moh-border">
               <div class="font-semibold">Articles</div>

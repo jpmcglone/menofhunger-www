@@ -23,14 +23,14 @@
             appear
           >
             <section
-              class="moh-surface flex h-[min(44rem,90dvh)] max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl shadow-2xl sm:max-w-xl sm:rounded-2xl"
+              class="moh-surface flex h-[min(37.5rem,90dvh)] max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl shadow-2xl sm:max-w-xl sm:rounded-2xl"
             >
               <!-- Header -->
-              <header class="shrink-0 flex items-center gap-3 border-b moh-border px-4 py-3">
-                <AppMarvMark :size="28" />
+              <header class="shrink-0 flex items-center gap-3 px-5 py-4">
+                <AppIconGlyph name="catchup" :size="26" />
                 <div class="min-w-0 flex-1">
                   <h2 class="moh-h3 leading-tight">Catch me up</h2>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">The context. The conversation. Your next step.</p>
+                  <p class="mt-1 flex items-center gap-1 text-xs moh-text-muted"><AppMarvMark :size="12" />Your thread summary, by MARV</p>
                 </div>
                 <button
                   type="button"
@@ -42,117 +42,8 @@
                 </button>
               </header>
 
-              <div class="min-h-0 flex-1 overflow-y-auto no-scrollbar px-4 py-4">
-                <!-- Mode picker (premium only) -->
-                <div v-if="isAvailable" class="mb-3 flex flex-wrap items-center gap-2">
-                  <div class="flex w-full min-w-0 rounded-lg border moh-border p-0.5 sm:w-auto sm:flex-1">
-                    <button
-                      v-for="m in (['auto', 'fast', 'regular', 'smart'] as const)"
-                      :key="m"
-                      type="button"
-                      :disabled="modeBusy || loading || peeking"
-                      class="flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 sm:px-2"
-                      :class="
-                        preferredMode === m
-                          ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                          : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5'
-                      "
-                      @click="onPickMode(m)"
-                    >
-                      <Icon :name="modeIcon(m)" class="hidden shrink-0 text-[11px] sm:block" aria-hidden="true" />
-                      <span>{{ modeLabel(m) }}</span>
-                      <span
-                        v-if="modeCost(m) !== null"
-                        class="inline-flex items-center gap-0.5 tabular-nums opacity-70 text-[10px]"
-                        aria-hidden="true"
-                      >
-                        <Icon name="tabler:bolt" class="text-amber-400 text-[9px]" />{{ modeCost(m) }}
-                      </span>
-                    </button>
-                  </div>
-                  <span
-                    v-if="creditsLabel"
-                    class="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] tabular-nums text-gray-500 dark:text-gray-400"
-                  >
-                    <Icon name="tabler:bolt" class="text-[11px] text-amber-500" aria-hidden="true" />
-                    {{ creditsLabel }}
-                  </span>
-                </div>
-
-                <!-- Include images toggle -->
-                <div
-                  v-if="post?.media?.length"
-                  class="mb-3 flex items-center justify-between"
-                >
-                  <label class="flex cursor-pointer items-center gap-2 select-none">
-                    <input
-                      type="checkbox"
-                      class="accent-violet-600"
-                      :checked="includeImages"
-                      :disabled="loading || peeking"
-                      @change="toggleIncludeImages"
-                    />
-                    <span class="text-[13px] text-gray-600 dark:text-gray-300">Include images</span>
-                  </label>
-                  <span class="text-[11px] text-gray-400 dark:text-gray-500">
-                    <Icon name="tabler:bolt" class="text-[10px] text-amber-500" aria-hidden="true" />
-                    +{{ me?.costs?.visionPerImage ?? 1 }} per image
-                  </span>
-                </div>
-
-                <!-- Focal post preview (always shown) -->
-                <div
-                  v-if="post"
-                  class="mb-3 rounded-xl border moh-border p-3"
-                  aria-hidden="true"
-                >
-                    <div class="flex items-start gap-2.5">
-                      <AppAvatarCircle
-                        :src="post.author.avatarUrl ?? null"
-                        :name="post.author.name ?? null"
-                        :username="post.author.username ?? null"
-                        size-class="h-7 w-7"
-                        :round-class="avatarRoundClass(Boolean(post.author.isOrganization))"
-                        bg-class="bg-gray-200 dark:bg-zinc-700"
-                        class="mt-0.5 shrink-0"
-                      />
-                      <div class="min-w-0 flex-1">
-                        <p class="truncate text-[13px] font-semibold leading-tight text-gray-900 dark:text-white">
-                          {{ post.author.name || post.author.username || 'User' }}
-                          <span class="ml-1 font-normal text-gray-400 dark:text-gray-500">@{{ post.author.username }}</span>
-                        </p>
-                        <p
-                          v-if="post.body"
-                          class="mt-0.5 line-clamp-3 text-[13px] leading-snug text-gray-700 dark:text-gray-300"
-                        >{{ post.body }}</p>
-                        <!-- First image thumbnail if present -->
-                        <div
-                          v-if="post.media?.length"
-                          class="mt-1.5 flex gap-1"
-                        >
-                          <div
-                            v-for="m in post.media.slice(0, 3)"
-                            :key="m.id"
-                            class="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-gray-200 dark:bg-zinc-700"
-                          >
-                            <AppImg
-                              v-if="m.url"
-                              :src="m.url"
-                              alt=""
-                              class="h-full w-full object-cover"
-                              width="48"
-                              height="48"
-                              sizes="48px"
-                            />
-                          </div>
-                          <div
-                            v-if="post.media.length > 3"
-                            class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-gray-200 text-[11px] font-semibold text-gray-500 dark:bg-zinc-700 dark:text-gray-400"
-                          >+{{ post.media.length - 3 }}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              <div class="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 py-5 sm:px-6">
+                <AppMarvSourcePost v-if="post && !result" :post="post" />
 
                 <!--
                   Non-premium. Two shapes: if someone already summarized this thread we show
@@ -160,8 +51,9 @@
                   output beats a locked door as a funnel. Otherwise the plain upsell.
                 -->
                 <div v-if="!isAvailable">
-                  <div v-if="result" class="py-2">
-                    <AppMarvMarkdown class="text-sm leading-relaxed" :text="result.summary" />
+                  <div v-if="result" class="space-y-4 py-2">
+                    <h3 class="text-lg font-semibold">The gist</h3>
+                    <AppMarvMarkdown class="text-base leading-relaxed" :text="result.summary" />
                     <p class="mt-3 text-[11px] text-gray-400 dark:text-gray-500">{{ stalenessLabel || summaryMeta }}</p>
                   </div>
                   <div class="flex flex-col items-center justify-center py-6 text-center">
@@ -202,7 +94,8 @@
                 <!-- Premium states: result / loading / peeking / error / idle -->
                 <template v-else>
                   <!-- Result -->
-                  <div v-if="result" class="py-2">
+                  <div v-if="result" class="space-y-4 py-2">
+                    <h3 class="text-lg font-semibold">The gist</h3>
                     <!--
                       Stale banner: the thread moved on since this summary. Shown above the
                       text so the reader knows what they're looking at before they read it.
@@ -221,18 +114,21 @@
                         changed since is the only part they haven't read.
                       -->
                       <template v-if="result.sections.since">
-                        <p class="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-400">What's new</p>
-                        <AppMarvMarkdown class="text-sm leading-relaxed" :text="result.sections.since" />
+                        <p class="mb-1 text-sm font-semibold moh-text">What's new</p>
+                        <AppMarvMarkdown class="text-base leading-relaxed" :text="result.sections.since" />
                       </template>
-                      <p class="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ postSectionLabel }}</p>
-                      <AppMarvMarkdown class="text-sm leading-relaxed" :text="result.sections.post" />
+                      <p class="sr-only">{{ postSectionLabel }}</p>
+                      <AppMarvMarkdown class="text-base leading-relaxed" :text="result.sections.post" />
                       <template v-if="result.sections.replies">
-                        <p class="mb-0.5 mt-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Replies</p>
-                        <AppMarvMarkdown class="text-sm leading-relaxed" :text="result.sections.replies" />
+                        <p class="mb-1 mt-5 text-sm font-semibold moh-text">In the replies</p>
+                        <AppMarvMarkdown class="text-base leading-relaxed" :text="result.sections.replies" />
                       </template>
                     </template>
                     <!-- Single-blob fallback (no replies, or model didn't follow the format) -->
-                    <AppMarvMarkdown v-else class="text-sm leading-relaxed" :text="result.summary" />
+                    <AppMarvMarkdown v-else class="text-base leading-relaxed" :text="result.summary" />
+                    <details class="pt-2 text-xs moh-text-muted">
+                      <summary class="min-h-11 cursor-pointer py-3">Sources · {{ summaryMeta }}</summary>
+                      <AppMarvSourcePost v-if="post" :post="post" />
                     <p class="mt-3 text-[11px] text-gray-400 dark:text-gray-500">
                       {{ summaryMeta }}
                       <span v-if="result.cached"> · cached</span>
@@ -244,11 +140,12 @@
                       <Icon name="tabler:bolt" class="text-[11px] text-amber-500" aria-hidden="true" />
                       {{ costBreakdownLabel }}
                     </p>
+                    </details>
                   </div>
 
                   <!-- Loading (paid generation) -->
                   <div v-else-if="loading" class="space-y-2 py-2" aria-live="polite">
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Analyzing thread…</p>
+                    <p class="flex items-center gap-2 text-sm moh-text-muted"><AppMarvMark :size="24" loading />Finding the useful parts…</p>
                     <div class="h-3 w-5/6 motion-safe:animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
                     <div class="h-3 w-full motion-safe:animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
                     <div class="h-3 w-2/3 motion-safe:animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
@@ -256,7 +153,7 @@
 
                   <!-- Peeking the cache (free, fast) -->
                   <div v-else-if="peeking" class="flex items-center gap-2 py-2 text-sm text-gray-500 dark:text-gray-400" aria-live="polite">
-                    <Icon name="tabler:loader-2" class="motion-safe:animate-spin text-[15px]" aria-hidden="true" />
+                    <AppMarvMark :size="20" loading />
                     Checking for a recent summary…
                   </div>
 
@@ -280,9 +177,9 @@
 
                   <!-- Idle: no cached summary — explicit opt-in -->
                   <div v-else class="flex flex-col items-center justify-center py-6 text-center">
-                    <AppMarvMark :size="32" class="mb-3 opacity-40" />
+                    <AppIconGlyph name="catchup" :size="32" class="mb-3" />
                     <p class="mb-4 text-sm font-medium text-gray-700 dark:text-gray-200">
-                      M.A.R.V will read this whole thread and give you the gist.
+                      Get the key points, useful replies, and what changed.
                     </p>
                     <ul class="space-y-2 text-left text-[13px] text-gray-500 dark:text-gray-400">
                       <li class="flex items-center gap-2">
@@ -309,6 +206,77 @@
                 <AppMarvParticipation v-if="post && result" :key="post.id" :post-id="post.id" class="mt-6" @navigate="hide" />
               </div>
 
+              <details v-if="isAvailable" class="shrink-0 border-t moh-border px-5" :open="!result && !loading && !peeking">
+                <summary class="flex min-h-12 cursor-pointer list-none items-center gap-2 text-xs moh-text-muted">
+                  <AppIconGlyph name="settings" :size="16" />
+                  <span class="flex-1">Summary settings · {{ modeLabel(preferredMode ?? 'auto') }}</span>
+                  <span>{{ creditsLabel }}</span>
+                  <AppIconGlyph name="forward" :size="14" />
+                </summary>
+                <div class="max-h-40 overflow-y-auto pb-3">
+                <!-- Mode picker (premium only) -->
+                <div v-if="isAvailable" class="mb-3 flex flex-wrap items-center gap-2">
+                  <div class="flex w-full min-w-0 rounded-lg border moh-border p-0.5 sm:w-auto sm:flex-1">
+                    <button
+                      v-for="m in (['auto', 'fast', 'regular', 'smart'] as const)"
+                      :key="m"
+                      type="button"
+                      :disabled="modeBusy || loading || peeking"
+                      class="flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 sm:px-2"
+                      :class="
+                        preferredMode === m
+                          ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                          : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5'
+                      "
+                      @click="onPickMode(m)"
+                    >
+                      <AppMarvMark v-if="m === 'auto'" :size="13" />
+                      <Icon v-else :name="modeIcon(m)" class="hidden shrink-0 text-[11px] sm:block" aria-hidden="true" />
+                      <span>{{ modeLabel(m) }}</span>
+                      <span
+                        v-if="modeCost(m) !== null"
+                        class="inline-flex items-center gap-0.5 tabular-nums opacity-70 text-[10px]"
+                        aria-hidden="true"
+                      >
+                        <Icon name="tabler:bolt" class="text-amber-400 text-[9px]" />{{ modeCost(m) }}
+                      </span>
+                    </button>
+                  </div>
+                  <span
+                    v-if="creditsLabel"
+                    class="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] tabular-nums text-gray-500 dark:text-gray-400"
+                  >
+                    <Icon name="tabler:bolt" class="text-[11px] text-amber-500" aria-hidden="true" />
+                    {{ creditsLabel }}
+                  </span>
+                </div>
+
+                <!-- Include images toggle -->
+                <div
+                  v-if="post?.media?.length"
+                  class="mb-3 flex items-center justify-between"
+                >
+                  <label class="flex cursor-pointer items-center gap-2 select-none">
+                    <input
+                      type="checkbox"
+                      class="accent-violet-600"
+                      :checked="includeImages"
+                      :disabled="loading || peeking"
+                      @change="toggleIncludeImages"
+                    />
+                    <span class="text-[13px] text-gray-600 dark:text-gray-300">Include images</span>
+                  </label>
+                  <span class="text-[11px] text-gray-400 dark:text-gray-500">
+                    <Icon name="tabler:bolt" class="text-[10px] text-amber-500" aria-hidden="true" />
+                    +{{ me?.costs?.visionPerImage ?? 1 }} per image
+                  </span>
+                </div>
+
+
+                  <Button v-if="result && !result.stale" label="Regenerate summary" text severity="secondary" :disabled="loading" @click="regenerate" />
+                </div>
+              </details>
+
               <!-- Footer actions -->
               <footer v-if="isAvailable" class="min-h-[72px] shrink-0 flex items-center justify-end gap-2 border-t moh-border px-4 py-3">
                 <template v-if="result">
@@ -318,35 +286,35 @@
                     quiet — spending credits to re-summarize an unchanged thread is waste.
                   -->
                   <span v-if="!result.stale" class="mr-auto text-[11px] text-gray-400 dark:text-gray-500">
-                    Nothing new since this summary
+                    Up to date
                   </span>
                   <template v-if="result.stale">
-                    <Button label="Done" severity="secondary" text @click="hide" />
-                    <Button :label="updateLabel" :loading="loading" rounded @click="regenerate" />
+                    <AppActionButton label="Done" kind="secondary" @click="hide" />
+                    <AppActionButton :label="updateLabel" :loading="loading" @click="regenerate"  marv />
                   </template>
                   <template v-else>
-                    <Button label="Regenerate" severity="secondary" text :disabled="loading" @click="regenerate" />
-                    <Button label="Done" rounded @click="hide" />
+
+                    <AppActionButton label="Back to conversation" @click="hide" />
                   </template>
                 </template>
                 <template v-else-if="errorMessage">
                   <!-- Error state: offer a retry + close -->
-                  <Button label="Cancel" severity="secondary" text @click="hide" />
-                  <Button label="Try again" :loading="loading" rounded @click="run()" />
+                  <AppActionButton label="Cancel" kind="secondary" @click="hide" />
+                  <AppActionButton label="Try again" :loading="loading" @click="run()"  marv />
                 </template>
                 <template v-else-if="peeking">
                   <!-- Checking cache: just a cancel -->
-                  <Button label="Cancel" severity="secondary" text @click="hide" />
+                  <AppActionButton label="Cancel" kind="secondary" @click="hide" />
                 </template>
                 <template v-else>
                   <!-- Idle (no cached summary): explicit opt-in to generate -->
-                  <Button label="Cancel" severity="secondary" text @click="hide" />
-                  <Button
+                  <AppActionButton label="Cancel" kind="secondary" @click="hide" />
+                  <AppActionButton
                     :label="loading ? 'Summarizing…' : 'Catch me up'"
                     :loading="loading"
-                    rounded
+
                     @click="run()"
-                  />
+                   marv />
                 </template>
               </footer>
             </section>
@@ -360,7 +328,6 @@
 <script setup lang="ts">
 import { ClientOnly } from '#components'
 import type { MarvinModeDto } from '~/types/api'
-import { avatarRoundClass } from '~/utils/avatar-rounding'
 
 const { open, post, result, loading, peeking, errorMessage, errorReason, includeImages, hide, run, peek, reset, toggleIncludeImages } = useMarvCatchUp()
 const { me, isAvailable, preferredMode, credits, setPreferredMode, ensureLoaded, startRealtime } = useMarv()

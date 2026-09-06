@@ -607,13 +607,18 @@ export function useCallSession() {
 
   async function stopScreenShare(): Promise<void> {
     if (!isScreenSharing.value) return
-    const track = localScreenTrack()
-    await transport?.setLocalTrack('screen', null)
-    if (track) stopTrack(track)
+    const stream = localScreenStream.value
+    // Release capture before awaiting WebRTC. A stalled sender must never keep the
+    // browser's screen-capture session running after the user presses Stop.
     localScreenStream.value = null
     isScreenSharing.value = false
+    for (const track of stream?.getTracks() ?? []) {
+      track.onended = null
+      stopTrack(track)
+    }
     const current = call.value
     if (current) presence.emitCallsState(current.id, { screenSharing: false })
+    await transport?.setLocalTrack('screen', null)
   }
 
   async function toggleScreenShare(): Promise<void> {

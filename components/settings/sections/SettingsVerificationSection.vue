@@ -5,6 +5,65 @@
         Verification
       </div>
     </div>
+    <section v-if="(authUser?.verifiedStatus ?? 'none') === 'none'" class="space-y-5">
+      <div>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight">{{ verificationLatestRequest?.status === 'pending' ? 'Your request is in' : 'Your next step: verification' }}</h2>
+        <p class="mt-2 moh-text-muted">Put a real person behind your profile. Meet an admin in a video call, right here on Men of Hunger.</p>
+      </div>
+      <div class="flex items-center gap-3 rounded-2xl moh-surface-2 p-4">
+        <AppUserAvatar v-if="authUser" :user="authUser" size-class="h-12 w-12" :show-status="false" />
+        <div class="min-w-0">
+          <div class="flex items-center gap-2"><strong class="truncate">{{ authUser?.name || authUser?.username }}</strong><AppVerifiedBadge status="manual" /></div>
+          <p class="text-sm moh-text-muted">@{{ authUser?.username }}</p>
+        </div>
+      </div>
+      <p class="text-xs moh-text-muted">A preview of your verified profile</p>
+      <template v-if="verificationLatestRequest?.status !== 'pending'">
+        <h3 class="font-semibold">More ways to take part</h3>
+        <ul class="space-y-3">
+          <li v-for="benefit in ['A blue check beside your name', 'Take part in verified conversations', 'Connect with other verified members']" :key="benefit" class="flex gap-3">
+            <AppIconGlyph name="check" :size="20" class="shrink-0 text-[var(--moh-verified)]" /><span>{{ benefit }}</span>
+          </li>
+        </ul>
+      </template>
+    </section>
+
+
+    <AppInlineAlert v-if="verificationError" severity="danger">
+      {{ verificationError }}
+    </AppInlineAlert>
+
+    <!-- Already verified -->
+    <div
+      v-if="(authUser?.verifiedStatus ?? 'none') !== 'none'"
+      class="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-500/25 dark:bg-emerald-500/8 px-3 py-2.5 text-sm"
+    >
+      <Icon name="tabler:rosette-discount-check" class="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+      <span class="moh-text">You’re verified. Thanks for being part of Men of Hunger.</span>
+    </div>
+
+    <!-- Pending request -->
+    <div
+      v-else-if="verificationLatestRequest?.status === 'pending'"
+      class="flex items-start gap-2 rounded-lg border border-yellow-300 bg-yellow-50 dark:border-yellow-500/25 dark:bg-yellow-500/8 px-3 py-2.5 text-sm"
+    >
+      <Icon name="tabler:clock" class="mt-0.5 shrink-0 text-yellow-600 dark:text-yellow-400" aria-hidden="true" />
+      <span class="moh-text">
+        Verification requested <span class="font-medium">{{ requestSubmittedAtLabel }}</span>. An admin will contact you here to arrange your video call. You can keep using the app while you wait.
+      </span>
+    </div>
+
+    <form v-else class="space-y-4" @submit.prevent="confirmStartVerification">
+      <label class="flex min-h-11 cursor-pointer items-start gap-3">
+        <input v-model="videoCallConsent" type="checkbox" class="mt-1 h-6 w-6 shrink-0" :disabled="verificationStarting">
+        <span>I want to get verified, and I’m willing to join a video call with a Men of Hunger admin here in the app.</span>
+      </label>
+      <AppActionButton type="submit" label="Request verification" class="w-full" :disabled="!videoCallConsent || verificationRefreshing" :loading="verificationStarting" />
+      <p class="text-xs moh-text-muted">Verification is complete after an admin approves it.</p>
+    </form>
+
+    <details class="text-sm" :open="(authUser?.verifiedStatus ?? 'none') !== 'none'">
+      <summary class="min-h-11 cursor-pointer py-3 font-semibold">Verification details</summary>
     <div class="rounded-xl border moh-border p-3 moh-surface space-y-2 text-sm">
       <div class="flex items-center justify-between gap-3">
         <div class="font-semibold text-gray-900 dark:text-gray-50">Your verification</div>
@@ -53,58 +112,7 @@
       </div>
     </div>
 
-    <AppInlineAlert v-if="verificationError" severity="danger">
-      {{ verificationError }}
-    </AppInlineAlert>
-
-    <!-- Already verified -->
-    <div
-      v-if="(authUser?.verifiedStatus ?? 'none') !== 'none'"
-      class="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-500/25 dark:bg-emerald-500/8 px-3 py-2.5 text-sm"
-    >
-      <Icon name="tabler:rosette-discount-check" class="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-      <span class="moh-text">You’re verified. Thanks for being part of Men of Hunger.</span>
-    </div>
-
-    <!-- Pending request -->
-    <div
-      v-else-if="verificationLatestRequest?.status === 'pending'"
-      class="flex items-start gap-2 rounded-lg border border-yellow-300 bg-yellow-50 dark:border-yellow-500/25 dark:bg-yellow-500/8 px-3 py-2.5 text-sm"
-    >
-      <Icon name="tabler:clock" class="mt-0.5 shrink-0 text-yellow-600 dark:text-yellow-400" aria-hidden="true" />
-      <span class="moh-text">
-        Verification requested <span class="font-medium">{{ requestSubmittedAtLabel }}</span>. We’ll review it soon — no action needed.
-      </span>
-    </div>
-
-    <!-- Request CTA -->
-    <div v-else class="flex flex-wrap items-center gap-3">
-      <Button
-        label="Request Verification"
-        :disabled="verificationStarting"
-        @click="verificationConfirmVisible = true"
-      >
-        <template #icon>
-          <Icon name="tabler:id-badge" aria-hidden="true" />
-        </template>
-      </Button>
-    </div>
-
-    <div v-if="(authUser?.verifiedStatus ?? 'none') === 'none' && verificationLatestRequest?.status !== 'pending'" class="text-xs moh-text-muted">
-      An admin will review your request manually. You’ll see your verified badge once it’s approved.
-    </div>
-
-    <AppConfirmDialog
-      v-model:visible="verificationConfirmVisible"
-      header="Request Verification?"
-      message="This sends a verification request to the Men of Hunger team. An admin will review your account and approve or reject it. You can only have one open request at a time."
-      cancel-label="Not now"
-      confirm-label="Submit request"
-      confirm-severity="primary"
-      confirm-icon="tabler:id-badge"
-      :loading="verificationStarting"
-      @confirm="confirmStartVerification()"
-    />
+    </details>
 
   </div>
 </template>
@@ -151,21 +159,22 @@ async function refreshVerification() {
   }
 }
 
+watch(() => authUser.value?.verifiedStatus, () => { void refreshVerification() })
+
 // Refresh whenever the section mounts so the badge/status reflects any
 // out-of-band changes (e.g. an admin approved while the user was elsewhere).
 onMounted(() => {
   void refreshVerification()
 })
 
-// AppConfirmDialog closes itself on confirm — no need to toggle visibility here.
-const verificationConfirmVisible = ref(false)
+const videoCallConsent = ref(false)
 
 const { submit: startVerification, submitting: verificationStarting } = useFormSubmit(
   async () => {
     verificationError.value = null
     const req = await apiFetchData<VerificationRequestPublic>('/verification/request', {
       method: 'POST',
-      body: {},
+      body: { videoCallConsent: true },
     })
     verificationLatestRequest.value = req
   },
@@ -178,6 +187,7 @@ const { submit: startVerification, submitting: verificationStarting } = useFormS
 )
 
 function confirmStartVerification() {
+  if (!videoCallConsent.value || verificationRefreshing.value) return
   void startVerification()
 }
 
