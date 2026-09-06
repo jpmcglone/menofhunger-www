@@ -143,7 +143,7 @@ Symptom: chat lags; spaces flicker; you see N+1 HTTP calls in the network tab. F
 
 ### Defining a parallel "realtime model" type
 
-Don't. The socket payload is the HTTP DTO. If you need to add a field for realtime delivery, add it to the DTO and let the HTTP response carry it too. This keeps the reducer code one path, not two.
+Snapshots reuse canonical DTOs; named partial patches reuse field types. Follow the [realtime policy](../../../docs/engineering-policy.md#realtime-contracts-and-ownership).
 
 ### Routing socket events through the global cache only
 
@@ -151,7 +151,7 @@ The global feed cache (in `~/utils/feed-patch.ts`) handles `posts:live-updated` 
 
 ### Forgetting the `useState` key for SSR
 
-Pages that rely on `useState('key', …)` can hydrate twice if the key depends on auth (`me.value?.id`) and `me` isn't resolved server-side. For socket-driven pages this almost always means **don't SSR**: `definePageMeta({ ssr: false })` for auth-gated dashboards (notifications, settings, inbox, …). The hydration-safe-defaults rule covers this.
+Use request-isolated state and stable keys during hydration; follow the [SSR skill](../ssr-hydration/SKILL.md) for auth boundaries and route rendering.
 
 ## Skipping the pattern
 

@@ -12,25 +12,39 @@ export type ConfirmOptions = {
 
 export type ConfirmResult = boolean | 'discard'
 
-// Module-level singleton — one dialog at a time, globally.
-const _visible = ref(false)
-const _options = ref<ConfirmOptions | null>(null)
-let _resolveFn: ((v: ConfirmResult) => void) | null = null
+// One dialog per Nuxt app, never shared across server requests. Promise callbacks stay
+// outside serialized useState payloads and are released with the app instance.
+const confirmations = new WeakMap<ReturnType<typeof useNuxtApp>, ReturnType<typeof createConfirmation>>()
 
-function _settle(value: ConfirmResult) {
-  _visible.value = false
-  _resolveFn?.(value)
-  _resolveFn = null
-}
+function createConfirmation() {
+  const _visible = ref(false)
+  const _options = ref<ConfirmOptions | null>(null)
+  let resolvePending: ((value: ConfirmResult) => void) | null = null
 
-export function useAppConfirm() {
+  function _settle(value: ConfirmResult) {
+    _visible.value = false
+    const resolve = resolvePending
+    resolvePending = null
+    _options.value = null
+    resolve?.(value)
+  }
+
   function confirm(options: ConfirmOptions): Promise<ConfirmResult> {
+    _settle(false)
     _options.value = options
     _visible.value = true
-    return new Promise<ConfirmResult>((resolve) => {
-      _resolveFn = resolve
-    })
+    return new Promise<ConfirmResult>((resolve) => { resolvePending = resolve })
   }
 
   return { confirm, _visible, _options, _settle }
+}
+
+export function useAppConfirm() {
+  const app = useNuxtApp()
+  let confirmation = confirmations.get(app)
+  if (!confirmation) {
+    confirmation = createConfirmation()
+    confirmations.set(app, confirmation)
+  }
+  return confirmation
 }

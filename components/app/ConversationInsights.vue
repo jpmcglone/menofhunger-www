@@ -63,15 +63,19 @@ const copied = ref(false)
 const visiblePosts = computed(() => data.value?.posts.slice(0, props.postId || showAll.value ? undefined : 3) ?? [])
 let request = 0
 let disposed = false
+let active = false
+let loadingRequest = 0
 async function load() {
-  if (!user.value?.id || disposed) return
+  if (!user.value?.id || disposed || !active || loadingRequest) return
   const current = ++request
+  loadingRequest = current
   try {
     const result = await apiFetchData<ConversationInsights>(props.postId ? `/posts/${encodeURIComponent(props.postId)}/insights` : '/posts/insights/weekly')
     if (current !== request || disposed) return
     data.value = result
     error.value = ''
   } catch (e) { if (current === request && !disposed) error.value = getSafeUserErrorMessage(e, 'Could not load activity.') }
+  finally { if (loadingRequest === current) loadingRequest = 0 }
 }
 async function share() {
   if (!data.value) return
@@ -83,18 +87,47 @@ async function share() {
 }
 const presence = usePresence()
 let timer: ReturnType<typeof setTimeout> | undefined
-function refreshSoon() { if (timer) return; timer = setTimeout(() => { timer = undefined; void load() }, 1500) }
+function refreshSoon() { if (!active || timer) return; timer = setTimeout(() => { timer = undefined; void load() }, 1500) }
 const callback: PostsCallback = { onLiveUpdated: payload => { if (['commentCount', 'repostCount', 'deletedAt', 'body'].some(key => key in payload.patch)) refreshSoon() }, onCommentAdded: refreshSoon, onCommentDeleted: refreshSoon, onFeedNewPost: refreshSoon }
 const subscribed = ref<string[]>([])
 watch(() => data.value?.posts.map(p => p.id) ?? [], ids => {
   presence.unsubscribePosts(subscribed.value)
-  subscribed.value = ids
-  presence.subscribePosts(ids)
+  subscribed.value = active ? ids : []
+  presence.subscribePosts(subscribed.value)
 })
-watch(() => [user.value?.id, props.postId], () => { request++; data.value = null; error.value = ''; if (import.meta.client) void load() })
+watch(() => [user.value?.id, props.postId], () => {
+  request++
+  loadingRequest = 0
+  data.value = null
+  error.value = ''
+  showAll.value = false
+  copied.value = false
+  void load()
+})
 const userCallback = { onMeUpdated: refreshSoon }
-onMounted(() => { presence.addPostsCallback(callback); presence.addUsersCallback(userCallback); void load() })
-onActivated(() => { void load() })
-onBeforeUnmount(() => { disposed = true; request++; if (timer) clearTimeout(timer); presence.removePostsCallback(callback); presence.removeUsersCallback(userCallback); presence.unsubscribePosts(subscribed.value) })
+function activate() {
+  if (active || disposed) return
+  active = true
+  presence.addPostsCallback(callback)
+  presence.addUsersCallback(userCallback)
+  subscribed.value = data.value?.posts.map(post => post.id) ?? []
+  presence.subscribePosts(subscribed.value)
+  void load()
+}
+function deactivate() {
+  active = false
+  request++
+  loadingRequest = 0
+  if (timer) clearTimeout(timer)
+  timer = undefined
+  presence.removePostsCallback(callback)
+  presence.removeUsersCallback(userCallback)
+  presence.unsubscribePosts(subscribed.value)
+  subscribed.value = []
+}
+onMounted(activate)
+onActivated(activate)
+onDeactivated(deactivate)
+onBeforeUnmount(() => { disposed = true; deactivate() })
 watch(open, value => { if (value) void load() })
 </script>
