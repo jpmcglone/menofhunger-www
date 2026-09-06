@@ -66,7 +66,7 @@ onActivated(async () => {
 
 ## What socket events should do to local state
 
-Patch in place, don't refetch. The server's socket payload is the same DTO as the HTTP response, so you can splice it into your local `ref`/`useState` directly:
+Merge snapshots and patches according to the [realtime policy](../../docs/engineering-policy.md#realtime-contracts-and-ownership). The following example inserts a complete snapshot:
 
 ```ts
 const cb: NotificationsCallback = {

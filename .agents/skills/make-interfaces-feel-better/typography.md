@@ -47,7 +47,7 @@ p, li, figcaption, blockquote {
 
 ```tsx
 // Tailwind
-<p className="text-pretty">
+<p class="text-pretty">
   A short paragraph that won't leave an orphan on the last line.
 </p>
 ```
@@ -76,7 +76,7 @@ html {
 
 ```tsx
 // Tailwind — apply to root layout
-<html className="antialiased">
+<html class="antialiased">
 ```
 
 ### Good vs. Bad
@@ -111,7 +111,7 @@ When numbers update dynamically (counters, prices, timers, table columns), use t
 
 ```tsx
 // Tailwind
-<span className="tabular-nums">{count}</span>
+<span class="tabular-nums">{{ count }}</span>
 ```
 
 ### When to Use

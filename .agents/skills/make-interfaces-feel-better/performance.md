@@ -32,10 +32,10 @@ Never use `transition: all` or Tailwind's `transition` shorthand (which maps to 
 
 ```tsx
 // Good — explicit properties
-<button className="transition-[scale,background-color] duration-150 ease-out">
+<button class="transition-[scale,background-color] duration-150 ease-out">
 
 // Bad — transition all
-<button className="transition duration-150 ease-out">
+<button class="transition duration-150 ease-out">
 ```
 
 ### Tailwind `transition-transform` Note

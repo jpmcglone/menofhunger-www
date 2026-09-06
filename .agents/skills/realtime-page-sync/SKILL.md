@@ -139,7 +139,7 @@ Symptom: socket fan-out grows unbounded; old pages keep receiving events; leaked
 
 ### Refetching on every event
 
-Symptom: chat lags; spaces flicker; you see N+1 HTTP calls in the network tab. Fix: patch the local ref with the payload (which is the full DTO).
+Symptom: chat lags; spaces flicker; you see N+1 HTTP calls in the network tab. Fix: merge the typed snapshot or patch according to the [realtime policy](../../../docs/engineering-policy.md#realtime-contracts-and-ownership).
 
 ### Defining a parallel "realtime model" type
 
