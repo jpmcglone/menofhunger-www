@@ -25,7 +25,6 @@ function createConfirmation() {
     _visible.value = false
     const resolve = resolvePending
     resolvePending = null
-    _options.value = null
     resolve?.(value)
   }
 

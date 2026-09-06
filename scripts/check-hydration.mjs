@@ -18,6 +18,7 @@
  */
 
 import { spawn } from 'node:child_process'
+import { createServer } from 'node:net'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -66,7 +67,16 @@ async function waitForHttpReady(url, timeoutMs = 30000) {
   throw new Error(`Server at ${url} did not become ready: ${lastErr?.message ?? 'unknown'}`)
 }
 
-async function spawnPreviewServer() {
+async function ensurePreviewPortFree() {
+  await new Promise((resolve, reject) => {
+    const probe = createServer()
+    probe.once('error', reject)
+    probe.listen(PORT, '127.0.0.1', () => probe.close(error => error ? reject(error) : resolve()))
+  })
+}
+
+async function spawnPreviewServer(registerCleanup) {
+  await ensurePreviewPortFree()
   const entry = resolve(REPO, '.output/server/index.mjs')
   if (!existsSync(entry)) {
     throw new Error(
@@ -93,6 +103,7 @@ async function spawnPreviewServer() {
 
   const url = `http://127.0.0.1:${PORT}`
   const stop = () => child.kill('SIGTERM')
+  registerCleanup(stop)
   try {
     await waitForHttpReady(url)
     return { url, kill: stop }
@@ -167,24 +178,24 @@ async function main() {
 
   let baseUrl = BASE_URL_ENV
   let stopServer = null
-  if (!baseUrl) {
-    const server = await spawnPreviewServer()
-    baseUrl = server.url
-    stopServer = server.kill
-    console.log(`[check-hydration] preview server up at ${baseUrl}`)
-  } else {
-    console.log(`[check-hydration] using HYDRATION_BASE_URL=${baseUrl}`)
-  }
-
   let browser
   const results = []
-  const stop = () => {
-    if (stopServer) stopServer()
+  const stop = () => { if (stopServer) stopServer() }
+  const onInterrupt = () => {
+    stop()
+    void browser?.close().finally(() => process.exit(130))
+    if (!browser) process.exit(130)
   }
-  const onInterrupt = () => { stop(); process.exit(130) }
   process.once('SIGINT', onInterrupt)
   process.once('SIGTERM', onInterrupt)
   try {
+    if (!baseUrl) {
+      const server = await spawnPreviewServer(cleanup => { stopServer = cleanup })
+      baseUrl = server.url
+      console.log(`[check-hydration] preview server up at ${baseUrl}`)
+    } else {
+      console.log(`[check-hydration] using HYDRATION_BASE_URL=${baseUrl}`)
+    }
     browser = await chromium.launch()
     for (const route of routes) {
       const r = await checkRoute(browser, baseUrl, route)

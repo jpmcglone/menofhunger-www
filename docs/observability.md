@@ -60,3 +60,16 @@ PostHog is a separate pipeline from Sentry. Policy:
 ## Testing the scrubber
 
 Unit tests for `scrubSentryEvent` belong in `tests/sentry-scrub.test.ts`. Add cases before expanding the sensitive-key lists.
+
+## Build source maps
+
+`nuxt.config.ts` owns source-map settings: hidden client maps, with server maps disabled
+to limit build memory. Sentry reads the current Vite output in `.nuxt/dist/client`,
+before Nitro copies public assets, then deletes maps so they are not publicly served.
+Avoid a separate `vite.build.sourcemap` override that conflicts with Nuxt.
+
+Use `SENTRY_UPLOAD=false npm run build` for local release verification without uploading
+source maps or creating a Sentry release. This explicitly supplies an empty upload token,
+including when `.env.sentry-build-plugin` exists; generation and cleanup still run.
+A normal release build uses the configured Sentry credentials. Verify upload success in
+that build's log and confirm `.output/public` contains no `.map` files before deployment.

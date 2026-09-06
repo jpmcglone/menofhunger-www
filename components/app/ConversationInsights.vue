@@ -65,8 +65,13 @@ let request = 0
 let disposed = false
 let active = false
 let loadingRequest = 0
+let refreshPending = false
 async function load() {
-  if (!user.value?.id || disposed || !active || loadingRequest) return
+  if (!user.value?.id || disposed || !active) return
+  if (loadingRequest) { refreshPending = true; return }
+  if (timer) clearTimeout(timer)
+  timer = undefined
+  refreshPending = false
   const current = ++request
   loadingRequest = current
   try {
@@ -75,7 +80,12 @@ async function load() {
     data.value = result
     error.value = ''
   } catch (e) { if (current === request && !disposed) error.value = getSafeUserErrorMessage(e, 'Could not load activity.') }
-  finally { if (loadingRequest === current) loadingRequest = 0 }
+  finally {
+    if (loadingRequest === current) {
+      loadingRequest = 0
+      if (refreshPending) refreshSoon()
+    }
+  }
 }
 async function share() {
   if (!data.value) return
@@ -87,8 +97,25 @@ async function share() {
 }
 const presence = usePresence()
 let timer: ReturnType<typeof setTimeout> | undefined
-function refreshSoon() { if (!active || timer) return; timer = setTimeout(() => { timer = undefined; void load() }, 1500) }
-const callback: PostsCallback = { onLiveUpdated: payload => { if (['commentCount', 'repostCount', 'deletedAt', 'body'].some(key => key in payload.patch)) refreshSoon() }, onCommentAdded: refreshSoon, onCommentDeleted: refreshSoon, onFeedNewPost: refreshSoon }
+function refreshSoon() {
+  if (!active) return
+  refreshPending = true
+  if (loadingRequest || timer) return
+  timer = setTimeout(() => { timer = undefined; void load() }, 1500)
+}
+function includesPost(id: string) {
+  return props.postId ? id === props.postId : data.value?.posts.some(post => post.id === id) === true
+}
+const callback: PostsCallback = {
+  onLiveUpdated: payload => {
+    if (includesPost(payload.postId) && ['commentCount', 'repostCount', 'deletedAt', 'body'].some(key => key in payload.patch)) refreshSoon()
+  },
+  onCommentAdded: payload => {
+    if (includesPost(payload.parentPostId)) refreshSoon()
+  },
+  onCommentDeleted: payload => { if (includesPost(payload.parentPostId)) refreshSoon() },
+  onFeedNewPost: payload => { if (!props.postId && payload.post.author.id === user.value?.id) refreshSoon() },
+}
 const subscribed = ref<string[]>([])
 watch(() => data.value?.posts.map(p => p.id) ?? [], ids => {
   presence.unsubscribePosts(subscribed.value)
@@ -98,6 +125,9 @@ watch(() => data.value?.posts.map(p => p.id) ?? [], ids => {
 watch(() => [user.value?.id, props.postId], () => {
   request++
   loadingRequest = 0
+  refreshPending = false
+  if (timer) clearTimeout(timer)
+  timer = undefined
   data.value = null
   error.value = ''
   showAll.value = false
@@ -118,6 +148,7 @@ function deactivate() {
   active = false
   request++
   loadingRequest = 0
+  refreshPending = false
   if (timer) clearTimeout(timer)
   timer = undefined
   presence.removePostsCallback(callback)

@@ -19,7 +19,7 @@ If the service is not picking up Blueprint fields, set them once in the Render D
 Render’s free tier includes 500 pipeline minutes/month. To reduce usage:
 
 - **Fewer deploys:** Deploy only from `main` when needed; avoid branch/preview deploys if not required.
-- **Faster www builds:** Your build is already tuned (no production source maps in [nuxt.config.ts](nuxt.config.ts)). To use Render’s cache and speed up installs, you can set `buildCommand: npm install --prefer-offline --no-audit && npm run build` in [render.yaml](render.yaml). Tradeoff: `npm install` is less strict than `npm ci` (lockfile still pins versions).
+- **Faster www builds:** Your build is already tuned (hidden client source maps uploaded to Sentry and removed before serving; server maps disabled in [nuxt.config.ts](nuxt.config.ts)). To use Render’s cache and speed up installs, you can set `buildCommand: npm install --prefer-offline --no-audit && npm run build` in [render.yaml](render.yaml). Tradeoff: `npm install` is less strict than `npm ci` (lockfile still pins versions).
 - **API:** The API Dockerfile uses SWC for fast compilation and a lean runner stage; dependency and build layers are cached between builds when `package*.json` and source don’t change.
 - **Spend control:** In Render dashboard you can set a custom pipeline minute limit so builds pause instead of incurring overage.
 

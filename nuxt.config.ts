@@ -299,7 +299,6 @@ export default defineNuxtConfig({
 
   vite: {
     build: {
-      sourcemap: false,
       // CI warning noise: Nuxt/Vite warns at 500kB, but our largest client chunk is ~520kB minified.
       chunkSizeWarningLimit: 600,
     },
@@ -527,22 +526,22 @@ export default defineNuxtConfig({
   sentry: {
     org: 'jp-mcglone',
     project: 'menofhunger-www',
-    // Scope sourcemap upload to the client bundle only.
-    // Nitro is built with `sourceMap: false`, so the server has no maps to upload —
-    // but without an explicit `assets` glob the Sentry plugin still walks every server
-    // chunk to inject debug IDs, which OOMs Render builds (`Ineffective mark-compacts
-    // near heap limit` during the Sentry phase, after `[nitro] Nuxt Nitro server built`).
+    // Local verification can exercise map generation/cleanup without sending source to Sentry.
+    authToken: process.env.SENTRY_UPLOAD === 'false' ? '' : undefined,
+    // Vite uploads the current client build before Nitro copies it into .output/public.
+    // Server maps stay disabled to preserve the memory budget on Render.
     sourcemaps: {
-      assets: ['./.output/public/**/*'],
+      assets: ['./.nuxt/dist/client/**/*'],
       ignore: ['./.output/server/**/*'],
       // Don't ship .map files to production; we only need them long enough to upload.
-      filesToDeleteAfterUpload: ['./.output/public/**/*.map']
+      filesToDeleteAfterUpload: ['./.nuxt/dist/client/**/*.map', './.output/public/**/*.map']
     },
     // Reduce build-time chatter / network work the plugin does.
     telemetry: false
   },
 
   sourcemap: {
-    client: 'hidden'
+    client: 'hidden',
+    server: false
   }
 })
