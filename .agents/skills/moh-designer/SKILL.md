@@ -16,10 +16,10 @@ That is the taste. Apple decides what is on the screen. Linear decides how the w
 | `design-simplicity-principles` | What to ship. Cut features. |
 | **`moh-designer`** | How the screen works and looks. Hierarchy, density, chrome. |
 | `make-interfaces-feel-better` | Pixel polish after the structure is right. Radius, motion, shadows. |
-| `ux-review` | Full-platform UI/UX audit. Look, judge, recommend. Do not implement. |
+| `ux-review` | Full-platform UI/UX audit. Review and implement within the user’s requested scope. |
 | `moh-marketing` | Words outside the product. |
 
-Do not redesign tokens. Do not invent a new aesthetic. Design inside the lodge.
+Follow the [product and visual policy](../../../docs/engineering-policy.md#product-and-visual-decisions).
 
 ## The synthesis
 
@@ -60,7 +60,7 @@ Web tokens live in `menofhunger-www/assets/css/main.css`. iOS mirrors them in `A
 - Serif (`moh-serif` / Literata): lodge moments only — quotes, daily prompts. Never UI chrome.
 - Font: Inter on web. System on iOS. Do not add a display face.
 
-If you need a new color, you are solving the wrong problem.
+Use the linked policy to decide when a semantic token is needed.
 
 ## Screen recipe
 

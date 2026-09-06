@@ -92,8 +92,14 @@ async function spawnPreviewServer() {
   })
 
   const url = `http://127.0.0.1:${PORT}`
-  await waitForHttpReady(url)
-  return { url, kill: () => child.kill('SIGTERM') }
+  const stop = () => child.kill('SIGTERM')
+  try {
+    await waitForHttpReady(url)
+    return { url, kill: stop }
+  } catch (error) {
+    stop()
+    throw error
+  }
 }
 
 function isHydrationMessage(text) {
@@ -170,17 +176,29 @@ async function main() {
     console.log(`[check-hydration] using HYDRATION_BASE_URL=${baseUrl}`)
   }
 
-  const browser = await chromium.launch()
+  let browser
   const results = []
+  const stop = () => {
+    if (stopServer) stopServer()
+  }
+  const onInterrupt = () => { stop(); process.exit(130) }
+  process.once('SIGINT', onInterrupt)
+  process.once('SIGTERM', onInterrupt)
   try {
+    browser = await chromium.launch()
     for (const route of routes) {
       const r = await checkRoute(browser, baseUrl, route)
       console.log(fmt(r))
       results.push(r)
     }
   } finally {
-    await browser.close()
-    if (stopServer) stopServer()
+    try {
+      await browser?.close()
+    } finally {
+      stop()
+      process.removeListener('SIGINT', onInterrupt)
+      process.removeListener('SIGTERM', onInterrupt)
+    }
   }
 
   const failed = results.filter((r) => !r.ok)
