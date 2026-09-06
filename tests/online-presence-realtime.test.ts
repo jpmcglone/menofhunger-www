@@ -27,8 +27,14 @@ describe('online presence realtime wiring', () => {
     expect(page).toContain('user.id === payload.userId ? { ...user, inCall: payload.inCall } : user')
 
     const row = readFileSync(resolve(root, 'components/app/UserRow.vue'), 'utf8')
-    expect(row).toContain('v-if="inCall"')
+    // Directory rows show call state in the presence line; other rows use the trailing icon.
+    expect(row).toContain(':in-call="inCall"')
+    expect(row).toContain('v-if="inCall && !showPresence"')
     expect(row).toContain('name="tabler:headset"')
+
+    const platforms = readFileSync(resolve(root, 'components/app/PresencePlatforms.vue'), 'utf8')
+    expect(platforms).toContain('v-if="inCall && !recentLabel"')
+    expect(platforms).toContain('name="tabler:headset"')
   })
 
   it('sends a stable anon id on logged-out socket connect', () => {

@@ -10,7 +10,10 @@ product decisions, Figma as the visual source of truth, and native platform beha
 This skill supports a review; it does not authorize redesign, feature removal, or app changes.
 
 Read [web.md](web.md) for web and [ios.md](ios.md) for iOS. Inspect only the references
-and surfaces relevant to the requested review.
+and surfaces relevant to the requested review. Markdown links within this skill resolve
+from the file containing the link. Resolve implementation paths from the relevant
+repository root, discovered from the workspace and its `AGENTS.md`; do not assume the
+agent’s current working directory or a fixed arrangement of sibling checkouts.
 
 ## Choose the review
 
@@ -84,6 +87,10 @@ and where the user can find it afterward. If usage evidence is missing, say so. 
 present personal taste as a usability failure or assume infrequent features are disposable.
 
 ## Two-way Figma comparison
+
+Figma is the visual source of truth. When implementing it would lose existing useful
+functionality or information, flag the design gap and update Figma before that migration.
+Do not silently remove the capability or silently diverge from the design.
 
 For each designed family or screen, record:
 

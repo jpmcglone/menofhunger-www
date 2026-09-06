@@ -397,9 +397,10 @@ describe('hydration guardrails (structural)', () => {
     expect(verifiedBadge).toMatch(/isBot/)
     expect(verifiedBadge).toMatch(/AppAiBadge/)
 
-    // AiBadge itself must exist.
+    // AiBadge uses the shared Marv mark and retains its accessible identity.
     const aiBadge = readFromRepo('components/app/AiBadge.vue')
-    expect(aiBadge).toMatch(/tabler:sparkles/)
+    expect(aiBadge).toMatch(/AppMarvMark/)
+    expect(aiBadge).toContain('aria-label="AI assistant"')
   })
 
   it('uses shallowRef for the chat conversations + messages stores', () => {
@@ -605,7 +606,8 @@ describe('hydration guardrails (structural)', () => {
     // A resizing modal feels janky. The panel must declare an explicit viewport-bounded height
     // as well as the viewport-constrained max-h cap.
     const modal = readFromRepo('components/app/MarvCatchUpModal.vue')
-    expect(modal).toContain("h-[min(44rem,90dvh)]")
+    // The design's rem height may change; keep the fixed, viewport-bounded sizing invariant.
+    expect(modal).toMatch(/\bh-\[min\(\d+(?:\.\d+)?rem,90dvh\)\]/)
     expect(modal).toContain("max-h-[90dvh]")
   })
 

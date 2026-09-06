@@ -2,8 +2,14 @@
 
 Read after [SKILL.md](SKILL.md). The implementation is SwiftUI in `menofhunger-ios`;
 theme tokens live in `AppTheme.swift`. Inspect the current root navigation, sheet helpers,
-and [native-versus-web policy](../../../.cursor/rules/35-native-vs-web-handoff.mdc).
-Do not assume an older tab order or browser-handoff list still describes the current app.
+and the iOS repository’s native-versus-web policy. Locate the `menofhunger-ios` workspace
+root, read its `AGENTS.md`, and follow its native-versus-web rule entry (currently
+`.cursor/rules/35-native-vs-web-handoff.mdc`, relative to that repository root). This rule
+is readable by both Codex and Cursor; the folder name does not make it Cursor-only.
+Do not resolve this path from the shared skill folder or assume sibling checkout locations.
+If that repository is unavailable, report the policy as unverified and use the preservation
+and handoff criteria below. Do not assume an older tab order or browser-handoff list still
+describes the current app.
 
 ## Inspect the requested surfaces
 
