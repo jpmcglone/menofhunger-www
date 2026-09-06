@@ -393,10 +393,26 @@ export type AdminMemberDiagnosticsDto = {
   };
   billing: BillingMeDto;
   providers: {
-    stripe: { status: string | null; periodEnd: string | null; cancelAtPeriodEnd: boolean; hasSubscription: boolean };
-    apple: { status: string | null; expiresAt: string | null; autoRenew: boolean; environment: string | null; hasPurchase: boolean };
+    stripe: {
+      status: string | null;
+      periodEnd: string | null;
+      cancelAtPeriodEnd: boolean;
+      hasSubscription: boolean;
+    };
+    apple: {
+      status: string | null;
+      expiresAt: string | null;
+      autoRenew: boolean;
+      environment: string | null;
+      hasPurchase: boolean;
+    };
   };
-  activity: { since: string; activeDays: number; activeSessions: number; openFeedback: number };
+  activity: {
+    since: string;
+    activeDays: number;
+    activeSessions: number;
+    openFeedback: number;
+  };
   limitations: string[];
 };
 
@@ -404,7 +420,11 @@ export type AdminOperationsHealthDto = {
   asOf: string;
   feedback: { new: number; triaged: number };
   pendingReports: number;
-  stripeWebhooks: { unprocessed: number; olderThan15Minutes: number; oldestReceivedAt: string | null };
+  stripeWebhooks: {
+    unprocessed: number;
+    olderThan15Minutes: number;
+    oldestReceivedAt: string | null;
+  };
   scheduledPostsWithFailures: number;
   limitations: string[];
 };
