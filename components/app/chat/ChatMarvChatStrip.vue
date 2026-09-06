@@ -86,6 +86,10 @@
       </Teleport>
     </div>
 
+    <button type="button" class="min-h-11 px-2 text-xs font-semibold" @click="showActions = true">Actions</button>
+    <Dialog v-model:visible="showActions" modal header="Your MARV actions" :style="{ width: '36rem', maxWidth: '94vw' }">
+      <AppMarvPersonalActions v-if="showActions" />
+    </Dialog>
     <!-- Credits chip -->
     <div
       v-if="creditsLabel"
@@ -104,6 +108,7 @@ import { onClickOutside } from '@vueuse/core'
 import type { MarvinModeDto } from '~/types/api'
 
 const { preferredMode, credits, setPreferredMode } = useMarv()
+const showActions = ref(false)
 const modeBusy = ref(false)
 const open = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)

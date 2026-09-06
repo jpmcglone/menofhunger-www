@@ -61,6 +61,7 @@
     "emoji-picker-element": "^1.29.0",
     "libphonenumber-js": "^1.12.37",
     "linkify-it": "^5.0.0",
+    "marked": "17.0.6",
     "nuxt": "4.3.1",
     "posthog-js": "^1.356.1",
     "primevue": "^4.5.4",

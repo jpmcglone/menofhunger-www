@@ -9,6 +9,8 @@ export interface PlaceOptions {
    * - 'end': align menu's right edge with anchor's right edge
    */
   align?: Align
+  /** Keep the bottom edge above the anchor as content grows. Default auto. */
+  placement?: 'auto' | 'above'
   /** Estimated menu width in px (used before measurement). */
   menuWidth?: number
   /** Estimated menu height in px (used before measurement). */
@@ -59,6 +61,20 @@ export function useMenuPosition() {
     const margin = opts.margin ?? 8
     const gap = opts.gap ?? 4
     const align: Align = opts.align ?? 'start'
+
+    // A bottom anchor needs no height estimate or content-resize observer:
+    // asynchronously loaded rows grow upward within the available space.
+    if (opts.placement === 'above') {
+      const width = opts.matchAnchorWidth ? rect.width : (menuEl.value?.getBoundingClientRect().width || opts.menuWidth || 200)
+      const bottomEdge = Math.max(margin, Math.min(rect.top - gap, window.innerHeight - margin))
+      style.value = {
+        bottom: `${window.innerHeight - bottomEdge}px`,
+        left: `${Math.max(margin, Math.min(align === 'end' ? rect.right - width : rect.left, window.innerWidth - width - margin))}px`,
+        maxHeight: `${Math.max(0, Math.min(opts.maxHeight ?? Infinity, bottomEdge - margin))}px`,
+        ...(opts.matchAnchorWidth ? { width: `${width}px` } : {}),
+      }
+      return
+    }
 
     const measured = menuEl.value?.getBoundingClientRect()
     const w = opts.matchAnchorWidth
@@ -121,6 +137,8 @@ export function useMenuPosition() {
     lastOptions = {}
     style.value = {}
   }
+
+  onScopeDispose(reset)
 
   return { style, menuEl, place, remeasure, reset }
 }

@@ -602,11 +602,11 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('keeps the modal panel at a fixed height (not content-sized) so it never resizes between states', () => {
-    // A resizing modal feels janky. The panel must declare an explicit h-[34rem]
+    // A resizing modal feels janky. The panel must declare an explicit viewport-bounded height
     // as well as the viewport-constrained max-h cap.
     const modal = readFromRepo('components/app/MarvCatchUpModal.vue')
-    expect(modal).toMatch(/h-\[34rem\]/)
-    expect(modal).toMatch(/max-h-\[85vh\]/)
+    expect(modal).toContain("h-[min(44rem,90dvh)]")
+    expect(modal).toContain("max-h-[90dvh]")
   })
 
   it('does NOT inject an x-marv-mode header from the post composer (Marv always uses auto mode for replies)', () => {

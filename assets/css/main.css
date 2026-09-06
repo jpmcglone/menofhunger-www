@@ -1399,3 +1399,19 @@ html.dark .moh-avatar-initial {
   border: none;
   border-radius: 0.5rem;
 }
+/* Shared MARV answers: readable Markdown without allowing generated HTML. */
+.marv-markdown { line-height: 1.65; overflow-wrap: anywhere; }
+.marv-markdown > * + * { margin-top: 0.85em; }
+.marv-markdown h2, .marv-markdown h3, .marv-markdown h4 { font-weight: 650; line-height: 1.35; }
+.marv-markdown ul, .marv-markdown ol { padding-left: 1.4em; }
+.marv-markdown ul { list-style: disc; }
+.marv-markdown ol { list-style: decimal; }
+.marv-markdown li + li { margin-top: 0.3em; }
+.marv-markdown li > p { margin: 0; }
+.marv-markdown a { text-decoration: underline; text-underline-offset: 3px; }
+.marv-markdown blockquote { border-left: 2px solid var(--moh-border); padding-left: 1em; color: var(--moh-text-muted); }
+.marv-markdown pre { overflow-x: auto; padding: 0.8em; background: var(--moh-surface-2); border-radius: 0.5rem; }
+.marv-markdown code { font-size: 0.9em; }
+.marv-markdown .markdown-table { overflow-x: auto; }
+.marv-markdown table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.marv-markdown th, .marv-markdown td { padding: 0.5em 0.7em; border-bottom: 1px solid var(--moh-border); text-align: left; }

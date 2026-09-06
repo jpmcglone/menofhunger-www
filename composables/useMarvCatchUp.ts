@@ -1,3 +1,4 @@
+import { getSafeUserErrorMessage } from '~/utils/api-error'
 import type { FeedPost, MarvinCatchUpBodyDto, MarvinCatchUpDto } from '~/types/api'
 
 /**
@@ -80,6 +81,10 @@ export function isPostCaughtUp(postId: string): boolean {
 export function useMarvCatchUp() {
   const { apiFetch } = useApiClient()
   const { preferredMode } = useMarv()
+  const { user } = useAuth()
+  const generation = useState<number>('marv-catchup:generation', () => 0)
+  const requestOwner = () => user.value?.id
+  const requestKey = () => `${post.value?.id}:${preferredMode.value}:${includeImages.value}`
 
   const open = useState<boolean>('marv-catchup:open', () => false)
   const post = useState<FeedPost | null>('marv-catchup:post', () => null)
@@ -98,6 +103,8 @@ export function useMarvCatchUp() {
     // If we already have a result for this exact post (same session), skip
     // straight to the result state — no need to reset or re-peek.
     if (!samePost || !result.value) {
+      ++generation.value
+      peeking.value = false
       result.value = null
       errorMessage.value = null
       errorReason.value = null
@@ -117,6 +124,8 @@ export function useMarvCatchUp() {
   }
 
   function reset() {
+    ++generation.value
+    peeking.value = false
     result.value = null
     errorMessage.value = null
     errorReason.value = null
@@ -128,6 +137,10 @@ export function useMarvCatchUp() {
     const target = post.value
     if (!target?.id || loading.value || peeking.value) return
     peeking.value = true
+    const ticket = ++generation.value
+    const owner = requestOwner()
+    const key = requestKey()
+    const current = () => ticket === generation.value && owner === requestOwner() && key === requestKey()
     try {
       const body: MarvinCatchUpBodyDto = { mode: preferredMode.value, cacheOnly: true, includeImages: includeImages.value }
       const res = await apiFetch<MarvinCatchUpDto | null>(`/marvin/catch-up/${target.id}`, {
@@ -135,20 +148,24 @@ export function useMarvCatchUp() {
         body,
         timeout: 20_000,
       })
-      if (res?.data) {
+      if (current() && res?.data) {
         result.value = res.data
         markPostCaughtUp(target.id)
       }
     } catch {
       // A failed peek is silent — fall back to the idle CTA. Nothing was spent.
     } finally {
-      peeking.value = false
+      if (current()) peeking.value = false
     }
   }
 
   async function run(opts?: { refresh?: boolean }) {
     const target = post.value
-    if (!target?.id || loading.value) return
+    if (!target?.id || loading.value || peeking.value) return
+    const ticket = ++generation.value
+    const owner = requestOwner()
+    const key = requestKey()
+    const current = () => ticket === generation.value && owner === requestOwner() && key === requestKey()
     loading.value = true
     errorMessage.value = null
     errorReason.value = null
@@ -162,20 +179,21 @@ export function useMarvCatchUp() {
         // Smart-mode summaries can take a while; the modal owns the wait UX.
         timeout: 60_000,
       })
-      if (res?.data) {
+      if (current() && res?.data) {
         result.value = res.data
         markPostCaughtUp(target.id)
       }
     } catch (err) {
+      if (!current()) return
       const anyErr = err as {
         data?: { meta?: { errors?: Array<{ message?: string; reason?: string }> } }
       }
       const apiError = anyErr?.data?.meta?.errors?.[0]
       errorReason.value = apiError?.reason ?? null
       errorMessage.value =
-        apiError?.message ?? (err instanceof Error ? err.message : 'Marv could not summarize this thread.')
+        getSafeUserErrorMessage(err, 'Marv could not summarize this thread.')
     } finally {
-      loading.value = false
+      if (current()) loading.value = false
     }
   }
 

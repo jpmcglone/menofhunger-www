@@ -3395,3 +3395,5 @@ export type NewsletterPreview = Contracts.NewsletterPreviewDto
 
 // The admin workspace is shared with native/handoff clients and the MCP catalog.
 export type { AdminCapabilityDto, AdminAssistantActionDto, AdminAssistantTurnDto, AdminAssistantWorkspaceDto } from './api-contracts.gen'
+
+export type { AdminAttentionDto, AdminActivationDto, MarvinPersonalActionDto, MarvinParticipationDto } from "./api-contracts.gen"

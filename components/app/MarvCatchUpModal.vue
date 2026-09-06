@@ -23,18 +23,18 @@
             appear
           >
             <section
-              class="moh-surface flex h-[34rem] max-h-[85vh] w-full flex-col overflow-hidden rounded-t-2xl shadow-2xl sm:max-w-lg sm:rounded-2xl"
+              class="moh-surface flex h-[min(44rem,90dvh)] max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl shadow-2xl sm:max-w-xl sm:rounded-2xl"
             >
               <!-- Header -->
-              <header class="flex items-center gap-3 border-b moh-border px-4 py-3">
+              <header class="shrink-0 flex items-center gap-3 border-b moh-border px-4 py-3">
                 <AppMarvMark :size="28" />
                 <div class="min-w-0 flex-1">
                   <h2 class="moh-h3 leading-tight">Catch me up</h2>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">M.A.R.V summarizes this conversation</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">The context. The conversation. Your next step.</p>
                 </div>
                 <button
                   type="button"
-                  class="moh-tap inline-flex h-9 w-9 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                  class="moh-tap inline-flex h-11 w-11 items-center justify-center rounded-full transition-opacity hover:opacity-70"
                   aria-label="Close"
                   @click="hide"
                 >
@@ -44,22 +44,22 @@
 
               <div class="min-h-0 flex-1 overflow-y-auto no-scrollbar px-4 py-4">
                 <!-- Mode picker (premium only) -->
-                <div v-if="isAvailable" class="mb-3 flex items-center gap-2">
-                  <div class="flex min-w-0 flex-1 rounded-lg border moh-border p-0.5">
+                <div v-if="isAvailable" class="mb-3 flex flex-wrap items-center gap-2">
+                  <div class="flex w-full min-w-0 rounded-lg border moh-border p-0.5 sm:w-auto sm:flex-1">
                     <button
                       v-for="m in (['auto', 'fast', 'regular', 'smart'] as const)"
                       :key="m"
                       type="button"
                       :disabled="modeBusy || loading || peeking"
-                      class="flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+                      class="flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 sm:px-2"
                       :class="
                         preferredMode === m
-                          ? 'bg-violet-600 text-white dark:bg-violet-500'
+                          ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
                           : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5'
                       "
                       @click="onPickMode(m)"
                     >
-                      <Icon :name="modeIcon(m)" class="text-[11px] shrink-0" aria-hidden="true" />
+                      <Icon :name="modeIcon(m)" class="hidden shrink-0 text-[11px] sm:block" aria-hidden="true" />
                       <span>{{ modeLabel(m) }}</span>
                       <span
                         v-if="modeCost(m) !== null"
@@ -72,7 +72,7 @@
                   </div>
                   <span
                     v-if="creditsLabel"
-                    class="shrink-0 inline-flex items-center gap-1 text-[11px] tabular-nums text-gray-500 dark:text-gray-400"
+                    class="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] tabular-nums text-gray-500 dark:text-gray-400"
                   >
                     <Icon name="tabler:bolt" class="text-[11px] text-amber-500" aria-hidden="true" />
                     {{ creditsLabel }}
@@ -160,8 +160,8 @@
                   output beats a locked door as a funnel. Otherwise the plain upsell.
                 -->
                 <div v-if="!isAvailable">
-                  <div v-if="result" class="rounded-xl border moh-border p-3">
-                    <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.summary }}</p>
+                  <div v-if="result" class="py-2">
+                    <AppMarvMarkdown class="text-sm leading-relaxed" :text="result.summary" />
                     <p class="mt-3 text-[11px] text-gray-400 dark:text-gray-500">{{ stalenessLabel || summaryMeta }}</p>
                   </div>
                   <div class="flex flex-col items-center justify-center py-6 text-center">
@@ -202,7 +202,7 @@
                 <!-- Premium states: result / loading / peeking / error / idle -->
                 <template v-else>
                   <!-- Result -->
-                  <div v-if="result" class="rounded-xl border moh-border p-3">
+                  <div v-if="result" class="py-2">
                     <!--
                       Stale banner: the thread moved on since this summary. Shown above the
                       text so the reader knows what they're looking at before they read it.
@@ -222,17 +222,17 @@
                       -->
                       <template v-if="result.sections.since">
                         <p class="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-500 dark:text-violet-400">What's new</p>
-                        <p class="mb-3 whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.sections.since }}</p>
+                        <AppMarvMarkdown class="text-sm leading-relaxed" :text="result.sections.since" />
                       </template>
                       <p class="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{{ postSectionLabel }}</p>
-                      <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.sections.post }}</p>
+                      <AppMarvMarkdown class="text-sm leading-relaxed" :text="result.sections.post" />
                       <template v-if="result.sections.replies">
                         <p class="mb-0.5 mt-3 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Replies</p>
-                        <p class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.sections.replies }}</p>
+                        <AppMarvMarkdown class="text-sm leading-relaxed" :text="result.sections.replies" />
                       </template>
                     </template>
                     <!-- Single-blob fallback (no replies, or model didn't follow the format) -->
-                    <p v-else class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ result.summary }}</p>
+                    <AppMarvMarkdown v-else class="text-sm leading-relaxed" :text="result.summary" />
                     <p class="mt-3 text-[11px] text-gray-400 dark:text-gray-500">
                       {{ summaryMeta }}
                       <span v-if="result.cached"> · cached</span>
@@ -249,14 +249,14 @@
                   <!-- Loading (paid generation) -->
                   <div v-else-if="loading" class="space-y-2 py-2" aria-live="polite">
                     <p class="text-sm text-gray-500 dark:text-gray-400">Analyzing thread…</p>
-                    <div class="h-3 w-5/6 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
-                    <div class="h-3 w-full animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
-                    <div class="h-3 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
+                    <div class="h-3 w-5/6 motion-safe:animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
+                    <div class="h-3 w-full motion-safe:animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
+                    <div class="h-3 w-2/3 motion-safe:animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
                   </div>
 
                   <!-- Peeking the cache (free, fast) -->
                   <div v-else-if="peeking" class="flex items-center gap-2 py-2 text-sm text-gray-500 dark:text-gray-400" aria-live="polite">
-                    <Icon name="tabler:loader-2" class="animate-spin text-[15px]" aria-hidden="true" />
+                    <Icon name="tabler:loader-2" class="motion-safe:animate-spin text-[15px]" aria-hidden="true" />
                     Checking for a recent summary…
                   </div>
 
@@ -304,10 +304,13 @@
                     </ul>
                   </div>
                 </template>
+                <p v-if="result && loading" class="mt-3 text-xs moh-text-muted" role="status">Updating your summary…</p>
+                <p v-if="result && errorMessage" class="mt-3 text-sm text-rose-600" role="alert">{{ errorMessage }}</p>
+                <AppMarvParticipation v-if="post && result" :key="post.id" :post-id="post.id" class="mt-6" @navigate="hide" />
               </div>
 
               <!-- Footer actions -->
-              <footer v-if="isAvailable" class="flex items-center justify-end gap-2 border-t moh-border px-4 py-3">
+              <footer v-if="isAvailable" class="min-h-[72px] shrink-0 flex items-center justify-end gap-2 border-t moh-border px-4 py-3">
                 <template v-if="result">
                   <!--
                     When the thread has moved on, updating is the useful action and gets
@@ -367,6 +370,13 @@ const { me, isAvailable, preferredMode, credits, setPreferredMode, ensureLoaded,
 // on its own — the shared stack is what actually closes this.
 useOverlayDismiss(open, hide)
 
+const { user } = useAuth()
+watch(() => [user.value?.id, user.value?.impersonation, user.value?.accountSwitch], () => {
+  hide()
+  reset()
+  post.value = null
+  hasInitialized.value = false
+})
 const modeBusy = ref(false)
 
 // Load Marv state + start the credits subscription the first time the modal opens
@@ -412,7 +422,6 @@ async function onPickMode(mode: MarvinModeDto) {
 }
 
 function regenerate() {
-  reset()
   void run({ refresh: true })
 }
 

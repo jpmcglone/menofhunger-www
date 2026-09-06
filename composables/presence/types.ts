@@ -167,6 +167,7 @@ export type AccountsCallback = {
  * / settings can patch state in place without polling.
  */
 export type MarvCallback = {
+  onActionsUpdated?: () => void
   onCreditsUpdated?: (payload: MarvCreditsUpdatedPayloadDto) => void
 }
 

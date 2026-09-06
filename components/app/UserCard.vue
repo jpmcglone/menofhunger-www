@@ -99,7 +99,7 @@
       <div
         v-if="menuOpen"
         ref="menuEl"
-        class="fixed z-[9999] w-[min(18rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
+        class="fixed z-[9999] w-[min(18rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-xl border moh-border moh-surface shadow-lg"
         :style="menuStyle"
         role="menu"
         aria-label="Account menu"
@@ -228,8 +228,9 @@ const activeStatus = computed(() => {
 
 const menuOpen = ref(false)
 const buttonEl = ref<HTMLElement | null>(null)
-const { style: menuStyle, menuEl, place: placeMenu } = useMenuPosition()
+const { style: menuStyle, menuEl, place: placeMenu, reset: resetMenu } = useMenuPosition()
 useOverlayDismiss(menuOpen, () => { menuOpen.value = false })
+watch(menuOpen, (open) => { if (!open) resetMenu() })
 
 const extraMenuItems = computed<MenuRow[]>(() => {
   const base = (menuItems.value as MenuRow[]).map((item) => ({
@@ -269,7 +270,7 @@ function toggleMenu() {
     menuOpen.value = false
     return
   }
-  if (buttonEl.value) placeMenu(buttonEl.value, { menuWidth: 288, menuHeight: 420 })
+  if (buttonEl.value) placeMenu(buttonEl.value, { menuWidth: 288, placement: 'above', gap: 8, trackViewport: true })
   menuOpen.value = true
 }
 
@@ -370,4 +371,3 @@ onBeforeUnmount(() => {
   background-color: var(--user-card-hover, var(--moh-surface-hover));
 }
 </style>
-

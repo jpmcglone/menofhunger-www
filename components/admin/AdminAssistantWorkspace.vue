@@ -35,7 +35,7 @@
       <div class="moh-divide flex-1" aria-live="polite" aria-relevant="additions text">
         <article v-for="turn in workspace.turns" :key="turn.id" class="px-4 py-5 space-y-4">
           <div><div class="text-xs moh-text-muted mb-1">You</div><p class="whitespace-pre-wrap break-words font-semibold">{{ turn.question }}</p></div>
-          <div><div class="text-xs moh-text-muted mb-1">MARV · {{ turn.status }}</div><p class="whitespace-pre-wrap break-words">{{ turn.answer || (turn.status === 'interrupted' ? 'This request was interrupted. Check any proposals below, then ask again.' : 'Checking the admin tools… You can leave this screen and return to check the result.') }}</p></div>
+          <div><div class="text-xs moh-text-muted mb-1">MARV · {{ turn.status }}</div><AppMarvMarkdown v-if="turn.answer" :text="turn.answer" /><p v-else class="whitespace-pre-wrap break-words">{{ (turn.status === 'interrupted' ? 'This request was interrupted. Check any proposals below, then ask again.' : 'Checking the admin tools… You can leave this screen and return to check the result.') }}</p></div>
           <details v-if="turn.sources.length" class="text-sm moh-text-muted">
             <summary class="cursor-pointer">Sources checked ({{ turn.sources.length }})</summary>
             <ul class="mt-2 space-y-1"><li v-for="(source, index) in turn.sources" :key="index">{{ source.tool }} · {{ source.fetchedAt }}<span v-if="source.url" class="block break-all text-xs">{{ source.url }}</span></li></ul>

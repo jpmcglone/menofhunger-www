@@ -191,6 +191,10 @@ export function usePresenceDomains() {
       }
     })
 
+    socket.on('marv:actions-updated', () => {
+      for (const cb of marvCallbacks.value) cb.onActionsUpdated?.()
+    })
+
     socket.on('marv:credits-updated', (data: MarvCreditsUpdatedPayloadDto) => {
       if (!marvCallbacks.value.size) return
       for (const cb of marvCallbacks.value) {
