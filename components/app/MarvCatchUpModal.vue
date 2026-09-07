@@ -216,13 +216,18 @@
                 <div class="max-h-40 overflow-y-auto pb-3">
                 <!-- Mode picker (premium only) -->
                 <div v-if="isAvailable" class="mb-3 flex flex-wrap items-center gap-2">
-                  <div class="flex w-full min-w-0 rounded-lg border moh-border p-0.5 sm:w-auto sm:flex-1">
+                  <div
+                    class="grid w-full min-w-0 grid-cols-2 gap-1 rounded-2xl moh-surface-2 p-1 min-[360px]:grid-cols-4"
+                    role="group"
+                    aria-label="Summary mode"
+                  >
                     <button
                       v-for="m in (['auto', 'fast', 'regular', 'smart'] as const)"
                       :key="m"
                       type="button"
                       :disabled="modeBusy || loading || peeking"
-                      class="flex flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 sm:px-2"
+                      class="flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-sm font-semibold transition-colors disabled:opacity-50"
+                      :aria-pressed="preferredMode === m"
                       :class="
                         preferredMode === m
                           ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
@@ -230,15 +235,13 @@
                       "
                       @click="onPickMode(m)"
                     >
-                      <AppMarvMark v-if="m === 'auto'" :size="13" />
-                      <Icon v-else :name="modeIcon(m)" class="hidden shrink-0 text-[11px] sm:block" aria-hidden="true" />
                       <span>{{ modeLabel(m) }}</span>
+                      <span v-if="m === 'auto'" class="text-[11px] font-normal opacity-70">Adaptive</span>
                       <span
                         v-if="modeCost(m) !== null"
-                        class="inline-flex items-center gap-0.5 tabular-nums opacity-70 text-[10px]"
-                        aria-hidden="true"
+                        class="tabular-nums opacity-70 text-[11px] font-normal"
                       >
-                        <Icon name="tabler:bolt" class="text-amber-400 text-[9px]" />{{ modeCost(m) }}
+                        {{ modeCost(m) }} {{ modeCost(m) === 1 ? 'credit' : 'credits' }}
                       </span>
                     </button>
                   </div>
@@ -363,12 +366,6 @@ function modeLabel(m: MarvinModeDto): string {
   return 'Regular'
 }
 
-function modeIcon(m: MarvinModeDto): string {
-  if (m === 'auto') return 'tabler:sparkles'
-  if (m === 'fast') return 'tabler:bolt'
-  if (m === 'smart') return 'tabler:brain'
-  return 'tabler:scale'
-}
 
 async function onPickMode(mode: MarvinModeDto) {
   if (modeBusy.value || loading.value || peeking.value) return

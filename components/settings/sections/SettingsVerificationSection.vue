@@ -5,20 +5,20 @@
         Verification
       </div>
     </div>
-    <section v-if="(authUser?.verifiedStatus ?? 'none') === 'none'" class="space-y-5">
+    <section class="space-y-5">
       <div>
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight">{{ verificationLatestRequest?.status === 'pending' ? 'Your request is in' : 'Your next step: verification' }}</h2>
-        <p class="mt-2 moh-text-muted">Put a real person behind your profile. Meet an admin in a video call, right here on Men of Hunger.</p>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight">{{ isVerified ? 'You’re verified' : verificationLatestRequest?.status === 'pending' ? 'Your request is in' : 'Your next step: verification' }}</h2>
+        <p class="mt-2 moh-text-muted">{{ isVerified ? 'Your verified badge is now part of your profile.' : verificationLatestRequest?.status === 'pending' ? 'An admin will contact you here to arrange your verification video call.' : 'Put a real person behind your profile. Meet an admin in a video call, right here on Men of Hunger.' }}</p>
       </div>
       <div class="flex items-center gap-3 rounded-2xl moh-surface-2 p-4">
-        <AppUserAvatar v-if="authUser" :user="authUser" size-class="h-12 w-12" :show-status="false" />
+        <AppUserAvatar v-if="authUser" :user="authUser" size-class="h-10 w-10" :show-status="false" />
         <div class="min-w-0">
-          <div class="flex items-center gap-2"><strong class="truncate">{{ authUser?.name || authUser?.username }}</strong><AppVerifiedBadge status="manual" /></div>
+          <div class="flex items-center gap-2"><strong class="truncate">{{ authUser?.name || authUser?.username }}</strong><AppVerifiedBadge :status="isVerified ? authUser?.verifiedStatus ?? 'none' : 'manual'" /></div>
           <p class="text-sm moh-text-muted">@{{ authUser?.username }}</p>
         </div>
       </div>
-      <p class="text-xs moh-text-muted">A preview of your verified profile</p>
-      <template v-if="verificationLatestRequest?.status !== 'pending'">
+      <p v-if="!isVerified" class="text-xs moh-text-muted">A preview of your verified profile</p>
+      <template v-if="!isVerified && verificationLatestRequest?.status !== 'pending'">
         <h3 class="font-semibold">More ways to take part</h3>
         <ul class="space-y-3">
           <li v-for="benefit in ['A blue check beside your name', 'Take part in verified conversations', 'Connect with other verified members']" :key="benefit" class="flex gap-3">
@@ -61,6 +61,12 @@
       <AppActionButton type="submit" label="Request verification" class="w-full" :disabled="!videoCallConsent || verificationRefreshing" :loading="verificationStarting" />
       <p class="text-xs moh-text-muted">Verification is complete after an admin approves it.</p>
     </form>
+
+    <NuxtLink
+      v-if="isVerified || verificationLatestRequest?.status === 'pending'"
+      :to="isVerified ? `/u/${authUser?.username}` : '/home'"
+      class="flex min-h-11 w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold bg-[var(--moh-button-primary-fill)] text-[var(--moh-button-primary-label)] moh-focus"
+    >{{ isVerified ? 'View your profile' : 'Back to the lodge' }}</NuxtLink>
 
     <details class="text-sm" :open="(authUser?.verifiedStatus ?? 'none') !== 'none'">
       <summary class="min-h-11 cursor-pointer py-3 font-semibold">Verification details</summary>
@@ -127,6 +133,8 @@ withDefaults(defineProps<{
   /** Show the "Verification" sub-heading divider (used when composed with other blocks). */
   showDivider?: boolean
 }>(), { showDivider: false })
+
+const isVerified = computed(() => (authUser.value?.verifiedStatus ?? 'none') !== 'none')
 
 const { user: authUser } = useAuth()
 const { apiFetchData } = useApiClient()

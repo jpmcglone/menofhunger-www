@@ -1,643 +1,228 @@
 <template>
-  <div class="relative min-h-full">
-    <!-- subtle background -->
-    <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-      <div class="absolute -top-24 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-gradient-to-b from-orange-400/15 via-amber-400/10 to-transparent blur-3xl" />
-      <div class="absolute bottom-0 left-0 h-[420px] w-[420px] rounded-full bg-gradient-to-tr from-zinc-900/5 via-zinc-700/5 to-transparent blur-3xl dark:from-white/5 dark:via-white/5" />
-    </div>
-
-    <div class="mx-auto w-full max-w-6xl px-5 sm:px-8">
-      <!-- ── Header / Nav ──────────────────────────────────────────── -->
-      <header class="pt-8 sm:pt-10">
-        <div class="flex items-center justify-between gap-4">
-          <!-- Logo + name -->
-          <div class="flex shrink-0 items-center gap-3">
-            <AppLogo
-              :alt="siteConfig.name"
-              :width="40"
-              :height="40"
-              img-class="h-10 w-10 rounded"
-            />
-            <div class="text-base font-semibold tracking-wide text-gray-900 dark:text-gray-50">
-              {{ siteConfig.name }}
-            </div>
-          </div>
-
-          <!-- Centered nav links (md+) -->
-          <nav class="hidden items-center gap-7 md:flex" aria-label="Main navigation">
-            <NuxtLink to="/about" class="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50">About</NuxtLink>
-            <NuxtLink to="/roadmap" class="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50">Roadmap</NuxtLink>
-            <NuxtLink to="/articles" class="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50">Articles</NuxtLink>
-            <a
-              href="https://merch.menofhunger.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center gap-1 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-gray-900 transition-opacity hover:opacity-85"
-            >
-              Merch
-              <Icon name="tabler:arrow-up-right" class="text-xs opacity-60" aria-hidden="true" />
-            </a>
-          </nav>
-
-          <!-- Right: Log in + Join now -->
-          <div class="flex shrink-0 items-center gap-2">
-            <NuxtLink
-              to="/login"
-              class="hidden items-center px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-50 sm:inline-flex"
-            >
-              Log in
-            </NuxtLink>
-            <NuxtLink to="/login" class="inline-flex">
-              <Button class="rounded-full px-5">
-                <span class="flex items-center gap-2">
-                  <span>Join now</span>
-                  <Icon name="tabler:arrow-right" aria-hidden="true" />
-                </span>
-              </Button>
-            </NuxtLink>
-          </div>
-        </div>
-      </header>
-
-      <!-- Subtle feed nudge -->
-      <div class="flex justify-center pt-5 pb-1">
-        <NuxtLink
-          to="/home"
-          class="group inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 transition-colors duration-150 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300"
-        >
-          <Icon name="tabler:layout-grid" class="h-3.5 w-3.5 opacity-70 transition-transform duration-200 group-hover:scale-110" aria-hidden="true" />
-          <span>Take me to the feed</span>
-          <Icon name="tabler:arrow-right" class="h-3 w-3 opacity-60 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />
-        </NuxtLink>
+  <!-- Figma: UI Library / 05 · Landing redesign (134:3 desktop, 143:215 mobile). -->
+  <div class="landing-page">
+    <header class="landing-shell landing-nav">
+      <NuxtLink to="/" class="landing-brand" :aria-label="siteConfig.name">
+        <AppLogo :alt="siteConfig.name" :width="40" :height="40" img-class="landing-logo" />
+        <span>{{ siteConfig.name }}</span>
+      </NuxtLink>
+      <nav class="landing-desktop-links" aria-label="Main navigation">
+        <NuxtLink v-for="link in landingNavLinks" :key="link.to" :to="link.to">{{ link.label }}</NuxtLink>
+        <a href="https://merch.menofhunger.com" target="_blank" rel="noopener noreferrer">Merch <Icon name="tabler:arrow-up-right" aria-hidden="true" /></a>
+      </nav>
+      <div class="landing-desktop-actions">
+        <Button as="NuxtLink" to="/login" text rounded severity="secondary" class="landing-button">Log in</Button>
+        <Button as="NuxtLink" to="/login" rounded class="landing-button">Join now</Button>
       </div>
+      <Button
+        type="button" text rounded severity="secondary" class="landing-mobile-toggle landing-button"
+        aria-haspopup="dialog" :aria-expanded="isMobileMenuOpen" aria-controls="landing-mobile-menu"
+        @click="isMobileMenuOpen = true"
+      >Menu</Button>
+    </header>
 
-      <main>
-        <!-- ── Hero ─────────────────────────────────────────────────── -->
-        <section class="pb-10 pt-12 sm:pb-14 sm:pt-16">
-          <div class="grid items-stretch gap-10 lg:grid-cols-2 lg:gap-16">
-            <!-- Left: copy -->
-            <div class="flex flex-col justify-center space-y-6">
-              <!-- Eyebrow -->
-              <div class="inline-flex w-fit items-center gap-2 rounded-full border border-green-200/70 bg-green-50/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-green-800 dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-300">
-                <span class="h-1.5 w-1.5 rounded-full bg-green-500/80" aria-hidden="true" />
-                Trust-first, men-only
-              </div>
-
-              <!-- Headline -->
-              <h1 class="text-4xl font-black leading-[1.1] tracking-tight text-gray-900 dark:text-gray-50 sm:text-5xl">
-                {{ taglineParts.before }}<span class="text-green-500">{{ taglineParts.keyword }}</span>{{ taglineParts.after }}
-              </h1>
-
-              <!-- Sub copy -->
-              <p class="text-base leading-relaxed text-gray-600 dark:text-gray-300 sm:text-lg">
-                {{ VOICE.lodgeDescription }}
-              </p>
-
-              <!-- CTA buttons -->
-              <div class="flex flex-wrap gap-3">
-                <NuxtLink to="/login" class="inline-flex">
-                  <Button class="rounded-full px-6">
-                    <span class="flex items-center gap-2">
-                      <span>Join now</span>
-                      <Icon name="tabler:arrow-right" aria-hidden="true" />
-                    </span>
-                  </Button>
-                </NuxtLink>
-                <NuxtLink to="/home" class="inline-flex">
-                  <Button severity="secondary" class="rounded-full px-5">
-                    <span class="flex items-center gap-2">
-                      <span>Explore the feed</span>
-                      <Icon name="tabler:layout-grid" aria-hidden="true" />
-                    </span>
-                  </Button>
-                </NuxtLink>
-              </div>
-
-              <!-- Avatar stack + stats (stacked so the strip stays one line) -->
-              <div v-if="recentlyActiveMen.length" class="flex flex-col items-start gap-2">
-                <div class="flex -space-x-2">
-                  <NuxtLink
-                    v-for="man in recentlyActiveMen.slice(0, 7)"
-                    :key="man.id"
-                    :to="man.username ? `/u/${encodeURIComponent(man.username)}` : '/home'"
-                    class="relative inline-flex ring-2 ring-white transition-transform duration-150 hover:z-10 hover:-translate-y-0.5 focus-visible:z-10 dark:ring-zinc-950"
-                    :class="avatarRoundClass(Boolean(man.isOrganization))"
-                    :aria-label="`View ${man.name || man.username || 'member'} profile`"
-                  >
-                    <AppUserAvatar
-                      :user="man"
-                      size-class="h-8 w-8"
-                      bg-class="bg-gray-100 dark:bg-zinc-800"
-                      :show-presence="false"
-                    />
-                  </NuxtLink>
-                  <!-- M badge -->
-                  <div class="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xs font-black text-white ring-2 ring-white dark:bg-zinc-700 dark:ring-zinc-950">
-                    M
-                  </div>
-                </div>
-                <div v-if="landingSnapshot" class="whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                  <AppLandingStatBreakdown
-                    :title="menBreakdownTitle"
-                    :ariaLabel="`${formatLandingCount(landingSnapshot.stats.men.total)}+ men — hover for breakdown`"
-                    :sections="menBreakdownSections"
-                  >{{ formatLandingCount(landingSnapshot.stats.men.total) }}+ men</AppLandingStatBreakdown>
-                  <span class="mx-1.5 opacity-40">·</span>
-                  <AppLandingStatBreakdown
-                    :title="`${landingSnapshot.stats.posts.total.toLocaleString('en-US')} posts`"
-                    :ariaLabel="`${formatLandingCount(landingSnapshot.stats.posts.total)}+ posts — hover for breakdown`"
-                    :sections="postsBreakdownSections"
-                  >{{ formatLandingCount(landingSnapshot.stats.posts.total) }}+ posts</AppLandingStatBreakdown>
-                  <template v-if="landingSnapshot.stats.articles">
-                    <span class="mx-1.5 opacity-40">·</span>
-                    <AppLandingStatBreakdown
-                      :title="`${landingSnapshot.stats.articles.total.toLocaleString('en-US')} articles`"
-                      :ariaLabel="`${formatLandingCount(landingSnapshot.stats.articles.total)}+ articles — hover for breakdown`"
-                      :sections="articlesBreakdownSections"
-                    >{{ formatLandingCount(landingSnapshot.stats.articles.total) }}+ articles</AppLandingStatBreakdown>
-                  </template>
-                  <template v-if="landingSnapshot.stats.views">
-                    <span class="mx-1.5 opacity-40">·</span>
-                    <AppLandingStatBreakdown
-                      :title="`${landingSnapshot.stats.views.total.toLocaleString('en-US')} total views`"
-                      :ariaLabel="`${formatLandingCount(landingSnapshot.stats.views.total)}+ views — hover for breakdown`"
-                      :rows="viewsBreakdownRows"
-                    >{{ formatLandingCount(landingSnapshot.stats.views.total) }}+ views</AppLandingStatBreakdown>
-                  </template>
-                </div>
-              </div>
-            </div>
-
-            <!-- Right: one pre-encoded WebP for the active theme (no IPX / Vite PNG preload). -->
-            <div class="relative min-h-[280px] overflow-hidden rounded-2xl shadow-2xl shadow-black/25 lg:min-h-0">
-              <img
-                :src="landingHeroSrc"
-                :alt="landingHeroAlt"
-                class="absolute inset-0 h-full w-full object-cover"
-                width="1448"
-                height="1086"
-                loading="eager"
-                decoding="async"
-                fetchpriority="high"
-                draggable="false"
-              >
-            </div>
+    <div class="landing-content">
+      <section class="landing-shell landing-hero" aria-labelledby="landing-title">
+        <div class="landing-intro">
+          <p class="landing-eyebrow landing-trust"><AppIconGlyph name="verified" selected :size="18" />Trust-first, men-only</p>
+          <h1 id="landing-title">{{ taglineParts.before }}<span>{{ taglineParts.keyword }}</span>{{ taglineParts.after }}</h1>
+          <p class="landing-description">{{ VOICE.lodgeDescription }}</p>
+          <div class="landing-actions">
+            <Button as="NuxtLink" to="/login" rounded class="landing-button">Join now</Button>
+            <Button as="NuxtLink" to="/home" text rounded severity="secondary" class="landing-button">
+              Explore the feed <Icon name="tabler:arrow-right" aria-hidden="true" />
+            </Button>
           </div>
-        </section>
-
-        <!-- ── Feature cards ─────────────────────────────────────────── -->
-        <section class="py-8 sm:py-10">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
-            <!-- Verified members -->
-            <div
-              class="rounded-2xl border p-6 shadow-sm"
-              style="background-color: rgba(var(--moh-verified-rgb), 0.06); border-color: rgba(var(--moh-verified-rgb), 0.22)"
-            >
-              <div
-                class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl"
-                style="background-color: rgba(var(--moh-verified-rgb), 0.15)"
-              >
-                <Icon name="tabler:shield-check" class="text-xl" style="color: var(--moh-verified)" aria-hidden="true" />
-              </div>
-              <div class="text-base font-bold text-gray-900 dark:text-gray-50">Verified members</div>
-              <div class="mt-1.5 text-sm leading-relaxed text-gray-600 dark:text-gray-300">Trust comes first. Every member is verified.</div>
-            </div>
-
-            <!-- Daily check-ins -->
-            <div
-              class="rounded-2xl border p-6 shadow-sm"
-              style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.28)"
-            >
-              <div
-                class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl"
-                style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
-              >
-                <Icon name="tabler:calendar-check" class="text-xl" style="color: var(--moh-checkin)" aria-hidden="true" />
-              </div>
-              <div class="text-base font-bold text-gray-900 dark:text-gray-50">Daily check-ins</div>
-              <div class="mt-1.5 text-sm leading-relaxed text-gray-600 dark:text-gray-300">Simple daily prompts keep you consistent.</div>
-            </div>
-
-            <!-- Premium groups -->
-            <div
-              class="rounded-2xl border p-6 shadow-sm"
-              style="background-color: rgba(var(--moh-premium-rgb), 0.06); border-color: rgba(var(--moh-premium-rgb), 0.22)"
-            >
-              <div
-                class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl"
-                style="background-color: rgba(var(--moh-premium-rgb), 0.15)"
-              >
-                <Icon name="tabler:lock" class="text-xl" style="color: var(--moh-premium)" aria-hidden="true" />
-              </div>
-              <div class="text-base font-bold text-gray-900 dark:text-gray-50">Premium groups</div>
-              <div class="mt-1.5 text-sm leading-relaxed text-gray-600 dark:text-gray-300">Smaller groups for deeper conversations.</div>
-            </div>
-
-            <!-- Voice & video calls -->
-            <div
-              class="rounded-2xl border border-sky-500/25 bg-sky-500/[0.06] p-6 shadow-sm"
-              data-testid="landing-calls-card"
-            >
-              <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/15">
-                <Icon name="tabler:video" class="text-xl text-sky-600 dark:text-sky-400" aria-hidden="true" />
-              </div>
-              <div class="text-base font-bold text-gray-900 dark:text-gray-50">Voice &amp; video calls</div>
-              <div class="mt-1.5 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                Peer-to-peer encrypted. Calls travel directly between devices — our servers only help you connect and never see or store them.
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ── Daily quote ───────────────────────────────────────────── -->
-        <div
-          v-if="dailyQuote"
-          class="py-10 text-center text-sm leading-relaxed text-gray-700 dark:text-gray-200 sm:py-12"
-        >
-          <figure>
-            <blockquote class="moh-serif italic">"{{ dailyQuote.text }}"</blockquote>
-            <figcaption class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              <span class="font-semibold">{{ dailyQuoteAttribution }}</span>
-              <span v-if="dailyQuote.isParaphrase" class="ml-1">(paraphrase)</span>
-            </figcaption>
-          </figure>
-          <div class="mx-auto mt-6 h-px w-32 bg-gradient-to-r from-transparent via-gray-400 to-transparent dark:via-gray-600" />
-        </div>
-
-        <!-- ── How it works ──────────────────────────────────────────── -->
-        <section class="py-12 text-center sm:py-16">
-          <div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-green-700 dark:text-green-400">How it works</div>
-          <h2 class="mt-2 text-2xl font-black tracking-tight text-gray-900 dark:text-gray-50 sm:text-3xl">
-            Simple. Focused. Effective.
-          </h2>
-
-          <div class="mx-auto mt-12 max-w-2xl">
-            <div class="flex flex-col items-center gap-8 sm:flex-row sm:items-start sm:gap-0">
-              <!-- Step 1 -->
-              <div class="flex flex-1 flex-col items-center gap-3 text-center">
-                <div class="relative">
-                  <div class="flex h-14 w-14 items-center justify-center rounded-full bg-gray-900 dark:bg-white">
-                    <Icon name="tabler:user" class="text-xl text-white dark:text-gray-900" aria-hidden="true" />
-                  </div>
-                  <div class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-[10px] font-black text-white">1</div>
-                </div>
-                <div>
-                  <div class="font-bold text-gray-900 dark:text-gray-50">Join</div>
-                  <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">Verify and create your profile.</div>
-                </div>
-              </div>
-
-              <!-- Connector -->
-              <div class="hidden items-start pt-7 sm:flex" style="width: 80px; flex-shrink: 0">
-                <div class="w-full border-t-2 border-dashed border-gray-200 dark:border-zinc-700" />
-              </div>
-
-              <!-- Step 2 -->
-              <div class="flex flex-1 flex-col items-center gap-3 text-center">
-                <div class="relative">
-                  <div class="flex h-14 w-14 items-center justify-center rounded-full bg-gray-900 dark:bg-white">
-                    <Icon name="tabler:message-circle" class="text-xl text-white dark:text-gray-900" aria-hidden="true" />
-                  </div>
-                  <div class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-[10px] font-black text-white">2</div>
-                </div>
-                <div>
-                  <div class="font-bold text-gray-900 dark:text-gray-50">Engage</div>
-                  <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">Post, reply, and check in every day.</div>
-                </div>
-              </div>
-
-              <!-- Connector -->
-              <div class="hidden items-start pt-7 sm:flex" style="width: 80px; flex-shrink: 0">
-                <div class="w-full border-t-2 border-dashed border-gray-200 dark:border-zinc-700" />
-              </div>
-
-              <!-- Step 3 -->
-              <div class="flex flex-1 flex-col items-center gap-3 text-center">
-                <div class="relative">
-                  <div class="flex h-14 w-14 items-center justify-center rounded-full bg-gray-900 dark:bg-white">
-                    <Icon name="tabler:trending-up" class="text-xl text-white dark:text-gray-900" aria-hidden="true" />
-                  </div>
-                  <div class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-[10px] font-black text-white">3</div>
-                </div>
-                <div>
-                  <div class="font-bold text-gray-900 dark:text-gray-50">Grow</div>
-                  <div class="mt-1 text-sm text-gray-600 dark:text-gray-300">Stay accountable. It compounds.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- ── Top weekly posts ───────────────────────────────────────── -->
-        <section v-if="topPostsThisWeek.length > 0" class="mt-16 sm:mt-20">
-          <div class="flex items-end justify-between gap-4">
-            <div>
-              <div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-700 dark:text-orange-300">This week</div>
-              <h2 class="mt-1 text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-xl">
-                Public posts catching attention
-              </h2>
-              <p class="mt-1 max-w-xl text-sm text-gray-600 dark:text-gray-300">
-                Real conversations, ranked by recent public view activity.
-              </p>
-            </div>
-            <NuxtLink
-              to="/home"
-              class="hidden items-center gap-1 text-sm font-semibold text-gray-700 hover:underline dark:text-gray-200 sm:inline-flex"
-            >
-              Open feed
-              <Icon name="tabler:arrow-right" class="h-4 w-4" aria-hidden="true" />
-            </NuxtLink>
-          </div>
-
-          <TransitionGroup
-            name="landing-top-post"
-            tag="div"
-            class="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4"
-          >
-            <div
-              v-for="(post, i) in featuredTopPosts"
-              :key="post.id"
-              :ref="(el) => setLandingPostCardEl(i, el)"
-              class="landing-top-post-card group relative min-h-[12.5rem] cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white/80 shadow-sm shadow-black/[0.04] transition-[border-color,box-shadow] duration-200 ease-out hover:border-gray-300 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400 dark:border-white/[0.08] dark:bg-zinc-950/55 dark:shadow-black/25 dark:hover:border-white/[0.18]"
-              role="link"
-              tabindex="0"
-              :style="{ '--landing-top-post-delay': `${i * 45}ms` }"
-              @click="onLandingPostRowClick(postHref(post), $event)"
-              @auxclick="onLandingPostRowAuxClick(postHref(post), $event)"
-              @keydown.enter.prevent="navigateTo(postHref(post))"
-              @keydown.space.prevent="navigateTo(postHref(post))"
-            >
-              <div class="pointer-events-none absolute inset-0 z-0 bg-gray-500/[0.02] opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:bg-white/[0.02]" aria-hidden="true" />
+          <div v-if="recentlyActiveMen.length" class="landing-social-proof">
+            <div class="landing-avatars">
               <NuxtLink
-                :to="postHref(post)"
-                class="absolute inset-0 z-[1] rounded-2xl"
-                tabindex="-1"
-                aria-hidden="true"
-              />
-
-              <div class="relative z-[2] flex h-full flex-col p-4 sm:p-5">
-                <div class="flex items-start gap-2.5 sm:gap-3">
-                  <NuxtLink
-                    :to="authorHref(post)"
-                    class="shrink-0"
-                    :aria-label="`View @${post.author.username || 'member'} profile`"
-                    @click.stop
-                  >
-                    <AppUserAvatar
-                      :user="post.author"
-                      size-class="h-10 w-10"
-                      bg-class="moh-surface"
-                      :enable-preview="false"
-                    />
-                  </NuxtLink>
-                  <div class="min-w-0 flex-1">
-                    <div class="flex min-w-0 items-center gap-1.5">
-                      <NuxtLink
-                        :to="authorHref(post)"
-                        class="truncate text-sm font-semibold moh-text hover:underline"
-                        @click.stop
-                      >
-                        {{ post.author.name || post.author.username || 'Member' }}
-                      </NuxtLink>
-                      <AppVerifiedBadge
-                        v-if="post.author.verifiedStatus && post.author.verifiedStatus !== 'none'"
-                        :status="post.author.verifiedStatus"
-                        :premium="post.author.premium"
-                        :premium-plus="post.author.premiumPlus"
-                        :show-tooltip="false"
-                      />
-                    </div>
-                    <div class="mt-0.5 truncate text-xs moh-text-muted">
-                      @{{ post.author.username || 'member' }}
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  v-if="post.parentId && post.parent?.author?.username"
-                  class="mt-2 flex flex-wrap items-center gap-x-1 text-[12px] leading-snug text-gray-500 dark:text-gray-400"
-                >
-                  <span>Replying to</span>
-                  <span
-                    class="font-medium"
-                    :class="userTierTextClass(userColorTier(post.parent.author), { fallback: 'text-gray-600 dark:text-gray-300' })"
-                  >@{{ post.parent.author.username }}</span>
-                </div>
-
-                <p class="mt-3 line-clamp-4 text-[15px] leading-6 moh-text">
-                  {{ post.body }}
-                </p>
-
-                <div class="mt-auto flex items-center gap-3.5 pt-4 text-xs moh-text-muted">
-                  <span class="inline-flex items-center gap-1.5 tabular-nums">
-                    <Icon name="tabler:message-circle" class="h-3.5 w-3.5" aria-hidden="true" />
-                    {{ formatLandingCount(post.commentCount ?? 0) }}
-                  </span>
-                  <span class="inline-flex items-center gap-1.5 tabular-nums">
-                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" aria-hidden="true">
-                      <path d="M12 4.5L3.75 12.25h5.25V20h6V12.25h5.25L12 4.5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" />
-                    </svg>
-                    {{ formatLandingCount(post.boostCount) }}
-                  </span>
-                  <span class="inline-flex items-center gap-1.5 tabular-nums">
-                    <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    {{ formatLandingCount(post.weeklyViewCount || post.viewerCount || 0) }}
-                  </span>
-                  <span class="ml-auto inline-flex items-center gap-1 font-semibold moh-text">
-                    Read
-                    <Icon name="tabler:arrow-up-right" class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
-                  </span>
-                </div>
-              </div>
-            </div>
-          </TransitionGroup>
-
-          <div class="mt-4 sm:hidden">
-            <NuxtLink
-              to="/home"
-              class="inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:underline dark:text-gray-200"
-            >
-              Open public feed
-              <Icon name="tabler:arrow-right" class="h-4 w-4" aria-hidden="true" />
-            </NuxtLink>
-          </div>
-        </section>
-
-        <!-- ── Articles preview ──────────────────────────────────────── -->
-        <section v-if="landingArticlePreviews.length > 0" class="mt-16 sm:mt-20">
-          <div class="flex items-end justify-between gap-4">
-            <div>
-              <div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">Read next</div>
-              <h2 class="mt-1 text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-xl">
-                Articles worth opening
-              </h2>
-            </div>
-            <NuxtLink
-              to="/articles?sort=trending"
-              class="inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:underline dark:text-gray-200"
-            >
-              See all
-              <Icon name="tabler:arrow-right" class="h-4 w-4" aria-hidden="true" />
-            </NuxtLink>
-          </div>
-
-          <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <NuxtLink
-              v-for="article in landingArticlePreviews"
-              :key="article.id"
-              :to="`/a/${article.id}`"
-              class="group relative flex min-h-[11rem] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white/70 p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-orange-300/70 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)] dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:border-orange-300/30 sm:p-5"
-            >
-              <div class="flex items-center gap-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                <Icon name="tabler:article" class="h-4 w-4 text-orange-600 dark:text-orange-300" aria-hidden="true" />
-                <span>{{ article.readingTimeMinutes ? `${article.readingTimeMinutes} min read` : 'Article' }}</span>
-              </div>
-              <h3 class="mt-3 line-clamp-2 text-base font-bold leading-snug text-gray-900 group-hover:underline dark:text-gray-50">
-                {{ article.title }}
-              </h3>
-              <p v-if="article.excerpt" class="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                {{ article.excerpt }}
-              </p>
-              <div class="mt-auto flex items-center justify-between gap-3 pt-4 text-xs font-medium text-gray-500 dark:text-gray-400">
-                <span class="truncate">{{ article.author.name || article.author.username }}</span>
-                <span class="inline-flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-200">
-                  Read
-                  <Icon name="tabler:arrow-up-right" class="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
-                </span>
-              </div>
-            </NuxtLink>
-          </div>
-        </section>
-
-        <!-- ── Merch ──────────────────────────────────────────────────── -->
-        <section class="mt-16 sm:mt-20">
-          <a
-            href="https://merch.menofhunger.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="group relative flex flex-col items-center justify-center overflow-hidden rounded-2xl px-8 py-12 text-center sm:flex-row sm:justify-between sm:py-10 sm:px-12 sm:text-left"
-            style="background: linear-gradient(135deg, #1c1410 0%, #2d1f0e 50%, #1a1208 100%)"
-          >
-            <!-- Subtle grain overlay -->
-            <div class="pointer-events-none absolute inset-0 opacity-[0.03]" style="background-image: url('data:image/svg+xml,%3Csvg viewBox%3D%220 0 256 256%22 xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cfilter id%3D%22n%22%3E%3CfeTurbulence type%3D%22fractalNoise%22 baseFrequency%3D%220.9%22 numOctaves%3D%224%22 stitchTiles%3D%22stitch%22/%3E%3C/filter%3E%3Crect width%3D%22100%25%22 height%3D%22100%25%22 filter%3D%22url(%23n)%22/%3E%3C/svg%3E')" aria-hidden="true" />
-            <!-- Warm glow -->
-            <div class="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full blur-3xl" style="background: radial-gradient(circle, rgba(180,100,20,0.35), transparent 70%)" aria-hidden="true" />
-
-            <!-- Left: copy -->
-            <div class="relative z-10">
-              <div class="mb-1 text-[10px] font-bold uppercase tracking-[0.2em]" style="color: #c8882a">
-                Official Merch
-              </div>
-              <h2 class="text-2xl font-black leading-tight text-white sm:text-3xl">
-                Wear what you stand for.
-              </h2>
-              <p class="mt-2 text-sm leading-relaxed" style="color: rgba(255,255,255,0.55)">
-                Men of Hunger gear. Built for men who show up.
-              </p>
-            </div>
-
-            <!-- Right: CTA -->
-            <div class="relative z-10 mt-6 shrink-0 sm:mt-0 sm:ml-8">
-              <span
-                class="inline-flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-bold text-gray-900 transition-all duration-150 group-hover:brightness-95"
+                v-for="man in recentlyActiveMen.slice(0, 7)" :key="man.id"
+                :to="man.username ? `/u/${encodeURIComponent(man.username)}` : '/home'"
+                :class="avatarRoundClass(Boolean(man.isOrganization))"
+                :aria-label="`View ${man.name || man.username || 'member'} profile`"
               >
-                Shop now
-                <Icon name="tabler:arrow-up-right" class="text-base" aria-hidden="true" />
-              </span>
+                <AppUserAvatar :user="man" size-class="h-8 w-8" bg-class="moh-surface" :show-presence="false" />
+              </NuxtLink>
             </div>
-          </a>
-        </section>
+            <p>Men showing up. Every day.</p>
+          </div>
+        </div>
+        <figure class="landing-photography">
+          <img
+            :src="landingHeroSrc" :alt="landingHeroAlt" class="landing-hero-image"
+            width="1448" height="1086" loading="eager" decoding="async" fetchpriority="high" draggable="false"
+          >
+          <figcaption><span>Show up. Say something real.</span><span>Help the men beside you rise.</span></figcaption>
+        </figure>
+      </section>
 
-        <!-- ── Bottom CTA ─────────────────────────────────────────────── -->
-        <section class="mt-16 sm:mt-20">
-          <div class="relative overflow-hidden rounded-2xl bg-gray-100 text-center dark:bg-gray-950">
-            <!-- Mountain background (low opacity, aspect fill) -->
-            <img
-              :src="mountainHeroSrc"
-              alt=""
-              aria-hidden="true"
-              class="pointer-events-none absolute inset-0 h-full w-full object-cover"
-              :class="useLightLandingImages ? 'opacity-50' : 'opacity-40'"
-              width="1916"
-              height="821"
-              loading="lazy"
-              decoding="async"
-              draggable="false"
-            >
-            <!-- Gradient overlay to keep text readable -->
-            <div class="absolute inset-0 bg-gradient-to-b from-gray-100/60 via-gray-100/40 to-gray-100/70 dark:from-gray-950/60 dark:via-gray-950/40 dark:to-gray-950/70" />
+      <section v-if="recentlyActiveMen.length && landingSnapshot" class="landing-shell landing-activity" aria-label="Community activity">
+        <div class="landing-stats">
+          <AppLandingStatBreakdown
+            :title="`${landingSnapshot.stats.men.total.toLocaleString('en-US')} men`" :subtitle="menBreakdownTitle"
+            :trigger-label="`${formatLandingCount(landingSnapshot.stats.men.total)}+ men — show breakdown`" :sections="menBreakdownSections"
+          >
+            <span class="landing-stat-value">{{ formatLandingCount(landingSnapshot.stats.men.total) }}+ <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span>
+            <span class="landing-stat-label">men</span>
+          </AppLandingStatBreakdown>
+          <AppLandingStatBreakdown
+            :title="`${landingSnapshot.stats.posts.total.toLocaleString('en-US')} posts`" subtitle="Originals, replies, and audience"
+            :trigger-label="`${formatLandingCount(landingSnapshot.stats.posts.total)}+ posts — show breakdown`" :sections="postsBreakdownSections"
+          >
+            <span class="landing-stat-value">{{ formatLandingCount(landingSnapshot.stats.posts.total) }}+ <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span>
+            <span class="landing-stat-label">posts</span>
+          </AppLandingStatBreakdown>
+          <AppLandingStatBreakdown
+            v-if="landingSnapshot.stats.articles" :title="`${landingSnapshot.stats.articles.total.toLocaleString('en-US')} articles`" subtitle="Authorship and readership"
+            :trigger-label="`${formatLandingCount(landingSnapshot.stats.articles.total)}+ articles — show breakdown`" :sections="articlesBreakdownSections"
+          >
+            <span class="landing-stat-value">{{ formatLandingCount(landingSnapshot.stats.articles.total) }}+ <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span>
+            <span class="landing-stat-label">articles</span>
+          </AppLandingStatBreakdown>
+          <AppLandingStatBreakdown
+            v-if="landingSnapshot.stats.views" :title="`${landingSnapshot.stats.views.total.toLocaleString('en-US')} total views`" subtitle="Views across the community"
+            :trigger-label="`${formatLandingCount(landingSnapshot.stats.views.total)}+ views — show breakdown`" :rows="viewsBreakdownRows"
+          >
+            <span class="landing-stat-value">{{ formatLandingCount(landingSnapshot.stats.views.total) }}+ <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span>
+            <span class="landing-stat-label">views</span>
+          </AppLandingStatBreakdown>
+        </div>
+      </section>
 
-            <!-- Content -->
-            <div class="relative z-10 px-8 py-14 sm:px-12 sm:py-20">
-              <h2 class="text-3xl font-black tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-                Stop scrolling. Start building.
-              </h2>
-              <p class="mx-auto mt-4 max-w-lg text-base text-gray-600 dark:text-gray-300">
-                Join men choosing real conversation over the noise.
+      <section class="landing-shell landing-section landing-benefits" aria-labelledby="landing-benefits-heading">
+        <h2 id="landing-benefits-heading" class="landing-eyebrow">A place to show up</h2>
+        <div class="landing-feature-grid">
+          <div v-for="feature in landingFeatures" :key="feature.title" class="landing-feature" :data-testid="feature.icon === 'spaces' ? 'landing-calls-card' : undefined">
+            <AppIconGlyph :name="feature.icon" :selected="feature.selected" :size="28" />
+            <h3>{{ feature.title }}</h3>
+            <p>{{ feature.body }}</p>
+          </div>
+        </div>
+      </section>
+
+      <section v-if="dailyQuote" class="landing-quote-band" aria-label="Daily quote">
+        <figure class="landing-shell landing-quote">
+          <p class="landing-eyebrow">A moment to think</p>
+          <blockquote class="moh-serif">“{{ dailyQuote.text }}”</blockquote>
+          <figcaption>{{ dailyQuoteAttribution }}<span v-if="dailyQuote.isParaphrase"> · paraphrase</span></figcaption>
+        </figure>
+      </section>
+
+      <section class="landing-shell landing-section landing-how" aria-labelledby="landing-how-heading">
+        <div class="landing-how-heading">
+          <p class="landing-eyebrow">How it works</p>
+          <h2 id="landing-how-heading">Simple. Focused. Effective.</h2>
+        </div>
+        <ol class="landing-steps">
+          <li v-for="(step, index) in joiningSteps" :key="step.title">
+            <span class="landing-step-number" aria-hidden="true">0{{ index + 1 }}</span>
+            <h3>{{ step.title }}</h3>
+            <p>{{ step.body }}</p>
+          </li>
+        </ol>
+      </section>
+
+      <section v-if="topPostsThisWeek.length > 0" class="landing-shell landing-section" aria-labelledby="landing-posts-heading">
+        <div class="landing-section-heading">
+          <div>
+            <p class="landing-eyebrow">This week</p>
+            <h2 id="landing-posts-heading">Public posts catching attention</h2>
+            <p class="landing-section-description">Real conversations, ranked by recent public view activity.</p>
+          </div>
+          <NuxtLink to="/home" class="landing-text-link">Open public feed <Icon name="tabler:arrow-right" aria-hidden="true" /></NuxtLink>
+        </div>
+        <TransitionGroup name="landing-top-post" tag="div" class="landing-post-grid">
+          <div
+            v-for="(post, i) in featuredTopPosts" :key="post.id" :ref="(el) => setLandingPostCardEl(i, el)"
+            class="landing-post-card" role="link" tabindex="0" :aria-label="`Read post by ${post.author.name || post.author.username || 'Member'}`"
+            :style="{ '--landing-top-post-delay': `${i * 45}ms` }"
+            @click="onLandingPostRowClick(postHref(post), $event)" @auxclick="onLandingPostRowAuxClick(postHref(post), $event)"
+            @keydown.enter.self.prevent="navigateTo(postHref(post))" @keydown.space.self.prevent="navigateTo(postHref(post))"
+          >
+            <NuxtLink :to="postHref(post)" class="landing-post-overlay" tabindex="-1" aria-hidden="true" />
+            <div class="landing-post-content">
+              <div class="landing-post-author">
+                <NuxtLink :to="authorHref(post)" :aria-label="`View @${post.author.username || 'member'} profile`" @click.stop>
+                  <AppUserAvatar :user="post.author" size-class="h-10 w-10" bg-class="moh-surface" :enable-preview="false" />
+                </NuxtLink>
+                <div class="min-w-0">
+                  <div class="landing-author-name">
+                    <NuxtLink :to="authorHref(post)" class="truncate" @click.stop>{{ post.author.name || post.author.username || 'Member' }}</NuxtLink>
+                    <AppVerifiedBadge v-if="post.author.verifiedStatus && post.author.verifiedStatus !== 'none'" :status="post.author.verifiedStatus" :premium="post.author.premium" :premium-plus="post.author.premiumPlus" :show-tooltip="false" />
+                  </div>
+                  <NuxtLink :to="authorHref(post)" class="landing-author-handle" @click.stop>@{{ post.author.username || 'member' }}</NuxtLink>
+                </div>
+              </div>
+              <p v-if="post.parentId && post.parent?.author?.username" class="landing-reply-context">
+                Replying to <span :class="userTierTextClass(userColorTier(post.parent.author), { fallback: 'moh-text-muted' })">@{{ post.parent.author.username }}</span>
               </p>
-              <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <NuxtLink to="/login" class="inline-flex">
-                  <Button class="rounded-full px-8">
-                    <span class="flex items-center gap-2">
-                      <span>Join now</span>
-                      <Icon name="tabler:arrow-right" aria-hidden="true" />
-                    </span>
-                  </Button>
-                </NuxtLink>
-                <NuxtLink to="/home" class="inline-flex">
-                  <Button severity="secondary" class="rounded-full px-6">
-                    <span class="flex items-center gap-2">
-                      <span>Explore the feed</span>
-                      <Icon name="tabler:layout-grid" aria-hidden="true" />
-                    </span>
-                  </Button>
-                </NuxtLink>
+              <p class="landing-post-body">{{ post.body }}</p>
+              <div class="landing-post-metrics">
+                <span :aria-label="`${post.commentCount ?? 0} comments`"><AppIconGlyph name="reply" :size="16" />{{ formatLandingCount(post.commentCount ?? 0) }}</span>
+                <span :aria-label="`${post.boostCount} boosts`"><AppIconGlyph name="boost" selected :size="16" />{{ formatLandingCount(post.boostCount) }}</span>
+                <span :aria-label="`${post.weeklyViewCount || post.viewerCount || 0} views`"><AppIconGlyph name="visibility" :size="16" />{{ formatLandingCount(post.weeklyViewCount || post.viewerCount || 0) }}</span>
+                <span class="landing-read-link">Read <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span>
               </div>
             </div>
           </div>
-        </section>
-      </main>
+        </TransitionGroup>
+      </section>
 
-      <!-- ── Footer ──────────────────────────────────────────────────── -->
-      <footer class="pb-10 sm:pb-14" role="contentinfo">
-        <nav aria-label="Sitemap" class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-6 text-sm text-gray-600 dark:border-zinc-800 dark:text-gray-300">
-          <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <ClientOnly>
-              <AppThemeModeMenu />
-            </ClientOnly>
-            <NuxtLink to="/about" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">About</NuxtLink>
-            <NuxtLink to="/tiers" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Tiers</NuxtLink>
-            <NuxtLink to="/articles" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Articles</NuxtLink>
-            <NuxtLink to="/roadmap" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Roadmap</NuxtLink>
-            <NuxtLink to="/status" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">Status</NuxtLink>
-            <NuxtLink to="/feeds" class="font-semibold text-gray-700 hover:underline dark:text-gray-200">RSS</NuxtLink>
-            <a
-              href="https://merch.menofhunger.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="font-semibold text-amber-700 hover:underline dark:text-amber-400"
-            >
-              Merch
-            </a>
-            <a
-              :href="siteConfig.social.xUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="font-semibold text-gray-700 hover:underline dark:text-gray-200"
-            >
-              Follow on X
-            </a>
+      <section v-if="landingArticlePreviews.length > 0" class="landing-shell landing-section landing-articles" aria-labelledby="landing-articles-heading">
+        <div class="landing-articles-inner">
+          <div class="landing-section-heading">
+            <div><p class="landing-eyebrow">Read next</p><h2 id="landing-articles-heading">Articles worth opening</h2></div>
+            <NuxtLink to="/articles?sort=trending" class="landing-text-link">See all <Icon name="tabler:arrow-right" aria-hidden="true" /></NuxtLink>
           </div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">
-            © {{ currentYear }} {{ siteConfig.name }}
+          <div class="landing-article-grid">
+            <NuxtLink v-for="article in landingArticlePreviews" :key="article.id" :to="`/a/${article.id}`" class="landing-article">
+              <p class="landing-eyebrow">{{ article.readingTimeMinutes ? `${article.readingTimeMinutes} min read` : 'Article' }}</p>
+              <h3>{{ article.title }}</h3>
+              <p v-if="article.excerpt" class="landing-article-excerpt">{{ article.excerpt }}</p>
+              <div class="landing-article-footer"><span>{{ article.author.name || article.author.username }}</span><span class="landing-read-link">Read <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span></div>
+            </NuxtLink>
           </div>
-        </nav>
-      </footer>
+        </div>
+      </section>
+
+      <section class="landing-merch-band" aria-labelledby="landing-merch-heading">
+        <div class="landing-shell landing-merch">
+          <div><p class="landing-eyebrow">Official merch</p><h2 id="landing-merch-heading">Wear what you stand for.</h2><p>Men of Hunger gear. Built for men who show up.</p></div>
+          <Button as="a" href="https://merch.menofhunger.com" target="_blank" rel="noopener noreferrer" outlined rounded severity="secondary" class="landing-button">Shop now <Icon name="tabler:arrow-up-right" aria-hidden="true" /></Button>
+        </div>
+      </section>
+
+      <section class="landing-shell landing-final" aria-labelledby="landing-final-heading">
+        <h2 id="landing-final-heading">Stop scrolling. Start building.</h2>
+        <p>Join men choosing real conversation over the noise.</p>
+        <div class="landing-actions">
+          <Button as="NuxtLink" to="/login" rounded class="landing-button">Join now</Button>
+          <Button as="NuxtLink" to="/home" text rounded severity="secondary" class="landing-button">Explore the feed <Icon name="tabler:arrow-right" aria-hidden="true" /></Button>
+        </div>
+      </section>
     </div>
 
+    <footer class="landing-shell landing-footer">
+      <nav aria-label="Sitemap">
+        <NuxtLink v-for="link in landingFooterLinks" :key="link.to" :to="link.to">{{ link.label }}</NuxtLink>
+        <a href="https://merch.menofhunger.com" target="_blank" rel="noopener noreferrer">Merch <Icon name="tabler:arrow-up-right" aria-hidden="true" /></a>
+        <a :href="siteConfig.social.xUrl" target="_blank" rel="noopener noreferrer">Follow on X <Icon name="tabler:arrow-up-right" aria-hidden="true" /></a>
+      </nav>
+      <div class="landing-footer-bottom">
+        <p>© {{ currentYear }} {{ siteConfig.name }}</p>
+        <div class="landing-theme"><span>Theme</span><ClientOnly><AppThemeModeMenu /><template #fallback><span class="h-11 w-11" /></template></ClientOnly></div>
+      </div>
+    </footer>
+
+    <Dialog id="landing-mobile-menu" v-model:visible="isMobileMenuOpen" modal dismissable-mask :draggable="false" header="Men of Hunger" :style="{ width: '390px', maxWidth: 'calc(100vw - 32px)' }">
+      <nav class="landing-menu-links" aria-label="Mobile navigation">
+        <Button as="NuxtLink" to="/login" rounded class="landing-button" @click="isMobileMenuOpen = false">Join now</Button>
+        <NuxtLink to="/login" @click="isMobileMenuOpen = false">Log in</NuxtLink>
+        <NuxtLink to="/home" @click="isMobileMenuOpen = false">Explore the feed <Icon name="tabler:arrow-right" aria-hidden="true" /></NuxtLink>
+        <NuxtLink v-for="link in landingNavLinks" :key="link.to" :to="link.to" @click="isMobileMenuOpen = false">{{ link.label }}</NuxtLink>
+        <a href="https://merch.menofhunger.com" target="_blank" rel="noopener noreferrer" @click="isMobileMenuOpen = false">Merch <Icon name="tabler:arrow-up-right" aria-hidden="true" /></a>
+      </nav>
+    </Dialog>
     <!-- Roanoke bottom sheet (teleported) -->
     <Teleport to="body">
       <Transition
@@ -749,6 +334,33 @@ useHead({
 const roanokeMeetupUrl = siteConfig.social.meetup
 const currentYear = new Date().getUTCFullYear()
 const isRoanokeOpen = ref(false)
+const isMobileMenuOpen = ref(false)
+useOverlayDismiss(isMobileMenuOpen, () => { isMobileMenuOpen.value = false })
+
+const landingFeatures = [
+  { icon: 'verified', selected: true, title: 'Verified members', body: 'Trust comes first. Every member is verified.' },
+  { icon: 'checkin', selected: false, title: 'Daily check-ins', body: 'Simple daily prompts keep you consistent.' },
+  { icon: 'premium', selected: false, title: 'Premium groups', body: 'Smaller groups for deeper conversations.' },
+  { icon: 'spaces', selected: false, title: 'Voice & video calls', body: 'Peer-to-peer encrypted. Calls travel directly between devices — our servers only help you connect and never see or store them.' },
+] as const
+const joiningSteps = [
+  { title: 'Join', body: 'Verify and create your profile.' },
+  { title: 'Engage', body: 'Post, reply, and check in every day.' },
+  { title: 'Grow', body: 'Stay accountable. It compounds.' },
+]
+const landingNavLinks = [
+  { label: 'About', to: '/about' },
+  { label: 'Roadmap', to: '/roadmap' },
+  { label: 'Articles', to: '/articles' },
+]
+const landingFooterLinks = [
+  { label: 'About', to: '/about' },
+  { label: 'Tiers', to: '/tiers' },
+  { label: 'Articles', to: '/articles' },
+  { label: 'Roadmap', to: '/roadmap' },
+  { label: 'Status', to: '/status' },
+  { label: 'RSS', to: '/feeds' },
+]
 const colorMode = useColorMode()
 const landingThemeReady = ref(false)
 const useLightLandingImages = computed(() => landingThemeReady.value && colorMode.value === 'light')
@@ -759,9 +371,6 @@ const landingHeroAlt = computed(() => (
   useLightLandingImages.value
     ? 'Men standing on a mountain path'
     : 'Men standing on a mountain path at night'
-))
-const mountainHeroSrc = computed(() => (
-  useLightLandingImages.value ? '/images/mountain-light.webp' : '/images/mountain-dark.webp'
 ))
 
 onMounted(() => {
@@ -774,7 +383,7 @@ watch(isRoanokeOpen, (open) => {
   }
 })
 
-// Split tagline around "real conversation" to highlight it in green.
+// Preserve the canonical tagline while emphasizing its central promise.
 const taglineParts = computed(() => {
   const text = VOICE.tagline
   const keyword = 'real conversation'
@@ -1011,39 +620,152 @@ usePageSeo({
 })
 </script>
 
-<!-- Global: light/dark image swap driven by the .dark class on <html> (same pattern as AppLogo) -->
-<style>
-.moh-landing-hero--dark { display: none; }
-.dark .moh-landing-hero--dark { display: block; }
-.dark .moh-landing-hero--light { display: none; }
-
-.moh-mountain-bg--dark { display: none; }
-.dark .moh-mountain-bg--dark { display: block; }
-.dark .moh-mountain-bg--light { display: none; }
-</style>
-
 <style scoped>
-.landing-top-post-move {
-  transition: transform 280ms cubic-bezier(0.2, 0, 0, 1);
+.landing-page { position: relative; width: 100%; min-height: 100%; background: var(--moh-surface-0); color: var(--moh-text); }
+.landing-shell { width: 100%; max-width: 1440px; margin-inline: auto; padding-inline: 80px; }
+.landing-nav { display: flex; align-items: center; gap: 32px; padding-block: 24px; }
+.landing-brand { display: inline-flex; align-items: center; gap: 12px; flex-shrink: 0; font-size: 14px; font-weight: 700; text-transform: uppercase; }
+.landing-brand :deep(.landing-logo) { width: 40px; height: 40px !important; }
+.landing-desktop-links { display: flex; align-items: center; justify-content: center; gap: 28px; flex: 1; color: var(--moh-text-muted); font-size: 14px; font-weight: 500; }
+.landing-desktop-links a, .landing-footer a { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
+.landing-desktop-actions { display: flex; gap: 12px; }
+.landing-button { min-height: 46px; padding: 12px 20px; font-size: 15px; font-weight: 600; line-height: 22px; }
+.landing-mobile-toggle { display: none; }
+.landing-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: center; padding-top: 48px; padding-bottom: 64px; }
+.landing-intro { display: flex; flex-direction: column; align-items: flex-start; gap: 28px; min-width: 0; }
+.landing-eyebrow { color: var(--moh-text-muted); font-size: 12px; font-weight: 600; line-height: 1.45; text-transform: uppercase; }
+.landing-trust { display: flex; align-items: center; gap: 8px; }
+.landing-intro h1 { font-size: 58px; font-weight: 700; letter-spacing: -.04em; line-height: 1.08; }
+.landing-intro h1 span { color: var(--moh-brass); }
+.landing-description { max-width: 535px; font-size: 18px; line-height: 1.45; color: var(--moh-text-muted); }
+.landing-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.landing-social-proof { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; font-size: 13px; font-weight: 500; color: var(--moh-text-muted); }
+.landing-avatars { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.landing-avatars > a { display: flex; align-items: center; justify-content: center; min-width: 32px; min-height: 44px; transition: transform 150ms ease; }
+.landing-avatars > a:hover { transform: translateY(-2px); }
+.landing-photography { min-width: 0; }
+.landing-hero-image { display: block; width: 100%; aspect-ratio: 608 / 560; object-fit: cover; border-radius: 12px; }
+.landing-photography figcaption { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; font-size: 11px; font-weight: 600; line-height: 1.45; color: var(--moh-text-muted); text-transform: uppercase; }
+.landing-activity { padding-bottom: 40px; }
+.landing-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; padding-block: 24px; border-block: 1px solid var(--moh-border); }
+.landing-stat-value { display: flex; align-items: center; gap: 12px; font-size: 36px; font-weight: 600; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.landing-stat-value :deep(.iconify) { width: 18px; height: 18px; color: var(--moh-text-muted); }
+.landing-stat-label { color: var(--moh-text-muted); font-size: 14px; font-weight: 500; }
+.landing-section { padding-top: 40px; padding-bottom: 64px; }
+.landing-feature-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; margin-top: 32px; }
+.landing-feature { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.landing-feature h3 { font-size: 20px; font-weight: 600; line-height: 1.45; }
+.landing-feature p { color: var(--moh-text-muted); font-size: 15px; line-height: 1.45; }
+.landing-quote-band, .landing-merch-band { background: var(--moh-surface-1); }
+.landing-quote { display: flex; flex-direction: column; align-items: center; gap: 24px; padding-block: 64px; text-align: center; }
+.landing-quote .landing-eyebrow { font-size: 11px; }
+.landing-quote blockquote { max-width: 890px; font-size: 32px; line-height: 1.45; }
+.landing-quote figcaption { font-size: 13px; font-weight: 500; color: var(--moh-text-muted); }
+.landing-how { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 80px; padding-block: 80px; }
+.landing-how-heading h2 { margin-top: 12px; font-size: 36px; font-weight: 700; line-height: 1.08; }
+.landing-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.landing-step-number { display: block; color: var(--moh-brass); font-size: 13px; font-weight: 600; padding-bottom: 16px; border-bottom: 1px solid var(--moh-border); }
+.landing-steps h3 { margin-top: 16px; font-size: 24px; font-weight: 600; }
+.landing-steps p { margin-top: 16px; color: var(--moh-text-muted); font-size: 16px; line-height: 1.45; }
+.landing-section-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 32px; margin-bottom: 28px; }
+.landing-section-heading h2 { margin-top: 8px; font-size: 32px; font-weight: 700; line-height: 1.45; }
+.landing-section-description { margin-top: 8px; color: var(--moh-text-muted); font-size: 16px; line-height: 1.45; }
+.landing-text-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-shrink: 0; font-size: 15px; font-weight: 600; }
+.landing-post-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 24px; position: relative; }
+.landing-post-card { position: relative; min-width: 0; border-radius: 12px; background: var(--moh-surface-1); cursor: pointer; transition: background-color 150ms ease; }
+.landing-post-card:hover { background: var(--moh-surface-hover); }
+.landing-post-overlay { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.landing-post-content { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 16px; padding: 24px; }
+.landing-post-author { display: flex; align-items: center; gap: 12px; }
+.landing-post-author > a { flex-shrink: 0; }
+.landing-author-name { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; }
+.landing-author-handle { display: block; font-size: 13px; color: var(--moh-text-muted); overflow-wrap: anywhere; }
+.landing-reply-context { color: var(--moh-text-muted); font-size: 12px; line-height: 1.45; }
+.landing-post-body { white-space: pre-line; overflow-wrap: anywhere; font-size: 16px; line-height: 1.5; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; }
+.landing-post-metrics { display: flex; align-items: center; gap: 24px; color: var(--moh-text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.landing-post-metrics > span, .landing-read-link { display: inline-flex; align-items: center; gap: 6px; }
+.landing-read-link { color: var(--moh-text); font-weight: 600; white-space: nowrap; }
+.landing-post-metrics > .landing-read-link { margin-left: auto; }
+.landing-articles-inner { padding-top: 28px; border-top: 1px solid var(--moh-border); }
+.landing-article-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
+.landing-article { display: flex; min-width: 0; flex-direction: column; gap: 16px; border-radius: 4px; }
+.landing-article h3 { font-size: 24px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.landing-article-excerpt { color: var(--moh-text-muted); font-size: 15px; line-height: 1.45; }
+.landing-article-footer { display: flex; gap: 24px; color: var(--moh-text-muted); font-size: 13px; font-weight: 500; }
+.landing-article:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
+.landing-merch { display: flex; align-items: center; justify-content: space-between; gap: 40px; padding-block: 40px; }
+.landing-merch h2 { margin-top: 8px; font-size: 28px; font-weight: 700; line-height: 1.45; }
+.landing-merch h2 + p { margin-top: 8px; color: var(--moh-text-muted); font-size: 15px; line-height: 1.45; }
+.landing-merch > .landing-button { flex-shrink: 0; }
+.landing-final { display: flex; flex-direction: column; align-items: center; gap: 24px; padding-block: 80px; text-align: center; }
+.landing-final h2 { font-size: 44px; font-weight: 700; letter-spacing: -.02em; line-height: 1.08; }
+.landing-final p { color: var(--moh-text-muted); font-size: 18px; line-height: 1.45; }
+.landing-final .landing-actions { justify-content: center; }
+.landing-footer { padding-top: 32px; padding-bottom: 32px; color: var(--moh-text-muted); }
+.landing-footer nav { display: flex; flex-wrap: wrap; gap: 0 28px; padding-top: 12px; border-top: 1px solid var(--moh-border); font-size: 13px; font-weight: 500; }
+.landing-footer-bottom { display: flex; align-items: center; gap: 40px; margin-top: 12px; font-size: 12px; }
+.landing-theme { display: flex; align-items: center; gap: 4px; }
+.landing-menu-links { display: flex; flex-direction: column; gap: 8px; }
+.landing-menu-links > a { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 12px 20px; font-size: 15px; font-weight: 500; border-radius: 999px; }
+.landing-page a:focus-visible, .landing-post-card:focus-visible { outline: 2px solid var(--moh-brass); outline-offset: 4px; }
+.landing-desktop-links a:hover, .landing-footer a:hover, .landing-text-link:hover, .landing-author-name a:hover { color: var(--moh-text); text-decoration: underline; text-underline-offset: 4px; }
+.landing-top-post-move { transition: transform 280ms cubic-bezier(.2,0,0,1); }
+.landing-top-post-enter-active, .landing-top-post-leave-active { transition: opacity 180ms ease, transform 180ms ease; }
+.landing-top-post-enter-active { transition-delay: var(--landing-top-post-delay, 0ms); }
+.landing-top-post-leave-active { position: absolute; }
+.landing-top-post-enter-from, .landing-top-post-leave-to { opacity: 0; transform: translateY(8px); }
+@media (max-width: 1199px) {
+  .landing-shell { padding-inline: 40px; }
+  .landing-hero { gap: 40px; }
+  .landing-intro h1 { font-size: 48px; }
+  .landing-how { grid-template-columns: 280px minmax(0, 1fr); gap: 40px; }
+  .landing-post-content { padding: 20px; }
+  .landing-post-metrics { gap: 16px; }
 }
-
-.landing-top-post-enter-active {
-  transition:
-    opacity 220ms cubic-bezier(0.2, 0, 0, 1),
-    transform 220ms cubic-bezier(0.2, 0, 0, 1);
-  transition-delay: var(--landing-top-post-delay, 0ms);
+@media (max-width: 959px) {
+  .landing-desktop-links, .landing-desktop-actions { display: none; }
+  .landing-mobile-toggle { display: inline-flex; margin-left: auto; }
+  .landing-nav { justify-content: space-between; gap: 16px; }
+  .landing-hero { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .landing-intro h1 { max-width: 700px; }
+  .landing-hero-image { max-height: 560px; }
+  .landing-stats, .landing-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-how { grid-template-columns: 1fr; gap: 32px; }
+  .landing-post-grid, .landing-article-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
 }
-
-.landing-top-post-leave-active {
-  position: absolute;
-  transition:
-    opacity 160ms cubic-bezier(0.2, 0, 0, 1),
-    transform 160ms cubic-bezier(0.2, 0, 0, 1);
+@media (max-width: 599px) {
+  .landing-shell { padding-inline: 24px; }
+  .landing-brand { gap: 8px; font-size: 12px; }
+  .landing-brand :deep(.landing-logo) { width: 32px; height: 32px !important; }
+  .landing-hero { padding-top: 24px; padding-bottom: 40px; }
+  .landing-intro h1 { font-size: 40px; letter-spacing: -.03em; }
+  .landing-description { font-size: 16px; }
+  .landing-actions { gap: 8px; }
+  .landing-social-proof { flex-direction: column; align-items: flex-start; }
+  .landing-hero-image { aspect-ratio: 342 / 320; }
+  .landing-photography figcaption { flex-direction: column; font-size: 10px; }
+  .landing-activity { padding-bottom: 32px; }
+  .landing-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding-block: 20px; }
+  .landing-stat-value { font-size: 28px; }
+  .landing-section { padding-block: 40px; }
+  .landing-benefits { padding-top: 32px; }
+  .landing-feature-grid { grid-template-columns: 1fr; }
+  .landing-quote { padding-block: 40px; }
+  .landing-quote blockquote { font-size: 26px; }
+  .landing-how-heading h2 { font-size: 30px; }
+  .landing-steps { grid-template-columns: 1fr; }
+  .landing-section-heading { flex-direction: column; gap: 16px; }
+  .landing-section-heading h2 { font-size: 28px; }
+  .landing-post-grid { gap: 16px; }
+  .landing-article-grid { gap: 32px; }
+  .landing-merch { flex-direction: column; align-items: flex-start; gap: 24px; }
+  .landing-final { padding-block: 40px; }
+  .landing-final h2 { font-size: 32px; }
+  .landing-final p { font-size: 16px; }
+  .landing-footer { padding-block: 40px; }
+  .landing-footer nav { column-gap: 24px; }
 }
-
-.landing-top-post-enter-from,
-.landing-top-post-leave-to {
-  opacity: 0;
-  transform: translateY(8px);
+@media (prefers-reduced-motion: reduce) {
+  .landing-avatars > a, .landing-post-card, .landing-top-post-move, .landing-top-post-enter-active, .landing-top-post-leave-active { transition: none; }
 }
 </style>

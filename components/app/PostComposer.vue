@@ -17,7 +17,7 @@
       <!-- Row 1: visibility picker (left) + checkin prompt / scheduled time (right) -->
       <div
         :class="[
-          omitAvatar ? 'flex justify-between' : 'col-start-2 flex justify-between mb-3 sm:mb-2',
+          omitAvatar ? 'flex justify-between' : 'col-start-2 row-start-1 flex flex-wrap justify-between gap-2 mb-4',
           checkinPrompt ? 'items-end' : 'items-center',
         ]"
       >
@@ -92,23 +92,23 @@
         <NuxtLink
           v-if="myProfilePath"
           :to="myProfilePath"
-          class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 group shrink-0"
+          class="row-start-1 col-start-1 self-center mb-4 group shrink-0"
           aria-label="View your profile"
         >
           <div class="transition-opacity duration-200 group-hover:opacity-80">
             <AppUserAvatar
               :user="user"
-              size-class="h-8 w-8 sm:h-10 sm:w-10"
+              size-class="h-10 w-10"
               :show-empty-status="enableAvatarStatusEditor"
               :status-behavior="enableAvatarStatusEditor ? 'custom' : 'view'"
               @status-click="openStatusEditor"
             />
           </div>
         </NuxtLink>
-        <div v-else class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 shrink-0" aria-hidden="true">
+        <div v-else class="row-start-1 col-start-1 self-center mb-4 shrink-0" aria-hidden="true">
           <AppUserAvatar
             :user="user"
-            size-class="h-8 w-8 sm:h-10 sm:w-10"
+            size-class="h-10 w-10"
             :show-empty-status="enableAvatarStatusEditor"
             :status-behavior="enableAvatarStatusEditor ? 'custom' : 'view'"
             @status-click="openStatusEditor"
@@ -117,7 +117,7 @@
       </template>
 
       <div
-        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-span-2 sm:col-span-1 sm:col-start-2 min-w-0 moh-composer-tint'"
+        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-span-2 min-w-0 moh-composer-tint'"
       >
         <!-- Optional content above textarea (e.g. "Replying to @username" in reply modal) -->
         <div v-if="$slots['above-textarea']" class="pb-2 text-sm moh-text-muted">
@@ -339,7 +339,6 @@
             <Button
               :label="mode === 'edit' && scheduledEditId ? 'Save' : (scheduledAt ? 'Schedule' : (mode === 'edit' ? 'Save' : (replyTo ? 'Reply' : 'Post')))"
               rounded
-              :outlined="postButtonOutlined"
               severity="secondary"
               :class="[postButtonClass, 'moh-pressable !rounded-full !min-h-11 !py-1.5 !px-5 !text-sm !font-semibold']"
               :disabled="
@@ -397,7 +396,7 @@
       <!-- Row 2: avatar placeholder -->
       <template v-if="!omitAvatar">
         <div
-          class="row-start-1 sm:row-start-2 col-start-1 mb-3 sm:mb-0 shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-full ring-1 ring-gray-300 dark:ring-zinc-600 bg-gray-100 dark:bg-zinc-800 flex items-center justify-center"
+          class="row-start-1 col-start-1 self-center mb-4 shrink-0 h-10 w-10 rounded-full ring-1 ring-gray-300 dark:ring-zinc-600 bg-gray-100 dark:bg-zinc-800 flex items-center justify-center"
           aria-hidden="true"
         >
           <Icon name="tabler:user" class="text-gray-400 dark:text-zinc-500 text-[14px] sm:text-[16px]" />
@@ -406,7 +405,7 @@
 
       <!-- Textarea + bottom bar -->
       <div
-        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-span-2 sm:col-span-1 sm:col-start-2 min-w-0 moh-composer-tint'"
+        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-span-2 min-w-0 moh-composer-tint'"
         class="pointer-events-none select-none"
       >
         <div class="moh-composer-field relative rounded-xl border moh-border-subtle moh-surface-2">
@@ -1408,9 +1407,6 @@ const composerHasFailedMedia = computed(
   () => composerMedia.value?.some((m) => m.source === 'upload' && m.uploadStatus === 'error') ?? false,
 )
 
-const postButtonOutlined = computed(
-  () => effectiveVisibility.value === 'public' && !replyShowsGroupScope.value,
-)
 const postButtonClass = computed(() => {
   if (replyShowsGroupScope.value) {
     return 'moh-btn-tone !border-[color:var(--moh-group)] !bg-[color:var(--moh-group)] !text-white'
@@ -1419,7 +1415,7 @@ const postButtonClass = computed(() => {
   if (v === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
   if (v === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'
   if (v === 'onlyMe') return 'moh-btn-onlyme moh-btn-tone'
-  return 'moh-btn-public'
+  return '!border-[color:var(--moh-button-primary-fill)] !bg-[var(--moh-button-primary-fill)] !text-[var(--moh-button-primary-label)]'
 })
 
 /**

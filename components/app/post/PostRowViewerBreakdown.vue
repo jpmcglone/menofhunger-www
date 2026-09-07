@@ -6,12 +6,13 @@
       class="moh-tap group relative z-10 inline-flex items-end gap-1 px-0.5 py-0.5 tabular-nums select-none transition-colors"
       :class="viewerCount > 0 ? 'cursor-pointer' : 'cursor-default opacity-0 pointer-events-none'"
       :aria-label="ariaLabel"
-      :aria-expanded="viewerBreakdownVisible"
+      :aria-expanded="viewerBreakdownVisible" aria-haspopup="dialog" :aria-controls="panelId"
       :tabindex="viewerCount > 0 ? 0 : -1"
       @mouseenter="onViewerCountHover"
       @focus="onViewerCountHover"
       @mouseleave="onViewerCountLeave"
       @blur="onViewerCountLeave"
+      @keydown.esc.stop.prevent="hideViewerBreakdown(true)"
       @click.stop.prevent="onViewerCountClick"
     >
       <span
@@ -41,47 +42,35 @@
       <Transition name="viewer-breakdown">
         <div
           v-if="viewerBreakdownVisible"
-          ref="viewerBreakdownEl"
-          class="fixed z-[9999] min-w-[13.5rem] rounded-lg border moh-border moh-surface shadow-lg px-3 py-2.5"
+          :id="panelId" ref="viewerBreakdownEl"
+          class="moh-count-breakdown"
           :style="viewerBreakdownStyle"
-          role="tooltip"
+          role="dialog" :aria-labelledby="`${panelId}-title`"
+          @mouseenter="cancelViewerClose" @mouseleave="onViewerCountLeave" @focusout="onViewerCountLeave"
+          @keydown.esc.stop.prevent="hideViewerBreakdown(true)"
         >
-          <p
-            class="text-[13px] font-semibold tabular-nums"
-            :class="hasViewed ? 'moh-text' : 'moh-text-muted'"
-          >
-            <AppAnimatedCount :value="hoverUnique" :format="formatExactCount" />
-            {{ hoverUnique === 1 ? 'person' : 'people' }} {{ peopleVerb }}
-          </p>
-          <p class="mt-0.5 text-[11px] moh-text-muted tabular-nums">
-            <AppAnimatedCount :value="hoverTotal" :format="formatExactCount" />
-            total views
-          </p>
+          <header class="moh-count-breakdown-header">
+            <div>
+              <h2 :id="`${panelId}-title`"><AppAnimatedCount :value="hoverTotal" :format="formatExactCount" /> total views</h2>
+              <p><AppAnimatedCount :value="hoverUnique" :format="formatExactCount" /> {{ hoverUnique === 1 ? 'person' : 'people' }} {{ peopleVerb }}</p>
+            </div>
+            <button type="button" class="moh-count-breakdown-close moh-tap" aria-label="Close breakdown" @click="hideViewerBreakdown(true)"><Icon name="tabler:x" aria-hidden="true" /></button>
+          </header>
           <template v-if="viewerBreakdown">
-            <div class="mt-1.5 flex flex-col gap-1 text-[11px] moh-text-muted">
-              <div
-                v-for="row in visibleTierRows"
-                :key="row.key"
-                class="flex items-center justify-between gap-4"
-              >
-                <span class="flex items-center gap-1.5">
-                  <span class="inline-block h-2 w-2 rounded-full shrink-0" :class="row.dotClass" aria-hidden="true" />
-                  {{ row.label }}
+            <p class="moh-count-breakdown-columns">People · total views</p>
+            <div class="moh-count-breakdown-section">
+              <div v-for="row in visibleTierRows" :key="row.key" class="moh-count-breakdown-row">
+                <span class="moh-count-breakdown-label">
+                  <span class="moh-count-breakdown-dot" :class="row.dotClass" aria-hidden="true" />{{ row.label }}
                 </span>
-                <span class="tabular-nums">
-                  <span class="text-[12px] font-medium moh-text">{{ formatExactCount(row.unique) }}</span>
-                  <span class="mx-1 text-[11px] opacity-70">·</span>
-                  <span class="text-[11px]">{{ formatExactCount(Math.max(row.unique, row.total)) }}</span>
+                <span class="moh-count-breakdown-value" :aria-label="`${formatExactCount(row.unique)} people, ${formatExactCount(Math.max(row.unique, row.total))} total views`">
+                  {{ formatExactCount(row.unique) }}<span class="moh-count-breakdown-secondary"> · {{ formatExactCount(Math.max(row.unique, row.total)) }}</span>
                 </span>
               </div>
             </div>
           </template>
-          <template v-else-if="viewerBreakdownLoading">
-            <div class="mt-1.5 moh-text-muted animate-pulse">Loading…</div>
-          </template>
-          <template v-else-if="viewerBreakdownFailed">
-            <div class="mt-1.5 moh-text-muted text-[11px]">Couldn't load breakdown.</div>
-          </template>
+          <p v-else-if="viewerBreakdownLoading" class="moh-count-breakdown-status animate-pulse" role="status">Loading…</p>
+          <p v-else-if="viewerBreakdownFailed" class="moh-count-breakdown-status" role="status">Couldn't load breakdown.</p>
         </div>
       </Transition>
     </Teleport>
@@ -132,10 +121,14 @@ watch(() => props.hasViewed, (v, prev) => {
 onBeforeUnmount(() => {
   if (justViewedTimer) clearTimeout(justViewedTimer)
   unbindOutsideClose()
+  cancelViewerClose()
 })
 
 const { apiFetchData } = useApiClient()
 
+const panelId = `view-breakdown-${useId()}`
+let viewerCloseTimer: ReturnType<typeof setTimeout> | undefined
+let restoringFocus = false
 const viewerCountBtnEl = ref<HTMLElement | null>(null)
 const viewerBreakdownVisible = ref(false)
 const viewerBreakdown = ref<(PostViewBreakdown | ArticleViewBreakdown) | null>(null)
@@ -164,15 +157,18 @@ const {
   menuEl: viewerBreakdownEl,
   place: placeViewerBreakdown,
   reset: resetViewerBreakdownPosition,
+  remeasure: remeasureViewerBreakdown,
 } = useMenuPosition()
 
 function placeViewerBreakdownFrom(anchorEl: HTMLElement | null) {
   if (!anchorEl) return
   placeViewerBreakdown(anchorEl, {
     align: 'end',
-    gap: 6,
-    menuWidth: 216,
-    menuHeight: 160,
+    gap: 12,
+    menuWidth: 390,
+    menuHeight: 340,
+    maxHeight: Math.max(96, window.innerHeight - 32),
+    trackViewport: true,
   })
 }
 
@@ -182,6 +178,7 @@ function isCoarsePointer() {
 }
 
 async function showViewerBreakdown(event?: Event) {
+  cancelViewerClose()
   const anchorEl = event?.currentTarget instanceof HTMLElement ? event.currentTarget : viewerCountBtnEl.value
   placeViewerBreakdownFrom(anchorEl)
   viewerBreakdownVisible.value = true
@@ -210,24 +207,43 @@ async function showViewerBreakdown(event?: Event) {
   } finally {
     if (requestSeq === viewerBreakdownRequestSeq) {
       viewerBreakdownLoading.value = false
+      nextTick(remeasureViewerBreakdown)
     }
   }
 }
 
-function hideViewerBreakdown() {
+function cancelViewerClose() {
+  clearTimeout(viewerCloseTimer)
+  viewerCloseTimer = undefined
+}
+
+function hideViewerBreakdown(restoreFocus = false) {
+  cancelViewerClose()
   viewerBreakdownVisible.value = false
   resetViewerBreakdownPosition()
   unbindOutsideClose()
+  if (restoreFocus && document.activeElement !== viewerCountBtnEl.value) {
+    restoringFocus = true
+    viewerCountBtnEl.value?.focus({ preventScroll: true })
+    restoringFocus = false
+  }
 }
 
 function onViewerCountHover(event?: Event) {
-  if (isCoarsePointer()) return
+  if (isCoarsePointer() || restoringFocus) return
   void showViewerBreakdown(event)
 }
 
-function onViewerCountLeave() {
-  if (isCoarsePointer()) return
-  hideViewerBreakdown()
+function onViewerCountLeave(event?: Event) {
+  if (event instanceof FocusEvent) {
+    const next = event.relatedTarget
+    if (next instanceof Node && (viewerBreakdownEl.value?.contains(next) || viewerCountBtnEl.value?.contains(next))) return
+    hideViewerBreakdown()
+    return
+  }
+  if (isCoarsePointer() || viewerBreakdownEl.value?.contains(document.activeElement)) return
+  cancelViewerClose()
+  viewerCloseTimer = setTimeout(() => hideViewerBreakdown(), 160)
 }
 
 function onViewerCountClick(event: MouseEvent) {

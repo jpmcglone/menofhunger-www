@@ -3,9 +3,11 @@
     <button
       ref="btnEl"
       type="button"
-      class="inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold leading-none transition-colors"
+      class="inline-flex items-center min-h-11 gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold leading-5 transition-colors"
       :class="pillClass"
-      aria-label="Select post visibility"
+      :aria-label="`Select post visibility: ${label}`"
+      aria-haspopup="menu"
+      :aria-expanded="open"
       :disabled="!viewerIsVerified"
       @click="viewerIsVerified ? toggle() : null"
     >

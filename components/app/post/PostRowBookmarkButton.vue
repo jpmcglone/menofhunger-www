@@ -3,7 +3,7 @@
     <button
       v-tooltip.bottom="bookmarkTooltip"
       type="button"
-      class="moh-tap moh-pressable inline-flex h-5 w-5 items-center justify-center transition-colors hover:moh-text"
+      class="moh-tap moh-pressable inline-flex h-11 w-11 items-center justify-center transition-colors hover:moh-text"
       :class="bookmark.loading.value ? 'cursor-default opacity-60' : (viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60')"
       :aria-label="bookmark.hasBookmarked.value ? 'Edit bookmark' : 'Save post'"
       @click.stop="onButtonClick"

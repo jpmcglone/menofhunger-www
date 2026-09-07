@@ -2,6 +2,7 @@ import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { describe, expect, it, vi } from 'vitest'
+import PrimeVue from 'primevue/config'
 import ConversationInsights from '~/components/app/ConversationInsights.vue'
 
 const recapSpies = vi.hoisted(() => ({
@@ -114,5 +115,75 @@ describe('conversation recap refresh queue', () => {
       await vi.advanceTimersByTimeAsync(5000)
       expect(recapSpies.fetch).toHaveBeenCalledTimes(1)
     } finally { vi.useRealTimers() }
+  })
+})
+
+
+const weeklyData = {
+  postCount: 4, participantCount: 12, newParticipantCount: 3,
+  timeline: [{ date: '2026-09-06', replies: 2, reposts: 1, coins: 1, branches: 1 }],
+  posts: Array.from({ length: 4 }, (_, index) => ({
+    id: `post-${index}`, body: `Conversation ${index + 1}`, renewed: index === 2,
+    participantCount: 1, participants: [{ id: 'member', name: 'James', username: 'james' }],
+    replies: [{ id: `reply-${index}`, body: 'Keep going', author: { name: 'James' } }],
+  })),
+}
+
+// Keep the real PrimeVue dialog: these assertions cover teleport/presentation,
+// not a stub that would render modal content inline.
+describe('weekly activity presentation', () => {
+  it('opens details in a dialog, preserves all posts and returns to a compact row', async () => {
+    vi.clearAllMocks()
+    recapSpies.fetch.mockReset().mockResolvedValue(weeklyData)
+    const wrapper = mount(ConversationInsights, {
+      attachTo: document.body,
+      global: { plugins: [PrimeVue], stubs: { Icon: true, AppIconGlyph: true, AppConversationChart: true, NuxtLink: { template: '<a><slot /></a>' } } },
+    })
+    try {
+      await flushPromises()
+      const entry = wrapper.get('button[aria-haspopup="dialog"]')
+      expect(entry.text()).toContain('4 posts · 12 participants')
+      expect(entry.attributes('aria-expanded')).toBeUndefined()
+      expect(document.querySelector('[role="dialog"]')).toBeNull()
+      await entry.trigger('click')
+      await flushPromises()
+      const dialog = document.querySelector('[role="dialog"]')!
+      expect(dialog).not.toBeNull()
+      expect(wrapper.element.contains(dialog)).toBe(false)
+      expect(dialog.textContent).toContain('Last 7 days')
+      expect(dialog.textContent).toContain('3 new')
+      expect(dialog.textContent).toContain('Active again')
+      expect(dialog.textContent).toContain('Keep going')
+      expect(dialog.textContent).toContain('Share recap')
+      expect(dialog.textContent).not.toContain('Conversation 4')
+      const allPosts = Array.from(dialog.querySelectorAll('button')).find(button => button.textContent === 'All 4 posts')!
+      allPosts.click()
+      await nextTick()
+      expect(dialog.textContent).toContain('Conversation 4')
+      ;(dialog.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click()
+      await flushPromises()
+      expect(wrapper.text()).not.toContain('Conversation 1')
+      expect(wrapper.get('button[aria-haspopup="dialog"]').text()).toContain('Your week')
+    } finally { wrapper.unmount() }
+  })
+
+  it('keeps the dialog available when retry returns an empty week', async () => {
+    vi.clearAllMocks()
+    recapSpies.fetch.mockReset().mockRejectedValue(new Error('offline'))
+    const wrapper = mount(ConversationInsights, {
+      attachTo: document.body,
+      global: { plugins: [PrimeVue], stubs: { Icon: true, AppIconGlyph: true, AppConversationChart: true } },
+    })
+    try {
+      await flushPromises()
+      await wrapper.get('button[aria-haspopup="dialog"]').trigger('click')
+      await flushPromises()
+      expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Retry')
+      recapSpies.fetch.mockResolvedValue({ ...weeklyData, postCount: 0, participantCount: 0, newParticipantCount: 0, posts: [] })
+      const retry = Array.from(document.querySelectorAll('[role="dialog"] button')).find(button => button.textContent === 'Retry') as HTMLButtonElement
+      retry.click()
+      await flushPromises()
+      expect(document.querySelector('[role="dialog"]')?.textContent).toContain('No conversation activity in the last 7 days.')
+    } finally { wrapper.unmount() }
   })
 })

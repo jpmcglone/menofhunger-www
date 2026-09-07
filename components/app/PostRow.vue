@@ -147,7 +147,7 @@
             <button
               v-tooltip.bottom="tinyTooltip(catchUpResultReady ? 'Catch me up — summary ready' : 'Catch me up — M.A.R.V summarizes this thread')"
               type="button"
-              class="moh-tap moh-pressable inline-flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+              class="moh-tap moh-pressable inline-flex h-11 w-11 items-center justify-center rounded-full transition-opacity hover:opacity-70"
               aria-label="Catch me up with M.A.R.V"
               @click.stop="onCatchMeUp"
             >

@@ -1,16 +1,19 @@
 <template>
-  <div ref="filterWrapEl">
+  <div ref="filterWrapEl" class="inline-flex items-center gap-2">
     <button
       type="button"
       class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full transition-colors hover:opacity-80"
       :class="[label ? 'min-h-11 px-5 text-sm font-semibold border moh-border' : 'h-8 w-8', !label && filter === 'all' ? 'ring-1 ring-current/40' : '']"
       :style="filterButtonStyle"
-      aria-label="Feed filters"
+      :aria-label="`Feed filters: ${effectiveSort === 'trending' ? 'Trending' : 'Recent'}, ${filter}`"
+      aria-haspopup="menu"
+      :aria-expanded="filterPopoverOpen"
       @click="toggleFilterPopover"
     >
       <Icon v-if="!label" :name="sortIconName" class="text-[22px]" aria-hidden="true" />
       <span v-if="label">{{ label }}</span>
     </button>
+    <span v-if="label && effectiveSort === 'trending'" class="text-xs font-semibold moh-text whitespace-nowrap">↗ Trending</span>
 
     <Teleport to="body">
       <div

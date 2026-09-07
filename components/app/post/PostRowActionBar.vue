@@ -26,14 +26,14 @@
 
   <div
     v-else-if="!isDeletedPost && !isOnlyMe"
-    class="mt-2.5 flex items-center justify-between sm:justify-start gap-1 moh-text-muted"
+    class="mt-2.5 flex flex-wrap items-center justify-between sm:justify-start gap-1 moh-text-muted"
   >
     <!-- Reply -->
     <div class="inline-flex items-center">
       <button
         v-tooltip.bottom="commentTooltip"
         type="button"
-        class="moh-tap moh-pressable inline-flex items-center justify-center p-0.5 transition-colors hover:moh-text"
+        class="moh-tap moh-pressable inline-flex min-h-11 min-w-11 items-center justify-center transition-colors hover:moh-text"
         :class="commentClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
         aria-label="Reply"
         @click.stop="onCommentClick"
@@ -42,7 +42,7 @@
       </button>
       <NuxtLink
         :to="postPermalink"
-        class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted hover:underline moh-count-gutter"
+        class="ml-0 inline-flex min-h-11 min-w-11 items-center select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted hover:underline moh-count-gutter"
         :class="displayedCommentCount > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'"
         :aria-hidden="displayedCommentCount === 0 ? 'true' : undefined"
         :tabindex="displayedCommentCount === 0 ? -1 : undefined"
@@ -57,7 +57,7 @@
       <button
         v-tooltip.bottom="repostTooltip"
         type="button"
-        class="moh-tap moh-pressable inline-flex items-center justify-center p-0.5 transition-colors hover:moh-text"
+        class="moh-tap moh-pressable inline-flex min-h-11 min-w-11 items-center justify-center transition-colors hover:moh-text"
         :class="viewerCanInteract ? 'cursor-pointer' : 'cursor-default opacity-60'"
         :aria-label="isReposted ? 'Repost options' : 'Repost'"
         @click.stop="onRepostClick"
@@ -67,7 +67,7 @@
       <button
         v-if="repostCount > 0"
         type="button"
-        class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter hover:underline underline-offset-2"
+        class="ml-0 inline-flex min-h-11 min-w-11 items-center select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter hover:underline underline-offset-2"
         :aria-label="`${repostCount} repost${repostCount === 1 ? '' : 's'} — view who reposted`"
         @click.stop="$emit('openReposters')"
       >
@@ -94,7 +94,7 @@
       <button
         v-tooltip.bottom="upvoteTooltip"
         type="button"
-        class="moh-tap moh-pressable inline-flex items-center justify-center p-0.5 transition-colors hover:moh-text"
+        class="moh-tap moh-pressable inline-flex min-h-11 min-w-11 items-center justify-center transition-colors hover:moh-text"
         :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
         :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
         @click.stop="onBoostClick"

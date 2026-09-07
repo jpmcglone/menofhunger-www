@@ -1,3 +1,4 @@
+import type catalog from '../design/icon-catalog.json'
 import { userColorTier, userTierTextClass, type UserTierLike } from './user-tier'
 
 const ACTOR_EVENTS = new Set(['boost', 'repost', 'follow', 'comment', 'mention', 'crew_wall_mention', 'message', 'status_update', 'nudge'])
@@ -47,4 +48,32 @@ const SYSTEM_KINDS = new Set([
 
 export function notificationShowsActor(kind: string): boolean {
   return !SYSTEM_KINDS.has(kind)
+}
+
+/** Figma event glyphs; retain legacy glyphs for event states the library does not define. */
+export function notificationGlyph(kind: string): { name: keyof typeof catalog; selected: boolean } | null {
+  const icon = eventPresentation(kind).icon
+  const glyphs: Record<string, [keyof typeof catalog, boolean]> = {
+    'tabler:arrow-big-up-filled': ['boost', true],
+    'tabler:repeat': ['repost', false],
+    'tabler:user-filled': ['profile', true],
+    'tabler:message-circle-filled': ['reply', false],
+    'tabler:hand-click': ['nudge', false],
+    'tabler:sparkles': ['marv', false],
+    'tabler:chart-bar': ['analytics', false],
+    'tabler:book-filled': ['word', false],
+    'tabler:quote-filled': ['quote', false],
+    'tabler:rosette-discount-check-filled': ['verified', true],
+    'tabler:crown-filled': ['premium', false],
+    'tabler:coin-filled': ['coins', false],
+    'tabler:calendar-check': ['checkin', false],
+    'tabler:history': ['history', false],
+    'tabler:article': ['article', false],
+    'tabler:file-text-filled': ['article', true],
+    'tabler:broadcast': ['spaces', false],
+    'tabler:users-group': ['members', false],
+    'tabler:bell-filled': ['notifications', false],
+  }
+  const glyph = glyphs[icon]
+  return glyph ? { name: glyph[0], selected: glyph[1] } : null
 }
