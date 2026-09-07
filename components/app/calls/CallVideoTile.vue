@@ -178,31 +178,53 @@ function refreshHasVideo() {
   syncFrames()
 }
 
-function attach() {
-  const el = videoEl.value
-  if (!el) return
-  el.setAttribute('playsinline', '')
-  el.setAttribute('webkit-playsinline', '')
-  const s = props.stream
-  if (el.srcObject !== s) el.srcObject = s
-  refreshHasVideo()
-  if (s) {
-    s.onaddtrack = refreshHasVideo
-    s.onremovetrack = refreshHasVideo
-    for (const t of s.getVideoTracks()) {
-      t.onmute = refreshHasVideo
-      t.onunmute = refreshHasVideo
-      t.onended = refreshHasVideo
-    }
-  }
-  void el.play().then(() => syncFrames()).catch(() => {})
-}
+// Attach after the keyed element has been patched. A pre-flush stream watcher
+// otherwise attaches the new stream to the discarded video as well as the new one.
+watch(
+  [videoEl, () => props.stream],
+  ([el, stream], _previous, onCleanup) => {
+    if (!el) return
+    el.setAttribute('playsinline', '')
+    el.setAttribute('webkit-playsinline', '')
+    if (el.srcObject !== stream) el.srcObject = stream
+    refreshHasVideo()
 
-onMounted(attach)
-watch(() => props.stream, attach)
-watch(attachKey, attach)
+    // The transport owns onmute/onunmute/onended. Observe without replacing its
+    // callbacks (including the local share's browser "Stop sharing" handler).
+    const tracks = new Set<MediaStreamTrack>()
+    const refreshTracks = () => {
+      const current = new Set(stream?.getVideoTracks() ?? [])
+      for (const track of tracks) {
+        if (current.has(track)) continue
+        for (const event of ['mute', 'unmute', 'ended']) track.removeEventListener(event, refreshHasVideo)
+        tracks.delete(track)
+      }
+      for (const track of current) {
+        if (tracks.has(track)) continue
+        for (const event of ['mute', 'unmute', 'ended']) track.addEventListener(event, refreshHasVideo)
+        tracks.add(track)
+      }
+      refreshHasVideo()
+    }
+    stream?.addEventListener('addtrack', refreshTracks)
+    stream?.addEventListener('removetrack', refreshTracks)
+    refreshTracks()
+    if (stream) void el.play().then(() => {
+      if (videoEl.value === el && el.srcObject === stream) syncFrames()
+    }).catch(() => {})
+
+    onCleanup(() => {
+      stream?.removeEventListener('addtrack', refreshTracks)
+      stream?.removeEventListener('removetrack', refreshTracks)
+      for (const track of tracks) {
+        for (const event of ['mute', 'unmute', 'ended']) track.removeEventListener(event, refreshHasVideo)
+      }
+      el.srcObject = null
+    })
+  },
+  { flush: 'post' },
+)
 watch(() => props.cameraEnabled, refreshHasVideo)
-watch(videoEl, attach)
 watch(
   showVideo,
   (show) => {

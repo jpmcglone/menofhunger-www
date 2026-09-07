@@ -185,7 +185,7 @@ async function loadDefaultList() {
           premiumPlus: other.user.premiumPlus,
           isOrganization: other.user.isOrganization,
           verifiedStatus: other.user.verifiedStatus,
-          avatarUrl: other.user.avatarUrl,
+          avatarUrl: other.user.avatarUrl, avatarVideo: other.user.avatarVideo,
           relationship: { viewerFollowsUser: false, userFollowsViewer: false, viewerPostNotificationsEnabled: false },
           recentDmIndex: index++,
         })

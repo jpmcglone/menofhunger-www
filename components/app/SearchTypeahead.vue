@@ -410,7 +410,7 @@ defineExpose({
               <!-- User avatar -->
               <div v-if="r.user" class="shrink-0">
                 <AppUserAvatar
-                  :user="{ id: r.user.id, username: r.user.username, avatarUrl: r.user.avatarUrl, isOrganization: r.user.isOrganization }"
+                  :user="{ id: r.user.id, username: r.user.username, avatarUrl: r.user.avatarUrl, avatarVideo: r.user.avatarVideo, isOrganization: r.user.isOrganization }"
                   size-class="h-8 w-8"
                   :show-presence="false"
                 />
@@ -514,7 +514,7 @@ defineExpose({
               />
               <div class="relative z-[2] flex items-center gap-2.5 w-full min-w-0 pointer-events-none">
                 <AppUserAvatar
-                  :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, isOrganization: u.isOrganization }"
+                  :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, avatarVideo: u.avatarVideo, isOrganization: u.isOrganization }"
                   size-class="h-8 w-8"
                   :show-presence="false"
                   class="shrink-0"

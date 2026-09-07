@@ -373,7 +373,7 @@ function authorToMentionUser(a: ArticleAuthor): FollowListUser {
     id: a.id,
     username: a.username,
     name: a.name,
-    avatarUrl: a.avatarUrl,
+    avatarUrl: a.avatarUrl, avatarVideo: a.avatarVideo,
     premium: a.premium,
     premiumPlus: a.premiumPlus,
     isOrganization: a.isOrganization,

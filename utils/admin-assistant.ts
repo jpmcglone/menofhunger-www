@@ -1,3 +1,25 @@
+import type { AdminAssistantTurnDto } from '~/types/api'
+
+/** Sort a copy so realtime payloads retain their original order. Invalid dates go last. */
+export function adminNewestAsks(turns: AdminAssistantTurnDto[]): AdminAssistantTurnDto[] {
+  const timestamp = (value: string) => Date.parse(value) || 0
+  return [...turns].sort((a, b) => timestamp(b.createdAt) - timestamp(a.createdAt))
+}
+
+export function adminAskDate(value: string): string {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+export function adminSourceUrl(value: string | null): string | undefined {
+  if (!value) return undefined
+  try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined } catch { return undefined }
+}
+
+export function adminAnswerPreview(answer: string | null): string {
+  return (answer ?? '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[*#`_]/g, '').replace(/\s+/g, ' ').trim()
+}
+
 /** Render server-owned review snapshots as text; never execute rich text or HTML. */
 export function adminReviewFields(raw: string): Array<{ label: string; value: string }> {
   let value: Record<string, unknown>

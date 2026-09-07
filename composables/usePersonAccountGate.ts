@@ -26,7 +26,7 @@ export function usePersonAccountGate() {
       id: fromAccounts.id,
       username: fromAccounts.username,
       name: fromAccounts.name,
-      avatarUrl: fromAccounts.avatarUrl,
+      avatarUrl: fromAccounts.avatarUrl, avatarVideo: fromAccounts.avatarVideo,
     }
   })
 

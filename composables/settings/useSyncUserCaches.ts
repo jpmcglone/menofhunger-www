@@ -41,7 +41,7 @@ export function useSyncUserCaches() {
       premium: nextUser.premium,
       premiumPlus: nextUser.premiumPlus,
       verifiedStatus: nextUser.verifiedStatus,
-      avatarUrl: nextUser.avatarUrl ?? null,
+      avatarUrl: nextUser.avatarUrl ?? null, avatarVideo: nextUser.avatarVideo ?? null,
       bannerUrl: nextUser.bannerUrl ?? null,
       pinnedPostId: nextUser.pinnedPostId ?? null,
     })

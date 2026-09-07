@@ -127,6 +127,7 @@ class FakeMediaStream {
 function makeTransport(opts?: { reconnectGraceMs?: number; selfUserId?: string }) {
   const states: Array<[string, PeerMediaState]> = []
   const streams: Array<[string, MediaStream | null]> = []
+  const screenStreams: Array<[string, MediaStream | null]> = []
   const sendSignal = vi.fn()
   const transport = new PeerToPeerCallTransport({
     callId: 'call-1',
@@ -137,10 +138,11 @@ function makeTransport(opts?: { reconnectGraceMs?: number; selfUserId?: string }
     reconnectGraceMs: opts?.reconnectGraceMs,
     events: {
       onRemoteStream: (userId, s) => streams.push([userId, s]),
+      onRemoteScreenStream: (userId, s) => screenStreams.push([userId, s]),
       onPeerState: (userId, s) => states.push([userId, s]),
     },
   })
-  return { transport, states, streams, sendSignal }
+  return { transport, states, streams, screenStreams, sendSignal }
 }
 
 const lastState = (states: Array<[string, PeerMediaState]>, userId: string) =>
@@ -204,6 +206,55 @@ describe('PeerToPeerCallTransport reconnect alignment', () => {
     expect(alice[1]).not.toBe(initial)
     expect(alice[2]).not.toBe(alice[1])
     expect(alice[2]?.getTracks().map((t) => t.id)).toEqual(['a1', 'v1'])
+    transport.destroy()
+  })
+
+  it('keeps the screen stream stable through mute/unmute, duplicate tracks, and ICE resync', () => {
+    const { transport, screenStreams } = makeTransport()
+    transport.setPeers(['alice'])
+    const pc = FakePeerConnection.instances[0]!
+    const transceiver = pc.transceivers[2]!
+    const track = transceiver.receiver.track as unknown as MediaStreamTrack
+    pc.ontrack?.({ track, transceiver })
+    const initial = screenStreams.at(-1)?.[1]
+    // Receivers can start muted even though signaling says this peer is presenting.
+    expect(initial?.getTracks()).toEqual([track])
+    for (let i = 0; i < 10; i++) {
+      Object.assign(track, { muted: false })
+      track.onunmute?.(new Event('unmute'))
+      Object.assign(track, { muted: true })
+      track.onmute?.(new Event('mute'))
+      pc.ontrack?.({ track, transceiver })
+      pc.ice('connected')
+    }
+    expect(screenStreams).toEqual([['alice', initial]])
+    Object.assign(track, { readyState: 'ended' })
+    track.onended?.(new Event('ended'))
+    expect(screenStreams.at(-1)).toEqual(['alice', null])
+    transport.destroy()
+  })
+
+  it('replaces the screen once and ignores events from obsolete or removed peers', () => {
+    const { transport, screenStreams } = makeTransport()
+    transport.setPeers(['alice'])
+    const pc = FakePeerConnection.instances[0]!
+    const transceiver = pc.transceivers[2]!
+    const oldTrack = transceiver.receiver.track as unknown as MediaStreamTrack
+    Object.assign(oldTrack, { muted: false })
+    pc.ontrack?.({ track: oldTrack, transceiver })
+    const first = screenStreams.at(-1)?.[1]
+    const nextTrack = { id: 'next-screen', kind: 'video', muted: false, readyState: 'live' } as MediaStreamTrack
+    pc.ontrack?.({ track: nextTrack, transceiver })
+    expect(screenStreams.at(-1)?.[1]).not.toBe(first)
+    expect(screenStreams.at(-1)?.[1]?.getTracks()).toEqual([nextTrack])
+    Object.assign(oldTrack, { readyState: 'ended' })
+    oldTrack.onended?.(new Event('ended'))
+    expect(screenStreams).toHaveLength(2)
+    transport.setPeers([])
+    const count = screenStreams.length
+    nextTrack.onunmute?.(new Event('unmute'))
+    expect(screenStreams).toHaveLength(count)
+    expect(screenStreams.at(-1)).toEqual(['alice', null])
     transport.destroy()
   })
 

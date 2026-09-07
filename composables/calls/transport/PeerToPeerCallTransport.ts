@@ -537,20 +537,32 @@ export class PeerToPeerCallTransport implements CallTransport {
   }
 
   private bindScreenTrack(peer: Peer, track: MediaStreamTrack): void {
-    const publish = () => {
-      const live = track.readyState === 'live' && !track.muted
-      if (live) {
-        peer.screenStream = new MediaStream([track])
-        this.opts.events.onRemoteScreenStream?.(peer.userId, peer.screenStream)
-      } else {
+    if (this.peers.get(peer.userId) !== peer || this.destroyed) return
+    // A muted receiver is temporarily starved, not a stopped presentation. Keep
+    // its stream attached so Safari does not repeatedly reset the video decoder.
+    // calls:updated owns whether the presentation is visible in the overlay.
+    if (track.readyState === 'ended') {
+      if (peer.screenStream?.getTracks().includes(track)) {
         peer.screenStream = null
         this.opts.events.onRemoteScreenStream?.(peer.userId, null)
       }
+      return
     }
-    track.onmute = publish
-    track.onunmute = publish
-    track.onended = publish
-    publish()
+    if (peer.screenStream?.getTracks().includes(track)) return
+    peer.screenStream = new MediaStream([track])
+    track.onmute = () => {
+      callMediaLog('remote-screen-mute', { peer: peer.userId, track: callMediaTrackInfo(track) })
+    }
+    track.onunmute = () => {
+      callMediaLog('remote-screen-unmute', { peer: peer.userId, track: callMediaTrackInfo(track) })
+    }
+    track.onended = () => {
+      // An old receiver can end after renegotiation or peer removal.
+      if (this.peers.get(peer.userId) !== peer || !peer.screenStream?.getTracks().includes(track)) return
+      peer.screenStream = null
+      this.opts.events.onRemoteScreenStream?.(peer.userId, null)
+    }
+    this.opts.events.onRemoteScreenStream?.(peer.userId, peer.screenStream)
   }
 
   private restartIcePeer(peer: Peer): void {

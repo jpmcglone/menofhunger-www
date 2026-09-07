@@ -8,6 +8,7 @@ export type PublicUserEntity = {
   isOrganization?: boolean
   verifiedStatus?: string
   avatarUrl?: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   bannerUrl?: string | null
   pinnedPostId?: string | null
   lastOnlineAt?: string | null

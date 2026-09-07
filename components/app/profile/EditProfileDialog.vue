@@ -145,12 +145,13 @@
       <input
         ref="avatarInputEl"
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        :accept="canSetVideoAvatar ? 'image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm' : 'image/png,image/jpeg,image/webp'"
         class="hidden"
         :disabled="saving || !canEdit"
         @change="onAvatarInputChange"
       >
 
+      <AppProfileEditAvatarVideoDialog :file="videoEditorFile" :is-organization="isOrganization" @cancel="videoEditorFile = null" @selected="stageVideo" />
       <AppProfileEditAvatarCropDialog
         v-model="avatarCropOpen"
         :file="avatarCropFile"
@@ -247,6 +248,7 @@
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { useSyncUserCaches } from '~/composables/settings/useSyncUserCaches'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
+import type { AvatarVideoEdit } from '~/utils/avatar-video-upload'
 import { putPresignedFile } from '~/utils/put-presigned-file'
 
 type PublicProfile = {
@@ -269,6 +271,7 @@ type PublicProfile = {
   verifiedStatus: 'none' | 'identity' | 'manual'
   isOrganization?: boolean
   avatarUrl?: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   bannerUrl?: string | null
 }
 
@@ -286,7 +289,7 @@ const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
   (e: 'patchProfile', patch: Partial<Pick<
     PublicProfile,
-    'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+    'name' | 'bio' | 'avatarVideo' | 'avatarUrl' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
   >>): void
 }>()
 
@@ -313,6 +316,26 @@ const bioCharCount = useFormCharCount(editBio, 160)
 const editError = ref<string | null>(null)
 
 // We stage avatar changes locally (preview) and only upload/commit when the user hits Save.
+const canSetVideoAvatar = ref(false)
+const videoEditorFile = ref<File | null>(null)
+const pendingVideoEdit = shallowRef<AvatarVideoEdit | null>(null)
+watch([() => props.modelValue, () => authUser.value?.id], async ([open]) => {
+  canSetVideoAvatar.value = false
+  const identity = authUser.value?.id
+  if (!open || isAdminMode.value) return
+  try {
+    const capability = await apiFetchData<{ canSet: boolean }>('/uploads/avatar/video/capabilities')
+    if (authUser.value?.id === identity) canSetVideoAvatar.value = capability.canSet
+  } catch { /* Image upload stays available. */ }
+}, { immediate: true })
+function stageVideo(edit: AvatarVideoEdit) {
+  clearPendingAvatar()
+  pendingVideoEdit.value = edit
+  pendingAvatarFile.value = edit.file
+  pendingAvatarPreviewUrl.value = URL.createObjectURL(edit.poster)
+  pendingAvatarRemoval.value = false
+  videoEditorFile.value = null
+}
 const avatarInputEl = ref<HTMLInputElement | null>(null)
 const pendingAvatarFile = ref<File | null>(null)
 const pendingAvatarPreviewUrl = ref<string | null>(null)
@@ -360,6 +383,8 @@ const showBannerTrash = computed(
 const { confirm } = useAppConfirm()
 
 function clearPendingAvatar() {
+  pendingVideoEdit.value = null
+  videoEditorFile.value = null
   pendingAvatarFile.value = null
   if (pendingAvatarPreviewUrl.value) {
     URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
@@ -383,6 +408,7 @@ function clearAvatarCropState() {
 }
 
 function stageAvatarFile(file: File) {
+  pendingVideoEdit.value = null
   // Clean up old preview URL (if any).
   if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
   pendingAvatarFile.value = file
@@ -517,6 +543,12 @@ function onAvatarInputChange(e: Event) {
 function handleAvatarSelectedFile(file: File) {
   if (!canEdit.value) return
 
+  if (file.type.startsWith('video/')) {
+    if (!canSetVideoAvatar.value) { editError.value = 'Video avatars require Premium or Premium Plus.'; return }
+    if (file.size > 100 * 1024 * 1024) { editError.value = 'Video must be under 100 MB.'; return }
+    videoEditorFile.value = file
+    return
+  }
   // Basic client-side checks (server also validates).
   const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
   if (!allowed.has(file.type)) {
@@ -658,7 +690,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       const committed = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>(avatarDeleteUrl, {
         method: 'DELETE',
       })
-      emit('patchProfile', { avatarUrl: committed?.user?.avatarUrl ?? null })
+      emit('patchProfile', { avatarUrl: committed?.user?.avatarUrl ?? null, avatarVideo: committed?.user?.avatarVideo ?? null })
       if (!adminId) {
         const previousUsername = authUser.value?.username ?? null
         patchUser(committed?.user)
@@ -668,7 +700,28 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
     }
 
     // If an avatar is staged, upload + commit it first.
-    if (pendingAvatarFile.value) {
+    if (pendingVideoEdit.value) {
+      const edit = pendingVideoEdit.value
+      const identity = authUser.value?.id
+      const init = await apiFetchData<{ id: string; uploadUrl: string; headers: Record<string, string> }>('/uploads/avatar/video/init', {
+        method: 'POST', body: { contentType: edit.file.type },
+      })
+      await putPresignedFile(init.uploadUrl, init.headers, edit.file)
+      type Status = { status: string; error: string | null; user: import('~/composables/useAuth').AuthUser | null }
+      let status = await apiFetchData<Status>(`/uploads/avatar/video/${init.id}/commit`, { method: 'POST', body: edit.selection })
+      const deadline = Date.now() + 180_000
+      while (['queued', 'processing'].includes(status.status) && Date.now() < deadline) {
+        if (authUser.value?.id !== identity) throw new Error('Account changed. Reopen the editor to continue.')
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        status = await apiFetchData<Status>(`/uploads/avatar/video/${init.id}`)
+      }
+      if (status.status !== 'ready' || !status.user) throw new Error(status.error || 'Your video is still processing. Your avatar will update when it is ready.')
+      if (authUser.value?.id !== identity) throw new Error('Account changed.')
+      emit('patchProfile', { avatarUrl: status.user.avatarUrl ?? null, avatarVideo: status.user.avatarVideo ?? null })
+      patchUser(status.user)
+      syncUserCaches(status.user, authUser.value?.username ?? null)
+      clearPendingAvatar()
+    } else if (pendingAvatarFile.value) {
       const file = pendingAvatarFile.value
       const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string>; maxBytes?: number }>(
         avatarInitUrl,
@@ -688,7 +741,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         body: { key: init.key },
       })
 
-      emit('patchProfile', { avatarUrl: committed.user?.avatarUrl ?? null })
+      emit('patchProfile', { avatarUrl: committed.user?.avatarUrl ?? null, avatarVideo: committed.user?.avatarVideo ?? null })
       if (!adminId) {
         const previousUsername = authUser.value?.username ?? null
         patchUser(committed?.user)

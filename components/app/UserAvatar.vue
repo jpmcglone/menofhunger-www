@@ -8,6 +8,7 @@
   >
     <AppAvatarCircle
       :src="avatarUrl"
+      :avatar-video="u?.avatarVideo"
       :name="name"
       :username="username"
       :size-class="sizeClass"
@@ -73,6 +74,7 @@ import { tinyTooltip } from '~/utils/tiny-tooltip'
 export type UserAvatarUser = {
   id: string
   avatarUrl?: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   name?: string | null
   username?: string | null
   premiumPlus?: boolean

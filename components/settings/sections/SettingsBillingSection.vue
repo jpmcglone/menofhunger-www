@@ -161,7 +161,7 @@
             <AppUserAvatar
               :user="{
                 id: billingMe.recruiter.id,
-                avatarUrl: billingMe.recruiter.avatarUrl,
+                avatarUrl: billingMe.recruiter.avatarUrl, avatarVideo: billingMe.recruiter.avatarVideo,
                 name: billingMe.recruiter.name,
                 username: billingMe.recruiter.username,
                 premiumPlus: billingMe.recruiter.premiumPlus,

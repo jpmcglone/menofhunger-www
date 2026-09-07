@@ -106,7 +106,7 @@ const senderForAvatar = computed(() => {
     id: props.message.sender.id,
     username: props.message.sender.username,
     name: props.message.sender.name,
-    avatarUrl: props.message.sender.avatarUrl,
+    avatarUrl: props.message.sender.avatarUrl, avatarVideo: props.message.sender.avatarVideo,
     premium: props.message.sender.premium,
     premiumPlus: props.message.sender.premiumPlus,
     isOrganization: props.message.sender.isOrganization,
@@ -128,7 +128,7 @@ const formattedSentAt = computed(() => {
 
 type ReadReceipt = {
   userId: string
-  user: { id: string; username: string | null; name: string | null; avatarUrl: string | null; premium: boolean; premiumPlus: boolean; isOrganization: boolean; verifiedStatus: 'none' | 'identity' | 'manual' }
+  user: { id: string; username: string | null; name: string | null; avatarUrl: string | null;  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null; premium: boolean; premiumPlus: boolean; isOrganization: boolean; verifiedStatus: 'none' | 'identity' | 'manual' }
   readAt: string
 }
 
@@ -143,7 +143,7 @@ const readReceipts = computed<ReadReceipt[]>(() => {
         id: p.user.id,
         username: p.user.username,
         name: p.user.name,
-        avatarUrl: p.user.avatarUrl,
+        avatarUrl: p.user.avatarUrl, avatarVideo: p.user.avatarVideo,
         premium: p.user.premium,
         premiumPlus: p.user.premiumPlus,
         isOrganization: p.user.isOrganization,

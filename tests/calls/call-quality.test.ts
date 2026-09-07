@@ -114,7 +114,7 @@ describe('sampling', () => {
       { type: 'remote-inbound-rtp', kind: 'video', fractionLost: 0.02, roundTripTime: 0.1 },
       { type: 'remote-inbound-rtp', kind: 'video', fractionLost: 0.08, roundTripTime: 0.3 },
       { type: 'remote-inbound-rtp', kind: 'audio', fractionLost: 0.5 },
-      { type: 'candidate-pair', nominated: true, currentRoundTripTime: 0.45 },
+      { type: 'candidate-pair', nominated: true, state: 'succeeded', currentRoundTripTime: 0.45 },
       { type: 'outbound-rtp', kind: 'video', qualityLimitationReason: 'bandwidth', targetBitrate: 420_000 },
     ]
     expect(sampleFromStatsReport(report)).toEqual({
@@ -148,17 +148,53 @@ describe('ICE path from stats', () => {
   it('reads the nominated pair’s candidate types', () => {
     expect(
       icePathFromStats([
-        { id: 'pair', type: 'candidate-pair', nominated: true, localCandidateId: 'L', remoteCandidateId: 'R' },
+        { id: 'pair', type: 'candidate-pair', nominated: true, state: 'succeeded', localCandidateId: 'L', remoteCandidateId: 'R' },
         { id: 'L', type: 'local-candidate', candidateType: 'relay' },
         { id: 'R', type: 'remote-candidate', candidateType: 'srflx' },
       ]),
     ).toBe('turn')
     expect(
       icePathFromStats([
-        { id: 'pair', type: 'candidate-pair', state: 'succeeded', localCandidateId: 'L', remoteCandidateId: 'R' },
+        { id: 'pair', type: 'candidate-pair', selected: true, state: 'succeeded', localCandidateId: 'L', remoteCandidateId: 'R' },
         { id: 'L', type: 'local-candidate', candidateType: 'host' },
         { id: 'R', type: 'remote-candidate', candidateType: 'host' },
       ]),
     ).toBe('direct')
+  })
+})
+
+
+describe('selected ICE path regression', () => {
+  const candidates = [
+    { id: 'L1', type: 'local-candidate', candidateType: 'host' },
+    { id: 'L2', type: 'local-candidate', candidateType: 'relay' },
+    { id: 'R', type: 'remote-candidate', candidateType: 'host' },
+  ]
+  const direct = { id: 'direct', type: 'candidate-pair', state: 'succeeded', nominated: true, localCandidateId: 'L1', remoteCandidateId: 'R', currentRoundTripTime: 0.05 }
+  const relay = { id: 'relay', type: 'candidate-pair', state: 'succeeded', nominated: true, localCandidateId: 'L2', remoteCandidateId: 'R', currentRoundTripTime: 0.9 }
+
+  it('ignores report order and unused slow paths for both the badge and quality', () => {
+    for (const pairs of [[direct, relay], [relay, direct]]) {
+      const report = [...pairs, ...candidates, { type: 'transport', selectedCandidatePairId: 'direct' }]
+      expect(icePathFromStats(report)).toBe('direct')
+      expect(sampleFromStatsReport(report).rttSeconds).toBe(0.05)
+      expect(isBadSample(sampleFromStatsReport(report))).toBe(false)
+    }
+  })
+
+  it('reflects a genuine selected-pair change immediately', () => {
+    expect(icePathFromStats([...candidates, direct, relay, { type: 'transport', selectedCandidatePairId: 'relay' }])).toBe('turn')
+  })
+
+  it('does not guess from ambiguous nominations, a missing selected pair, or success alone', () => {
+    expect(icePathFromStats([...candidates, direct, relay])).toBeNull()
+    expect(icePathFromStats([...candidates, direct, { type: 'transport', selectedCandidatePairId: 'missing' }])).toBeNull()
+    expect(icePathFromStats([...candidates, { ...direct, nominated: false }])).toBeNull()
+    expect(icePathFromStats([...candidates, { ...direct, state: 'failed' }])).toBeNull()
+  })
+
+  it('supports an explicit legacy selection and a single successful nomination', () => {
+    expect(icePathFromStats([...candidates, direct, { ...relay, selected: true }])).toBe('turn')
+    expect(icePathFromStats([...candidates, direct, { ...relay, nominated: false }])).toBe('direct')
   })
 })

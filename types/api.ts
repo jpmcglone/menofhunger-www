@@ -37,6 +37,7 @@ export type SwitchableAccount = {
   username: string | null
   name: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   accountKind: AccountKind
   isOrganization: boolean
   isCurrent: boolean
@@ -121,6 +122,7 @@ export type BillingMe = {
     username: string | null
     name: string | null
     avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
     premium: boolean
     premiumPlus: boolean
     verifiedStatus: 'none' | 'identity' | 'manual'
@@ -276,6 +278,7 @@ export type LobbyMember = {
   id: string
   username: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
@@ -327,6 +330,7 @@ export type SpaceOwner = {
   id: string
   username: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
@@ -548,6 +552,7 @@ export type PostAuthor = {
   isOrganization: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   orgAffiliations?: OrgAffiliation[]
   isBot?: boolean
   /** When true, author is banned; id/username/name/avatar are redacted. */
@@ -580,6 +585,7 @@ export type PublicProfile = {
   accountKind?: AccountKind
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   bannerUrl: string | null
   pinnedPostId: string | null
   lastOnlineAt: string | null
@@ -628,6 +634,7 @@ export type UserPreview = {
   accountKind?: AccountKind
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   bannerUrl: string | null
   lastOnlineAt: string | null
   checkinStreakDays: number
@@ -1265,6 +1272,7 @@ export type FollowListUser = {
   accountKind?: AccountKind
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   orgAffiliations?: OrgAffiliation[]
   relationship: FollowRelationship
   /** True when this user is an active member of any Crew. Present on search results. */
@@ -1594,6 +1602,7 @@ export type MessageConversationCrewSummary = {
   /** Display name; null when the crew hasn't been named yet. */
   name: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
 }
 export type MessageParticipantStatus = 'pending' | 'accepted'
 export type MessageParticipantRole = 'owner' | 'member'
@@ -1607,6 +1616,7 @@ export type MessageUser = {
   isOrganization: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   isBot?: boolean
 }
 
@@ -1935,6 +1945,7 @@ export type WsCheckinAnsweredTodayPayload = {
     username: string | null
     displayName: string | null
     avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
     isFollowed?: boolean
   }
 }
@@ -2018,6 +2029,7 @@ export type UserDto = {
   followVisibility: 'all' | 'verified' | 'premium' | 'none'
   birthdayVisibility: 'none' | 'monthDay' | 'full'
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   bannerUrl: string | null
   pinnedPostId: string | null
   coins: number
@@ -2130,6 +2142,7 @@ export type CheckinCrewMemberStatus = {
   username: string | null
   displayName: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   answeredToday: boolean
   isViewer: boolean
 }
@@ -2164,6 +2177,7 @@ export type CheckinAnswerer = {
   username: string | null
   displayName: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   answeredAt: string
   isFollowed?: boolean
 }
@@ -2191,6 +2205,7 @@ export type LeaderboardUser = {
   isOrganization: boolean
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   checkinStreakDays: number
   longestStreakDays: number
   /** Only present on weekly-scope responses. */
@@ -2566,6 +2581,7 @@ export type CommunityGroupMemberListItem = {
   name: string | null
   role: 'owner' | 'moderator' | 'member'
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   joinedAt: string
 }
 
@@ -2648,6 +2664,7 @@ export type ArticleAuthor = {
   /** Override bio for article author sections. Falls back to `bio` if null. */
   articleBio: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
@@ -2885,6 +2902,7 @@ export type CoinTransferCounterparty = {
   username: string
   displayName: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
 }
 
 export type CoinTransferItem = {
@@ -2901,6 +2919,7 @@ export type CoinTransferReceiptParty = {
   username: string | null
   displayName: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
 }
 
 export type CoinTransferReceipt = {
@@ -2986,6 +3005,7 @@ export type CrewPublic = {
   tagline: string | null
   bio: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   coverUrl: string | null
   memberCount: number
   createdAt: string
@@ -3079,6 +3099,7 @@ export type MarvinMeDto = {
     username: string
     displayName: string
     avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   } | null
 }
 
@@ -3278,6 +3299,7 @@ export type RecentSearchUser = {
   accountKind?: AccountKind
   verifiedStatus: 'none' | 'identity' | 'manual'
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   orgAffiliations?: OrgAffiliation[]
   relationship?: FollowRelationship
 }

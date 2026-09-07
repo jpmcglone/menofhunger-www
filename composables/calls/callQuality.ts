@@ -140,6 +140,21 @@ export function icePathLabel(kind: IcePathKind | null | undefined): string | nul
   return null
 }
 
+/** Select the transport's actual path, never an arbitrary successful connectivity check. */
+function selectedIcePairs(stats: Record<string, unknown>[]): Record<string, unknown>[] {
+  const pairs = stats.filter((s) => s.type === 'candidate-pair')
+  const selectedIds = new Set(stats
+    .filter((s) => s.type === 'transport' && typeof s.selectedCandidatePairId === 'string')
+    .map((s) => s.selectedCandidatePairId))
+  if (selectedIds.size) return pairs.filter((p) => selectedIds.has(p.id))
+  // Older engines expose `selected` on the pair itself. Without either field,
+  // only one nominated, successful pair is unambiguous (e.g. during ICE restart).
+  const selected = pairs.filter((p) => p.selected === true)
+  if (selected.length) return selected
+  const nominated = pairs.filter((p) => p.nominated === true && p.state === 'succeeded')
+  return nominated.length === 1 ? nominated : []
+}
+
 /** Selected ICE pair type from a `getStats()` report. */
 export function icePathFromStats(report: Iterable<Record<string, unknown>>): IcePathKind | null {
   const stats = [...report]
@@ -147,16 +162,17 @@ export function icePathFromStats(report: Iterable<Record<string, unknown>>): Ice
   for (const s of stats) {
     if (typeof s.id === 'string') byId.set(s.id, s)
   }
-  const pair = stats.find(
-    (s) => s.type === 'candidate-pair' && (s.nominated === true || s.state === 'succeeded'),
-  )
-  if (!pair) return null
-  const local = typeof pair.localCandidateId === 'string' ? byId.get(pair.localCandidateId) : undefined
-  const remote = typeof pair.remoteCandidateId === 'string' ? byId.get(pair.remoteCandidateId) : undefined
-  return classifyIceTypes(
-    typeof local?.candidateType === 'string' ? local.candidateType : null,
-    typeof remote?.candidateType === 'string' ? remote.candidateType : null,
-  )
+  const paths = selectedIcePairs(stats).map((pair) => {
+    const local = typeof pair.localCandidateId === 'string' ? byId.get(pair.localCandidateId) : undefined
+    const remote = typeof pair.remoteCandidateId === 'string' ? byId.get(pair.remoteCandidateId) : undefined
+    return classifyIceTypes(
+      typeof local?.candidateType === 'string' ? local.candidateType : null,
+      typeof remote?.candidateType === 'string' ? remote.candidateType : null,
+    )
+  })
+  // BUNDLE normally has one transport; summarize multiple selected transports
+  // deterministically if an engine reports more than one.
+  return paths.includes('turn') ? 'turn' : paths.includes('stun') ? 'stun' : paths.includes('direct') ? 'direct' : null
 }
 
 /** Pull the fields we care about out of a `getStats()` report for one peer connection. */
@@ -166,14 +182,16 @@ export function sampleFromStatsReport(report: Iterable<Record<string, unknown>>)
   let limitation: string | null = null
   let targetBitrate: number | null = null
 
-  for (const stat of report) {
+  const stats = [...report]
+  const selectedPairs = new Set(selectedIcePairs(stats))
+  for (const stat of stats) {
     const type = stat.type
     if (type === 'remote-inbound-rtp' && stat.kind === 'video') {
       const fl = stat.fractionLost
       if (typeof fl === 'number' && Number.isFinite(fl)) fractionLost = Math.max(fractionLost ?? 0, fl)
       const rtt = stat.roundTripTime
       if (typeof rtt === 'number' && Number.isFinite(rtt)) rttSeconds = Math.max(rttSeconds ?? 0, rtt)
-    } else if (type === 'candidate-pair' && (stat.nominated === true || stat.state === 'succeeded')) {
+    } else if (type === 'candidate-pair' && selectedPairs.has(stat)) {
       const rtt = stat.currentRoundTripTime
       if (typeof rtt === 'number' && Number.isFinite(rtt)) rttSeconds = rttSeconds === null ? rtt : Math.max(rttSeconds, rtt)
     } else if (type === 'outbound-rtp' && stat.kind === 'video') {

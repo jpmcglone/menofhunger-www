@@ -9,7 +9,7 @@
          When spacesRing is active, the outer wrapper has a gradient background + padding.
          The inner div uses the page background to create the visible ring gap. -->
     <div
-      :class="['h-full w-full overflow-hidden moh-img-outline', roundClass, spacesRing ? 'bg-[var(--moh-bg)]' : bgClass]"
+      :class="['relative h-full w-full overflow-hidden moh-img-outline', roundClass, spacesRing ? 'bg-[var(--moh-bg)]' : bgClass]"
     >
       <AppImg
         v-if="src"
@@ -22,7 +22,8 @@
         loading="lazy"
         decoding="async"
       />
-      <div v-else class="h-full w-full flex items-center justify-center">
+      <AppAvatarVideo v-if="avatarVideo" :asset="avatarVideo" />
+      <div v-if="!src" class="h-full w-full flex items-center justify-center">
         <span
           class="moh-avatar-initial leading-none"
           :style="initialStyle"
@@ -75,6 +76,7 @@ import AppImg from '~/components/app/AppImg.vue'
 import { SPACES_GRADIENT } from '~/utils/theme-tint'
 const props = withDefaults(
   defineProps<{
+    avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
     src?: string | null
     name?: string | null
     username?: string | null
@@ -103,6 +105,7 @@ const props = withDefaults(
   }>(),
   {
     src: null,
+    avatarVideo: null,
     name: null,
     username: null,
     sizeClass: 'h-10 w-10',

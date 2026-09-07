@@ -88,3 +88,34 @@ describe('admin proposal review interface', () => {
     } finally { wrapper.unmount() }
   })
 })
+
+
+describe('newest-first ask board', () => {
+  it('puts the composer before newest-first asks and lets older answers expand', async () => {
+    const turn = (id: string, createdAt: string) => ({ id, createdAt, question: `Question ${id}`, answer: `Answer ${id}`, status: 'complete', sources: [], actions: [] })
+    const original = [turn('old', '2026-09-01T00:00:00Z'), turn('new', '2026-09-07T00:00:00Z')]
+    spies.fetch.mockResolvedValue({ ...workspace, turns: original })
+    const wrapper = mount(AdminAssistantWorkspace, { global: { plugins: [PrimeVue], stubs: { Icon: true, NuxtLink: RouterLinkStub } } })
+    try {
+      await flushPromises()
+      const articles = wrapper.findAll('article')
+      expect(articles.map(article => article.find('h2').text())).toEqual(['Question new', 'Question old'])
+      expect(original.map(item => item.id)).toEqual(['old', 'new'])
+      expect(wrapper.html().indexOf('<form')).toBeLessThan(wrapper.html().indexOf('<article'))
+      expect(articles[0]!.find('button').attributes('aria-expanded')).toBe('true')
+      expect(articles[1]!.find('button').attributes('aria-expanded')).toBe('false')
+      await articles[1]!.find('button').trigger('click')
+      expect(articles[1]!.find('button').attributes('aria-expanded')).toBe('true')
+    } finally { wrapper.unmount() }
+  })
+  it('keeps saved asks readable when the composer is unavailable', async () => {
+    spies.fetch.mockResolvedValue({ ...workspace, configured: false, turns: [{ id: 'saved', createdAt: '2026-09-07T00:00:00Z', question: 'Saved ask', answer: 'Saved answer', status: 'complete', sources: [], actions: [] }] })
+    const wrapper = mount(AdminAssistantWorkspace, { global: { plugins: [PrimeVue], stubs: { Icon: true, NuxtLink: RouterLinkStub } } })
+    try {
+      await flushPromises()
+      expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
+      expect(wrapper.find('article').text()).toContain('Saved answer')
+      expect(wrapper.text()).toContain('MARV is unavailable')
+    } finally { wrapper.unmount() }
+  })
+})

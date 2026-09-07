@@ -40,6 +40,7 @@ export type CallDisplayUser = {
   username: string | null
   name: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean

@@ -44,6 +44,7 @@ export type AuthUser = {
   verifiedAt?: string | null
   unverifiedAt?: string | null
   avatarUrl?: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   bannerUrl?: string | null
   pinnedPostId?: string | null
   coins?: number
@@ -130,7 +131,7 @@ export function useAuth() {
               premiumPlus: u.premiumPlus,
               isOrganization: u.isOrganization,
               verifiedStatus: u.verifiedStatus,
-              avatarUrl: u.avatarUrl,
+              avatarUrl: u.avatarUrl, avatarVideo: u.avatarVideo,
               bannerUrl: u.bannerUrl,
               pinnedPostId: u.pinnedPostId,
               ...(typeof u.postCount === 'number' ? { postCount: u.postCount } : {}),

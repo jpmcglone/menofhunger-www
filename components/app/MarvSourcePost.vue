@@ -4,7 +4,7 @@
                 >
                     <div class="flex items-start gap-2.5">
                       <AppAvatarCircle
-                        :src="post.author.avatarUrl ?? null"
+                        :src="post.author.avatarUrl ?? null" :avatar-video="post.author.avatarVideo"
                         :name="post.author.name ?? null"
                         :username="post.author.username ?? null"
                         size-class="h-7 w-7"

@@ -41,7 +41,7 @@
                 ]"
               >
                 <AppUserAvatar
-                  :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, isOrganization: (u as any).isOrganization }"
+                  :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, avatarVideo: u.avatarVideo, isOrganization: (u as any).isOrganization }"
                   size-class="h-9 w-9"
                   bg-class="moh-surface dark:bg-black"
                   :show-presence="false"

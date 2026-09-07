@@ -215,7 +215,7 @@ function relationshipLabel(u: FollowListUser): string {
       class="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl border moh-border moh-surface"
     >
       <AppUserAvatar
-        :user="{ id: modelValue.id, username: modelValue.username, avatarUrl: modelValue.avatarUrl, isOrganization: modelValue.isOrganization }"
+        :user="{ id: modelValue.id, username: modelValue.username, avatarUrl: modelValue.avatarUrl, avatarVideo: modelValue.avatarVideo, isOrganization: modelValue.isOrganization }"
         size-class="h-7 w-7"
         :show-presence="false"
       />
@@ -291,7 +291,7 @@ function relationshipLabel(u: FollowListUser): string {
           @click="() => { if (!isUnverified(u)) select(u) }"
         >
           <AppUserAvatar
-            :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, isOrganization: u.isOrganization }"
+            :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, avatarVideo: u.avatarVideo, isOrganization: u.isOrganization }"
             size-class="h-9 w-9"
             :show-presence="false"
             class="shrink-0"

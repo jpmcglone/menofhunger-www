@@ -21,13 +21,8 @@
         @click.stop="onOrgClick(org.username, $event)"
         @auxclick.stop="onOrgAuxClick(org.username, $event)"
       >
-        <img
-          v-if="org.avatarUrl"
-          :src="org.avatarUrl"
-          :class="['block object-cover flex-shrink-0 ring-1 ring-white dark:ring-zinc-900', sizeClass, roundClass]"
-          :alt="org.name || org.username || 'org'"
-        />
-        <div v-else :class="['flex-shrink-0 bg-gray-200 dark:bg-zinc-700 ring-1 ring-white dark:ring-zinc-900', sizeClass, roundClass]" />
+        <AppAvatarCircle :src="org.avatarUrl" :avatar-video="org.avatarVideo" :name="org.name"
+          :size-class="sizeClass" :round-class="roundClass" :show-presence="false" />
       </button>
       <span
         v-else
@@ -35,13 +30,8 @@
         class="relative flex-shrink-0"
         :class="zClasses[i]"
       >
-        <img
-          v-if="org.avatarUrl"
-          :src="org.avatarUrl"
-          :class="['block object-cover flex-shrink-0 ring-1 ring-white dark:ring-zinc-900', sizeClass, roundClass]"
-          :alt="org.name || 'org'"
-        />
-        <div v-else :class="['flex-shrink-0 bg-gray-200 dark:bg-zinc-700 ring-1 ring-white dark:ring-zinc-900', sizeClass, roundClass]" />
+        <AppAvatarCircle :src="org.avatarUrl" :avatar-video="org.avatarVideo" :name="org.name"
+          :size-class="sizeClass" :round-class="roundClass" :show-presence="false" />
       </span>
     </template>
 
@@ -67,6 +57,7 @@ type OrgAffiliation = {
   username: string | null
   name: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
 }
 
 const props = withDefaults(
