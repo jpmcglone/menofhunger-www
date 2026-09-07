@@ -20,6 +20,11 @@ Internal navigation uses real anchors / `NuxtLink`, including clickable rows. Re
 
 Mutable server state fetches on mount/activation and subscribes to `usePresence()` callbacks. Patch local state where possible; unsubscribe on teardown.
 
+For every new or changed media upload, embed, or generated derivative, apply the
+[media ownership and review policy](docs/engineering-policy.md#media-ownership-and-review).
+Include the API media-review resolver and orphan-deletion regression coverage, even
+when the upload UI change starts in web or iOS.
+
 Use the [validation matrix](docs/engineering-policy.md#validation-matrix) for completion checks.
 
 ## Read the applicable detailed rules

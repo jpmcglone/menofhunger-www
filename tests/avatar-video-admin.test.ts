@@ -1,11 +1,16 @@
-// @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { shallowMount, flushPromises } from '@vue/test-utils'
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { computed, ref } from 'vue'
 import EditProfileDialog from '../components/app/profile/EditProfileDialog.vue'
 import AvatarVideoDialog from '../components/app/profile/edit/AvatarVideoDialog.vue'
 
 const { api, patchUser, syncCaches } = vi.hoisted(() => ({ api: vi.fn(), patchUser: vi.fn(), syncCaches: vi.fn() }))
+// Nuxt transforms auto-imports into module imports; global stubs do not replace them.
+mockNuxtImport('useApiClient', () => () => ({ apiFetchData: api }))
+mockNuxtImport('useAuth', () => () => ({ user: ref({ id: 'admin', username: 'administrator' }), patchUser }))
+mockNuxtImport('useFormCharCount', () => () => computed(() => 0))
+mockNuxtImport('useAppConfirm', () => () => ({ confirm: vi.fn() }))
 vi.mock('../composables/settings/useSyncUserCaches', () => ({ useSyncUserCaches: () => syncCaches }))
 vi.mock('../utils/put-presigned-file', () => ({ putPresignedFile: vi.fn(async () => {}) }))
 
@@ -16,11 +21,6 @@ const updated = { ...target, avatarUrl: 'https://cdn.test/poster.jpg', avatarVid
 describe('admin video avatar editor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    for (const [name, fn] of Object.entries({ computed, nextTick, onBeforeUnmount, ref, shallowRef, watch })) vi.stubGlobal(name, fn)
-    vi.stubGlobal('useApiClient', () => ({ apiFetchData: api }))
-    vi.stubGlobal('useAuth', () => ({ user: ref({ id: 'admin', username: 'administrator' }), patchUser }))
-    vi.stubGlobal('useFormCharCount', () => computed(() => 0))
-    vi.stubGlobal('useAppConfirm', () => ({ confirm: vi.fn() }))
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview')
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     api.mockImplementation(async (path: string) => {
@@ -31,7 +31,7 @@ describe('admin video avatar editor', () => {
       throw new Error(`Unexpected route: ${path}`)
     })
   })
-  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
+  afterEach(() => { vi.restoreAllMocks() })
 
   it('saves a seven-second clip on the selected user without replacing the admin session', async () => {
     const wrapper = shallowMount(EditProfileDialog, { props: { modelValue: true, profile: target, isSelf: false, targetUserId: target.id,
