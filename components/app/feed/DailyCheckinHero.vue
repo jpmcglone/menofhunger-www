@@ -1,7 +1,8 @@
 <template>
+  <CheckinClosedNotice v-if="!isOpen" />
   <!-- Verify-to-check-in: authed-but-unverified. No fetch / realtime in this mode. -->
   <section
-    v-if="verifyCta"
+    v-else-if="verifyCta"
     class="moh-checkin-row relative w-full border-b moh-border"
     style="background: var(--moh-checkin-soft)"
     aria-labelledby="moh-checkin-hero-verify-title"
@@ -15,6 +16,7 @@
       >
         {{ promptText }}
       </h1>
+      <p class="mt-1 text-[13px] moh-text-muted">Open until midnight ET · New prompt daily at 5pm ET</p>
       <p class="mt-1 text-sm moh-text-muted">
         Verification unlocks check-ins and your streak.
       </p>
@@ -76,6 +78,7 @@
             >{{ missionFraction }}</NuxtLink>
           </template>
         </p>
+        <p class="mt-1 text-[13px] moh-text-muted">Next prompt tomorrow at 5pm ET.</p>
         <p
           v-if="myCheckinSnippet"
           class="mt-0.5 text-[13px] leading-snug moh-text-muted line-clamp-1"
@@ -135,6 +138,7 @@
         >
           {{ promptText }}
         </h1>
+        <p class="mt-1 text-[13px] moh-text-muted">Open until midnight ET · New prompt daily at 5pm ET</p>
         <div class="relative z-10 mt-2.5">
           <Button
             v-if="!isAuthed"
@@ -166,6 +170,7 @@
 </template>
 
 <script setup lang="ts">
+import CheckinClosedNotice from './CheckinClosedNotice.vue'
 import type {
   CheckinAllowedVisibility,
   CheckinCrewBlock,
@@ -222,6 +227,7 @@ const { isAuthed } = useAuth()
 const { addCrewCallback, removeCrewCallback } = usePresence()
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
+const { isOpen } = useCheckinWindow()
 const answering = ref(false)
 
 // Local mirrors of crew streak state so realtime updates don't have to wait for

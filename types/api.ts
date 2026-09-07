@@ -2146,6 +2146,9 @@ export type CheckinCrewBlock = {
 }
 
 export type GetCheckinsTodayResponse = {
+  isOpen: boolean
+  opensAt?: string
+  closesAt?: string
   dayKey: string
   prompt: string
   hasCheckedInToday: boolean
@@ -3349,6 +3352,9 @@ export type ScheduledPostFailedPayload = Contracts.ScheduledPostFailedPayloadDto
 
 /** Today's check-in state from GET /checkins/today and GET /explore (authed). */
 export type CheckinTodayState = {
+  isOpen: boolean
+  opensAt?: string
+  closesAt?: string
   dayKey: string
   prompt: string
   hasCheckedInToday: boolean

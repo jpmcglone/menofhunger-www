@@ -69,6 +69,7 @@
               >Today</span>
             </div>
             <div class="mt-0.5 text-[11px] leading-snug moh-text line-clamp-2">{{ checkinPrompt }}</div>
+            <p class="mt-1 text-[13px] moh-text-muted">Open until midnight ET · New prompt daily at 5pm ET</p>
           </div>
         </div>
 

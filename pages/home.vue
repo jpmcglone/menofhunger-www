@@ -383,6 +383,7 @@ function dismissGroupsNudge() {
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
 const { state: checkinState, loading: checkinLoading, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
+const { isOpen: checkinWindowOpen } = useCheckinWindow()
 
 const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
   const allowed = checkinState.value?.allowedVisibilities ?? []
@@ -436,7 +437,7 @@ const heroResolved = computed(() => {
 // Show the check-in prompt when user is eligible and hasn't posted today.
 const showCheckinPromptBar = computed(() => {
   if (!isAuthed.value || isPageAccount.value || !canAccessCheckins.value) return false
-  if (feedCtaKind.value) return false
+  if (feedCtaKind.value || !checkinWindowOpen.value) return false
   if (!checkinState.value) return false
   if (checkinState.value.hasCheckedInToday) return false
   if (!effectiveCheckinAllowedVisibilities.value.length) return false
@@ -723,6 +724,7 @@ const lastCheckinBody = ref<string | null>(null)
 watch(etDayKey, () => { lastCheckinBody.value = null })
 
 async function createCheckinViaComposer(
+  snapshot: { prompt: string; dayKey: string },
   body: string,
   _visibility: PostVisibility,
   _media?: unknown[] | null,
@@ -732,14 +734,14 @@ async function createCheckinViaComposer(
   if (!trimmed) return null
   // Answer always posts verifiedOnly; modal locks that and leaves the session
   // composer preference untouched.
-  const res = await createCheckin({ body: trimmed, visibility: 'verifiedOnly' })
+  const res = await createCheckin({ body: trimmed, visibility: 'verifiedOnly', ...snapshot })
   lastCheckinBody.value = trimmed
   posts.value = [res.post, ...posts.value.filter((p) => p.id !== res.post.id)]
   return res.post
 }
 
 /** Eligibility gate for the hero's primary action — verified users only (or premium). */
-const canAnswerCheckin = computed(() => effectiveCheckinAllowedVisibilities.value.length > 0)
+const canAnswerCheckin = computed(() => checkinWindowOpen.value && effectiveCheckinAllowedVisibilities.value.length > 0)
 
 /** Hero prompt — falls back to a generic phrasing during SSR / initial load. */
 const checkinHeroPrompt = computed(() => displayCheckinPromptText.value)
@@ -749,14 +751,18 @@ function goToLoginForCheckin() {
 }
 
 function openCheckinComposer() {
+  const current = checkinState.value
+  if (!current?.prompt) return
+  const snapshot = { prompt: current.prompt, dayKey: current.dayKey }
+  if (!checkinWindowOpen.value) return
   if (!canAccessCheckins.value) return
   if (!openComposer) return
   if (!effectiveCheckinAllowedVisibilities.value.length) return
   openComposer({
-    checkinPrompt: checkinState.value?.prompt ?? null,
+    checkinPrompt: snapshot.prompt,
     allowedVisibilities: ['verifiedOnly'],
     disableMedia: true,
-    createPost: createCheckinViaComposer,
+    createPost: (body, visibility) => createCheckinViaComposer(snapshot, body, visibility),
   })
 }
 

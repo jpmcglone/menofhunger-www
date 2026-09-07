@@ -1,3 +1,4 @@
+import { CHECKIN_CLOSED_MESSAGE, isCheckinOpen } from '~/utils/checkin-schedule'
 import type { CheckinAllowedVisibility, CreateCheckinResponse, GetCheckinsTodayResponse } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
@@ -25,6 +26,7 @@ export function useDailyCheckin() {
   const { user } = useAuth()
   const { dayKey } = useEasternMidnightRollover()
   const crewStreak = useCrewCheckinStreak()
+  const { isOpen, windowKey } = useCheckinWindow()
 
   const state = ref<GetCheckinsTodayResponse | null>(null)
   const loading = ref(false)
@@ -34,7 +36,7 @@ export function useDailyCheckin() {
   function cacheKey(): string | null {
     const uid = (user.value?.id ?? '').trim()
     if (!uid) return null
-    return `${uid}:${dayKey.value}`
+    return `${uid}:${windowKey.value}`
   }
 
   async function refresh() {
@@ -56,6 +58,7 @@ export function useDailyCheckin() {
     error.value = null
     try {
       const next = await apiFetchData<GetCheckinsTodayResponse>('/checkins/today', { method: 'GET' })
+      if (key !== cacheKey()) return
       state.value = next
       crewStreak.set(next.crew?.currentStreakDays ?? null)
       if (key) cache.value = { ...cache.value, [key]: { expiresAt: Date.now() + TODAY_CHECKIN_CACHE_TTL_MS, data: next } }
@@ -67,17 +70,21 @@ export function useDailyCheckin() {
     }
   }
 
-  async function create(params: { body: string; visibility: CheckinAllowedVisibility }) {
+  watch(windowKey, () => {
+    if (state.value && user.value?.id) void refresh()
+  })
+
+  async function create(params: { body: string; visibility: CheckinAllowedVisibility; prompt: string; dayKey: string }) {
+    if (!isCheckinOpen(new Date())) throw new Error(CHECKIN_CLOSED_MESSAGE)
     // Guard: if state is from a previous day, refresh to get today's state. Then
     // throw — the prompt in the open composer is stale and must not be submitted.
-    if (state.value?.dayKey && state.value.dayKey !== dayKey.value) {
+    if (params.dayKey !== dayKey.value) {
       await refresh()
       throw new StaleCheckinPromptError()
     }
 
-    // Include the prompt the user was actually shown so the server stores the right
-    // prompt text even if the submission crosses ET midnight.
-    const prompt = state.value?.prompt || undefined
+    // The server rejects a stale prompt instead of saving an answer to another question.
+    const prompt = params.prompt
     const res = await apiFetchData<CreateCheckinResponse>('/checkins', {
       method: 'POST',
       body: { body: params.body, visibility: params.visibility, ...(prompt ? { prompt } : {}) },
@@ -108,6 +115,7 @@ export function useDailyCheckin() {
       // so the compact card renders after answering rather than staying invisible.
       state.value = {
         hasCheckedInToday: true,
+        isOpen: true,
         checkinStreakDays: typeof res.checkinStreakDays === 'number' ? res.checkinStreakDays : 0,
         dayKey: res.checkin?.dayKey ?? '',
         prompt: res.checkin?.prompt ?? '',
@@ -125,6 +133,7 @@ export function useDailyCheckin() {
 
   return {
     state,
+    isOpen,
     loading,
     error,
     refresh,

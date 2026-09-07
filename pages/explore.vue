@@ -925,6 +925,7 @@ const {
   refresh: refreshCheckin,
   create: createCheckin,
 } = useDailyCheckin()
+const { isOpen: checkinWindowOpen } = useCheckinWindow()
 
 const hasCheckedInToday = computed(() => (hydrated.value ? Boolean(checkinState.value?.hasCheckedInToday) : false))
 
@@ -948,7 +949,7 @@ const shouldRenderCheckinSection = computed(() => {
   return showExploreCheckinCard.value || Boolean(checkinError.value)
 })
 
-const canOpenCheckinComposer = computed(() => Boolean(openComposer) && checkinAllowedVisibilities.value.length > 0)
+const canOpenCheckinComposer = computed(() => checkinWindowOpen.value && Boolean(openComposer) && checkinAllowedVisibilities.value.length > 0)
 
 const checkinPromptText = computed(() => {
   const p = (checkinState.value?.prompt ?? '').trim()
@@ -987,6 +988,7 @@ watch(
 )
 
 async function createCheckinViaComposer(
+  snapshot: { prompt: string; dayKey: string },
   body: string,
   _visibility: PostVisibility,
   _media?: unknown[] | null,
@@ -996,18 +998,22 @@ async function createCheckinViaComposer(
   if (!trimmed) return null
   // Answer always posts verifiedOnly; modal locks that and leaves the session
   // composer preference untouched.
-  const res = await createCheckin({ body: trimmed, visibility: 'verifiedOnly' })
+  const res = await createCheckin({ body: trimmed, visibility: 'verifiedOnly', ...snapshot })
   void refreshCheckin()
   return res.post
 }
 
 function openCheckinComposer() {
+  const current = checkinState.value
+  if (!current?.prompt) return
+  const snapshot = { prompt: current.prompt, dayKey: current.dayKey }
+  if (!checkinWindowOpen.value) return
   if (!canOpenCheckinComposer.value) return
   openComposer?.({
-    checkinPrompt: checkinState.value?.prompt ?? null,
+    checkinPrompt: snapshot.prompt,
     allowedVisibilities: ['verifiedOnly'],
     disableMedia: true,
-    createPost: createCheckinViaComposer,
+    createPost: (body, visibility) => createCheckinViaComposer(snapshot, body, visibility),
   })
 }
 

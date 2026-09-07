@@ -85,6 +85,7 @@
 </template>
 
 <script setup lang="ts">
+import { prepareUploadImage } from '~/utils/prepare-upload-image'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { Extension, type Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
@@ -308,6 +309,7 @@ function triggerImageUpload() {
 async function uploadAndInsertImage(file: File) {
   uploading.value = true
   try {
+    file = await prepareUploadImage(file)
     const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string> }>(
       '/uploads/article-media/init',
       { method: 'POST', body: { contentType: file.type } },

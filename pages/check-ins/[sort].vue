@@ -145,6 +145,7 @@ function onEdited(payload: { id: string; post: FeedPost }) {
 const { isAuthed } = useAuth()
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 const { state: checkinState, loading: checkinLoading, create: createCheckin, refresh: refreshCheckin } = useDailyCheckin()
+const { isOpen: checkinWindowOpen } = useCheckinWindow()
 
 const hasCheckedInToday = computed(() => Boolean(checkinState.value?.hasCheckedInToday))
 
@@ -154,7 +155,7 @@ const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() =>
   ),
 )
 
-const canAnswerCheckin = computed(() => checkinAllowedVisibilities.value.length > 0)
+const canAnswerCheckin = computed(() => checkinWindowOpen.value && checkinAllowedVisibilities.value.length > 0)
 
 // Show the hero only for authed users who haven't answered yet and whose state has loaded.
 const showHero = computed(() => {
@@ -166,6 +167,7 @@ const showHero = computed(() => {
 const lastCheckinBody = ref<string | null>(null)
 
 async function createCheckinViaComposer(
+  snapshot: { prompt: string; dayKey: string },
   body: string,
   _visibility: PostVisibility,
 ): Promise<{ id: string } | FeedPost | null> {
@@ -173,7 +175,7 @@ async function createCheckinViaComposer(
   if (!trimmed) return null
   // Answer always posts verifiedOnly; modal locks that and leaves the session
   // composer preference untouched.
-  const res = await createCheckin({ body: trimmed, visibility: 'verifiedOnly' })
+  const res = await createCheckin({ body: trimmed, visibility: 'verifiedOnly', ...snapshot })
   lastCheckinBody.value = trimmed
   // Prepend the new post to the feed so the user sees it immediately.
   posts.value = [res.post, ...posts.value.filter((p) => p.id !== res.post.id)]
@@ -181,13 +183,17 @@ async function createCheckinViaComposer(
 }
 
 function openCheckinComposer() {
+  const current = checkinState.value
+  if (!current?.prompt) return
+  const snapshot = { prompt: current.prompt, dayKey: current.dayKey }
+  if (!checkinWindowOpen.value) return
   if (!openComposer) return
   if (!checkinAllowedVisibilities.value.length) return
   openComposer({
-    checkinPrompt: checkinState.value?.prompt ?? null,
+    checkinPrompt: snapshot.prompt,
     allowedVisibilities: ['verifiedOnly'],
     disableMedia: true,
-    createPost: createCheckinViaComposer,
+    createPost: (body, visibility) => createCheckinViaComposer(snapshot, body, visibility),
   })
 }
 

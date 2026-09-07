@@ -1,3 +1,4 @@
+import { prepareUploadImage } from '~/utils/prepare-upload-image'
 import type { Ref } from 'vue'
 import type { PostMediaKind } from '~/types/api'
 import type { ComposerMediaItem } from './types'
@@ -26,16 +27,23 @@ export function useComposerUploads(opts: {
   async function uploadOne(id: string) {
     const next = opts.composerMedia.value.find((m) => m.localId === id) ?? null
     if (!next || next.source !== 'upload' || next.uploadStatus !== 'queued') return
-    const file = next.file
-    if (!file) {
+    const originalFile = next.file
+    if (!originalFile) {
       opts.patchComposerMedia(id, { uploadStatus: 'error', uploadError: 'Missing file.' })
       return
     }
 
+    let file: File = originalFile
     const controller = new AbortController()
     opts.patchComposerMedia(id, { uploadStatus: 'uploading', uploadError: null, abortController: controller, uploadProgress: 0 })
 
     try {
+      if (next.kind === 'image') {
+        file = await prepareUploadImage(file)
+        if (controller.signal.aborted) throw Object.assign(new Error('Aborted'), { name: 'AbortError' })
+        if (!opts.composerMedia.value.some(item => item.localId === id)) return
+        opts.patchComposerMedia(id, { file })
+      }
       let thumbnailKey: string | undefined
       if (next.kind === 'video' && next.thumbnailBlob) {
         const thumbInit = await opts.apiFetchData<{ key: string; uploadUrl?: string; headers: Record<string, string> }>(

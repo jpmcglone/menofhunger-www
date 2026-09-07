@@ -149,6 +149,7 @@
 </template>
 
 <script setup lang="ts">
+import { prepareUploadImage } from '~/utils/prepare-upload-image'
 import type { Ref } from 'vue'
 
 type PollDuration = { days: number; hours: number; minutes: number }
@@ -483,6 +484,8 @@ async function uploadImageForOption(optionId: string, file: File) {
   emitPayload()
 
   try {
+    file = await prepareUploadImage(file)
+    if (controller.signal.aborted) throw Object.assign(new Error('Aborted'), { name: 'AbortError' })
     const contentHash = await computeFileSha256(file)
     const init = await apiFetchData<{
       key: string

@@ -1,6 +1,7 @@
 <template>
+  <CheckinClosedNotice v-if="!isOpen" />
   <!-- Streak-intact state: user has already checked in today -->
-  <div v-if="hasCheckedInToday" class="px-3 pb-3 pt-2 sm:px-4">
+  <div v-else-if="hasCheckedInToday" class="px-3 pb-3 pt-2 sm:px-4">
     <NuxtLink
       to="/leaderboard"
       class="flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 hover:opacity-90 transition-opacity"
@@ -38,6 +39,7 @@
 
         <div class="flex-1 min-w-0">
           <div class="text-sm font-semibold moh-text leading-snug">{{ prompt }}</div>
+          <p class="mt-1 text-[13px] moh-text-muted">Open until midnight ET · New prompt daily at 5pm ET</p>
           <div class="text-[11px] moh-text-muted mt-0.5 leading-snug">
             <template v-if="streak > 0">Answer to keep your {{ streak }}-day streak alive.</template>
             <template v-else>Answer today's question to start your streak.</template>
@@ -55,6 +57,8 @@
 </template>
 
 <script setup lang="ts">
+import CheckinClosedNotice from './CheckinClosedNotice.vue'
+const { isOpen } = useCheckinWindow()
 defineProps<{
   prompt: string
   streak: number
