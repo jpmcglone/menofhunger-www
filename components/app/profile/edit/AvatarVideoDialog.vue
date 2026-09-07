@@ -1,7 +1,7 @@
 <template>
   <Dialog :visible="Boolean(file)" modal header="Video avatar" :style="{ width: 'min(28rem, 96vw)' }" @update:visible="emit('cancel')">
     <div class="space-y-4">
-      <p class="text-sm text-[var(--moh-text-muted)]">Choose up to 5 seconds. Drag to frame your video.</p>
+      <p class="text-sm text-[var(--moh-text-muted)]">Choose up to 7 seconds. Drag to frame your video.</p>
       <div
         ref="viewport" class="relative mx-auto aspect-square w-full touch-none overflow-hidden bg-black"
         tabindex="0" role="group" aria-label="Video crop. Use arrow keys to reposition."
@@ -16,7 +16,7 @@
         <input v-model.number="start" class="block w-full" type="range" min="0" :max="Math.max(0, total - length)" step="0.05" aria-label="Clip start" @input="seek">
       </label>
       <label class="block text-sm">Length · {{ length.toFixed(1) }}s
-        <input v-model.number="length" class="block w-full" type="range" min="0.1" :max="Math.min(5, total)" step="0.05" aria-label="Clip length" @input="start = Math.min(start, total - length); seek()">
+        <input v-model.number="length" class="block w-full" type="range" min="0.1" :max="Math.min(7, total)" step="0.05" aria-label="Clip length" @input="start = Math.min(start, total - length); seek()">
       </label>
       <label class="block text-sm">Zoom
         <input v-model.number="zoom" class="block w-full" type="range" min="1" max="3" step="0.01" aria-label="Crop zoom">
@@ -41,7 +41,7 @@ const emit = defineEmits<{ cancel: []; selected: [edit: AvatarVideoEdit] }>()
 const video = ref<HTMLVideoElement | null>(null)
 const viewport = ref<HTMLElement | null>(null)
 const source = ref('')
-const width = ref(1), height = ref(1), total = ref(5), start = ref(0), length = ref(5), zoom = ref(1)
+const width = ref(1), height = ref(1), total = ref(7), start = ref(0), length = ref(7), zoom = ref(1)
 const panX = ref(0.5), panY = ref(0.5), ready = ref(false), applying = ref(false), error = ref(''), paused = ref(false)
 const viewportWidth = ref(320)
 let observer: ResizeObserver | undefined
@@ -60,7 +60,7 @@ watch(() => props.file, file => {
 function loaded() {
   const v = video.value!
   if (!Number.isFinite(v.duration) || v.duration < 0.1 || v.duration > 600) { error.value = 'Choose a video between 0.1 seconds and 10 minutes.'; return }
-  width.value = v.videoWidth; height.value = v.videoHeight; total.value = v.duration; length.value = Math.min(5, v.duration)
+  width.value = v.videoWidth; height.value = v.videoHeight; total.value = v.duration; length.value = Math.min(7, v.duration)
   viewportWidth.value = viewport.value?.clientWidth || 320
   observer?.disconnect(); observer = new ResizeObserver(() => { viewportWidth.value = viewport.value?.clientWidth || 320 })
   if (viewport.value) observer.observe(viewport.value)

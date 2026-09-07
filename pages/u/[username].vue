@@ -1365,7 +1365,7 @@ function onOpenProfileImage(payload: {
 
 function patchPublicProfile(patch: Partial<Pick<
   PublicProfile,
-  'name' | 'bio' | 'avatarUrl' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+  'name' | 'bio' | 'avatarUrl' | 'avatarVideo' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
 >>) {
   if (!data.value) return
   data.value = { ...(data.value as PublicProfile), ...patch }
@@ -1376,8 +1376,9 @@ function patchPublicProfile(patch: Partial<Pick<
       username: profile.value?.username ?? authUser.value?.username ?? null,
       name: (patch.name ?? profile.value?.name ?? authUser.value?.name) ?? null,
       bio: (patch.bio ?? profile.value?.bio ?? authUser.value?.bio) ?? null,
-      avatarUrl: (patch.avatarUrl ?? profile.value?.avatarUrl ?? authUser.value?.avatarUrl) ?? null,
-      bannerUrl: (patch.bannerUrl ?? profile.value?.bannerUrl ?? authUser.value?.bannerUrl) ?? null,
+      avatarUrl: profile.value?.avatarUrl ?? null,
+      avatarVideo: profile.value?.avatarVideo ?? null,
+      bannerUrl: profile.value?.bannerUrl ?? null,
       premium: profile.value?.premium ?? authUser.value?.premium,
       premiumPlus: profile.value?.premiumPlus ?? authUser.value?.premiumPlus,
       verifiedStatus: profile.value?.verifiedStatus ?? authUser.value?.verifiedStatus,

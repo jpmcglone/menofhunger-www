@@ -248,6 +248,7 @@
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { useSyncUserCaches } from '~/composables/settings/useSyncUserCaches'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
+import { avatarVideoBasePath } from '~/utils/avatar-video-upload'
 import type { AvatarVideoEdit } from '~/utils/avatar-video-upload'
 import { putPresignedFile } from '~/utils/put-presigned-file'
 
@@ -319,13 +320,14 @@ const editError = ref<string | null>(null)
 const canSetVideoAvatar = ref(false)
 const videoEditorFile = ref<File | null>(null)
 const pendingVideoEdit = shallowRef<AvatarVideoEdit | null>(null)
-watch([() => props.modelValue, () => authUser.value?.id], async ([open]) => {
+watch([() => props.modelValue, () => authUser.value?.id, () => props.targetUserId], async ([open]) => {
   canSetVideoAvatar.value = false
   const identity = authUser.value?.id
-  if (!open || isAdminMode.value) return
+  const targetId = props.targetUserId
+  if (!open) return
   try {
-    const capability = await apiFetchData<{ canSet: boolean }>('/uploads/avatar/video/capabilities')
-    if (authUser.value?.id === identity) canSetVideoAvatar.value = capability.canSet
+    const capability = await apiFetchData<{ canSet: boolean }>(`${avatarVideoBasePath(targetId)}/capabilities`)
+    if (authUser.value?.id === identity && props.targetUserId === targetId && props.modelValue) canSetVideoAvatar.value = capability.canSet
   } catch { /* Image upload stays available. */ }
 }, { immediate: true })
 function stageVideo(edit: AvatarVideoEdit) {
@@ -636,6 +638,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
     const avatarInitUrl = adminId ? `/admin/users/${adminId}/uploads/avatar/init` : '/uploads/avatar/init'
     const avatarCommitUrl = adminId ? `/admin/users/${adminId}/uploads/avatar/commit` : '/uploads/avatar/commit'
     const avatarDeleteUrl = adminId ? `/admin/users/${adminId}/uploads/avatar` : '/uploads/avatar'
+    const videoBaseUrl = avatarVideoBasePath(adminId)
     const profilePatchUrl = adminId ? `/admin/users/${adminId}/profile` : '/users/me/profile'
 
     // Banner removal: a staged file always wins (the file was picked AFTER
@@ -703,23 +706,25 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
     if (pendingVideoEdit.value) {
       const edit = pendingVideoEdit.value
       const identity = authUser.value?.id
-      const init = await apiFetchData<{ id: string; uploadUrl: string; headers: Record<string, string> }>('/uploads/avatar/video/init', {
+      const init = await apiFetchData<{ id: string; uploadUrl: string; headers: Record<string, string> }>(`${videoBaseUrl}/init`, {
         method: 'POST', body: { contentType: edit.file.type },
       })
+      if (authUser.value?.id !== identity || (props.targetUserId ?? null) !== adminId) throw new Error('Account changed.')
       await putPresignedFile(init.uploadUrl, init.headers, edit.file)
+      if (authUser.value?.id !== identity || (props.targetUserId ?? null) !== adminId) throw new Error('Account changed.')
       type Status = { status: string; error: string | null; user: import('~/composables/useAuth').AuthUser | null }
-      let status = await apiFetchData<Status>(`/uploads/avatar/video/${init.id}/commit`, { method: 'POST', body: edit.selection })
+      let status = await apiFetchData<Status>(`${videoBaseUrl}/${init.id}/commit`, { method: 'POST', body: edit.selection })
       const deadline = Date.now() + 180_000
       while (['queued', 'processing'].includes(status.status) && Date.now() < deadline) {
-        if (authUser.value?.id !== identity) throw new Error('Account changed. Reopen the editor to continue.')
+        if (authUser.value?.id !== identity || (props.targetUserId ?? null) !== adminId) throw new Error('Account changed. Reopen the editor to continue.')
         await new Promise(resolve => setTimeout(resolve, 1500))
-        status = await apiFetchData<Status>(`/uploads/avatar/video/${init.id}`)
+        status = await apiFetchData<Status>(`${videoBaseUrl}/${init.id}`)
       }
       if (status.status !== 'ready' || !status.user) throw new Error(status.error || 'Your video is still processing. Your avatar will update when it is ready.')
-      if (authUser.value?.id !== identity) throw new Error('Account changed.')
+      if (authUser.value?.id !== identity || (props.targetUserId ?? null) !== adminId) throw new Error('Account changed.')
       emit('patchProfile', { avatarUrl: status.user.avatarUrl ?? null, avatarVideo: status.user.avatarVideo ?? null })
-      patchUser(status.user)
-      syncUserCaches(status.user, authUser.value?.username ?? null)
+      if (!adminId) patchUser(status.user)
+      syncUserCaches(status.user, props.profile?.username ?? null)
       clearPendingAvatar()
     } else if (pendingAvatarFile.value) {
       const file = pendingAvatarFile.value
