@@ -1,15 +1,17 @@
 <template>
   <div
-    class="sticky top-0 z-20 moh-surface relative border-b moh-border"
+    class="sticky top-0 z-20 moh-surface relative border-b moh-border flex items-center gap-2 pr-3 sm:pr-4"
   >
     <AppFeedScopeSelector
       :model-value="scope"
+      :tint="feedScopeTint(filter, { verified: viewerIsVerified, premium: viewerIsPremium })"
+      class="min-w-0 flex-1"
       @update:model-value="$emit('update:scope', $event as FeedScope)"
       @reselect="$emit('reselect', $event as FeedScope)"
     />
 
-    <!-- Filters bar — floated to the right, vertically centered in the tab row -->
-    <div class="absolute inset-y-0 right-0 flex items-center pr-3 sm:pr-4 pointer-events-none">
+    <!-- Keep the filter target separate from horizontally scrollable tabs. -->
+    <div class="flex shrink-0 items-center py-1">
       <div class="pointer-events-auto">
         <AppFeedFiltersBar
           :sort="sort"
@@ -26,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ProfilePostsFilter } from '~/utils/post-visibility'
+import { feedScopeTint, type ProfilePostsFilter } from '~/utils/post-visibility'
 import type { FeedScope } from '~/composables/useUrlFeedFilters'
 
 defineProps<{

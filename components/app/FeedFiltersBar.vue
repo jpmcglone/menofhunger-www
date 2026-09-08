@@ -1,126 +1,32 @@
 <template>
-  <div ref="filterWrapEl" class="inline-flex items-center gap-2">
-    <button
-      type="button"
-      class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full transition-colors hover:opacity-80"
-      :class="[!showVisibilityFilter ? 'min-h-11 text-xs moh-text-muted' : label ? 'min-h-11 px-5 text-sm font-semibold border moh-border' : 'h-8 w-8', showVisibilityFilter && !label && filter === 'all' ? 'ring-1 ring-current/40' : '']"
-      :style="filterButtonStyle"
-      :aria-label="`Feed filters: ${effectiveSort === 'trending' ? 'Trending' : 'Recent'}, ${filter}`"
-      aria-haspopup="menu"
-      :aria-expanded="filterPopoverOpen"
-      @click="toggleFilterPopover"
-    >
-      <Icon v-if="!label" :name="sortIconName" :class="showVisibilityFilter ? 'text-[22px]' : 'text-[14px]'" aria-hidden="true" />
-      <span v-if="!showVisibilityFilter">{{ effectiveSort === 'trending' ? 'Trending' : 'Newest' }}</span>
-      <span v-else-if="label">{{ label }}</span>
+  <div ref="filterWrapEl" class="inline-flex shrink-0 items-center py-1">
+    <button ref="triggerEl" type="button" class="filter-trigger" :class="{ 'is-active': isNonDefault, 'is-open': filterPopoverOpen }" :aria-label="`Feed filters: ${summary}`" :aria-controls="filterPopoverOpen ? menuId : undefined" aria-haspopup="menu" :aria-expanded="filterPopoverOpen" @click="toggleFilterPopover">
+      <Icon name="tabler:adjustments-horizontal" class="size-[18px] shrink-0" aria-hidden="true" />
+      <span>{{ showVisibilityFilter ? 'Filters' : effectiveSort === 'trending' ? 'Trending' : 'Recent' }}</span>
+      <span v-if="activeCount" class="filter-count" aria-hidden="true">{{ activeCount }}</span>
+      <Icon v-else name="tabler:chevron-down" class="size-3" aria-hidden="true" />
     </button>
-    <span v-if="label && effectiveSort === 'trending'" class="text-xs font-semibold moh-text whitespace-nowrap">↗ Trending</span>
-
     <Teleport to="body">
-      <div
-        v-if="filterPopoverOpen"
-        ref="filterMenuEl"
-        class="fixed z-[9999] w-52 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
-        :style="filterMenuStyle"
-        role="menu"
-        aria-label="Feed filters"
-      >
+      <div v-if="filterPopoverOpen" :id="menuId" ref="filterMenuEl" class="filter-menu" :style="filterMenuStyle" role="menu" aria-label="Feed filters" @keydown="onMenuKey">
+        <div class="filter-menu-title">Feed filters</div>
         <template v-if="!hideSort">
-          <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-zinc-500">
-            Order
-          </div>
-          <button
-            type="button"
-            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
-            role="menuitem"
-            @click="setSort('new')"
-          >
-            <Icon name="tabler:clock" class="text-[15px] opacity-60 shrink-0" aria-hidden="true" />
-            <span class="flex-1 text-left">{{ formatSortLabel('new') }}</span>
-            <Icon v-if="sort === 'new'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
-            role="menuitem"
-            @click="setSort('trending')"
-          >
-            <Icon name="tabler:bolt" class="text-[15px] opacity-60 shrink-0" aria-hidden="true" />
-            <span class="flex-1 text-left">{{ formatSortLabel('trending') }}</span>
-            <Icon v-if="sort === 'trending'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
+          <p class="filter-section-label">Order</p>
+          <button v-for="order in (['new', 'trending'] as const)" :key="order" type="button" class="filter-option" role="menuitemradio" :aria-checked="sort === order" @click="setSort(order)">
+            <Icon :name="order === 'new' ? 'tabler:clock' : 'tabler:trending-up'" class="filter-option-icon" aria-hidden="true" />
+            <span class="flex-1">{{ formatSortLabel(order) }}</span>
+            <Icon v-if="sort === order" name="tabler:check" class="size-4" aria-hidden="true" />
           </button>
         </template>
-
         <template v-if="showVisibilityFilter">
-          <div
-            class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-zinc-500"
-            :class="hideSort ? 'pt-2' : 'pt-3 border-t border-gray-100 dark:border-zinc-900 mt-1'"
-          >
-            Scope
-          </div>
-          <button
-            type="button"
-            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
-            role="menuitem"
-            @click="setFilter('all')"
-          >
-            <Icon name="tabler:layout-grid" class="text-[15px] opacity-60 shrink-0" aria-hidden="true" />
-            <span class="flex-1 text-left">All</span>
-            <Icon v-if="filter === 'all'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900 flex items-center gap-2"
-            role="menuitem"
-            @click="setFilter('public')"
-          >
-            <Icon name="tabler:world" class="text-[15px] opacity-60 shrink-0" aria-hidden="true" />
-            <span class="flex-1 text-left">Public</span>
-            <Icon v-if="filter === 'public'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors moh-menuitem-verified flex items-center gap-2"
-            role="menuitem"
-            @click="setFilter('verifiedOnly')"
-          >
-            <AppVerifiedBadge status="identity" :premium="false" :show-tooltip="false" />
-            <span class="flex-1 text-left">
-              Verified
-              <span v-if="!viewerIsVerified" class="ml-2 font-mono text-[10px] opacity-70" aria-hidden="true">LOCKED</span>
-            </span>
-            <Icon v-if="filter === 'verifiedOnly'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors moh-menuitem-premium flex items-center gap-2"
-            role="menuitem"
-            @click="setFilter('premiumOnly')"
-          >
-            <AppVerifiedBadge status="identity" :premium="true" :show-tooltip="false" />
-            <span class="flex-1 text-left">
-              Premium
-              <span v-if="!viewerIsPremium" class="ml-2 font-mono text-[10px] opacity-70" aria-hidden="true">LOCKED</span>
-            </span>
-            <Icon v-if="filter === 'premiumOnly'" name="tabler:check" class="text-[12px] opacity-60 shrink-0" aria-hidden="true" />
+          <p class="filter-section-label" :class="{ 'filter-divider': !hideSort }">Scope</p>
+          <button v-for="option in scopeOptions" :key="option.value" type="button" class="filter-option" role="menuitemradio" :aria-checked="filter === option.value" @click="setFilter(option.value)">
+            <Icon :name="option.icon" class="filter-option-icon" :class="{ 'scope-verified': option.value === 'verifiedOnly', 'scope-premium': option.value === 'premiumOnly' }" aria-hidden="true" />
+            <span class="min-w-0 flex-1"><span class="block">{{ option.title }}</span><span class="filter-hint">{{ option.hint }}</span></span>
+            <Icon v-if="filter === option.value" name="tabler:check" class="size-4" aria-hidden="true" />
+            <Icon v-else-if="option.locked" name="tabler:lock" class="size-4 moh-text-muted" aria-hidden="true" />
           </button>
         </template>
-
-        <div class="h-1.5" />
-
-        <template v-if="isNonDefault">
-          <div class="border-t border-gray-100 dark:border-zinc-900 mx-2" />
-          <button
-            type="button"
-            class="w-full cursor-pointer text-left px-3 py-2 text-[13px] font-semibold transition-colors text-gray-400 hover:bg-gray-50 dark:text-zinc-500 dark:hover:bg-zinc-900 flex items-center gap-2"
-            role="menuitem"
-            @click="clearFilters"
-          >
-            <Icon name="tabler:x" class="text-[14px] shrink-0" aria-hidden="true" />
-            <span>Clear</span>
-          </button>
-          <div class="h-1" />
-        </template>
+        <button v-if="isNonDefault" type="button" class="filter-reset" role="menuitem" @click="clearFilters"><Icon name="tabler:rotate-clockwise" class="size-4" aria-hidden="true" /> Reset filters</button>
       </div>
     </Teleport>
   </div>
@@ -128,7 +34,7 @@
 
 <script setup lang="ts">
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
-import { feedFilterButtonColor, feedFilterButtonBg } from '~/utils/post-visibility'
+
 
 const props = withDefaults(
   defineProps<{
@@ -188,43 +94,51 @@ function formatSortLabel(v: 'new' | 'trending'): string {
 }
 
 const effectiveSort = computed(() => (props.hideSort ? 'new' : sort.value))
-const sortIconName = computed(() => {
-  if (props.hideSort) {
-    // For You: show the scope icon instead of sort
-    if (filter.value === 'verifiedOnly') return 'tabler:rosette-discount-check'
-    if (filter.value === 'premiumOnly') return 'tabler:rosette-discount-check'
-    if (filter.value === 'public') return 'tabler:world'
-    return 'tabler:layout-grid'
-  }
-  return effectiveSort.value === 'trending' ? 'tabler:bolt' : 'tabler:clock'
-})
+const triggerEl = ref<HTMLButtonElement | null>(null)
+const menuId = useId()
+const activeCount = computed(() => Number(!props.hideSort && sort.value !== 'new') + Number(props.showVisibilityFilter && filter.value !== 'all'))
+const scopeOptions = computed(() => [
+  { value: 'all', title: 'All', hint: 'Every post you can access', icon: 'tabler:layout-grid', locked: false },
+  { value: 'public', title: 'Public', hint: 'Posts shared with everyone', icon: 'tabler:world', locked: false },
+  { value: 'verifiedOnly', title: 'Verified', hint: viewerIsVerified.value ? 'Posts for verified members' : 'Verification required', icon: 'tabler:circle-check-filled', locked: !viewerIsVerified.value },
+  { value: 'premiumOnly', title: 'Premium', hint: viewerIsPremium.value ? 'Posts for premium members' : 'Premium membership required', icon: 'tabler:rosette-discount-check', locked: !viewerIsPremium.value },
+] as const)
+const summary = computed(() => [!props.hideSort ? formatSortLabel(effectiveSort.value) : '', props.showVisibilityFilter ? scopeOptions.value.find(o => o.value === filter.value)?.title ?? filter.value : ''].filter(Boolean).join(', '))
+const filterMenuHeight = computed(() => 72 + (props.hideSort ? 0 : 140) + (props.showVisibilityFilter ? 292 : 0) + (activeCount.value ? 52 : 0))
 
-const filterButtonStyle = computed(() => ({
-  color: feedFilterButtonColor(filter.value),
-  background: feedFilterButtonBg(filter.value),
-}))
+function focusOption(direction: number) {
+  const items = Array.from(filterMenuEl.value?.querySelectorAll<HTMLButtonElement>('button') ?? [])
+  const current = items.findIndex(item => item === document.activeElement)
+  items[(current + direction + items.length) % items.length]?.focus({ preventScroll: true })
+}
+function onMenuKey(event: KeyboardEvent) {
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    focusOption(event.key === 'ArrowDown' ? 1 : -1)
+  } else if (event.key === 'Home' || event.key === 'End') {
+    event.preventDefault()
+    const items = filterMenuEl.value?.querySelectorAll<HTMLButtonElement>('button')
+    items?.[event.key === 'Home' ? 0 : items.length - 1]?.focus({ preventScroll: true })
+  } else if (event.key === 'Tab') closeFilterPopover(false)
+}
 
-const filterMenuHeight = computed(() => {
-  const sortH = props.hideSort ? 0 : 100
-  const scopeH = props.showVisibilityFilter ? 188 : 0
-  return 16 + sortH + scopeH
-})
-
-function closeFilterPopover() {
+function closeFilterPopover(restoreFocus = true) {
   filterPopoverOpen.value = false
   resetFilterMenu()
+  if (restoreFocus) triggerEl.value?.focus({ preventScroll: true })
 }
 
 function toggleFilterPopover(e: MouseEvent) {
   const next = !filterPopoverOpen.value
   if (next) {
     const btn = e.currentTarget as HTMLElement
-    placeFilterMenu(btn, { align: 'end', menuWidth: 208, menuHeight: filterMenuHeight.value })
+    placeFilterMenu(btn, { align: 'end', menuWidth: 288, menuHeight: filterMenuHeight.value })
   } else {
     closeFilterPopover()
     return
   }
   filterPopoverOpen.value = next
+  if (next) void nextTick(() => filterMenuEl.value?.querySelector<HTMLButtonElement>('button[aria-checked="true"], button')?.focus({ preventScroll: true }))
 }
 
 function setSort(v: 'new' | 'trending') {
@@ -238,18 +152,18 @@ function setFilter(v: ProfilePostsFilter) {
 }
 
 const isNonDefault = computed(
-  () => sort.value !== 'new' || filter.value !== 'all',
+  () => activeCount.value > 0,
 )
 
 function clearFilters() {
-  if (sort.value !== 'new') emit('update:sort', 'new')
-  if (filter.value !== 'all') emit('update:filter', 'all')
+  if (!props.hideSort && sort.value !== 'new') emit('update:sort', 'new')
+  if (props.showVisibilityFilter && filter.value !== 'all') emit('update:filter', 'all')
   closeFilterPopover()
 }
 
 watch(
   filterPopoverOpen,
-  (open) => {
+  (open, _previous, onCleanup) => {
     if (!import.meta.client) return
     if (!open) return
 
@@ -258,7 +172,7 @@ watch(
       if (!target) return
       if (filterWrapEl.value && filterWrapEl.value.contains(target)) return
       if (filterMenuEl.value && filterMenuEl.value.contains(target)) return
-      closeFilterPopover()
+      closeFilterPopover(false)
     }
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeFilterPopover()
@@ -268,12 +182,33 @@ watch(
     window.addEventListener('touchstart', onPointerDown, true)
     window.addEventListener('keydown', onKeyDown)
 
-    return () => {
+    onCleanup(() => {
       window.removeEventListener('mousedown', onPointerDown, true)
       window.removeEventListener('touchstart', onPointerDown, true)
       window.removeEventListener('keydown', onKeyDown)
-    }
+    })
   },
   { flush: 'post' },
 )
 </script>
+
+<style scoped>
+.filter-trigger { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 0 10px; border: 1px solid var(--moh-border); border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--moh-text-muted); background: var(--moh-bg); cursor: pointer; }
+.filter-trigger::before { content: ""; position: absolute; inset: -4px 0; }
+.filter-trigger:hover, .filter-trigger.is-open { background: var(--moh-surface-2); color: var(--moh-text); }
+.filter-trigger.is-active { color: var(--moh-text); }
+.filter-count { display: grid; place-items: center; min-width: 20px; height: 20px; border-radius: 50%; background: var(--moh-text); color: var(--moh-bg); font-size: 11px; }
+.filter-menu { position: fixed; z-index: 9999; width: 288px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 8px; border-radius: 20px; border: 1px solid var(--moh-border); background: var(--moh-bg); color: var(--moh-text); box-shadow: 0 16px 48px #0003; }
+.filter-menu-title { padding: 12px 12px 16px; font-size: 17px; font-weight: 600; }
+.filter-section-label { padding: 8px 12px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--moh-text-muted); }
+.filter-divider { border-top: 1px solid var(--moh-border); margin-top: 8px; padding-top: 16px; }
+.filter-option { display: flex; align-items: center; gap: 12px; min-height: 48px; width: 100%; padding: 12px; border-radius: 12px; text-align: left; font-size: 15px; font-weight: 600; cursor: pointer; }
+.filter-option[aria-checked=true] { background: var(--moh-surface-2); }
+.filter-option:hover { background: var(--moh-surface); }
+.filter-option-icon { width: 20px; height: 20px; flex-shrink: 0; color: var(--moh-text-muted); }
+.filter-hint { display: block; margin-top: 3px; font-size: 12px; line-height: 18px; font-weight: 400; color: var(--moh-text-muted); }
+.scope-verified { color: var(--moh-verified); }
+.scope-premium { color: var(--moh-premium); }
+.filter-reset { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 12px; margin-top: 8px; border-top: 1px solid var(--moh-border); font-size: 13px; font-weight: 600; color: var(--moh-text-muted); cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--moh-brass); outline-offset: -2px; }
+</style>

@@ -90,3 +90,10 @@ export function postActionVisibilityColor(visibility: string): string {
   if (visibility === 'onlyMe') return 'var(--moh-onlyme)'
   return 'var(--moh-text)'
 }
+
+/** Highest available feed visibility drives the selected navigation tint. */
+export function feedScopeTint(filter: ProfilePostsFilter, viewer: { verified: boolean; premium: boolean }): string {
+  if (filter === 'premiumOnly' || (filter === 'all' && viewer.premium)) return 'var(--moh-premium)'
+  if (filter === 'verifiedOnly' || (filter === 'all' && viewer.verified)) return 'var(--moh-verified)'
+  return 'var(--moh-text)'
+}

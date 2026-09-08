@@ -1,3 +1,4 @@
+import { recordWelcomeProgress } from '~/utils/welcome-progress'
 import type { FeedPost } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { seedPermalinkPost } from '~/utils/permalink-seed'
@@ -112,6 +113,7 @@ export function usePendingPostsManager() {
         REGISTRY.delete(entry.localId)
         return
       }
+      recordWelcomeProgress(real.author.id, { posted: true })
       entry.callbacks.replace(entry.localId, real)
       entry.onSuccess?.(real)
       REGISTRY.delete(entry.localId)

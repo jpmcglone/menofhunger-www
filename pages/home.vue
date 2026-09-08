@@ -121,8 +121,11 @@
     <ClientOnly>
       <AppFeedHomeWelcomeCard
         v-if="isAuthed && !isPageAccount"
+        :key="authUser?.id"
         :show-checkin-cta="showCheckinPromptBar"
         :checkin-prompt="displayCheckinPromptText"
+        :has-posted="(checkinState?.checkinStreakDays ?? 0) > 0 || checkinState?.hasCheckedInToday === true"
+        @compose="openComposer?.()"
         @check-in="openCheckinComposer"
       />
     </ClientOnly>

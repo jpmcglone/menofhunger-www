@@ -3,7 +3,7 @@
     ref="barEl"
     role="tablist"
     aria-label="Feed scope"
-    class="relative flex items-stretch border-b moh-border"
+    class="relative flex items-stretch overflow-x-auto"
   >
     <button
       v-for="(tab, idx) in TABS"
@@ -13,13 +13,14 @@
       role="tab"
       :aria-selected="modelValue === tab.key ? 'true' : 'false'"
       :tabindex="modelValue === tab.key ? 0 : -1"
-      class="relative inline-flex items-center px-4 sm:px-5 py-2.5 sm:py-3 text-[13px] sm:text-sm whitespace-nowrap select-none transition-colors duration-150 cursor-pointer moh-focus"
+      class="relative inline-flex items-center px-3 sm:px-5 min-h-[52px] py-2.5 sm:py-3 text-[13px] sm:text-sm whitespace-nowrap select-none transition-colors duration-150 cursor-pointer moh-focus"
       :class="[
         tab.bold ? 'font-bold' : 'font-semibold',
         modelValue === tab.key
           ? 'moh-text'
           : 'moh-text-muted hover:moh-text',
       ]"
+      :style="modelValue === tab.key && tint ? { color: tint } : undefined"
       @click="select(tab.key)"
       @keydown="(e) => onKeydown(e, idx)"
     >
@@ -30,6 +31,7 @@
     <span
       class="absolute bottom-0 h-[2px] rounded-full pointer-events-none bg-[var(--p-primary-500,#b45309)]"
       :style="{
+        backgroundColor: tint,
         left: `${underlineLeft}px`,
         width: `${underlineWidth}px`,
         transition: underlineReady ? 'left 220ms ease-in-out, width 220ms ease-in-out' : 'none',
@@ -40,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import { useResizeObserver } from '@vueuse/core'
 import type { FeedScope } from '~/composables/useUrlFeedFilters'
 
 const TABS = [
@@ -50,6 +53,7 @@ const TABS = [
 
 const props = defineProps<{
   modelValue: FeedScope
+  tint?: string
 }>()
 
 const emit = defineEmits<{
@@ -98,9 +102,11 @@ function updateUnderline() {
   if (!bar || !btn) return
   const barRect = bar.getBoundingClientRect()
   const btnRect = btn.getBoundingClientRect()
-  underlineLeft.value = Math.round(btnRect.left - barRect.left)
+  underlineLeft.value = Math.round(btnRect.left - barRect.left + bar.scrollLeft)
   underlineWidth.value = Math.round(btnRect.width)
 }
+
+useResizeObserver(barEl, updateUnderline)
 
 watch(
   () => props.modelValue,

@@ -552,6 +552,7 @@
 </template>
 
 <script setup lang="ts">
+import { recordWelcomeProgress } from '~/utils/welcome-progress'
 import AppComposerActionBar from '~/components/app/composer/ActionBar.vue'
 import { makeLocalId } from '~/composables/composer/types'
 import type { CreatePostData, PostStreakReward, PostVisibility, FeedPost, PostAuthor, ScheduledPost } from '~/types/api'
@@ -1573,6 +1574,7 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     clearComposer()
 
     if (post?.id) {
+      recordWelcomeProgress(post.author.id, { posted: true })
       emit('posted', { id: post.id, visibility: vis, post })
       pushPostedToast(post)
       if (streakReward) pushStreakToast(streakReward)
