@@ -1,6 +1,7 @@
+import { adminReviewFields } from './admin-assistant'
 import type { DelegationJobDto } from '~/types/api'
 export function delegationStatus(value: string) { return ({ review: 'Needs review', pending: 'Needs review', queued: 'Queued', running: 'Working', complete: 'Complete', active: 'Active', paused: 'Paused', cancelled: 'Cancelled', failed: 'Could not finish', uncertain: 'Check result', applying: 'Applying' } as Record<string, string>)[value] ?? value }
 export function delegationSafePath(path: string | null): boolean { return Boolean(path && /^\/(?:p|s|admin|only-me|scheduled|bookmarks|u)(?:\/|\?|$)/.test(path) && !/[\\\r\n]/.test(path)) }
 export function delegationSafeSource(url: string): boolean { try { const parsed = new URL(url); return parsed.protocol === 'https:' && !parsed.username && !parsed.password } catch { return false } }
-export function delegationSchedule(job: DelegationJobDto): string { const s = job.schedule; return s.frequency === 'once' ? 'One-time job' : `${s.frequency === 'daily' ? 'Every day' : ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][s.weekday]} at ${s.time} · ${s.timeZone}` }
+export function delegationSchedule(job: DelegationJobDto): string { const s = job.schedule; return s.frequency === 'once' ? adminReviewFields(JSON.stringify({ schedule: s }))[0]!.value : `${s.frequency === 'daily' ? 'Every day' : ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][s.weekday]} at ${s.time} · ${s.timeZone}` }
 export function delegationNeedsReview(job: DelegationJobDto): boolean { return Boolean(job.pendingCount) || job.runs.some(r => r.actions.some(a => a.status === 'pending')) }

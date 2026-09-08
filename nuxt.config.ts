@@ -448,8 +448,8 @@ export default defineNuxtConfig({
     '/email/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/articles/new': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/articles/edit/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
-    '/admin': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
-    '/admin/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/admin': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
+    '/admin/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
     '/status': { ssr: true, headers: { 'cache-control': 'no-store' } },
     // Render readiness probe — never cache; must reflect the live process.
     '/health': { headers: { 'cache-control': 'no-store, no-cache, must-revalidate' } },

@@ -119,3 +119,19 @@ describe('newest-first ask board', () => {
     } finally { wrapper.unmount() }
   })
 })
+
+it('reviews an immediate verified-only post and sends one direct confirmation', async () => {
+  spies.fetch.mockResolvedValue({ ...workspace, turns: [{ id: 'turn', question: 'Post now as @john', answer: 'Ready to review.', status: 'complete', sources: [], createdAt: '2026-09-07T00:00:00Z', actions: [{ id: 'post-review', operation: 'post_publish', title: 'Publish as @john', path: '/admin/assistant', before: '{}', changes: '{"body":"Keep going, men.","visibility":"verifiedOnly"}', status: 'pending', resultMessage: null, expiresAt: '2099-01-01T00:00:00Z' }] }] })
+  const wrapper = mount(AdminAssistantWorkspace, { global: { plugins: [PrimeVue], stubs: { Icon: true, NuxtLink: RouterLinkStub } } })
+  try {
+    await flushPromises()
+    expect(wrapper.text()).toContain('Verified only')
+    expect(wrapper.text()).toContain('Publishes immediately after confirmation.')
+    expect(wrapper.text()).not.toContain('Open admin tool')
+    const publish = wrapper.findAll('button').find(button => button.text() === 'Publish now')!
+    await publish.trigger('click')
+    await flushPromises()
+    expect(spies.fetch).toHaveBeenCalledWith('/admin/assistant/actions/post-review', { method: 'POST', body: { decision: 'confirm' }, retry: 0 })
+    expect(spies.fetch.mock.calls.some(([path]) => String(path).includes('/delegation/jobs'))).toBe(false)
+  } finally { wrapper.unmount() }
+})

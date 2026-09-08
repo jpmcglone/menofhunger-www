@@ -24,6 +24,7 @@ export function adminAnswerPreview(answer: string | null): string {
 export function adminReviewFields(raw: string): Array<{ label: string; value: string }> {
   let value: Record<string, unknown>
   try { value = JSON.parse(raw) } catch { return [{ label: 'Details', value: raw }] }
+  const visibility: Record<string, string> = { public: 'Public', verifiedOnly: 'Verified only', premiumOnly: 'Premium only', onlyMe: 'Only me' }
   const text = (entry: unknown): string => {
     if (entry == null) return 'None'
     if (typeof entry === 'boolean') return entry ? 'Yes' : 'No'
@@ -38,6 +39,18 @@ export function adminReviewFields(raw: string): Array<{ label: string; value: st
     return item.text ?? (item.content?.map(bodyText).join(item.type === 'doc' ? '\n\n' : '') ?? '')
   }
   return Object.entries(value).map(([key, entry]) => {
+    if (key === 'visibility' && typeof entry === 'string') return { label: 'Visibility', value: visibility[entry] ?? entry }
+    if (key === 'schedule' && entry && typeof entry === 'object') {
+      const schedule = entry as { frequency?: string; at?: string; time?: string; timeZone?: string; weekday?: number }
+      try {
+        const zone = schedule.timeZone ?? 'America/New_York'
+        if (schedule.frequency === 'once') return { label: 'Schedule', value: schedule.at
+          ? `Once · ${new Intl.DateTimeFormat('en-US', { timeZone: zone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(schedule.at))} · ${zone}`
+          : 'Once · As soon as the job is created' }
+        const day = schedule.frequency === 'daily' ? 'Every day' : ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][schedule.weekday ?? 1]
+        return { label: 'Schedule', value: `${day} at ${schedule.time} · ${zone}` }
+      } catch { /* Preserve invalid input for review. */ }
+    }
     if (key === 'bodyJson' && typeof entry === 'string') {
       try { return { label: 'Body', value: bodyText(JSON.parse(entry)) } } catch { /* Display invalid draft text so it remains reviewable. */ }
     }

@@ -17,14 +17,15 @@
             <p class="font-semibold">{{ action.title }}</p>
             <p class="text-sm moh-text-muted">{{ action.status }} · Expires {{ adminAskDate(action.expiresAt) }}</p>
             <details :open="action.changes === '{}'"><summary class="cursor-pointer text-sm">Review current item</summary><dl class="mt-2 space-y-2"><div v-for="field in adminReviewFields(action.before)" :key="field.label"><dt class="text-xs moh-text-muted">{{ field.label }}</dt><dd class="whitespace-pre-wrap break-words text-sm">{{ field.value }}</dd></div></dl></details>
+            <p v-if="action.operation === 'post_publish' && action.status === 'pending'" class="text-sm moh-text-muted">Publishes immediately after confirmation.</p>
             <p v-if="action.changes !== '{}'" class="text-xs font-medium moh-text-muted">Proposed changes</p>
             <dl class="space-y-2"><div v-for="field in adminReviewFields(action.changes)" :key="field.label"><dt class="text-xs moh-text-muted">{{ field.label }}</dt><dd class="whitespace-pre-wrap break-words text-sm">{{ field.value }}</dd></div></dl>
             <div class="flex flex-wrap items-center gap-2">
               <template v-if="action.status === 'pending'">
-                <Button class="marv-apply" label="Apply this change" :loading="deciding === action.id" :disabled="!!deciding" @click="emit('decide', action, 'confirm')" ><template #loadingicon><AppMarvMark :size="18" loading /></template></Button>
+                <Button class="marv-apply" :label="action.operation === 'post_publish' ? 'Publish now' : 'Apply this change'" :loading="deciding === action.id" :disabled="!!deciding" @click="emit('decide', action, 'confirm')" ><template #loadingicon><AppMarvMark :size="18" loading /></template></Button>
                 <Button label="Cancel" text severity="secondary" :disabled="!!deciding" @click="emit('decide', action, 'cancel')" />
               </template>
-              <NuxtLink :to="action.path" class="text-sm underline">Open admin tool</NuxtLink>
+              <NuxtLink v-if="action.path && (action.operation !== 'post_publish' || action.status === 'complete')" :to="action.path" class="text-sm underline">{{ action.operation === 'post_publish' ? 'View post' : 'Open admin tool' }}</NuxtLink>
             </div>
             <p v-if="action.resultMessage" class="text-sm moh-text-muted">{{ action.resultMessage }}</p>
           </div>
