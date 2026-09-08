@@ -115,8 +115,15 @@ function buildBookPattern(): string {
 
 const BOOK_ALT = buildBookPattern()
 
+// Keep citations on one line so a list bullet cannot become a verse-range dash.
+const INLINE_SPACE = String.raw`[^\S\r\n\v\f\u0085\u2028\u2029]`
+// A number introducing another book belongs to that citation, not this verse list/range.
+const VERSE_NUMBER = `(?!${BOOK_ALT})\\d{1,3}`
+const VERSE_SPAN = `${VERSE_NUMBER}(?:${INLINE_SPACE}*[-–—]${INLINE_SPACE}*${VERSE_NUMBER})?`
+const VERSE_SPEC = `${VERSE_SPAN}(?:${INLINE_SPACE}*,${INLINE_SPACE}*${VERSE_SPAN})*`
+
 export const SCRIPTURE_IN_TEXT_RE = new RegExp(
-  `(?<![A-Za-z0-9])(${BOOK_ALT})\\.?\\s+(\\d{1,3})(?::(\\d{1,3}(?:\\s*-\\s*\\d{1,3})?(?:\\s*,\\s*\\d{1,3}(?:\\s*-\\s*\\d{1,3})?)*))?(?![A-Za-z0-9:])`,
+  `(?<![A-Za-z0-9])(${BOOK_ALT})\\.?${INLINE_SPACE}+(\\d{1,3})(?::(${VERSE_SPEC}))?(?![A-Za-z0-9:])`,
   'gi',
 )
 
@@ -140,7 +147,7 @@ function parseVerseSpec(spec: string | undefined): VerseSpan[] | null {
   if (!spec) return null
   const spans: VerseSpan[] = []
   for (const part of spec.split(/\s*,\s*/)) {
-    const bits = part.split(/\s*-\s*/)
+    const bits = part.split(/\s*[-–—]\s*/)
     const start = parseInt(bits[0] ?? '', 10)
     if (!Number.isFinite(start)) continue
     const endRaw = bits[1] !== undefined ? parseInt(bits[1], 10) : null

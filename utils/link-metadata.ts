@@ -195,7 +195,7 @@ export async function getLinkMetadata(url: string, opts: GetLinkMetadataOptions 
         const { apiFetchData } = useApiClient()
         const data = await apiFetchData<LinkMetadata | null>('/link-metadata', {
           method: 'GET',
-          query: { url: u.toString(), v: 2 },
+          query: { url: u.toString(), v: 3 },
           signal: opts.signal,
           mohDedupe: true,
         })

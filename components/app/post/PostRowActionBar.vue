@@ -26,7 +26,7 @@
 
   <div
     v-else-if="!isDeletedPost && !isOnlyMe"
-    class="mt-2.5 flex flex-wrap items-center justify-between sm:justify-start gap-1 moh-text-muted"
+    class="mt-2 flex flex-wrap items-center justify-between sm:justify-start gap-1 moh-text-muted"
   >
     <!-- Reply -->
     <div class="inline-flex items-center">

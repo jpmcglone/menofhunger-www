@@ -204,8 +204,8 @@
           </div>
         </div>
 
-        <div ref="commentsFeedTopEl" class="border-b border-gray-200 dark:border-zinc-800">
-          <div class="px-4 py-3 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 dark:border-zinc-800">
+        <div ref="commentsFeedTopEl" class="border-b moh-border">
+          <div class="px-4 sm:px-6 py-1 flex flex-wrap items-center justify-between gap-3 border-b moh-border">
             <div class="text-sm font-semibold moh-text">
               Replies
               <span class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400 tabular-nums">
@@ -224,7 +224,7 @@
             />
           </div>
           <AppSubtleSectionLoader :loading="commentsInitialLoading" min-height-class="min-h-[140px]">
-            <div v-if="!comments.length" class="px-4 py-6 text-sm moh-text-muted">
+            <div v-if="!comments.length" class="px-4 sm:px-6 py-6 text-sm moh-text-muted">
               No replies yet.
             </div>
             <template v-else>
@@ -281,8 +281,8 @@
             class="border-b moh-border"
           >
             <div ref="discoverSentinelEl" class="h-1 w-full" aria-hidden="true" />
-            <div class="px-4 pt-5 pb-2">
-              <div class="text-base font-bold moh-text">Discover more</div>
+            <div class="px-4 sm:px-6 pt-6 pb-4">
+              <div class="text-xl font-semibold moh-text">Discover more</div>
               <div class="mt-0.5 text-sm moh-text-muted">From across Men of Hunger</div>
             </div>
             <div v-if="discoverLoading && !discoverPosts.length" class="flex items-center justify-center py-8">

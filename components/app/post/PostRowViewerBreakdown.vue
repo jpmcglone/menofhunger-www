@@ -3,7 +3,7 @@
     <button
       ref="viewerCountBtnEl"
       type="button"
-      class="moh-tap group relative z-10 inline-flex items-end gap-1 px-0.5 py-0.5 tabular-nums select-none transition-colors"
+      class="moh-tap group relative z-10 inline-flex items-center gap-1 px-0.5 py-0.5 tabular-nums select-none transition-colors"
       :class="viewerCount > 0 ? 'cursor-pointer' : 'cursor-default opacity-0 pointer-events-none'"
       :aria-label="ariaLabel"
       :aria-expanded="viewerBreakdownVisible" aria-haspopup="dialog" :aria-controls="panelId"

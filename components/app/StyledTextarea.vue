@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { useEditor, EditorContent, Extension, mergeAttributes } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
+import { composerStarterKit } from '~/utils/composer-editor'
 import Mention from '@tiptap/extension-mention'
 import Placeholder from '@tiptap/extension-placeholder'
 import type { Editor as CoreEditor, KeyboardShortcutCommand } from '@tiptap/core'
@@ -602,19 +602,7 @@ let pendingDecorationRefresh = false
 
 const editor = useEditor({
   extensions: [
-    StarterKit.configure({
-      heading: false,
-      blockquote: false,
-      codeBlock: false,
-      bulletList: false,
-      orderedList: false,
-      listItem: false,
-      horizontalRule: false,
-      code: false,
-      bold: false,
-      italic: false,
-      strike: false,
-    }),
+    composerStarterKit,
     Placeholder.configure({ placeholder: props.placeholder }),
     MentionWithColor.configure({ suggestion: mentionSuggestion as any }),
     HashtagNode.configure({ suggestion: hashtagSuggestion as any }),

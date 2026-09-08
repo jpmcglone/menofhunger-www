@@ -264,6 +264,11 @@
             tight-bottom
           />
         </div>
+        <AppComposerLinkPreview
+          v-if="!composerMedia.length && !voice.recording.value && !pendingVoice"
+          :text="modelValue"
+          class="mt-2"
+        />
       </div>
     </div>
 

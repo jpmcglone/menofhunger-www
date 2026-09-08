@@ -10,6 +10,8 @@
     "/terms",
     "/login",
     "/home",
+    "/daily/word",
+    "/daily/quote",
     "/admin",
     "/admin/assistant",
     "/explore",

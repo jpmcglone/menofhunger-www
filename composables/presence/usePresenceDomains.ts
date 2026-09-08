@@ -657,6 +657,16 @@ export function usePresenceDomains() {
 
     // ── Daily content ─────────────────────────────────────────────────
     socket.on('daily:content-published', (data: { item: 'word' | 'quote'; dayKey: string }) => {
+      // Invalidate even when no daily page/rail is mounted (notably on mobile).
+      // Otherwise a later notification tap can resurrect yesterday's persistent word.
+      if (data.item === 'word') {
+        useWotdData().value = null
+        clearNuxtData('websters1828:wotd')
+      }
+      clearNuxtData('daily-content:today')
+      void refreshNuxtData(data.item === 'word'
+        ? ['daily-content:today', 'websters1828:wotd']
+        : ['daily-content:today'])
       if (!dailyContentCallbacks.value.size) return
       for (const cb of dailyContentCallbacks.value) cb.onPublished?.(data.item, data.dayKey)
     })

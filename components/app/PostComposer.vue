@@ -172,6 +172,12 @@
             />
           </div>
 
+          <AppComposerLinkPreview
+            v-if="!composerMedia.length && !quotedPost && !poll"
+            :text="draft"
+            class="mt-3"
+          />
+
           <AppInlineAlert v-if="submitError" class="mt-3" severity="danger">
             {{ submitError }}
           </AppInlineAlert>

@@ -3,8 +3,8 @@
     ref="rowEl"
     :data-post-id="postView.id"
     :class="[
-      'relative overflow-visible moh-gutter-x transition-colors',
-      compact ? 'py-1.5 sm:py-2' : 'py-3 sm:py-4',
+      'relative overflow-visible moh-gutter-x moh-post-row transition-colors',
+      compact ? 'pt-3 pb-2' : 'pt-4 pb-2 sm:pt-6',
       noBorderBottom
         ? ''
         : subtleBorderBottom
@@ -47,7 +47,7 @@
       aria-hidden="true"
     >
       <div
-        class="w-[2px]"
+        class="w-[2px] opacity-75"
         :class="threadLineTint ? '' : 'bg-[var(--moh-thread-line)]'"
         :style="threadLineAboveStyle"
       />
@@ -60,14 +60,13 @@
       aria-hidden="true"
     >
       <div
-        class="w-[2px] h-full"
+        class="w-[2px] h-full opacity-75"
         :class="threadLineTint ? '' : 'bg-[var(--moh-thread-line)]'"
         :style="threadLineBelowStyle"
       />
     </div>
     <div
-      class="relative z-[2] flex gap-2.5 sm:gap-3"
-      :class="{ 'mt-2': showThreadLineAboveAvatar }"
+      class="relative z-[2] flex gap-3"
     >
       <div class="relative z-20 shrink-0 flex flex-col w-10">
         <!-- Own post + in a space: show context menu instead of direct navigation -->
@@ -162,20 +161,19 @@
           :is="postView.checkinDayKey ? NuxtLink : 'div'"
           v-if="!isDeletedPost && postView.kind === 'checkin' && postView.checkinPrompt"
           :to="postView.checkinDayKey ? `/check-ins/day/${postView.checkinDayKey}` : undefined"
-          class="mt-3 mb-3 inline-flex min-w-[12rem] max-w-full items-start gap-2.5 rounded-xl border px-3 py-2.5 transition-opacity hover:opacity-80"
+          class="mt-3 mb-3 flex w-full items-start gap-3 rounded-xl border p-3 transition-opacity hover:opacity-80"
           :class="postView.checkinDayKey ? 'cursor-pointer' : ''"
-          style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
+          style="background-color: rgba(var(--moh-checkin-rgb), 0.10); border-color: rgba(var(--moh-checkin-rgb), 0.24);"
           @click.stop
         >
           <div
-            class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
-            style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
+            class="flex h-5 w-5 shrink-0 items-center justify-center"
           >
-            <Icon name="tabler:calendar-check" class="text-[13px]" aria-hidden="true" style="color: var(--moh-checkin)" />
+            <Icon name="tabler:calendar-check" class="text-[20px]" aria-hidden="true" style="color: var(--moh-checkin)" />
           </div>
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
-              <span class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.75">Prompt</span>
+              <span class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin)">Prompt</span>
               <span
                 v-if="isCheckinPromptToday"
                 class="rounded-full px-1.5 py-px text-[9px] font-bold uppercase tracking-wide border"
@@ -294,7 +292,7 @@
 
         <div
           v-if="!isDeletedPost && !isGatedPost && (metaTags.length || displayViewerCount > 0)"
-          class="mt-3.5 flex items-center justify-between gap-3"
+          class="mt-3 flex flex-wrap items-center justify-between gap-3"
         >
           <div class="flex min-w-0 items-center gap-2">
             <template v-for="t in metaTags" :key="t.key">
@@ -321,6 +319,7 @@
           </div>
           <AppPostRowViewerBreakdown
             v-if="displayViewerCount > 0"
+            class="ml-auto shrink-0"
             :entity-id="postView.id"
             :breakdown-path="`/posts/${encodeURIComponent(postView.id)}/views/breakdown?fresh=1`"
             :viewer-count="displayViewerCount"

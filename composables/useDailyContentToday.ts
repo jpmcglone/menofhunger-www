@@ -13,7 +13,7 @@ export function useDailyContentToday(
   const { apiFetchData } = useApiClient()
   return useAsyncData<DailyContentToday | null>(
     'daily-content:today',
-    () => apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' }),
+    () => apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET', cache: 'no-store', mohDedupe: false }),
     { default: () => null, ...opts },
   )
 }

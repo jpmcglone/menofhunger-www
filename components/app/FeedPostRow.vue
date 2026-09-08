@@ -82,7 +82,7 @@
       <!-- Collapsed run of hidden ancestors: one dot per hidden post, inset between thread lines. -->
       <div
         v-if="entry.kind === 'gap'"
-        class="relative moh-gutter-x flex cursor-pointer items-center gap-2.5 py-1 transition-colors moh-surface-hover sm:gap-3"
+        class="relative moh-gutter-x moh-post-row flex cursor-pointer items-center gap-3 py-1 transition-colors moh-surface-hover"
         role="link"
         tabindex="0"
         :aria-label="hiddenThreadGapLabel(entry.hiddenCount)"

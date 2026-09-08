@@ -666,39 +666,32 @@ input[type="reset"] {
     border-color: rgba(var(--moh-onlyme-rgb), 0.4);
   }
 
+  /* Approved post-thread gutters: 16px mobile, 24px desktop. */
+  .moh-post-row { --moh-gutter-x: 1rem; }
+  @media (min-width: 640px) {
+    .moh-post-row { --moh-gutter-x: 1.5rem; }
+  }
+
   /* Post row highlight (e.g. the post being viewed on /p/:id). Color matches post visibility, not viewer tier. */
   .moh-post-highlight {
     /* Public: neutral bar + tint so highlight does not inherit viewer's theme. */
-    box-shadow: inset 3px 0 0 0 var(--moh-border);
+    box-shadow: inset 1px 0 0 0 var(--moh-border);
     background-color: color-mix(in srgb, var(--moh-border) 1.5%, transparent);
   }
   html.dark .moh-post-highlight {
     background-color: color-mix(in srgb, var(--moh-border) 18%, transparent);
   }
-  /* Highlight wash eats the default divider; bump it one step so the action bar still reads. */
-  .moh-post-highlight .moh-post-actions-divider {
-    border-color: var(--moh-border-strong);
-  }
   .moh-post-highlight-verified {
-    box-shadow: inset 3px 0 0 0 var(--moh-verified);
+    box-shadow: inset 1px 0 0 0 var(--moh-verified);
     background-color: rgba(var(--moh-verified-rgb), 0.08);
   }
-  html.dark .moh-post-highlight-verified {
-    background-color: rgba(var(--moh-verified-rgb), 0.12);
-  }
   .moh-post-highlight-premium {
-    box-shadow: inset 3px 0 0 0 var(--moh-premium);
+    box-shadow: inset 1px 0 0 0 var(--moh-premium);
     background-color: rgba(var(--moh-premium-rgb), 0.08);
   }
-  html.dark .moh-post-highlight-premium {
-    background-color: rgba(var(--moh-premium-rgb), 0.12);
-  }
   .moh-post-highlight-onlyme {
-    box-shadow: inset 3px 0 0 0 var(--moh-onlyme);
+    box-shadow: inset 1px 0 0 0 var(--moh-onlyme);
     background-color: rgba(var(--moh-onlyme-rgb), 0.08);
-  }
-  html.dark .moh-post-highlight-onlyme {
-    background-color: rgba(var(--moh-onlyme-rgb), 0.12);
   }
 
   .moh-tag-verified {
