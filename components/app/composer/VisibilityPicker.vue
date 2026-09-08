@@ -3,9 +3,7 @@
     <button
       ref="btnEl"
       type="button"
-      class="moh-focus inline-flex items-center justify-center min-h-11 gap-2 rounded-full text-sm font-semibold leading-5 transition-colors"
-      :class="compact ? 'w-11 moh-surface-hover' : ['border px-5 py-2.5', pillClass]"
-      :style="compact ? { color: postActionVisibilityColor(modelValue) } : undefined"
+      class="moh-focus moh-surface-hover inline-flex items-center justify-center min-h-11 gap-2 rounded-full border moh-border px-3 transition-colors"
       :title="`Post audience: ${label}`"
       :aria-label="`Select post visibility: ${label}`"
       aria-haspopup="menu"
@@ -13,27 +11,8 @@
       :disabled="!viewerIsVerified"
       @click="viewerIsVerified ? toggle() : null"
     >
-      <Icon v-if="compact" name="tabler:world" class="text-xl" aria-hidden="true" />
-      <template v-else>
-        <Icon v-if="modelValue === 'public'" name="tabler:world" class="mr-1 text-[10px] opacity-80" aria-hidden="true" />
-        <AppVerifiedBadge
-          v-else-if="modelValue === 'verifiedOnly'"
-          class="mr-1"
-          status="identity"
-          :premium="false"
-          :show-tooltip="false"
-        />
-        <AppVerifiedBadge
-          v-else-if="modelValue === 'premiumOnly'"
-          class="mr-1"
-          status="identity"
-          :premium="true"
-          :show-tooltip="false"
-        />
-        <Icon v-else-if="modelValue === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px] opacity-80" aria-hidden="true" />
-        {{ label }}
-        <Icon v-if="viewerIsVerified" name="tabler:chevron-down" class="ml-1 text-[9px] opacity-80" aria-hidden="true" />
-      </template>
+      <AppComposerAudienceLabel :visibility="modelValue" />
+      <Icon v-if="viewerIsVerified" name="tabler:chevron-down" class="text-base moh-text-muted" aria-hidden="true" />
     </button>
 
     <!-- Teleport so overflow:hidden on parent modals/containers doesn't clip the panel -->
@@ -53,10 +32,7 @@
         role="menuitem"
         @click="set('public')"
       >
-        <span class="inline-flex items-center gap-2">
-          <Icon name="tabler:world" class="text-[12px] opacity-80" aria-hidden="true" />
-          <span>Public</span>
-        </span>
+        <AppComposerAudienceLabel visibility="public" />
       </button>
 
       <button
@@ -66,10 +42,7 @@
         role="menuitem"
         @click="set('verifiedOnly')"
       >
-        <span class="inline-flex items-center gap-2">
-          <AppVerifiedBadge status="identity" :premium="false" :show-tooltip="false" />
-          <span>Verified only</span>
-        </span>
+        <AppComposerAudienceLabel visibility="verifiedOnly" />
       </button>
 
       <button
@@ -83,10 +56,7 @@
         role="menuitem"
         @click="isPremium ? set('premiumOnly') : null"
       >
-        <span class="inline-flex items-center gap-2">
-          <AppVerifiedBadge status="identity" :premium="true" :show-tooltip="false" />
-          <span>Premium only</span>
-        </span>
+        <AppComposerAudienceLabel visibility="premiumOnly" />
         <span v-if="!isPremium" class="ml-2 font-mono text-[10px] opacity-80" aria-hidden="true">LOCKED</span>
       </button>
 
@@ -97,10 +67,7 @@
         role="menuitem"
         @click="set('onlyMe')"
       >
-        <span class="inline-flex items-center gap-2">
-          <Icon name="tabler:eye-off" class="text-[12px]" aria-hidden="true" />
-          <span>Only me</span>
-        </span>
+        <AppComposerAudienceLabel visibility="onlyMe" />
       </button>
       </div>
     </Teleport>
@@ -109,10 +76,8 @@
 
 <script setup lang="ts">
 import type { PostVisibility } from '~/types/api'
-import { filterPillClasses, postActionVisibilityColor } from '~/utils/post-visibility'
 
 const props = defineProps<{
-  compact?: boolean
   modelValue: PostVisibility
   allowed: PostVisibility[]
   viewerIsVerified: boolean
@@ -134,8 +99,6 @@ const label = computed(() => {
   if (modelValue.value === 'onlyMe') return 'Only me'
   return 'Public'
 })
-
-const pillClass = computed(() => `${filterPillClasses(modelValue.value, false)} bg-transparent hover:bg-transparent dark:hover:bg-transparent`)
 
 const open = ref(false)
 const wrapEl = ref<HTMLElement | null>(null)
@@ -186,4 +149,3 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', onDocPointerDown, { capture: true } as any)
 })
 </script>
-

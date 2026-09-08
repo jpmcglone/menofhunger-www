@@ -14,39 +14,34 @@
       <div
         :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'"
       >
-      <!-- Modal close and audience controls stay above the writing row. -->
+      <!-- Inline audience aligns with the text column; modal controls span the header. -->
       <div
         v-if="!replyTo || $slots.close"
         :class="[
-          'col-span-2 row-start-1 flex flex-wrap items-center gap-2 mb-3',
+          'row-start-1 flex flex-wrap items-center gap-2',
+          inlineAudience ? 'col-start-2 mb-2' : 'col-span-2 mb-3',
           checkinPrompt ? 'items-end' : 'items-center',
         ]"
       >
         <slot name="close" />
-        <div v-if="!replyTo" class="ml-auto flex items-center">
+        <div v-if="!replyTo" class="flex min-w-0 items-center" :class="!inlineAudience && 'ml-auto'">
           <AppComposerVisibilityPicker
             v-if="showVisibilityPicker"
             v-model="visibility"
             :allowed="allowedComposerVisibilities"
             :viewer-is-verified="viewerIsVerified"
             :is-premium="isPremium"
-            compact
           />
           <span
             v-else
             v-tooltip.bottom="scopeTagTooltip"
-            class="inline-flex h-11 w-11 items-center justify-center rounded-full cursor-default"
-            :style="{ color: composerHashtagColor }"
-            role="img"
+            class="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border moh-border px-3 cursor-default"
             :aria-label="`Post audience: ${scopeTagLabel}`"
           >
-            <Icon
-              v-if="showGroupScopeIcon"
-              name="tabler:users-group"
-              class="text-xl"
-              aria-hidden="true"
+            <AppComposerAudienceLabel
+              :visibility="effectiveVisibility"
+              :group-name="showGroupScopeIcon ? scopeTagLabel : undefined"
             />
-            <Icon v-else name="tabler:world" class="text-xl" aria-hidden="true" />
           </span>
         </div>
 
@@ -95,7 +90,8 @@
         <NuxtLink
           v-if="myProfilePath"
           :to="myProfilePath"
-          class="row-start-2 col-start-1 group shrink-0"
+          class="col-start-1 group shrink-0"
+          :class="inlineAudience ? 'row-start-1 row-span-2' : 'row-start-2'"
           aria-label="View your profile"
         >
           <div class="transition-opacity duration-200 group-hover:opacity-80">
@@ -108,7 +104,7 @@
             />
           </div>
         </NuxtLink>
-        <div v-else class="row-start-2 col-start-1 shrink-0" aria-hidden="true">
+        <div v-else class="col-start-1 shrink-0" :class="inlineAudience ? 'row-start-1 row-span-2' : 'row-start-2'" aria-hidden="true">
           <AppUserAvatar
             :user="user"
             size-class="h-10 w-10"
@@ -393,16 +389,17 @@
       @keydown.space.prevent="showLoginPrompt"
     >
       <!-- Same audience control placement as the signed-in composer. -->
-      <div class="col-span-2 row-start-1 flex justify-end mb-3" aria-hidden="true">
-        <span class="inline-flex h-11 w-11 items-center justify-center moh-text-muted">
-          <Icon name="tabler:world" class="text-xl" />
+      <div class="row-start-1 flex" :class="inlineAudience ? 'col-start-2 mb-2' : 'col-span-2 justify-end mb-3'" aria-hidden="true">
+        <span class="inline-flex min-h-11 items-center justify-center rounded-full border moh-border px-3">
+          <AppComposerAudienceLabel visibility="public" />
         </span>
       </div>
 
       <!-- Row 2: avatar placeholder -->
       <template v-if="!omitAvatar">
         <div
-          class="row-start-2 col-start-1 shrink-0 h-10 w-10 rounded-full ring-1 ring-gray-300 dark:ring-zinc-600 bg-gray-100 dark:bg-zinc-800 flex items-center justify-center"
+          class="col-start-1 shrink-0 h-10 w-10 rounded-full ring-1 ring-gray-300 dark:ring-zinc-600 bg-gray-100 dark:bg-zinc-800 flex items-center justify-center"
+          :class="inlineAudience ? 'row-start-1 row-span-2' : 'row-start-2'"
           aria-hidden="true"
         >
           <Icon name="tabler:user" class="text-gray-400 dark:text-zinc-500 text-[14px] sm:text-[16px]" />
@@ -622,6 +619,8 @@ const emit = defineEmits<{
 }>()
 
 const props = defineProps<{
+  /** Home-feed audience sits above the draft, beside the avatar. */
+  inlineAudience?: boolean
   autoFocus?: boolean
   showDivider?: boolean
   /** Override textarea placeholder (e.g. "Reply to @john…" in reply modal). */
@@ -1887,4 +1886,3 @@ watch(
   }
 }
 </style>
-
