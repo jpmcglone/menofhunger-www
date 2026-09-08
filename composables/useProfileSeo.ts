@@ -41,14 +41,13 @@ export function useProfileSeo(options: {
   })
 
   const seoImage = computed(() => {
-    // Social previews: prefer banner (big, identity-rich), then avatar, then a safe default, then logo.
-    // A > B > C > LOGO
+    // The profile represents a person: use their avatar (the first frame for video avatars).
     if (notFound.value || banned.value) return '/images/logo-black-bg-small.png'
     const banner = (profile.value?.bannerUrl ?? '').trim()
     const avatar = (profile.value?.avatarUrl ?? '').trim()
     const fallbackDefault = '/images/banner.png'
     const fallbackLogo = '/images/logo-black-bg-small.png'
-    return banner || avatar || fallbackDefault || fallbackLogo
+    return avatar || banner || fallbackDefault || fallbackLogo
   })
 
   const seoImageAlt = computed(() => {

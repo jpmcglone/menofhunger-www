@@ -567,7 +567,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
         premiumPlus: Boolean(my.premiumPlus),
         isOrganization: Boolean((my as { isOrganization?: boolean }).isOrganization),
         verifiedStatus: (my.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
-        avatarUrl: my.avatarUrl ?? null,
+        avatarUrl: my.avatarUrl ?? null, avatarVideo: my.avatarVideo ?? null,
       }
       const replySnippet = replyToMessage.value
         ? { id: replyToMessage.value.id, senderUsername: replyToMessage.value.sender.username, bodyPreview: replyToMessage.value.body.slice(0, 200) }
@@ -670,13 +670,13 @@ export function useChatThread(opts: UseChatThreadOptions) {
         const existing = reactions.find((r) => r.reactionId === reactionId)
         if (existing) {
           reactions = reactions.map((r) => r.reactionId === reactionId
-            ? { ...r, count: r.count + 1, reactedByMe: true, reactors: [...r.reactors, { id: me.value?.id ?? '', username: me.value?.username ?? null, avatarUrl: me.value?.avatarUrl ?? null }] }
+            ? { ...r, count: r.count + 1, reactedByMe: true, reactors: [...r.reactors, { id: me.value?.id ?? '', username: me.value?.username ?? null, avatarUrl: me.value?.avatarUrl ?? null, avatarVideo: me.value?.avatarVideo ?? null }] }
             : r,
           )
         } else {
           const reaction = availableReactions.value.find((r) => r.id === reactionId)
           if (reaction) {
-            reactions = [...reactions, { reactionId, emoji: reaction.emoji, count: 1, reactedByMe: true, reactors: [{ id: me.value?.id ?? '', username: me.value?.username ?? null, avatarUrl: me.value?.avatarUrl ?? null }] }]
+            reactions = [...reactions, { reactionId, emoji: reaction.emoji, count: 1, reactedByMe: true, reactors: [{ id: me.value?.id ?? '', username: me.value?.username ?? null, avatarUrl: me.value?.avatarUrl ?? null, avatarVideo: me.value?.avatarVideo ?? null }] }]
           }
         }
       }

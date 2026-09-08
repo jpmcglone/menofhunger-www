@@ -18,6 +18,7 @@ export function usePersonAccountGate() {
         username: fromSession.operatorUsername,
         name: fromSession.operatorName,
         avatarUrl: fromSession.operatorAvatarUrl,
+        avatarVideo: accounts.value.find(account => account.id === fromSession.operatorUserId)?.avatarVideo,
       }
     }
     const fromAccounts = operatorFromAccounts.value

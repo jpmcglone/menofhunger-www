@@ -17,12 +17,14 @@
           :disabled="saving"
           @change="onPick"
         >
-        <AppUserAvatar
-          :user="avatarUser"
+        <AppAvatarCircle
+          :src="avatarUser?.avatarUrl"
+          :avatar-video="avatarUser?.avatarVideo"
+          :name="avatarUser?.name"
+          :username="avatarUser?.username"
+          :is-organization="avatarUser?.isOrganization"
           size-class="h-24 w-24 text-2xl"
-          :enable-preview="false"
           :show-presence="false"
-          :show-status="false"
         />
         <span
           class="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-black text-white dark:bg-white dark:text-black"
@@ -86,6 +88,7 @@ const avatarUser = computed(() => {
     ...user.value,
     name: displayName.value || user.value.name,
     avatarUrl: previewUrl.value || user.value.avatarUrl,
+    avatarVideo: previewUrl.value ? null : user.value.avatarVideo,
   }
 })
 

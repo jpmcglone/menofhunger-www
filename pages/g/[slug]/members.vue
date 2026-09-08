@@ -69,7 +69,7 @@
             >
               <NuxtLink :to="m.username ? `/u/${encodeURIComponent(m.username)}` : '#'" class="shrink-0" @click.prevent="goProfile(m)">
                 <AppUserAvatar
-                  :user="{ id: m.userId, username: m.username, name: m.name, avatarUrl: m.avatarUrl, isOrganization: false }"
+                  :user="{ id: m.userId, username: m.username, name: m.name, avatarUrl: m.avatarUrl, avatarVideo: m.avatarVideo, isOrganization: false }"
                   size-class="h-10 w-10"
                 />
               </NuxtLink>

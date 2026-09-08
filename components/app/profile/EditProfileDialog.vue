@@ -83,6 +83,15 @@
               decoding="async"
             >
 
+            <AppProfileEditAvatarVideoDraftPreview
+              v-if="modelValue && pendingVideoEdit && !pendingAvatarRemoval"
+              :edit="pendingVideoEdit"
+            />
+            <AppAvatarVideo
+              v-else-if="modelValue && !pendingAvatarFile && !pendingAvatarRemoval && profile?.avatarVideo"
+              :asset="profile.avatarVideo"
+            />
+
             <div class="absolute inset-0 flex items-center justify-center gap-1.5">
               <Button
                 v-if="showAvatarTrash"
@@ -829,4 +838,3 @@ onBeforeUnmount(() => {
   if (pendingBannerPreviewUrl.value) URL.revokeObjectURL(pendingBannerPreviewUrl.value)
 })
 </script>
-

@@ -49,8 +49,7 @@
               <div v-if="item.participants.length" class="my-2 flex items-center gap-2">
                 <div class="flex -space-x-2">
                   <NuxtLink v-for="person in item.participants" :key="person.id" :to="`/u/${encodeURIComponent(person.username ?? '')}`" :aria-label="person.name || person.username || 'Member'" class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 moh-border moh-surface text-[10px]">
-                    <img v-if="person.avatarUrl" :src="person.avatarUrl" alt="" class="h-full w-full object-cover" loading="lazy">
-                    <span v-else>{{ (person.name || person.username || '?').slice(0, 1) }}</span>
+                    <AppUserAvatar :user="person" size-class="h-full w-full" class="h-full w-full" />
                   </NuxtLink>
                 </div>
                 <span v-if="item.participantCount > 6" class="text-xs moh-text-muted">+{{ item.participantCount - 6 }}</span>

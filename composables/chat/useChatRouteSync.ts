@@ -123,7 +123,7 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
       premiumPlus: Boolean(preview.premiumPlus),
       isOrganization: Boolean(preview.isOrganization),
       verifiedStatus: preview.verifiedStatus ?? 'none',
-      avatarUrl: preview.avatarUrl ?? null,
+      avatarUrl: preview.avatarUrl ?? null, avatarVideo: preview.avatarVideo ?? null,
       relationship: preview.relationship,
     }
   }

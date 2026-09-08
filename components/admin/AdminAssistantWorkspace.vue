@@ -7,6 +7,7 @@
         <Button label="Refresh" text severity="secondary" :loading="loading" @click="refresh()"><template #loadingicon><AppMarvMark :size="18" loading /></template></Button>
       </div>
       <p class="text-sm moh-text-muted">Your private admin board.</p>
+      <NuxtLink to="/admin/delegation" class="inline-flex min-h-11 items-center gap-2 text-sm hover:underline">Delegated work <Icon name="tabler:arrow-up-right" aria-hidden="true" /></NuxtLink>
     </header>
 
     <form class="marv-composer" @submit.prevent="submit">

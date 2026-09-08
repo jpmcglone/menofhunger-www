@@ -1,3 +1,5 @@
+import type { AvatarVideoDto } from '~/types/api-contracts.gen'
+
 type LightboxKind = 'avatar' | 'banner' | 'media'
 type Rect = { left: number; top: number; width: number; height: number }
 type MediaStartMode = 'origin' | 'fitAnchored'
@@ -20,6 +22,7 @@ export function useImageLightbox() {
   const visible = useState<boolean>('moh.lightbox.visible', () => false)
   const backdropVisible = useState<boolean>('moh.lightbox.backdropVisible', () => false)
   const src = useState<string | null>('moh.lightbox.src', () => null)
+  const avatarVideo = useState<AvatarVideoDto | null>('moh.lightbox.avatarVideo', () => null)
   const alt = useState<string>('moh.lightbox.alt', () => 'Image')
   const kind = useState<LightboxKind>('moh.lightbox.kind', () => 'banner')
   // For media: controls whether the original thumbnail(s) are hidden underneath the lightbox copy.
@@ -203,7 +206,7 @@ export function useImageLightbox() {
     url: string | null,
     label: string,
     k: LightboxKind,
-    opts?: { mediaStartMode?: MediaStartMode; avatarBorderRadius?: string; originRect?: Rect },
+    opts?: { mediaStartMode?: MediaStartMode; avatarBorderRadius?: string; originRect?: Rect; avatarVideo?: AvatarVideoDto | null },
   ) {
     if (!import.meta.client) return
     if (!url) return
@@ -217,6 +220,7 @@ export function useImageLightbox() {
     const myId = requestId
 
     kind.value = k
+    avatarVideo.value = k === 'avatar' ? opts?.avatarVideo ?? null : null
     avatarBorderRadius.value = k === 'avatar' ? (opts?.avatarBorderRadius?.trim() || '9999px') : '9999px'
     alt.value = label
     src.value = url
@@ -238,7 +242,7 @@ export function useImageLightbox() {
     const aspect =
       k === 'media' && cur?.kind === 'video' && typeof cur.width === 'number' && typeof cur.height === 'number' && cur.height > 0
         ? cur.width / cur.height
-        : await preloadAspect(url)
+        : k === 'avatar' && avatarVideo.value ? 1 : await preloadAspect(url)
     if (myId !== requestId) return
     mediaAspect.value = aspect
 
@@ -361,6 +365,7 @@ export function useImageLightbox() {
     visible.value = false
     backdropVisible.value = false
     src.value = null
+    avatarVideo.value = null
     alt.value = 'Image'
     items.value = []
     index.value = 0
@@ -449,6 +454,7 @@ export function useImageLightbox() {
     visible,
     backdropVisible,
     src,
+    avatarVideo,
     alt,
     kind,
     items,
@@ -469,4 +475,3 @@ export function useImageLightbox() {
     onTransitionEnd,
   }
 }
-

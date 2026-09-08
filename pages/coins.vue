@@ -377,7 +377,7 @@ function activityStreakTone(direction: CoinTransferItem['direction']): string {
             <div class="rounded-xl border border-amber-200/70 bg-amber-50/70 dark:border-amber-700/40 dark:bg-amber-900/10 p-4 space-y-3">
               <div class="flex items-center gap-3">
                 <AppUserAvatar
-                  :user="{ id: recipient!.id, username: recipient!.username, avatarUrl: recipient!.avatarUrl, isOrganization: recipient!.isOrganization }"
+                  :user="{ id: recipient!.id, username: recipient!.username, avatarUrl: recipient!.avatarUrl, avatarVideo: recipient!.avatarVideo, isOrganization: recipient!.isOrganization }"
                   size-class="h-10 w-10"
                   :show-presence="false"
                 />
@@ -498,7 +498,7 @@ function activityStreakTone(direction: CoinTransferItem['direction']): string {
 
             <AppUserAvatar
               v-if="t.direction !== 'streak_reward' && t.direction !== 'verification_gift'"
-              :user="{ id: t.counterparty.userId, username: t.counterparty.username, avatarUrl: t.counterparty.avatarUrl }"
+              :user="{ id: t.counterparty.userId, username: t.counterparty.username, avatarUrl: t.counterparty.avatarUrl, avatarVideo: t.counterparty.avatarVideo }"
               size-class="h-8 w-8"
               :show-presence="false"
               class="shrink-0"

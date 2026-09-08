@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 type VerifiedStatus = 'none' | 'identity' | 'manual'
-type OrgAffiliation = { id: string; username: string | null; name: string | null; avatarUrl: string | null }
+type OrgAffiliation = { id: string; username: string | null; name: string | null; avatarUrl: string | null; avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null }
 type UserLike = {
   name?: string | null
   username?: string | null

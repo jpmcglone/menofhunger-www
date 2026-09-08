@@ -11,24 +11,7 @@
           :to="row.href"
           class="flex items-center gap-2.5 rounded-xl px-1 py-1.5 -mx-1 transition-colors moh-surface-hover"
         >
-          <div
-            class="h-9 w-9 shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-800"
-            :class="avatarRoundClass(Boolean(row.space.owner?.isOrganization))"
-          >
-            <img
-              v-if="row.space.owner?.avatarUrl"
-              :src="row.space.owner.avatarUrl"
-              alt=""
-              class="h-full w-full object-cover"
-              loading="lazy"
-            >
-            <div
-              v-else
-              class="flex h-full w-full items-center justify-center text-[10px] font-bold moh-text"
-            >
-              {{ initials(row.space.owner?.username) }}
-            </div>
-          </div>
+          <AppUserAvatar :user="row.space.owner" size-class="h-9 w-9" />
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-1.5 min-w-0">
               <span class="font-semibold moh-text truncate leading-tight">
@@ -58,7 +41,6 @@
 
 <script setup lang="ts">
 import type { Space } from '~/types/api'
-import { avatarRoundClass } from '~/utils/avatar-rounding'
 import { spaceDisplayTitle } from '~/utils/space-display'
 
 const MAX_ROWS = 4
@@ -89,12 +71,6 @@ function hereCount(space: Space): number {
   const live = lobbyCountForSpace(space.id)
   if (live > 0) return live
   return Math.max(0, Math.floor(Number(space.listenerCount) || 0))
-}
-
-function initials(username: string | null | undefined): string {
-  const n = String(username ?? '').trim()
-  if (!n) return '?'
-  return n.slice(0, 2).toUpperCase()
 }
 
 onMounted(() => {

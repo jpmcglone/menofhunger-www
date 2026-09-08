@@ -1491,7 +1491,7 @@ function makeOptimisticAuthor(): PostAuthor | null {
     premiumPlus: Boolean((u as any).premiumPlus),
     isOrganization: Boolean((u as any).isOrganization),
     verifiedStatus: ((u as any).verifiedStatus ?? 'none') as PostAuthor['verifiedStatus'],
-    avatarUrl: (u as any).avatarUrl ?? null,
+    avatarUrl: (u as any).avatarUrl ?? null, avatarVideo: u.avatarVideo ?? null,
   }
 }
 

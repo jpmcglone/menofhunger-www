@@ -311,13 +311,7 @@
                 class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
               >
                 <div class="flex items-center gap-2 min-w-0">
-                  <img
-                    v-if="org.avatarUrl"
-                    :src="org.avatarUrl"
-                    class="h-7 w-7 rounded-md object-cover flex-shrink-0"
-                    alt=""
-                  />
-                  <div v-else class="h-7 w-7 rounded-md bg-gray-200 dark:bg-zinc-700 flex-shrink-0" />
+                  <AppUserAvatar :user="{ ...org, isOrganization: true }" size-class="h-7 w-7" />
                   <div class="min-w-0">
                     <div class="text-sm font-medium truncate">{{ org.name || org.username || 'Unnamed org' }}</div>
                     <div v-if="org.username" class="text-xs text-gray-500 dark:text-gray-400">@{{ org.username }}</div>
@@ -366,13 +360,7 @@
                 class="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
               >
                 <div class="flex items-center gap-2 min-w-0">
-                  <img
-                    v-if="r.avatarUrl"
-                    :src="r.avatarUrl"
-                    class="h-7 w-7 rounded-md object-cover flex-shrink-0"
-                    alt=""
-                  />
-                  <div v-else class="h-7 w-7 rounded-md bg-gray-200 dark:bg-zinc-700 flex-shrink-0" />
+                  <AppUserAvatar :user="{ ...r, isOrganization: true }" size-class="h-7 w-7" />
                   <div class="min-w-0">
                     <div class="text-sm font-medium truncate">{{ r.name || r.username || 'Unnamed org' }}</div>
                     <div v-if="r.username" class="text-xs text-gray-500 dark:text-gray-400">@{{ r.username }}</div>
@@ -895,6 +883,7 @@ type AdminUser = {
   name: string | null
   bio: string | null
   avatarUrl?: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   siteAdmin: boolean
   featureToggles: string[]
   bannedAt: string | null
@@ -914,6 +903,7 @@ type OrgAffiliation = {
   username: string | null
   name: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
 }
 
 type PageOperator = {
@@ -921,6 +911,7 @@ type PageOperator = {
   username: string | null
   name: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
 }
 
 type OperatedPage = {
@@ -928,6 +919,7 @@ type OperatedPage = {
   username: string | null
   name: string | null
   avatarUrl: string | null
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   accountKind: 'person' | 'page'
   isOrganization: boolean
 }
@@ -1102,7 +1094,7 @@ async function searchOrgs() {
     })
     orgSearchResults.value = (res.data ?? [])
       .filter((u) => u.isOrganization)
-      .map((u) => ({ id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl ?? null }))
+      .map((u) => ({ id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl ?? null, avatarVideo: u.avatarVideo ?? null }))
   } catch (e: unknown) {
     orgAffsError.value = getApiErrorMessage(e) || 'Failed to search orgs.'
   } finally {

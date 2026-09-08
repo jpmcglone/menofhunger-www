@@ -621,7 +621,7 @@ function profileFromAuthUser(u: import('~/composables/useAuth').AuthUser): Publi
     premiumPlus: Boolean(u.premiumPlus),
     isOrganization: Boolean(u.isOrganization),
     verifiedStatus: u.verifiedStatus ?? 'none',
-    avatarUrl: u.avatarUrl ?? null,
+    avatarUrl: u.avatarUrl ?? null, avatarVideo: u.avatarVideo ?? null,
     bannerUrl: u.bannerUrl ?? null,
     pinnedPostId: u.pinnedPostId ?? null,
     lastOnlineAt: null,
@@ -648,7 +648,7 @@ const profile = computed(() => {
       locationCounty: fromAuth.locationCounty ?? loaded.locationCounty,
       locationState: fromAuth.locationState ?? loaded.locationState,
       locationCountry: fromAuth.locationCountry ?? loaded.locationCountry,
-      avatarUrl: fromAuth.avatarUrl ?? loaded.avatarUrl,
+      avatarUrl: fromAuth.avatarUrl, avatarVideo: fromAuth.avatarVideo,
       bannerUrl: fromAuth.bannerUrl ?? loaded.bannerUrl,
     }
   }
@@ -1354,6 +1354,7 @@ function onOpenProfileImage(payload: {
   if (payload.kind === 'avatar') {
     void openFromEvent(payload.event, payload.url, payload.title, payload.kind, {
       avatarBorderRadius: payload.isOrganization ? '16%' : '9999px',
+      avatarVideo: profile.value?.avatarVideo,
       originRect: payload.originRect,
     })
     return

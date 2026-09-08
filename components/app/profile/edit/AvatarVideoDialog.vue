@@ -83,13 +83,26 @@ async function apply() {
   if (!props.file || !video.value || applying.value) return
   applying.value = true
   try {
+    const player = video.value
+    player.pause()
+    if (Math.abs(player.currentTime - start.value) > 0.001) {
+      await new Promise<void>((resolve, reject) => {
+        const done = () => { cleanup(); resolve() }
+        const fail = () => { cleanup(); reject(new Error('Could not load the first frame.')) }
+        const timer = setTimeout(fail, 5000)
+        const cleanup = () => { clearTimeout(timer); player.removeEventListener('seeked', done); player.removeEventListener('error', fail) }
+        player.addEventListener('seeked', done, { once: true })
+        player.addEventListener('error', fail, { once: true })
+        player.currentTime = start.value
+      })
+    }
     const canvas = document.createElement('canvas'); canvas.width = 320; canvas.height = 320
     canvas.getContext('2d')!.drawImage(video.value, crop.value.x, crop.value.y, size.value, size.value, 0, 0, 320, 320)
     const poster = await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('Could not create preview.')), 'image/jpeg', 0.85))
     emit('selected', { file: props.file, poster, selection: { startSeconds: start.value, durationSeconds: length.value,
       crop: { x: crop.value.x / width.value, y: crop.value.y / height.value, width: size.value / width.value, height: size.value / height.value } } })
   } catch { error.value = 'Could not prepare this clip. Please try again.' }
-  finally { applying.value = false }
+  finally { applying.value = false; if (!paused.value) void video.value?.play().catch(() => {}) }
 }
 onBeforeUnmount(() => { observer?.disconnect(); if (source.value) URL.revokeObjectURL(source.value) })
 </script>

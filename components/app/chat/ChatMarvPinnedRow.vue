@@ -155,6 +155,7 @@ const {
   marvDisplayName,
   marvUsername,
   marvAvatarUrl,
+  marvAvatarVideo,
   credits,
   marvUserId,
 } = useMarv()
@@ -171,6 +172,7 @@ const displayName = computed(() => marvDisplayName.value ?? 'M.A.R.V')
 const marvUser = computed(() => ({
   id: marvUserId.value ?? 'marv',
   avatarUrl: marvAvatarUrl.value,
+  avatarVideo: marvAvatarVideo.value,
   name: marvDisplayName.value,
   username: marvUsername.value,
 }))

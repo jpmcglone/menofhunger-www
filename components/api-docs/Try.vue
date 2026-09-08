@@ -41,18 +41,7 @@
             @mouseenter="highlighted = index"
             @click="select(user)"
           >
-            <img
-              v-if="user.avatarUrl"
-              :src="user.avatarUrl"
-              alt=""
-              class="h-6 w-6 shrink-0 rounded-full object-cover"
-            >
-            <span
-              v-else
-              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 text-[10px] font-semibold uppercase text-gray-500 dark:bg-zinc-800 dark:text-zinc-400"
-            >
-              {{ (user.username ?? '?').slice(0, 1) }}
-            </span>
+            <AppUserAvatar :user="user" size-class="h-6 w-6" />
             <span class="min-w-0 flex-1 truncate text-sm text-gray-900 dark:text-gray-50">
               {{ user.name || user.username }}
             </span>

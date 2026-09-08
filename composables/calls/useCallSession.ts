@@ -354,7 +354,7 @@ export function useCallSession() {
       id: userId,
       username: u?.username ?? null,
       name: u?.name ?? null,
-      avatarUrl: u?.avatarUrl ?? null,
+      avatarUrl: u?.avatarUrl ?? null, avatarVideo: u?.avatarVideo ?? null,
       premium: Boolean(u?.premium),
       premiumPlus: Boolean(u?.premiumPlus),
       isOrganization: Boolean(u?.isOrganization),

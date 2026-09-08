@@ -504,7 +504,7 @@ function onOpenProfileImage(payload: {
   originRect?: { left: number; top: number; width: number; height: number }
 }) {
   void openFromEvent(payload.event, payload.url, payload.title, payload.kind, {
-    ...(payload.kind === 'avatar' && { avatarBorderRadius: payload.isOrganization ? '16%' : '9999px' }),
+    ...(payload.kind === 'avatar' && { avatarBorderRadius: payload.isOrganization ? '16%' : '9999px', avatarVideo: user.value?.avatarVideo }),
     originRect: payload.originRect,
   })
 }

@@ -342,7 +342,7 @@ const viewerEntry = computed<OpenCrewMember | null>(() => {
       premiumPlus: u.premiumPlus ?? false,
       isOrganization: u.isOrganization ?? false,
       verifiedStatus: u.verifiedStatus ?? 'none',
-      avatarUrl: u.avatarUrl ?? null,
+      avatarUrl: u.avatarUrl ?? null, avatarVideo: u.avatarVideo ?? null,
     },
     sharedInterests: [],
   }

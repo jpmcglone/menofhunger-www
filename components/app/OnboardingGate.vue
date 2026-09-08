@@ -713,7 +713,7 @@ async function finishOnboarding() {
       username: latest.username ?? username,
       name: latest.name ?? (displayName.value.trim() || null),
       bio: latest.bio ?? null,
-      avatarUrl: latest.avatarUrl ?? null,
+      avatarUrl: latest.avatarUrl ?? null, avatarVideo: latest.avatarVideo ?? null,
       bannerUrl: latest.bannerUrl ?? null,
       premium: latest.premium,
       premiumPlus: latest.premiumPlus,

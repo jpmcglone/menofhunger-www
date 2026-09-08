@@ -102,6 +102,16 @@
             @click.stop
             @transitionend="onTransitionEnd"
           >
+          <div
+            v-else-if="kind === 'avatar' && avatarVideo"
+            class="select-none overflow-hidden will-change-transform"
+            :style="imageStyleForImage"
+            @click.stop
+            @transitionend="onTransitionEnd"
+          >
+            <img :src="src" :alt="alt" class="h-full w-full object-cover" draggable="false">
+            <AppAvatarVideo :asset="avatarVideo" />
+          </div>
           <img
             v-else
             :src="src"
@@ -129,6 +139,7 @@ const props = defineProps<{
   src: string | null
   alt: string
   kind?: 'avatar' | 'banner' | 'media'
+  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   currentMediaItem?: LightboxMediaItem | null
   target: unknown
   imageStyle: StyleValue
@@ -456,4 +467,3 @@ function onLightboxTapMute() {
   }
 }
 </script>
-

@@ -151,7 +151,7 @@ onMounted(() => {
 
             <AppUserAvatar
               v-if="(receipt?.direction ?? fallbackTransfer!.direction) !== 'streak_reward' && (receipt?.direction ?? fallbackTransfer!.direction) !== 'verification_gift'"
-              :user="{ id: (receipt?.counterparty.userId ?? fallbackTransfer!.counterparty.userId), username: (receipt?.counterparty.username ?? fallbackTransfer!.counterparty.username), avatarUrl: (receipt?.counterparty.avatarUrl ?? fallbackTransfer!.counterparty.avatarUrl) }"
+              :user="{ id: (receipt?.counterparty.userId ?? fallbackTransfer!.counterparty.userId), username: (receipt?.counterparty.username ?? fallbackTransfer!.counterparty.username), avatarUrl: (receipt?.counterparty.avatarUrl ?? fallbackTransfer!.counterparty.avatarUrl), avatarVideo: receipt ? receipt.counterparty.avatarVideo : fallbackTransfer!.counterparty.avatarVideo }"
               size-class="h-9 w-9"
               :show-presence="false"
             />

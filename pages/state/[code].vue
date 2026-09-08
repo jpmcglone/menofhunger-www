@@ -146,7 +146,7 @@ const facepileAuthors = computed<ReplyAuthorPreview[]>(() =>
     id: u.id,
     username: u.username,
     name: u.name,
-    avatarUrl: u.avatarUrl,
+    avatarUrl: u.avatarUrl, avatarVideo: u.avatarVideo,
     isOrganization: u.isOrganization,
   })),
 )

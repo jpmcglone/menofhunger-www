@@ -40,6 +40,7 @@ export function useMarv() {
   const marvUserId = computed<string | null>(() => me$.value?.marv?.userId ?? null)
   const marvUsername = computed<string | null>(() => me$.value?.marv?.username ?? null)
   const marvDisplayName = computed<string | null>(() => me$.value?.marv?.displayName ?? null)
+  const marvAvatarVideo = computed(() => me$.value?.marv?.avatarVideo ?? null)
   const marvAvatarUrl = computed<string | null>(() => me$.value?.marv?.avatarUrl ?? null)
 
   /**
@@ -170,6 +171,7 @@ export function useMarv() {
     marvUsername,
     marvDisplayName,
     marvAvatarUrl,
+    marvAvatarVideo,
     isAvailable,
     // actions
     ensureLoaded,

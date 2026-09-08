@@ -1633,7 +1633,7 @@ export type MessageReactionSummary = {
   emoji: string
   count: number
   reactedByMe: boolean
-  reactors: { id: string; username: string | null; avatarUrl: string | null }[]
+  reactors: { id: string; username: string | null; avatarUrl: string | null; avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null }[]
 }
 
 export type MessageReplySnippet = Contracts.MessageReplySnippetDto
@@ -3432,3 +3432,8 @@ export type NewsletterPreview = Contracts.NewsletterPreviewDto
 export type { AdminCapabilityDto, AdminAssistantActionDto, AdminAssistantTurnDto, AdminAssistantWorkspaceDto } from './api-contracts.gen'
 
 export type { AdminAttentionDto, AdminActivationDto, MarvinPersonalActionDto, MarvinParticipationDto } from "./api-contracts.gen"
+
+export type DelegationWorkspaceDto = Contracts.DelegationWorkspaceDto
+export type DelegationJobDto = Contracts.DelegationJobDto
+export type DelegationActionDto = Contracts.DelegationActionDto
+export type DelegationScheduleDto = Contracts.DelegationScheduleDto

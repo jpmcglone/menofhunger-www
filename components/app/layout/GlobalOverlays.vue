@@ -65,6 +65,7 @@
     :src="lightbox.src.value"
     :alt="lightbox.alt.value"
     :kind="lightbox.kind.value"
+    :avatar-video="lightbox.avatarVideo.value"
     :current-media-item="lightbox.currentMediaItem.value"
     :target="lightbox.target.value"
     :image-style="lightbox.imageStyle.value"

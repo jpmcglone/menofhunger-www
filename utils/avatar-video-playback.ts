@@ -71,10 +71,8 @@ async function play(entry: Entry, asset: AvatarVideoDto) {
 }
 
 function rebalance() {
-  let active = 0
-  for (const entry of [...entries.values()].sort((a, b) => a.asset.id.localeCompare(b.asset.id))) {
-    const admitted = entry.canvases.size > 0 && active < 12
-    if (admitted) active++
+  for (const entry of entries.values()) {
+    const admitted = entry.canvases.size > 0
     entry.admitted = admitted
     if (!admitted) {
       stop(entry); entry.video.remove()

@@ -271,18 +271,7 @@
           :key="u.id"
           class="flex items-center gap-3 rounded-lg border moh-border px-3 py-2"
         >
-          <img
-            v-if="u.avatarUrl"
-            :src="u.avatarUrl"
-            alt=""
-            class="h-8 w-8 rounded-full object-cover moh-img-outline"
-          >
-          <div
-            v-else
-            class="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600 dark:bg-zinc-700 dark:text-gray-200"
-          >
-            {{ (u.username || u.name || '?').slice(0, 1).toUpperCase() }}
-          </div>
+          <AppUserAvatar :user="u" size-class="h-8 w-8" />
           <div class="min-w-0 flex-1">
             <div class="truncate text-sm font-medium text-gray-900 dark:text-gray-50">
               {{ u.name || u.username || 'Untitled' }}

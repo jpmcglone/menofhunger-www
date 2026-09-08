@@ -94,6 +94,12 @@ function pickPublicUserEntity(u: unknown): import('~/composables/useUsersStore')
     premiumPlus: typeof u.premiumPlus === 'boolean' ? u.premiumPlus : undefined,
     verifiedStatus: typeof u.verifiedStatus === 'string' ? u.verifiedStatus : undefined,
     avatarUrl: typeof u.avatarUrl === 'string' ? u.avatarUrl : null,
+    avatarVideo: u.avatarVideo === null ? null : isRecord(u.avatarVideo)
+      && typeof u.avatarVideo.id === 'string' && typeof u.avatarVideo.url === 'string'
+      && typeof u.avatarVideo.durationMs === 'number' && typeof u.avatarVideo.width === 'number'
+      && typeof u.avatarVideo.height === 'number'
+      ? { id: u.avatarVideo.id, url: u.avatarVideo.url, durationMs: u.avatarVideo.durationMs,
+        width: u.avatarVideo.width, height: u.avatarVideo.height } : undefined,
     bannerUrl: typeof u.bannerUrl === 'string' ? u.bannerUrl : null,
     pinnedPostId: typeof u.pinnedPostId === 'string' ? u.pinnedPostId : null,
     lastOnlineAt: typeof u.lastOnlineAt === 'string' ? u.lastOnlineAt : null,

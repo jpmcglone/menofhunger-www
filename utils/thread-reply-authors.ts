@@ -2,7 +2,7 @@ import type { FeedPost, PostAuthor } from '~/types/api'
 
 export type ReplyAuthorPreview = Pick<
   PostAuthor,
-  'id' | 'username' | 'name' | 'avatarUrl' | 'isOrganization'
+  'id' | 'username' | 'name' | 'avatarUrl' | 'avatarVideo' | 'isOrganization'
 >
 
 const MAX_REPLY_FACEPILE = 5
@@ -24,7 +24,7 @@ export function uniqueReplyAuthorsFromPosts(
       id,
       username: author.username,
       name: author.name,
-      avatarUrl: author.avatarUrl,
+      avatarUrl: author.avatarUrl, avatarVideo: author.avatarVideo,
       isOrganization: author.isOrganization,
     })
     if (out.length >= max) break
@@ -55,7 +55,7 @@ export function replyAuthorsFromFeedPost(post: FeedPost): ReplyAuthorPreview[] {
       id: author.id,
       username: author.username,
       name: author.name,
-      avatarUrl: author.avatarUrl,
+      avatarUrl: author.avatarUrl, avatarVideo: author.avatarVideo,
       isOrganization: author.isOrganization,
     })),
   )

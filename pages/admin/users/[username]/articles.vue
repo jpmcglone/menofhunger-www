@@ -76,7 +76,7 @@ function toArticleRow(item: AdminUserRecentArticle): Article {
       name: author?.name ?? null,
       bio: author?.bio ?? null,
       articleBio: author?.bio ?? null,
-      avatarUrl: author?.avatarUrl ?? null,
+      avatarUrl: author?.avatarUrl ?? null, avatarVideo: author?.avatarVideo ?? null,
       premium: Boolean(author?.premium),
       premiumPlus: Boolean(author?.premiumPlus),
       isOrganization: Boolean(author?.isOrganization),
