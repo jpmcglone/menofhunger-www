@@ -38,9 +38,15 @@ describe('unique people + total views', () => {
     const actionBar = readFromRepo('components/app/post/PostRowActionBar.vue')
     const chip = readFromRepo('components/app/post/PostRowViewerBreakdown.vue')
 
-    expect(postRow).toContain('AppPostRowViewerBreakdown')
-    expect(postRow).toContain('class="mt-3.5 flex items-center justify-between gap-3"')
-    expect(postRow).toContain('border-t moh-border')
+    // Guard the content order without coupling it to spacing or border shades.
+    const bodyIndex = postRow.indexOf('<AppPostRowBody')
+    const viewsIndex = postRow.indexOf('<AppPostRowViewerBreakdown')
+    const dividerIndex = postRow.indexOf('moh-post-actions-divider')
+    const actionsIndex = postRow.indexOf('<AppPostRowActionBar')
+    expect(bodyIndex).toBeGreaterThanOrEqual(0)
+    expect(viewsIndex).toBeGreaterThan(bodyIndex)
+    expect(dividerIndex).toBeGreaterThan(viewsIndex)
+    expect(actionsIndex).toBeGreaterThan(dividerIndex)
     expect(actionBar).not.toContain('AppPostRowViewerBreakdown')
     expect(actionBar).not.toContain('tabler:eye')
     expect(chip).toContain('tabler:user')
