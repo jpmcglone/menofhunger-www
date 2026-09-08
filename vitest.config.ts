@@ -5,6 +5,7 @@ export default defineVitestConfig({
   test: {
     alias: {
       '@sentry/nuxt': fileURLToPath(new URL('./tests/stubs/sentry.ts', import.meta.url)),
+      'posthog-js': fileURLToPath(new URL('./tests/stubs/posthog.ts', import.meta.url)),
     },
     environment: 'nuxt',
     globals: true,
