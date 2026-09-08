@@ -131,13 +131,14 @@ const weeklyData = {
 
 // Keep the real PrimeVue dialog: these assertions cover teleport/presentation,
 // not a stub that would render modal content inline.
+// Stub avatars: their Spaces/presence dependencies are outside the recap mocks.
 describe('weekly activity presentation', () => {
   it('opens details in a dialog, preserves all posts and returns to a compact row', async () => {
     vi.clearAllMocks()
     recapSpies.fetch.mockReset().mockResolvedValue(weeklyData)
     const wrapper = mount(ConversationInsights, {
       attachTo: document.body,
-      global: { plugins: [PrimeVue], stubs: { Icon: true, AppIconGlyph: true, AppConversationChart: true, NuxtLink: { template: '<a><slot /></a>' } } },
+      global: { plugins: [PrimeVue], stubs: { Icon: true, AppIconGlyph: true, AppConversationChart: true, AppUserAvatar: true, NuxtLink: { template: '<a><slot /></a>' } } },
     })
     try {
       await flushPromises()
@@ -172,7 +173,7 @@ describe('weekly activity presentation', () => {
     recapSpies.fetch.mockReset().mockRejectedValue(new Error('offline'))
     const wrapper = mount(ConversationInsights, {
       attachTo: document.body,
-      global: { plugins: [PrimeVue], stubs: { Icon: true, AppIconGlyph: true, AppConversationChart: true } },
+      global: { plugins: [PrimeVue], stubs: { Icon: true, AppIconGlyph: true, AppConversationChart: true, AppUserAvatar: true } },
     })
     try {
       await flushPromises()
