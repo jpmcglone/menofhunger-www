@@ -1,5 +1,6 @@
 <template>
-  <div class="flex gap-3">
+  <div class="relative flex gap-3" :class="connectToReply && 'pb-4'">
+    <span v-if="connectToReply" class="absolute left-[19px] top-12 bottom-0 w-0.5 rounded-full" :style="{ backgroundColor: connectorColor }" role="img" :aria-label="`Reply audience: ${audienceLabel}`" :title="`Reply audience: ${audienceLabel}`" />
     <div v-if="!contentOnly" class="shrink-0" aria-hidden="true">
       <AppUserAvatar
         :user="author"
@@ -146,11 +147,13 @@
         :media="post.media"
         compact
       />
+      <div v-if="$slots.default" class="pt-4 text-sm moh-text-muted"><slot /></div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { postActionVisibilityColor, visibilityTagLabel } from '~/utils/post-visibility'
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
@@ -160,6 +163,8 @@ import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 const props = withDefaults(
   defineProps<{
     post: FeedPost
+    /** Connect the parent avatar to the following composer, ending above its avatar. */
+    connectToReply?: boolean
     /** When true, omit the avatar (used when parent renders avatar in shared thread column). */
     contentOnly?: boolean
   }>(),
@@ -187,8 +192,10 @@ const { onEnter: onGroupEnter, onMove: onGroupMove, onLeave: onGroupLeave } = us
   shell: feedGroupTag,
 })
 
-// "Replying to" targets when the previewed post is itself a reply — mirrors PostRow.
-// Walk the pre-loaded parent chain and collect up to 3 unique, tier-colored usernames.
+const audienceLabel = computed(() => feedGroupTag.value?.name ?? visibilityTagLabel(props.post.visibility) ?? 'Public')
+const connectorColor = computed(() => feedGroupTag.value ? 'var(--moh-group)' : props.post.visibility === 'public' ? 'var(--moh-thread-line)' : postActionVisibilityColor(props.post.visibility))
+
+// Walk the parent chain for the previewed post’s own reply recipients.
 const replyingToTargets = computed(() => {
   if (!props.post.parentId) return []
 

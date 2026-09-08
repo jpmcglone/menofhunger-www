@@ -30,32 +30,22 @@
         >
           <div
             :class="[
-              'relative overflow-hidden rounded-2xl moh-card moh-card-matte max-h-full',
-              replyModalBorderClass,
+              'relative overflow-hidden rounded-2xl border moh-border moh-surface max-h-full',
             ]"
           >
             <div class="relative z-10 flex flex-col max-h-[min(100%,40rem)]">
               <div
-                class="overflow-y-auto overflow-x-hidden no-scrollbar flex flex-col moh-gutter-x pt-4 pb-4"
+                class="overflow-y-auto overflow-x-hidden no-scrollbar flex flex-col pt-3 pb-2"
                 @click.capture="onSheetClick"
               >
-                <!-- Parent post you're replying to (same padding as compose: pl-4 aligns with composer content) -->
-                <div class="pt-2 pb-2 pl-[var(--moh-gutter-x)]">
-                  <AppReplyParentPreview :post="parentPost" />
+                <div class="moh-gutter-x mb-3">
+                  <button type="button" class="moh-focus moh-surface-hover flex h-11 w-11 items-center justify-center rounded-full moh-text" aria-label="Close reply" @click="close">
+                    <Icon name="tabler:x" class="text-xl" aria-hidden="true" />
+                  </button>
                 </div>
-                <!-- Compose (Replying to @userA, @userB injected via slot above textarea) -->
-                <div>
-                  <AppPostComposer
-                    v-if="replyContext"
-                    ref="replyComposerRef"
-                    :reply-to="replyContext"
-                    auto-focus
-                    :show-divider="false"
-                    in-reply-thread
-                    @pending="onReplyPending"
-                    @posted="onReplyPosted"
-                  >
-                    <template #above-textarea>
+                <div class="moh-gutter-x">
+                  <AppReplyParentPreview :post="parentPost" connect-to-reply>
+                    <template #default>
                       <span v-if="replyingToDisplay.length">
                         Replying to
                         <template v-for="(p, i) in replyingToDisplay" :key="p.id">
@@ -74,7 +64,19 @@
                         </template>
                       </span>
                     </template>
-                  </AppPostComposer>
+                  </AppReplyParentPreview>
+                </div>
+                <div>
+                  <AppPostComposer
+                    v-if="replyContext"
+                    ref="replyComposerRef"
+                    :reply-to="replyContext"
+                    auto-focus
+                    :show-divider="false"
+                    in-reply-thread
+                    @pending="onReplyPending"
+                    @posted="onReplyPosted"
+                  />
                 </div>
               </div>
             </div>
@@ -170,13 +172,6 @@ function updateReplySheetStyle() {
   }
 }
 
-const replyModalBorderClass = computed(() => {
-  const v = parentPost.value?.visibility
-  if (v === 'verifiedOnly') return 'moh-thread-verified'
-  if (v === 'premiumOnly') return 'moh-thread-premium'
-  if (v === 'onlyMe') return 'moh-thread-onlyme'
-  return 'moh-border'
-})
 
 function close() {
   stopTyping()

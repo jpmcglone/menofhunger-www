@@ -3,32 +3,37 @@
     <button
       ref="btnEl"
       type="button"
-      class="inline-flex items-center min-h-11 gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold leading-5 transition-colors"
-      :class="pillClass"
+      class="moh-focus inline-flex items-center justify-center min-h-11 gap-2 rounded-full text-sm font-semibold leading-5 transition-colors"
+      :class="compact ? 'w-11 moh-surface-hover' : ['border px-5 py-2.5', pillClass]"
+      :style="compact ? { color: postActionVisibilityColor(modelValue) } : undefined"
+      :title="`Post audience: ${label}`"
       :aria-label="`Select post visibility: ${label}`"
       aria-haspopup="menu"
       :aria-expanded="open"
       :disabled="!viewerIsVerified"
       @click="viewerIsVerified ? toggle() : null"
     >
-      <Icon v-if="modelValue === 'public'" name="tabler:world" class="mr-1 text-[10px] opacity-80" aria-hidden="true" />
-      <AppVerifiedBadge
-        v-else-if="modelValue === 'verifiedOnly'"
-        class="mr-1"
-        status="identity"
-        :premium="false"
-        :show-tooltip="false"
-      />
-      <AppVerifiedBadge
-        v-else-if="modelValue === 'premiumOnly'"
-        class="mr-1"
-        status="identity"
-        :premium="true"
-        :show-tooltip="false"
-      />
-      <Icon v-else-if="modelValue === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px] opacity-80" aria-hidden="true" />
-      {{ label }}
-      <Icon v-if="viewerIsVerified" name="tabler:chevron-down" class="ml-1 text-[9px] opacity-80" aria-hidden="true" />
+      <Icon v-if="compact" name="tabler:world" class="text-xl" aria-hidden="true" />
+      <template v-else>
+        <Icon v-if="modelValue === 'public'" name="tabler:world" class="mr-1 text-[10px] opacity-80" aria-hidden="true" />
+        <AppVerifiedBadge
+          v-else-if="modelValue === 'verifiedOnly'"
+          class="mr-1"
+          status="identity"
+          :premium="false"
+          :show-tooltip="false"
+        />
+        <AppVerifiedBadge
+          v-else-if="modelValue === 'premiumOnly'"
+          class="mr-1"
+          status="identity"
+          :premium="true"
+          :show-tooltip="false"
+        />
+        <Icon v-else-if="modelValue === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px] opacity-80" aria-hidden="true" />
+        {{ label }}
+        <Icon v-if="viewerIsVerified" name="tabler:chevron-down" class="ml-1 text-[9px] opacity-80" aria-hidden="true" />
+      </template>
     </button>
 
     <!-- Teleport so overflow:hidden on parent modals/containers doesn't clip the panel -->
@@ -104,9 +109,10 @@
 
 <script setup lang="ts">
 import type { PostVisibility } from '~/types/api'
-import { filterPillClasses } from '~/utils/post-visibility'
+import { filterPillClasses, postActionVisibilityColor } from '~/utils/post-visibility'
 
 const props = defineProps<{
+  compact?: boolean
   modelValue: PostVisibility
   allowed: PostVisibility[]
   viewerIsVerified: boolean
@@ -140,12 +146,13 @@ const panelEl = ref<HTMLElement | null>(null)
 const dropdownStyle = computed(() => {
   if (!open.value || !btnEl.value) return {}
   const r = btnEl.value.getBoundingClientRect()
+  const left = Math.max(8, Math.min(r.left, window.innerWidth - 232))
   const panelH = 180 // estimated max panel height
   const spaceBelow = window.innerHeight - r.bottom
   const openUp = spaceBelow < panelH + 8
   return openUp
-    ? { bottom: `${window.innerHeight - r.top + 4}px`, left: `${r.left}px` }
-    : { top: `${r.bottom + 4}px`, left: `${r.left}px` }
+    ? { bottom: `${window.innerHeight - r.top + 4}px`, left: `${left}px` }
+    : { top: `${r.bottom + 4}px`, left: `${left}px` }
 })
 
 function set(v: PostVisibility) {

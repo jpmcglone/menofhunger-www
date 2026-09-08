@@ -206,7 +206,7 @@
               v-else-if="initialFeedResolved && (showAllEmptyState || showForYouEmptyState)"
             />
 
-            <div ref="feedVirtualListContainerEl" class="relative mt-3">
+            <div ref="feedVirtualListContainerEl" class="relative">
               <div
                 class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
                 :class="feedRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"

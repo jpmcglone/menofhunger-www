@@ -36,8 +36,7 @@
         >
           <div
             :class="[
-              'relative overflow-hidden rounded-2xl border bg-white p-3 moh-card-matte dark:bg-black',
-              composerModalBorderClass,
+              'relative overflow-hidden rounded-2xl border moh-border moh-surface',
             ]"
           >
             <div class="relative z-10">
@@ -63,7 +62,13 @@
                 :register-unsaved-guard="false"
                 @posted="onComposerPosted"
                 @pending="onComposerPending"
-              />
+              >
+                <template #close>
+                  <button type="button" class="moh-focus moh-surface-hover flex h-11 w-11 items-center justify-center rounded-full moh-text" aria-label="Close composer" @click="closeComposerModal">
+                    <Icon name="tabler:x" class="text-xl" aria-hidden="true" />
+                  </button>
+                </template>
+              </AppPostComposer>
             </div>
           </div>
         </div>
@@ -102,7 +107,6 @@ const {
   composerCustomDisableMedia,
   composerCreatePost,
   composerQuotedPost,
-  composerModalBorderClass,
   composerSheetStyle,
   composerSheetPlacementStyle,
   sharePost,

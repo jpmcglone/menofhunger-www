@@ -14,37 +14,39 @@
       <div
         :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'"
       >
-      <!-- Row 1: visibility picker (left) + checkin prompt / scheduled time (right) -->
+      <!-- Modal close and audience controls stay above the writing row. -->
       <div
+        v-if="!replyTo || $slots.close"
         :class="[
-          omitAvatar ? 'flex justify-between' : 'col-start-2 row-start-1 flex flex-wrap justify-between gap-2 mb-4',
+          'col-span-2 row-start-1 flex flex-wrap items-center gap-2 mb-3',
           checkinPrompt ? 'items-end' : 'items-center',
         ]"
       >
-        <!-- Left: scope tag or visibility picker -->
-        <div class="flex items-center">
+        <slot name="close" />
+        <div v-if="!replyTo" class="ml-auto flex items-center">
           <AppComposerVisibilityPicker
             v-if="showVisibilityPicker"
             v-model="visibility"
             :allowed="allowedComposerVisibilities"
             :viewer-is-verified="viewerIsVerified"
             :is-premium="isPremium"
+            compact
           />
           <span
             v-else
             v-tooltip.bottom="scopeTagTooltip"
-            class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border cursor-default"
-            :class="scopeTagClass ? scopeTagClass : 'moh-text-muted border-gray-300 dark:border-zinc-600'"
-            aria-label="Reply visibility"
+            class="inline-flex h-11 w-11 items-center justify-center rounded-full cursor-default"
+            :style="{ color: composerHashtagColor }"
+            role="img"
+            :aria-label="`Post audience: ${scopeTagLabel}`"
           >
             <Icon
               v-if="showGroupScopeIcon"
               name="tabler:users-group"
-              class="mr-1 text-[10px]"
+              class="text-xl"
               aria-hidden="true"
             />
-            <Icon v-else-if="effectiveVisibility === 'onlyMe'" name="tabler:eye-off" class="mr-1 text-[10px]" aria-hidden="true" />
-            {{ scopeTagLabel }}
+            <Icon v-else name="tabler:world" class="text-xl" aria-hidden="true" />
           </span>
         </div>
 
@@ -93,7 +95,7 @@
         <NuxtLink
           v-if="myProfilePath"
           :to="myProfilePath"
-          class="row-start-1 col-start-1 self-center mb-4 group shrink-0"
+          class="row-start-2 col-start-1 group shrink-0"
           aria-label="View your profile"
         >
           <div class="transition-opacity duration-200 group-hover:opacity-80">
@@ -106,7 +108,7 @@
             />
           </div>
         </NuxtLink>
-        <div v-else class="row-start-1 col-start-1 self-center mb-4 shrink-0" aria-hidden="true">
+        <div v-else class="row-start-2 col-start-1 shrink-0" aria-hidden="true">
           <AppUserAvatar
             :user="user"
             size-class="h-10 w-10"
@@ -118,7 +120,7 @@
       </template>
 
       <div
-        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-span-2 min-w-0 moh-composer-tint'"
+        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-start-2 min-w-0 moh-composer-tint'"
       >
         <!-- Optional content above textarea (e.g. "Replying to @username" in reply modal) -->
         <div v-if="$slots['above-textarea']" class="pb-2 text-sm moh-text-muted">
@@ -145,9 +147,9 @@
           @dragleave="onComposerAreaDragLeave"
           @drop.prevent="onComposerDrop"
         >
-          <!-- Textarea wrapper: border/background live on wrapper so it stays visually consistent -->
+          <!-- Open writing surface; keep paste handling on the shared wrapper. -->
           <div
-            class="moh-composer-field relative rounded-xl border moh-border-subtle moh-surface-2"
+            class="relative"
             @paste.capture="onComposerPaste"
           >
             <AppStyledTextarea
@@ -238,7 +240,7 @@
           </Teleport>
         </ClientOnly>
 
-        <div :class="composerMedia.length ? 'mt-5' : 'mt-3'" class="flex flex-col gap-1">
+        <div :class="[composerMedia.length ? 'mt-5' : 'mt-3', !omitAvatar && '-ml-[3.25rem]']" class="flex flex-col gap-1">
           <AppComposerActionBar>
             <template #tools>
               <template v-if="!disableMedia">
@@ -390,20 +392,17 @@
       @keydown.enter="showLoginPrompt"
       @keydown.space.prevent="showLoginPrompt"
     >
-      <!-- Row 1: "Public" scope tag -->
-      <div :class="omitAvatar ? 'flex justify-start' : 'col-start-2 flex justify-start items-end mb-3 sm:mb-2'">
-        <span
-          class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border moh-text-muted border-gray-300 dark:border-zinc-600 select-none"
-          aria-hidden="true"
-        >
-          Public
+      <!-- Same audience control placement as the signed-in composer. -->
+      <div class="col-span-2 row-start-1 flex justify-end mb-3" aria-hidden="true">
+        <span class="inline-flex h-11 w-11 items-center justify-center moh-text-muted">
+          <Icon name="tabler:world" class="text-xl" />
         </span>
       </div>
 
       <!-- Row 2: avatar placeholder -->
       <template v-if="!omitAvatar">
         <div
-          class="row-start-1 col-start-1 self-center mb-4 shrink-0 h-10 w-10 rounded-full ring-1 ring-gray-300 dark:ring-zinc-600 bg-gray-100 dark:bg-zinc-800 flex items-center justify-center"
+          class="row-start-2 col-start-1 shrink-0 h-10 w-10 rounded-full ring-1 ring-gray-300 dark:ring-zinc-600 bg-gray-100 dark:bg-zinc-800 flex items-center justify-center"
           aria-hidden="true"
         >
           <Icon name="tabler:user" class="text-gray-400 dark:text-zinc-500 text-[14px] sm:text-[16px]" />
@@ -412,16 +411,16 @@
 
       <!-- Textarea + bottom bar -->
       <div
-        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-span-2 min-w-0 moh-composer-tint'"
+        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-start-2 min-w-0 moh-composer-tint'"
         class="pointer-events-none select-none"
       >
-        <div class="moh-composer-field relative rounded-xl border moh-border-subtle moh-surface-2">
-          <div class="px-3 py-2 text-[16px] leading-6 min-h-[4.5rem] text-gray-400 dark:text-zinc-500 opacity-70">
+        <div class="relative">
+          <div class="py-1.5 text-xl leading-7 min-h-14 text-gray-400 dark:text-zinc-500 opacity-70">
             {{ VOICE.feed.postHeading }}
           </div>
         </div>
 
-        <div class="mt-3 flex items-center justify-between">
+        <div class="mt-3 flex items-center justify-between" :class="!omitAvatar && '-ml-[3.25rem]'">
           <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 opacity-40">
             <Button text rounded severity="secondary" disabled aria-hidden="true">
               <template #icon>
@@ -576,7 +575,7 @@ import {
   primaryPaletteToCssVars,
 } from '~/utils/theme-tint'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
-import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
+import { visibilityTagLabel } from '~/utils/post-visibility'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 
@@ -1198,12 +1197,6 @@ const scopeTagLabel = computed(() => {
   if (props.groupComposer && !props.replyTo) return props.groupName || 'Group'
   if (replyShowsGroupScope.value) return replyGroupDisplayLabel.value
   return visibilityTagLabel(effectiveVisibility.value) ?? 'Public'
-})
-const scopeTagClass = computed(() => {
-  if (useGroupScopeChrome.value) {
-    return 'border-[color:rgba(var(--moh-group-rgb),0.45)] bg-[color:var(--moh-group-soft)] text-[color:var(--moh-group)]'
-  }
-  return visibilityTagClasses(effectiveVisibility.value)
 })
 const scopeTagTooltip = computed(() => {
   if (useGroupScopeChrome.value) {
@@ -1873,12 +1866,12 @@ watch(
    max-height + overflow-y: auto lets the editor grow to fill natural space, then scroll internally
    rather than pushing the modal beyond the viewport. */
 .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) {
-  min-height: 4.5rem; /* 3 visual rows */
-  max-height: 40vh;
+  min-height: 3.5rem;
+  max-height: min(15rem, 40dvh);
   overflow-y: auto;
-  padding: 0.5rem 0.75rem; /* px-3 py-2 — matches the old textarea */
-  font-size: 16px;
-  line-height: 1.5rem; /* leading-6 */
+  padding: 0.375rem 0;
+  font-size: 20px;
+  line-height: 1.75rem;
 }
 
 .moh-upload-indeterminate {
