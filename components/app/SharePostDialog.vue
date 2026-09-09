@@ -164,7 +164,7 @@ const socialProofTotal = computed(() => checkinState.value?.socialProof?.totalTo
 // Header: the streak is the hero for a check-in; everything else is a plain share.
 const showStreakHero = computed(() => isCheckin.value && streakDays.value > 0)
 const headerTitle = computed(() =>
-  showStreakHero.value ? `${streakDays.value}-day streak` : isCheckin.value ? 'Check-in saved' : 'Share this post',
+  showStreakHero.value ? `Check-in answered · ${streakDays.value}-day streak` : isCheckin.value ? 'Check-in answer saved' : 'Share this post',
 )
 const headerSubtitle = computed(() => {
   if (!showStreakHero.value) return isCheckin.value ? 'Thanks for showing up today.' : 'Invite someone into the conversation.'

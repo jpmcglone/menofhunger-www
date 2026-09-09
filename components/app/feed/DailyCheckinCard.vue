@@ -5,16 +5,16 @@
     <NuxtLink
       to="/leaderboard"
       class="flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 hover:opacity-90 transition-opacity"
-      style="background-color: rgba(127, 127, 127, 0.08); border-color: rgba(127, 127, 127, 0.2)"
+      style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
     >
       <div
         class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-        style="background-color: rgba(127, 127, 127, 0.18)"
+        style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
       >
-        <Icon name="tabler:flame" class="text-sm text-orange-500 dark:text-orange-400" aria-hidden="true" />
+        <Icon name="tabler:check" class="text-sm text-[var(--moh-checkin)]" aria-hidden="true" />
       </div>
       <div class="flex-1 min-w-0">
-        <span class="text-sm font-semibold moh-text">Streak intact</span>
+        <span class="text-sm font-semibold moh-text">Check-in answered</span>
         <span v-if="streak > 0" class="ml-1.5 text-sm moh-text-muted">· Day {{ streak }}</span>
       </div>
       <Icon name="tabler:chevron-right" class="text-xs moh-text-muted shrink-0" aria-hidden="true" />
@@ -29,24 +29,13 @@
       style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
       @click="$emit('check-in')"
     >
-      <div class="flex items-center gap-3 px-4 py-3.5">
-        <div
-          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-          style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
-        >
-          <Icon name="tabler:calendar-check" class="text-lg" aria-hidden="true" style="color: var(--moh-checkin)" />
-        </div>
-
-        <div class="flex-1 min-w-0">
-          <div class="text-sm font-semibold moh-text leading-snug">{{ prompt }}</div>
-          <p class="mt-1 text-[13px] moh-text-muted">Open until midnight ET · New prompt daily at 5pm ET</p>
-          <div class="text-[11px] moh-text-muted mt-0.5 leading-snug">
-            <template v-if="streak > 0">Answer to keep your {{ streak }}-day streak alive.</template>
-            <template v-else>Answer today's question to start your streak.</template>
-          </div>
-        </div>
-
-        <Icon name="tabler:chevron-right" class="shrink-0 text-sm moh-text-muted" aria-hidden="true" />
+      <div class="space-y-3 p-4">
+        <AppCheckinPromptContext :prompt="prompt" metadata="Open until midnight ET · New prompt daily at 5pm ET" />
+        <p class="text-xs moh-text-muted">
+          <template v-if="streak > 0">Answer to keep your {{ streak }}-day streak alive.</template>
+          <template v-else>Answer today's check-in prompt to start your streak.</template>
+        </p>
+        <span class="inline-flex min-h-11 items-center rounded-full bg-[var(--moh-checkin)] px-5 text-sm font-semibold text-white">Answer</span>
       </div>
     </button>
 
@@ -57,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
 import CheckinClosedNotice from './CheckinClosedNotice.vue'
 const { isOpen } = useCheckinWindow()
 defineProps<{

@@ -141,16 +141,13 @@
               v-if="isCheckinQuery && canShowSearchCheckinHint"
               class="mt-4 rounded-lg border moh-border bg-white/70 dark:bg-zinc-900/50 p-3 text-left"
             >
-              <div class="text-[11px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.8">
-                Today's Prompt
-              </div>
-              <p class="mt-1 text-sm moh-text">{{ displayCheckinPromptText }}</p>
+              <AppCheckinPromptContext :prompt="displayCheckinPromptText" compact />
               <div class="mt-3 flex justify-end">
                 <Button
-                  :label="hasCheckedInToday ? 'See check-ins' : 'Check in'"
+                  :label="hasCheckedInToday ? 'See answers' : 'Answer'"
                   size="small"
                   rounded
-                  class="moh-btn-scope moh-btn-tone"
+                  class="moh-btn-tone !border-[var(--moh-checkin)] !bg-[var(--moh-checkin)] !text-white"
                   @click="hasCheckedInToday ? goToCheckinsFeed() : openCheckinComposer()"
                 />
               </div>
@@ -732,6 +729,7 @@
 </template>
 
 <script setup lang="ts">
+import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
 import AppGroupPreviewCard from '~/components/app/groups/AppGroupPreviewCard.vue'
 import type {
   Article,

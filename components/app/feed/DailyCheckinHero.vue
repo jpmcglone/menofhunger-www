@@ -8,11 +8,11 @@
     aria-labelledby="moh-checkin-hero-verify-title"
   >
     <span class="moh-checkin-row-accent" aria-hidden="true" />
-    <div class="moh-gutter-x py-3">
-      <p class="moh-meta" style="color: var(--moh-checkin)">Today</p>
+    <div class="moh-gutter-x py-5">
+      <p class="text-[11px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin)">Check-in prompt · Today</p>
       <h1
         id="moh-checkin-hero-verify-title"
-        class="mt-1 moh-body font-semibold moh-serif line-clamp-2"
+        class="mt-2.5 text-2xl leading-[1.45] font-normal moh-serif break-words"
       >
         {{ promptText }}
       </h1>
@@ -60,7 +60,7 @@
       <div class="relative z-[2] moh-gutter-x py-2.5">
         <p
           id="moh-checkin-hero-compact-title"
-          class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 moh-meta"
+          class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-semibold uppercase tracking-wide"
           style="color: var(--moh-checkin)"
         >
           <Icon name="tabler:check" size="14" aria-hidden="true" />
@@ -83,7 +83,7 @@
           v-if="myCheckinSnippet"
           class="mt-0.5 text-[13px] leading-snug moh-text-muted line-clamp-1"
         >
-          "{{ myCheckinSnippet }}"
+          Your answer: “{{ myCheckinSnippet }}”
         </p>
       </div>
     </div>
@@ -113,9 +113,9 @@
         tabindex="-1"
         aria-hidden="true"
       />
-      <div class="relative z-[2] moh-gutter-x py-3">
+      <div class="relative z-[2] moh-gutter-x py-5">
         <p
-          class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 moh-meta"
+          class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-semibold uppercase tracking-wide"
           style="color: var(--moh-checkin)"
         >
           <span>{{ unansweredHead }}</span>
@@ -134,7 +134,7 @@
         </p>
         <h1
           id="moh-checkin-hero-title"
-          class="mt-1 moh-body font-semibold moh-serif line-clamp-3"
+          class="mt-2.5 text-2xl leading-[1.45] font-normal moh-serif break-words"
         >
           {{ promptText }}
         </h1>
@@ -284,14 +284,14 @@ const missionFraction = computed(() => {
   return `${mission.daysCompleted}/${mission.daysTarget}`
 })
 
-const unansweredHead = computed(() => (crew.value ? 'Crew' : 'Today'))
+const unansweredHead = computed(() => (crew.value ? 'Check-in prompt · Crew' : 'Check-in prompt · Today'))
 
 const answeredHead = computed(() => {
   if (crew.value && crewAllAnswered.value) {
     const days = effectiveCrewStreak.value
-    return days >= 2 ? `Crew · Day ${days}` : 'Crew · locked in'
+    return days >= 2 ? `Check-in answered · Crew · Day ${days}` : 'Check-in answered · Crew locked in'
   }
-  return 'Checked in'
+  return 'Check-in answered'
 })
 
 const myCheckinSnippet = computed(() => {

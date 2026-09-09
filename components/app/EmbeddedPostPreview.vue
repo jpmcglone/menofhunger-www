@@ -50,6 +50,11 @@
           <span class="ml-auto shrink-0 text-xs moh-text-muted leading-none">{{ createdAtShort }}</span>
         </div>
 
+        <AppCheckinPromptContext
+          v-if="isCheckin && checkinPrompt && post.viewerCanAccess !== false"
+          :prompt="checkinPrompt" label="Check-in answer" compact class="my-3"
+        />
+
         <!-- Access gate: body/media were stripped server-side for this viewer -->
         <div
           v-if="post.viewerCanAccess === false"
@@ -72,16 +77,6 @@
           :style="pollTextStyle"
         >View poll</div>
 
-        <!-- Check-in indicator -->
-        <div
-          v-if="isCheckin"
-          class="mt-1.5 flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium w-fit"
-          style="background-color: var(--moh-checkin-soft); color: var(--moh-checkin)"
-        >
-          <Icon name="tabler:calendar-check" class="text-[11px] shrink-0" aria-hidden="true" />
-          {{ checkinPrompt || 'Check-in' }}
-        </div>
-
         <!-- Media: non-interactive — clicks pass through to the <a> wrapper -->
         <AppPostMediaGrid
           v-if="mediaItems.length && post.viewerCanAccess !== false"
@@ -99,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
 import type { FeedPost, GetPostData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useUserOverlay } from '~/composables/useUserOverlay'

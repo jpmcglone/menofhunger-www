@@ -5,6 +5,7 @@
   <div
     :class="[
       'pb-4',
+      checkinPrompt ? 'moh-prompt-composer' : '',
       omitAvatar ? 'pr-[var(--moh-gutter-x)]' : 'moh-gutter-x',
       inReplyThread ? 'pt-2' : 'pt-4',
       showDivider ? 'border-b moh-border' : ''
@@ -19,12 +20,11 @@
         v-if="!replyTo || $slots.close"
         :class="[
           'row-start-1 flex flex-wrap items-center gap-2',
-          inlineAudience ? 'col-start-2 mb-2' : 'col-span-2 mb-3',
-          checkinPrompt ? 'items-end' : 'items-center',
+          checkinPrompt ? 'col-span-2 mb-5' : (inlineAudience ? 'col-start-2 mb-2' : 'col-span-2 mb-3'),
         ]"
       >
         <slot name="close" />
-        <div v-if="!replyTo" class="flex min-w-0 items-center" :class="!inlineAudience && 'ml-auto'">
+        <div v-if="!replyTo" class="flex min-w-0 items-center" :class="(!inlineAudience || checkinPrompt) && 'ml-auto'">
           <AppComposerVisibilityPicker
             v-if="showVisibilityPicker"
             v-model="visibility"
@@ -47,34 +47,9 @@
           </span>
         </div>
 
-        <!-- Right: check-in prompt card (when composing a check-in) -->
-        <div
-          v-if="checkinPrompt"
-          class="inline-flex max-w-[55%] items-start gap-2 rounded-xl border px-2.5 py-2"
-          style="background-color: var(--moh-checkin-soft); border-color: rgba(var(--moh-checkin-rgb), 0.3)"
-        >
-          <div
-            class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-            style="background-color: rgba(var(--moh-checkin-rgb), 0.18)"
-          >
-            <Icon name="tabler:calendar-check" class="text-[11px]" aria-hidden="true" style="color: var(--moh-checkin)" />
-          </div>
-          <div class="min-w-0">
-            <div class="flex items-center gap-1">
-              <span class="text-[9px] font-bold uppercase tracking-wide" style="color: var(--moh-checkin); opacity: 0.8">Prompt</span>
-              <span
-                class="rounded-full px-1 py-px text-[8px] font-bold uppercase tracking-wide border"
-                style="color: var(--moh-checkin); border-color: rgba(var(--moh-checkin-rgb), 0.35); background-color: rgba(var(--moh-checkin-rgb), 0.1)"
-              >Today</span>
-            </div>
-            <div class="mt-0.5 text-[11px] leading-snug moh-text line-clamp-2">{{ checkinPrompt }}</div>
-            <p class="mt-1 text-[13px] moh-text-muted">Open until midnight ET · New prompt daily at 5pm ET</p>
-          </div>
-        </div>
-
         <!-- Right: scheduled time — shown when a time is confirmed (not applicable for check-ins) -->
         <button
-          v-else-if="scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
+          v-if="!checkinPrompt && scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
           v-tooltip.bottom="`Click to change schedule`"
           type="button"
           class="inline-flex items-center gap-1 text-[11px] font-semibold moh-focus"
@@ -87,13 +62,19 @@
         </button>
       </div>
 
+      <AppComposerPromptContext
+        v-if="checkinPrompt"
+        :prompt="checkinPrompt"
+        class="row-start-2 col-span-2 mb-5"
+      />
+
       <!-- Row 2: avatar + textarea start aligned (avatar omitted when omitAvatar) -->
       <template v-if="!omitAvatar">
         <NuxtLink
           v-if="myProfilePath"
           :to="myProfilePath"
           class="col-start-1 group shrink-0"
-          :class="inlineAudience ? 'row-start-1 row-span-2' : 'row-start-2'"
+          :class="checkinPrompt ? 'row-start-3' : (inlineAudience ? 'row-start-1 row-span-2' : 'row-start-2')"
           aria-label="View your profile"
         >
           <div class="transition-opacity duration-200 group-hover:opacity-80">
@@ -106,7 +87,7 @@
             />
           </div>
         </NuxtLink>
-        <div v-else class="col-start-1 shrink-0" :class="inlineAudience ? 'row-start-1 row-span-2' : 'row-start-2'" aria-hidden="true">
+        <div v-else class="col-start-1 shrink-0" :class="checkinPrompt ? 'row-start-3' : (inlineAudience ? 'row-start-1 row-span-2' : 'row-start-2')" aria-hidden="true">
           <AppUserAvatar
             :user="user"
             size-class="h-10 w-10"
@@ -118,8 +99,9 @@
       </template>
 
       <div
-        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-start-2 min-w-0 moh-composer-tint'"
+        :class="[omitAvatar ? 'min-w-0 moh-composer-tint' : 'col-start-2 min-w-0 moh-composer-tint', checkinPrompt ? 'row-start-3' : 'row-start-2']"
       >
+        <p v-if="checkinPrompt" class="mb-2 text-[13px] font-medium moh-text-muted">Your answer</p>
         <!-- Optional content above textarea (e.g. "Replying to @username" in reply modal) -->
         <div v-if="$slots['above-textarea']" class="pb-2 text-sm moh-text-muted">
           <slot name="above-textarea" />
@@ -238,7 +220,7 @@
           </Teleport>
         </ClientOnly>
 
-        <div :class="[composerMedia.length ? 'mt-5' : 'mt-3', !omitAvatar && '-ml-[3.25rem]']" class="flex flex-col gap-1">
+        <div :class="[checkinPrompt ? 'mt-5 border-t moh-border pt-4' : (composerMedia.length ? 'mt-5' : 'mt-3'), !omitAvatar && '-ml-[3.25rem]']" class="flex flex-col gap-1">
           <AppComposerActionBar>
             <template #tools>
               <template v-if="!disableMedia">
@@ -344,7 +326,7 @@
             </template>
             <template #submit>
             <Button
-              :label="mode === 'edit' && scheduledEditId ? 'Save' : (scheduledAt ? 'Schedule' : (mode === 'edit' ? 'Save' : (replyTo ? 'Reply' : 'Post')))"
+              :label="mode === 'edit' && scheduledEditId ? 'Save' : (scheduledAt ? 'Schedule' : (mode === 'edit' ? 'Save' : (replyTo ? 'Reply' : (checkinPrompt ? 'Post answer' : 'Post'))))"
               rounded
               severity="secondary"
               :class="[postButtonClass, 'moh-pressable !rounded-full !min-h-11 !py-1.5 !px-5 !text-sm !font-semibold']"
@@ -554,6 +536,7 @@
 </template>
 
 <script setup lang="ts">
+import AppComposerPromptContext from '~/components/app/composer/PromptContext.vue'
 import { recordWelcomeProgress } from '~/utils/welcome-progress'
 import AppComposerActionBar from '~/components/app/composer/ActionBar.vue'
 import { makeLocalId } from '~/composables/composer/types'
@@ -717,9 +700,8 @@ const props = defineProps<{
   /** Pre-fill the scheduled time chip (ISO string). */
   initialScheduledAt?: string
   /**
-   * When set, the check-in prompt card is shown inline to the right of the
-   * visibility picker (bottom-aligned). The prompt is also used as the
-   * textarea placeholder.
+   * Shows the full-width daily prompt above the answer editor, with prompt-specific
+   * typography and spacing. The question stays separate from the writing placeholder.
    */
   checkinPrompt?: string
 }>()
@@ -1329,8 +1311,7 @@ const composerTextareaVars = computed<Record<string, string>>(() => {
 const postMaxLen = computed(() => (isPremium.value ? 1000 : 500))
 const composerPlaceholder = computed(
   () =>
-    props.checkinPrompt ??
-    props.placeholder ??
+    (props.checkinPrompt ? 'Write your answer…' : props.placeholder) ??
     (props.replyTo ? 'Post your reply…' : (hasPoll.value ? 'Ask a question' : VOICE.feed.postHeading)),
 )
 const postCharCount = computed(() => draft.value.length)
@@ -1464,6 +1445,7 @@ const composerHasFailedMedia = computed(
 )
 
 const postButtonClass = computed(() => {
+  if (props.checkinPrompt) return 'moh-btn-tone !border-[var(--moh-checkin)] !bg-[var(--moh-checkin)] !text-white'
   if (replyShowsGroupScope.value) {
     return 'moh-btn-tone !border-[color:var(--moh-group)] !bg-[color:var(--moh-group)] !text-white'
   }
@@ -1931,6 +1913,20 @@ watch(
   padding: 0.375rem 0;
   font-size: 20px;
   line-height: 1.75rem;
+}
+
+/* Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=396-1894 */
+.moh-prompt-composer {
+  padding: 16px 24px 20px;
+}
+.moh-prompt-composer .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) {
+  min-height: 120px;
+  padding-top: 0;
+  font-size: 18px;
+  line-height: 1.625rem;
+}
+@media (max-width: 639px) {
+  .moh-prompt-composer { padding-inline: 16px; }
 }
 
 .moh-upload-indeterminate {

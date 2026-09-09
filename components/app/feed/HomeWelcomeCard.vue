@@ -61,8 +61,8 @@
               </div>
               <p class="text-[13px] moh-text-muted">{{ progress.posted ? 'Come back tomorrow. Keep it going.' : 'Day one starts with you.' }}</p>
               <button v-if="showCheckinCta && checkinPrompt && !progress.posted" type="button" class="welcome-prompt" @click="$emit('check-in')">
-                <span class="min-w-0"><span class="block text-xs font-semibold">Today’s prompt</span><span class="block mt-1 text-sm moh-text">{{ checkinPrompt }}</span></span>
-                <span class="shrink-0 text-sm font-semibold">Check in →</span>
+                <AppCheckinPromptContext :prompt="checkinPrompt" compact />
+                <span class="shrink-0 text-sm font-semibold">Answer →</span>
               </button>
             </template>
           </section>
@@ -79,6 +79,7 @@
 </template>
 
 <script setup lang="ts">
+import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
 import { VOICE } from '~/config/voice'
 const props = defineProps<{ showCheckinCta?: boolean; checkinPrompt?: string; hasPosted?: boolean }>()
 defineEmits<{ 'check-in': []; compose: [] }>()
@@ -115,7 +116,7 @@ const subtitle = computed(() => {
 .welcome-button { display: inline-flex; justify-content: center; align-items: center; min-height: 46px; padding: 12px 20px; border-radius: 999px; font-size: 15px; font-weight: 600; }
 .welcome-primary { background: var(--moh-text); color: var(--moh-bg); }
 .welcome-complete { display: flex; flex-direction: column; gap: 24px; padding: 24px; }
-.welcome-prompt { display: flex; align-items: center; gap: 16px; text-align: left; min-height: 44px; color: var(--moh-checkin); }
+.welcome-prompt { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; text-align: left; min-height: 44px; color: var(--moh-checkin); }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--moh-brass); outline-offset: 3px; }
 .welcome-close:hover, .welcome-explore:hover { background: var(--moh-surface-2); }
 @container (min-width: 760px) {

@@ -161,27 +161,10 @@
           :is="postView.checkinDayKey ? NuxtLink : 'div'"
           v-if="!isDeletedPost && postView.kind === 'checkin' && postView.checkinPrompt"
           :to="postView.checkinDayKey ? `/check-ins/day/${postView.checkinDayKey}` : undefined"
-          class="mt-3 mb-3 flex w-full items-start gap-3 rounded-xl border p-3 transition-opacity hover:opacity-80"
-          :class="postView.checkinDayKey ? 'cursor-pointer' : ''"
-          style="background-color: rgba(var(--moh-checkin-rgb), 0.10); border-color: rgba(var(--moh-checkin-rgb), 0.24);"
+          class="my-4 block w-full transition-opacity hover:opacity-80"
           @click.stop
         >
-          <div
-            class="flex h-5 w-5 shrink-0 items-center justify-center"
-          >
-            <Icon name="tabler:calendar-check" class="text-[20px]" aria-hidden="true" style="color: var(--moh-checkin)" />
-          </div>
-          <div class="min-w-0">
-            <div class="flex items-center gap-1.5">
-              <span class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--moh-checkin)">Prompt</span>
-              <span
-                v-if="isCheckinPromptToday"
-                class="rounded-full px-1.5 py-px text-[9px] font-bold uppercase tracking-wide border"
-                style="color: var(--moh-checkin); border-color: rgba(var(--moh-checkin-rgb), 0.35); background-color: rgba(var(--moh-checkin-rgb), 0.1)"
-              >Today</span>
-            </div>
-            <div class="mt-0.5 text-xs sm:text-[13px] leading-snug moh-text">{{ postView.checkinPrompt }}</div>
-          </div>
+          <AppCheckinPromptContext :prompt="postView.checkinPrompt" :label="isCheckinPromptToday ? 'Check-in answer · Today' : 'Check-in answer'" compact />
         </component>
 
         <!-- Status post: eyebrow + bubble -->
@@ -396,6 +379,7 @@
 </template>
 
 <script setup lang="ts">
+import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
@@ -726,7 +710,7 @@ const metaTags = computed(() => {
   if (isCheckinPost.value) {
     out.push({
       key: 'kind:checkin',
-      label: 'Check in',
+      label: 'Check-in answer',
       class: 'moh-tag-checkin',
       tooltip: tinyTooltip('Daily check-in'),
       icon: 'tabler:calendar-check',

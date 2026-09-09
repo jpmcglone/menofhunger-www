@@ -2,10 +2,9 @@
   <AppPageContent bottom="standard">
     <div class="w-full">
       <div class="px-4 pt-4 pb-2">
-        <AppPageHeader
-          :title="pageTitle"
-          icon="tabler:calendar-check"
-          :description="pageDescription"
+        <AppCheckinPromptContext
+          :prompt="dayPrompt ?? 'Check-in answers'"
+          label="Check-in prompt" :metadata="pageDescription" heading-tag="h1" class="py-2"
         />
       </div>
 
@@ -77,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
 import type { FeedPost } from '~/types/api'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 
@@ -151,7 +151,6 @@ const showInitialLoader = computed(() => loading.value && posts.value.length ===
 
 // Derive the prompt from the first loaded post, fall back to the day key.
 const dayPrompt = computed<string | null>(() => posts.value[0]?.checkinPrompt ?? null)
-const pageTitle = computed(() => dayPrompt.value ?? dayKey.value)
 const pageDescription = computed(() =>
   dayKey.value
     ? `Check-ins for ${dayKey.value}`
