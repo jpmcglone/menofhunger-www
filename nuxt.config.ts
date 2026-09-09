@@ -151,7 +151,6 @@ export default defineNuxtConfig({
         // PostHog analytics (loaded on every page).
         { rel: 'dns-prefetch', href: 'https://us.i.posthog.com' },
         // Google services used for AdSense / Fonts / etc.
-        { rel: 'dns-prefetch', href: 'https://fonts.gstatic.com' },
         { rel: 'dns-prefetch', href: 'https://pagead2.googlesyndication.com' },
         // Feed autodiscovery — tells feed readers and browsers that feeds exist.
         { rel: 'alternate', type: 'application/rss+xml', title: 'Men of Hunger — Articles (RSS)', href: `${siteConfig.url}/articles/feed.xml` },
@@ -165,7 +164,6 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/content',
     '@nuxt/eslint',
-    '@nuxt/fonts',
     '@nuxt/icon',
     '@nuxt/image',
     '@nuxt/scripts',
@@ -239,35 +237,8 @@ export default defineNuxtConfig({
     },
   },
 
-  fonts: {
-    // Prefer bunny over google: google serves opaque hashed gstatic URLs that
-    // periodically 404 during Render builds (Literata v40 latin did), while
-    // bunny keeps stable paths like literata-latin-400-normal.woff2.
-    priority: ['bunny', 'google'],
-    // Social-app friendly: clean, modern sans with strong readability.
-    // Loaded with swap to avoid FOIT.
-    families: [
-      {
-        name: 'Inter',
-        provider: 'bunny',
-        // 400 for body, 600 for semibold UI, 700 for bold headings. Weight 500
-        // removed — it saves a font variant download and the visual diff is negligible.
-        weights: [400, 600, 700],
-        styles: ['normal'],
-        subsets: ['latin'],
-      },
-      {
-        // Serif headings: quiet authority, long-form vibe.
-        // Reduced to 400/700 (dropped 600) — saves one variant download; feed
-        // headings only need regular + bold.
-        name: 'Literata',
-        provider: 'bunny',
-        weights: [400, 700],
-        styles: ['normal'],
-        subsets: ['latin'],
-      },
-    ],
-  },
+  // Fonts are bundled in public/fonts from the same source files as iOS.
+  ui: { fonts: false },
 
   css: ['~/assets/css/main.css'],
   ssr: true,

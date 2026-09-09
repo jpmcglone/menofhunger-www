@@ -1,9 +1,10 @@
+import { useApiClient } from '~/composables/useApiClient'
+import { useAuth } from '~/composables/useAuth'
 import type { GetNotificationsResponse, Notification, NotificationFeedItem, NotificationGroup, NotificationKind } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
-/** Mirrors PRIMARY_NOTIFICATION_KINDS on the API side. */
-const PRIMARY_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'checkin_post', 'status_update', 'follow', 'boost', 'repost'])
-import type { NotificationsCallback } from '~/composables/usePresence'
+import { notificationCategory, notificationFilterCategory } from '~/utils/notification-category'
+import { usePresence, type NotificationsCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-tier'
 import {
@@ -12,11 +13,6 @@ import {
   closeBrowserNotificationsForIds,
   closeBrowserNotificationsForSubject,
 } from '~/utils/browser-notifications'
-
-type NotificationsListResponse = {
-  data: NotificationFeedItem[]
-  pagination?: GetNotificationsResponse['pagination']
-}
 
 type NotificationUnreadByKind = Partial<Record<NotificationKind | 'all', number>>
 
@@ -34,7 +30,10 @@ export function useNotifications() {
   const usersStore = useUsersStore()
   const { addNotificationsCallback, removeNotificationsCallback, setNotificationUndeliveredCount, groupsUnread, setGroupsUnread } = usePresence()
 
-  const stateKey = `notifications:${me.value?.id ?? 'anon'}`
+  const stateKey = 'notifications:session'
+  const accountId = useState<string | null>(`${stateKey}:account`, () => null)
+  const generation = useState<number>(`${stateKey}:generation`, () => 0)
+  const revision = useState<number>(`${stateKey}:revision`, () => 0)
   const notifications = useState<NotificationFeedItem[]>(`${stateKey}:items`, () => [])
   const nextCursor = useState<string | null>(`${stateKey}:nextCursor`, () => null)
   const loading = useState<boolean>(`${stateKey}:loading`, () => false)
@@ -46,50 +45,49 @@ export function useNotifications() {
   const hasFetched = useState<boolean>(`${stateKey}:hasFetched`, () => false)
   /** Set when the latest inbox fetch failed; cleared on the next successful fetch. */
   const fetchError = useState<string | null>(`${stateKey}:fetchError`, () => null)
+  const unreadByCategory = useState<NonNullable<GetNotificationsResponse['pagination']['unreadByCategory']>>(`${stateKey}:unreadByCategory`, () => ({}))
   const isNotificationsPage = computed(() => route.path === '/notifications')
 
-  function notificationIsReply(n: Notification): boolean {
-    return Boolean((n.post?.parentId ?? '').trim())
-  }
+  watch(() => me.value?.id ?? null, (id) => {
+    if (accountId.value === id) return
+    accountId.value = id
+    generation.value += 1
+    revision.value += 1
+    notifications.value = []
+    nextCursor.value = null
+    activeKind.value = null
+    unreadByKind.value = { all: 0 }
+    unreadByCategory.value = {}
+    loading.value = false
+    pendingRefresh.value = false
+    hasFetched.value = false
+    fetchError.value = null
+  }, { immediate: true, flush: 'sync' })
 
   function notificationMatchesActiveKind(n: Notification): boolean {
     if (!activeKind.value) return true
-    if (activeKind.value === 'other') return !PRIMARY_KINDS.has(n.kind) && n.kind !== 'message'
-    // Posts chip = top-level followed posts. Replies chip = comments + parented followed posts.
-    if (activeKind.value === 'followed_post') {
-      return n.kind === 'followed_post' && !notificationIsReply(n)
-    }
-    if (activeKind.value === 'comment') {
-      return n.kind === 'comment' || (n.kind === 'followed_post' && notificationIsReply(n))
+    if (['followed_post', 'comment', 'mention', 'status_update', 'follow', 'boost', 'other'].includes(activeKind.value)) {
+      return notificationCategory(n) === notificationFilterCategory(activeKind.value)
     }
     return n.kind === activeKind.value
   }
 
-  function causingPostIdOf(n: Notification): string | null {
-    return (n.post?.id ?? n.actorPostId ?? n.subjectPostId ?? '').trim() || null
-  }
-
   function prependNotification(n: Notification): boolean {
     if (!n?.id || !notificationMatchesActiveKind(n)) return false
-    const causingPostId = causingPostIdOf(n)
-    const next = notifications.value.filter((item) => {
-      if (item.type === 'single') {
-        if (item.notification.id === n.id) return false
-        if (causingPostId && item.notification.post?.id === causingPostId) return false
-        return true
-      }
-      if (item.type === 'group') {
-        if (item.group.kind !== n.kind) return true
-        if (causingPostId && item.group.subjectPostId === causingPostId) return false
-        if (!causingPostId && !item.group.subjectPostId) return false
-        return true
-      }
-      if (item.type === 'followed_posts_rollup' && n.kind === 'followed_post') return false
-      return true
-    })
+    // Distinct events about one post remain distinct. Keep existing groups until
+    // an authoritative response can regroup them with the arrival.
+    if (patchNotificationInPlace(n)) return true
+    if (notifications.value.some(item => item.type === 'group' && item.group.id === n.id)) return true
+    const next = notifications.value
     notifications.value = [{ type: 'single', notification: n }, ...next]
     hasFetched.value = true
     return true
+  }
+
+  function requestSync() {
+    revision.value += 1
+    pendingRefresh.value = true
+    if (!loading.value && accountId.value) void fetchList({ forceRefresh: true })
   }
 
   /**
@@ -172,45 +170,20 @@ export function useNotifications() {
     if (!wsCbRef.value) {
       const notificationsCb: NotificationsCallback = {
         onUpdated: (payload) => {
-          const cleared = Array.isArray(payload?.clearedPostIds)
-            ? payload.clearedPostIds.map((id) => String(id ?? '').trim()).filter(Boolean)
-            : []
-          if (cleared.length) {
-            applyClearedPostIds(cleared)
-            // Local patch is enough — avoid a full refetch that races sticky highlights.
-            return
-          }
-          if (!isNotificationsPage.value) return
-          if (loading.value) {
-            pendingRefresh.value = true
-            return
-          }
-          void fetchList({ forceRefresh: true })
+          if (!accountId.value) return
+          if (payload?.clearedPostIds?.length) applyClearedPostIds(payload.clearedPostIds)
+          requestSync()
         },
         onNew: (payload) => {
-          const notification = payload?.notification
-          if (!notification?.id) return
-          // Silent events repaint a row the viewer has already seen. Patch it where it sits
-          // and never refetch — moving it to the top would look like new activity.
-          if (payload.silent) {
-            patchNotificationInPlace(notification)
-            return
-          }
-          const patched = prependNotification(notification)
-          if (patched) return
-          // Always remember the miss. If the viewer is on /home when this lands,
-          // the 30s tab-return gate used to skip the next /notifications fetch
-          // and All stayed stale until a hard refresh.
-          pendingRefresh.value = true
-          if (!isNotificationsPage.value) return
-          if (loading.value) return
-          void fetchList({ forceRefresh: true })
+          if (!accountId.value || !payload?.notification?.id) return
+          if (payload.silent) patchNotificationInPlace(payload.notification)
+          else prependNotification(payload.notification)
+          requestSync()
         },
         onDeleted: (payload) => {
-          const ids = Array.isArray(payload?.notificationIds) ? payload.notificationIds : []
-          if (ids.length === 0) return
-          if (!isNotificationsPage.value) return
-          removeNotificationsByIds(ids)
+          if (!accountId.value) return
+          removeNotificationsByIds(payload?.notificationIds ?? [])
+          requestSync()
         },
       }
       wsCbRef.value = notificationsCb
@@ -227,75 +200,58 @@ export function useNotifications() {
     })
   }
 
-  let fetchPromise: Promise<GetNotificationsResponse['pagination'] | undefined> | null = null
   async function fetchList(opts?: { cursor?: string | null; limit?: number; forceRefresh?: boolean }) {
-    // Prevent overlapping refresh/load-more requests which can corrupt pagination + grouping.
-    if (fetchPromise) {
-      // If this is a "load more" request, wait for the current request and then proceed.
-      if (opts?.cursor) {
-        await fetchPromise
-      } else {
-        if (opts?.forceRefresh) pendingRefresh.value = true
-        return await fetchPromise
-      }
+    if (!accountId.value) return
+    if (loading.value) {
+      if (opts?.forceRefresh) pendingRefresh.value = true
+      return
     }
-
     const cursor = opts?.cursor ?? null
-    const limit = opts?.limit ?? 30
-    const forceRefresh = opts?.forceRefresh ?? false
-    if (forceRefresh) pendingRefresh.value = false
-    if (!forceRefresh && !cursor && notifications.value.length > 0 && !opts) return
-
-    const run = async (): Promise<GetNotificationsResponse['pagination'] | undefined> => {
-      loading.value = true
-      if (!cursor) fetchError.value = null
-      try {
-        const q = new URLSearchParams()
-        if (limit) q.set('limit', String(limit))
-        if (cursor) q.set('cursor', cursor)
-        if (activeKind.value) q.set('kind', activeKind.value)
-        const path = `/notifications?${q.toString()}`
-        // This endpoint includes a custom pagination shape (undeliveredCount), so use the endpoint-specific type.
-        const res = (await apiFetch<NotificationFeedItem[]>(path)) as unknown as GetNotificationsResponse
-        const list = res.data ?? []
-        const pagination = res.pagination
-        unreadByKind.value = normalizeUnreadByKind(pagination?.unreadByKind)
-        if (cursor) {
-          notifications.value = [...notifications.value, ...list]
-        } else {
-          notifications.value = list
-        }
-        nextCursor.value = pagination?.nextCursor ?? null
-        if (!cursor) fetchError.value = null
-        return pagination
-      } catch (e: unknown) {
-        // Fire-and-forget callers (`void fetchList()`) must not surface an unhandled
-        // rejection — Sentry was filing GET /notifications 500s as client crashes.
-        const status = (e as { status?: number; statusCode?: number; response?: { status?: number } })?.status
-          ?? (e as { statusCode?: number })?.statusCode
-          ?? (e as { response?: { status?: number } })?.response?.status
-        if (status !== 401 && import.meta.dev) {
-          console.warn('[notifications] fetchList failed', e)
-        }
-        if (!cursor) {
-          fetchError.value = getApiErrorMessage(e) || 'Could not load notifications.'
-        }
-        return undefined
-      } finally {
+    const request = ++generation.value
+    const requestedAccount = accountId.value
+    const requestedKind = activeKind.value
+    const startedRevision = revision.value
+    const isCurrent = () => request === generation.value && requestedAccount === accountId.value && requestedKind === activeKind.value
+    pendingRefresh.value = false
+    loading.value = true
+    fetchError.value = null
+    let succeeded = false
+    try {
+      const q = new URLSearchParams({ limit: String(opts?.limit ?? 30) })
+      if (cursor) q.set('cursor', cursor)
+      if (requestedKind) q.set('kind', requestedKind)
+      const res = (await apiFetch<NotificationFeedItem[]>(`/notifications?${q}`)) as unknown as GetNotificationsResponse
+      if (!isCurrent()) return
+      // A snapshot started before an arrival/edit/read/delete cannot replace live state.
+      // Keep the rendered groups while one coalesced follow-up obtains a current snapshot.
+      succeeded = true
+      if (revision.value !== startedRevision) {
+        pendingRefresh.value = true
+        return
+      }
+      const list = cursor ? [...notifications.value, ...(res.data ?? [])] : (res.data ?? [])
+      const seen = new Set<string>()
+      notifications.value = list.filter(item => {
+        const key = item.type === 'single' ? `single:${item.notification.id}` : item.type === 'group' ? `group:${item.group.id}` : `rollup:${item.rollup.id}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      nextCursor.value = res.pagination?.nextCursor ?? null
+      unreadByKind.value = normalizeUnreadByKind(res.pagination?.unreadByKind)
+      unreadByCategory.value = res.pagination?.unreadByCategory ?? {}
+      return res.pagination
+    } catch (error: unknown) {
+      if (!isCurrent()) return
+      fetchError.value = getApiErrorMessage(error) || 'Could not load notifications.'
+      pendingRefresh.value = true
+    } finally {
+      if (isCurrent()) {
         loading.value = false
         hasFetched.value = true
-        if (pendingRefresh.value && isNotificationsPage.value) {
-          pendingRefresh.value = false
-          void fetchList({ forceRefresh: true })
-        }
+        // Failure stays retryable on entry/foreground/reconnect, without a retry loop.
+        if (succeeded && pendingRefresh.value) void fetchList({ forceRefresh: true })
       }
-    }
-
-    fetchPromise = run()
-    try {
-      return await fetchPromise
-    } finally {
-      fetchPromise = null
     }
   }
 
@@ -424,6 +380,7 @@ export function useNotifications() {
   function clearUnreadKind(kind: NotificationKind | 'all' | null) {
     if (!kind || kind === 'all') {
       unreadByKind.value = { all: 0 }
+      unreadByCategory.value = { all: 0, posts: 0, replies: 0, mentions: 0, statuses: 0, follows: 0, boosts: 0, other: 0 }
       return
     }
     const prev = unreadByKind.value
@@ -814,7 +771,14 @@ export function useNotifications() {
   }
 
   async function setKind(kind: NotificationKind | 'other' | null) {
-    activeKind.value = kind
+    const next = kind === 'checkin_post' ? 'followed_post' : kind
+    if (next !== activeKind.value) {
+      generation.value += 1
+      loading.value = false
+      notifications.value = []
+      nextCursor.value = null
+      activeKind.value = next
+    }
     await fetchList({ forceRefresh: true })
   }
 
@@ -968,6 +932,7 @@ export function useNotifications() {
     pendingRefresh,
     activeKind,
     unreadByKind,
+    unreadByCategory,
     setKind,
     isNotificationsPage,
     fetchList,

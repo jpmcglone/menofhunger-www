@@ -1447,6 +1447,7 @@ export type GetTopicOptionsData = TopicOption[]
 /** Data type for GET /hashtags/trending (array); pagination in envelope. */
 export type GetTrendingHashtagsData = HashtagResult[]
 
+export type NotificationCategory = 'posts' | 'replies' | 'mentions' | 'statuses' | 'follows' | 'boosts' | 'other'
 export type NotificationKind = Contracts.NotificationKind
 
 export type NotificationGroupKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'nudge'
@@ -1464,6 +1465,7 @@ export type Notification = {
   id: string
   createdAt: string
   kind: NotificationKind
+  category?: NotificationCategory
   deliveredAt: string | null
   readAt: string | null
   ignoredAt: string | null
@@ -1568,6 +1570,7 @@ export type GetNotificationsResponse = {
     nextCursor: string | null
     undeliveredCount: number
     unreadByKind?: Partial<Record<NotificationKind | 'all', number>>
+    unreadByCategory?: Partial<Record<NotificationCategory | 'all', number>>
   }
 }
 

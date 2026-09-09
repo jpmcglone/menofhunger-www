@@ -34,12 +34,16 @@ export function usePostCache() {
    * Recursively applies the cache to the `.parent` chain so reply rows always
    * show fresh parent data (e.g. updated commentCount) without walking feed arrays.
    */
-  function get(post: FeedPost): FeedPost {
+  function get(post: FeedPost, ancestors = new Set<string>()): FeedPost {
+    if (ancestors.has(post.id)) return post
+    const nextAncestors = new Set(ancestors).add(post.id)
     const delta = cache.value[post.id]
-    const merged: FeedPost = delta ? { ...post, ...delta } : post
-    if (merged.parent) {
-      const patchedParent = get(merged.parent)
-      if (patchedParent !== merged.parent) return { ...merged, parent: patchedParent }
+    let merged: FeedPost = delta ? { ...post, ...delta } : post
+    for (const key of ['parent', 'quotedPost', 'repostedPost'] as const) {
+      const nested = merged[key]
+      if (!nested) continue
+      const patched = get(nested, nextAncestors)
+      if (patched !== nested) merged = { ...merged, [key]: patched }
     }
     return merged
   }

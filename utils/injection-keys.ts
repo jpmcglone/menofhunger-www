@@ -24,6 +24,10 @@ export type ComposerOpenOptions = {
    * the submitted body automatically. The user cannot remove it — only cancel.
    */
   quotedPost?: FeedPost | null
+  /** Files staged by Web Share Target /share. */
+  initialFiles?: File[]
+  /** Seed the existing group destination without locking the picker. */
+  communityGroupId?: string
   createPost?: (
     body: string,
     visibility: ComposerVisibility,

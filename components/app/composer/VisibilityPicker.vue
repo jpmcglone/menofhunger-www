@@ -26,6 +26,17 @@
         aria-label="Post visibility"
       >
       <button
+        v-if="showsChat"
+        type="button"
+        class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
+        role="menuitem"
+        @click="selectChat"
+      >
+        Chat
+      </button>
+      <div v-if="showsChat" class="border-t moh-border my-1" />
+
+      <button
         v-if="allowed.includes('public')"
         type="button"
         class="w-full text-left px-3 py-2 text-sm font-semibold transition-colors text-gray-900 hover:bg-gray-50 dark:text-gray-50 dark:hover:bg-zinc-900"
@@ -82,10 +93,12 @@ const props = defineProps<{
   allowed: PostVisibility[]
   viewerIsVerified: boolean
   isPremium: boolean
+  showsChat?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: PostVisibility): void
+  (e: 'select-chat'): void
 }>()
 
 const modelValue = computed(() => props.modelValue)
@@ -110,7 +123,7 @@ const dropdownStyle = computed(() => {
   if (!open.value || !btnEl.value) return {}
   const r = btnEl.value.getBoundingClientRect()
   const left = Math.max(8, Math.min(r.left, window.innerWidth - 232))
-  const panelH = 180 // estimated max panel height
+  const panelH = 260 // estimated max panel height (includes Chat)
   const spaceBelow = window.innerHeight - r.bottom
   const openUp = spaceBelow < panelH + 8
   return openUp
@@ -118,9 +131,16 @@ const dropdownStyle = computed(() => {
     : { top: `${r.bottom + 4}px`, left: `${left}px` }
 })
 
+const showsChat = computed(() => Boolean(props.showsChat))
+
 function set(v: PostVisibility) {
   emit('update:modelValue', v)
   open.value = false
+}
+
+function selectChat() {
+  open.value = false
+  emit('select-chat')
 }
 
 function toggle() {

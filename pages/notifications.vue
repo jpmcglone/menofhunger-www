@@ -23,7 +23,7 @@
           <button
             v-for="chip in kindChips"
             :key="chip.kind ?? 'all'"
-            class="relative shrink-0 inline-flex items-center px-3 py-1 rounded-full text-[13px] font-medium transition-colors"
+            class="relative shrink-0 inline-flex items-center min-h-11 px-3 py-1 rounded-full text-[13px] font-medium transition-colors"
             :class="activeKind === chip.kind
               ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-400 dark:hover:bg-zinc-700'"
@@ -92,8 +92,8 @@
             @auxclick.capture="onNotificationInteractionCapture(item)"
             @click="onNotificationClick(item, $event)"
             @auxclick="onNotificationAuxClick(item, $event)"
-            @keydown.enter.prevent="onNotificationKeydown(item)"
-            @keydown.space.prevent="onNotificationKeydown(item)"
+            @keydown.enter.self.prevent="onNotificationKeydown(item)"
+            @keydown.space.self.prevent="onNotificationKeydown(item)"
           >
             <!-- Background anchor: aria-hidden so it's invisible to assistive tech and
                  tabindex="-1" so it's skipped by keyboard, but present in the DOM so
@@ -163,12 +163,13 @@
 </template>
 
 <script setup lang="ts">
+import { notificationFilterCategory } from '~/utils/notification-category'
 import type { Notification, NotificationKind } from '~/types/api'
 import { VOICE } from '~/config/voice'
 import { closeBrowserNotificationsForHref } from '~/utils/browser-notifications'
 
 /** Kinds that render as a full AppPostRow when `notification.post` is hydrated. */
-const POST_ROW_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'checkin_post', 'repost'])
+const POST_ROW_KINDS = new Set<NotificationKind>(['comment', 'mention', 'followed_post', 'checkin_post', 'community_group_post', 'repost'])
 
 function notificationShowsPostRow(n: Notification): boolean {
   if (!n.post || !POST_ROW_KINDS.has(n.kind)) return false
@@ -203,9 +204,9 @@ const {
   loading,
   hasFetched,
   fetchError,
-  pendingRefresh,
   activeKind,
   unreadByKind,
+  unreadByCategory,
   setKind,
   fetchList,
   markDelivered,
@@ -219,22 +220,19 @@ const {
 async function retryFetch() {
   await fetchList({ forceRefresh: true })
 }
-const { isPageAccount } = useAuth()
-const notificationsTabReturnGate = useTabReturnRefreshGate('notifications')
 
 const kindChips = computed(() => {
   const chips: { label: string; kind: NotificationKind | 'other' | null }[] = [
     { label: 'All', kind: null },
+    { label: 'Posts', kind: 'followed_post' },
     { label: 'Replies', kind: 'comment' },
     { label: 'Mentions', kind: 'mention' },
-    { label: 'Posts', kind: 'followed_post' },
     { label: 'Statuses', kind: 'status_update' },
-    { label: 'Check-ins', kind: 'checkin_post' },
     { label: 'Follows', kind: 'follow' },
     { label: 'Boosts', kind: 'boost' },
     { label: 'Other', kind: 'other' },
   ]
-  return isPageAccount.value ? chips.filter((chip) => chip.kind !== 'checkin_post') : chips
+  return chips
 })
 
 const router = useRouter()
@@ -292,14 +290,10 @@ const entryPending = ref(false)
 const showInitialLoader = computed(() => !hasFetched.value || entryPending.value)
 
 function chipHasUnseenNotifications(kind: NotificationKind | 'other' | null): boolean {
-  if (kind === 'other') {
-    const total = Math.max(0, Number(unreadByKind.value.all ?? 0) || 0)
-    const primarySum = (['comment', 'mention', 'followed_post', 'status_update', 'checkin_post', 'follow', 'boost'] as NotificationKind[])
-      .reduce((sum, k) => sum + Math.max(0, Number(unreadByKind.value[k] ?? 0) || 0), 0)
-    return Math.max(0, total - primarySum) > 0
-  }
-  const key = kind ?? 'all'
-  return Math.max(0, Number(unreadByKind.value[key] ?? 0) || 0) > 0
+  const category = notificationFilterCategory(kind)
+  const count = unreadByCategory.value[category]
+  if (count !== undefined) return count > 0
+  return (unreadByKind.value[kind === 'other' ? 'generic' : kind ?? 'all'] ?? 0) > 0
 }
 
 function nudgeActorIdForItem(item: (typeof notifications.value)[number]): string | null {
@@ -599,7 +593,7 @@ function onNotificationKeydown(item: (typeof notifications.value)[number]) {
 function kindFromQuery(): NotificationKind | 'other' | null {
   const q = route.query.kind
   if (q === 'other') return 'other'
-  if (isPageAccount.value && q === 'checkin_post') return null
+  if (q === 'checkin_post') return 'followed_post'
   const valid: NotificationKind[] = ['comment', 'boost', 'repost', 'follow', 'followed_post', 'followed_article', 'mention', 'nudge', 'coin_transfer', 'poll_results_ready', 'generic', 'status_update', 'checkin_post', 'account_verified', 'premium_started', 'premium_ended']
   return (typeof q === 'string' && valid.includes(q as NotificationKind)) ? (q as NotificationKind) : null
 }
@@ -620,13 +614,11 @@ function syncNotificationsOnEntry() {
   entrySyncPromise = (async () => {
     const badgeCountAtEntry = notifBadge.count.value
     const kind = kindFromQuery()
-    const missedWhileAway = pendingRefresh.value
+    if (route.query.kind === 'checkin_post') void router.replace({ query: { ...route.query, kind: 'followed_post' } })
     if (kind !== activeKind.value || !hasFetched.value) {
       await setKind(kind)
-      notificationsTabReturnGate.markSuccess()
-    } else if (badgeCountAtEntry > 0 || missedWhileAway || notificationsTabReturnGate.shouldRefresh()) {
+    } else {
       await fetchList({ forceRefresh: true })
-      notificationsTabReturnGate.markSuccess()
     }
     pinEntryHighlights(badgeCountAtEntry)
     markDeliveredInBackground(true)

@@ -31,6 +31,8 @@
             :allowed="allowedComposerVisibilities"
             :viewer-is-verified="viewerIsVerified"
             :is-premium="isPremium"
+            :shows-chat="showChatDestination"
+            @select-chat="handoffToChat"
           />
           <span
             v-else
@@ -597,6 +599,7 @@ type CachedComposerDraft = {
 const COMPOSER_DRAFT_CACHE = new Map<string, CachedComposerDraft>()
 
 const emit = defineEmits<{
+  (e: 'handoff-chat', payload: { body: string; files: File[] }): void
   (e: 'posted', payload: { id: string; visibility: PostVisibility; post?: import('~/types/api').FeedPost }): void
   (e: 'edited', payload: { id: string; post: import('~/types/api').FeedPost }): void
   /** Fired after a scheduled post is created (new). */
@@ -630,6 +633,12 @@ const props = defineProps<{
   initialText?: string
   /** Optional initial media (used for publishing from only-me drafts). */
   initialMedia?: import('~/types/api').PostMedia[]
+  /** Files staged by OS share-in. */
+  initialFiles?: File[]
+  /** Seed the group destination without locking the picker. */
+  initialGroupId?: string | null
+  /** Show Chat in the Post to / visibility menu. */
+  showChatDestination?: boolean
   /** Optional override for allowed visibilities (intersected with account tier rules). */
   allowedVisibilities?: PostVisibility[]
   /** When set, composer visibility is forced to this value (cannot be changed). */
@@ -735,8 +744,16 @@ async function loadMyGroups() {
   }
 }
 
+const { rememberFeed, rememberGroup } = useShareDestination()
+
 function selectGroup(id: string | null) {
   selectedGroupId.value = id
+  if (id) {
+    const name = myGroups.value.find((group) => group.id === id)?.name
+    rememberGroup(id, name)
+  } else {
+    rememberFeed(visibility.value)
+  }
 }
 const toast = useAppToast()
 
@@ -1055,6 +1072,33 @@ const {
   },
 })
 
+const initialFilesApplied = ref(false)
+const initialGroupApplied = ref(false)
+
+function seedInitialFilesIfNeeded() {
+  if (initialFilesApplied.value || disableMedia.value) return
+  const files = Array.isArray(props.initialFiles) ? props.initialFiles.filter(Boolean) : []
+  initialFilesApplied.value = true
+  if (!files.length) return
+  ingestMediaFiles(files, 'picker')
+}
+
+function seedInitialGroupIfNeeded() {
+  if (initialGroupApplied.value) return
+  initialGroupApplied.value = true
+  const id = (props.initialGroupId ?? '').trim()
+  if (!id || props.communityGroupId) return
+  selectedGroupId.value = id
+  rememberGroup(id)
+}
+
+function handoffToChat() {
+  const files = composerMedia.value
+    .map((item) => item.file)
+    .filter((file): file is File => file instanceof File)
+  emit('handoff-chat', { body: draft.value, files })
+}
+
 function seedInitialMediaIfNeeded() {
   if (disableMedia.value) return
   const items = Array.isArray(props.initialMedia) ? props.initialMedia : null
@@ -1142,6 +1186,11 @@ const composerAcceptTypes = computed(
 // Visibility + rules
 const { visibility } = useComposerVisibility()
 
+watch(visibility, (vis) => {
+  if (selectedGroupId.value || props.communityGroupId) return
+  rememberFeed(vis)
+})
+
 const lockedVisibility = computed<PostVisibility | null>(() => props.lockedVisibility ?? null)
 
 const allowedComposerVisibilities = computed<PostVisibility[]>(() => {
@@ -1184,6 +1233,13 @@ const replyShowsGroupScope = computed(() => Boolean(replyGroupDisplayLabel.value
 const useGroupScopeChrome = computed(
   () => (props.groupComposer && !props.replyTo) || replyShowsGroupScope.value,
 )
+
+const showChatDestination = computed(() => {
+  if (!props.showChatDestination) return false
+  if (props.replyTo || props.quotedPost || props.checkinPrompt) return false
+  if (props.communityGroupId || props.groupComposer) return false
+  return mode.value === 'create'
+})
 
 const showVisibilityPicker = computed(() => {
   if (props.replyTo) return false
@@ -1800,6 +1856,8 @@ onMounted(() => {
   restoreDraftFromCacheIfNeeded()
   applyInitialTextIfNeeded()
   seedInitialMediaIfNeeded()
+  seedInitialFilesIfNeeded()
+  seedInitialGroupIfNeeded()
   seedInitialPollIfNeeded()
   seedInitialVisibilityIfNeeded()
   seedInitialScheduledAtIfNeeded()

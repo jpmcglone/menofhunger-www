@@ -54,6 +54,9 @@
                 :disable-media="composerCustomDisableMedia"
                 :create-post="composerCreatePost ?? undefined"
                 :quoted-post="composerQuotedPost ?? undefined"
+                :initial-files="composerInitialFiles"
+                :initial-group-id="composerInitialGroupId ?? undefined"
+                :show-chat-destination="!composerIsGroupMode && !composerCheckinPrompt && !composerIsFromOnlyMe"
                 :group-composer="composerIsGroupMode"
                 :group-name="composerIsGroupMode ? (composerGroupName ?? undefined) : undefined"
                 :community-group-id="composerIsGroupMode ? (composerGroupId ?? null) : null"
@@ -62,6 +65,7 @@
                 :register-unsaved-guard="false"
                 @posted="onComposerPosted"
                 @pending="onComposerPending"
+                @handoff-chat="onHandoffChat"
               >
                 <template #close>
                   <button type="button" class="moh-focus moh-surface-hover flex h-11 w-11 items-center justify-center rounded-full moh-text" aria-label="Close composer" @click="closeComposerModal">
@@ -107,6 +111,8 @@ const {
   composerCustomDisableMedia,
   composerCreatePost,
   composerQuotedPost,
+  composerInitialFiles,
+  composerInitialGroupId,
   composerSheetStyle,
   composerSheetPlacementStyle,
   sharePost,
@@ -115,4 +121,13 @@ const {
   onComposerPending,
   onComposerPosted,
 } = props.composer
+
+const sendViaChat = useSendViaChat()
+const { rememberChat } = useShareDestination()
+
+function onHandoffChat(payload: { body: string; files: File[] }) {
+  rememberChat()
+  closeComposerModal()
+  sendViaChat.openShare({ body: payload.body, files: payload.files })
+}
 </script>

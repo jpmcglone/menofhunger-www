@@ -7,7 +7,7 @@
           :key="verse.number"
           class="grid grid-cols-[auto_1fr] items-start gap-1 moh-text"
           :class="[
-            compact ? 'text-[13px] leading-5' : 'text-[15px] leading-6',
+            compact ? 'text-[15px] leading-6' : 'text-[18px] leading-7',
             truncated && index === shown.length - 1 ? 'scripture-peek-fade' : '',
           ]"
         >
@@ -17,7 +17,7 @@
           >
             {{ verse.number }}
           </span>
-          <span class="text-pretty">{{ verse.text }}</span>
+          <span class="text-pretty font-serif">{{ verse.text }}</span>
         </p>
       </div>
     </div>

@@ -87,6 +87,8 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
   const composerCustomAllowedVisibilities = ref<PostVisibility[] | null>(null)
   const composerCustomDisableMedia = ref(false)
   const composerQuotedPost = ref<FeedPost | null>(null)
+  const composerInitialFiles = ref<File[]>([])
+  const composerInitialGroupId = ref<string | null>(null)
   const composerCustomCreatePost = ref<ComposerCreatePostFn | null>(null)
 
   const replyModal = useReplyModal()
@@ -184,6 +186,8 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     composerCustomDisableMedia.value = false
     composerCustomCreatePost.value = null
     composerQuotedPost.value = null
+    composerInitialFiles.value = []
+    composerInitialGroupId.value = null
   }
 
   function applyComposerCustomOptions(options?: ComposerOpenOptions | null) {
@@ -198,6 +202,8 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     composerCustomDisableMedia.value = Boolean(options.disableMedia)
     composerCustomCreatePost.value = (options.createPost as ComposerCreatePostFn | undefined) ?? null
     composerQuotedPost.value = options.quotedPost ?? null
+    composerInitialFiles.value = Array.isArray(options.initialFiles) ? options.initialFiles : []
+    composerInitialGroupId.value = (options.communityGroupId ?? '').trim() || null
   }
 
   async function createPostFromOnlyMeDraft(
@@ -476,6 +482,8 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     composerCustomDisableMedia,
     composerCreatePost,
     composerQuotedPost,
+    composerInitialFiles,
+    composerInitialGroupId,
     composerModalBorderClass,
     composerSheetStyle,
     composerSheetPlacementStyle,

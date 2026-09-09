@@ -42,4 +42,18 @@ describe('post cache update isolation', () => {
     expect(count).toBe(2)
     scope.stop()
   })
+  it('propagates edits, deletions and polls through quoted and reposted occurrences', () => {
+    postCacheState.value = {}
+    const cache = usePostCache()
+    const original = { id: 'original', body: 'Before' } as FeedPost
+    const quote = { id: 'quote', quotedPost: original } as FeedPost
+    const repost = { id: 'repost', repostedPost: quote } as FeedPost
+    cache.patch('original', { body: 'After', deletedAt: '2026-09-09T00:00:00Z', poll: { id: 'poll' } as any })
+    const nested = cache.get(repost).repostedPost!.quotedPost!
+    expect(nested.body).toBe('After')
+    expect(nested.deletedAt).toBeTruthy()
+    expect(nested.poll?.id).toBe('poll')
+    expect(original.body).toBe('Before')
+  })
+
 })

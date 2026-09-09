@@ -20,8 +20,8 @@
     :tabindex="clickable && postPermalink ? 0 : undefined"
     @click.capture="onRowClick"
     @auxclick.capture="onRowAuxClick"
-    @keydown.enter.prevent="onRowKeydown"
-    @keydown.space.prevent="onRowKeydown"
+    @keydown.enter.self.prevent="onRowKeydown"
+    @keydown.space.self.prevent="onRowKeydown"
   >
     <!-- Animated background: transparent at 0, opacity up on hover (main.css), back to 0 on mouse out -->
     <div
@@ -482,6 +482,7 @@ const feedGroupTagForRow = computed((): CommunityGroupShell | null => {
 })
 
 function onPollUpdated(poll: any) {
+  postCache.patch(postState.value.id, { poll })
   postState.value = { ...(postState.value as any), poll }
 }
 
@@ -840,7 +841,10 @@ const {
   authorBanned,
   authorProfilePath,
   groupWall: () => props.groupWall,
-  onDeleted: (id) => emit('deleted', id),
+  onDeleted: (id) => {
+    postCache.patch(id, { deletedAt: new Date().toISOString() })
+    emit('deleted', id)
+  },
   onGroupPinChanged: () => emit('groupPinChanged'),
 })
 
@@ -849,6 +853,7 @@ useOverlayDismiss(editOpen, () => (editOpen.value = false))
 
 function onEdited(payload: { id: string; post: FeedPost }) {
   if (payload?.id !== postView.value.id) return
+  postCache.patch(payload.id, payload.post)
   postState.value = payload.post
   editOpen.value = false
   emit('edited', payload)
