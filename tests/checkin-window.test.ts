@@ -30,10 +30,11 @@ describe('check-in window UI', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-09-08T03:59:59Z'))
     const wrapper = render()
     await wrapper.setProps({ hasCheckedInToday: true })
-    expect(wrapper.text()).toContain('Streak intact')
+    expect(wrapper.text()).toContain('Check-in answered')
+    expect(wrapper.text()).toContain('Day 3')
     await vi.advanceTimersByTimeAsync(1000)
     expect(wrapper.text()).toContain('Check-ins open at 5pm ET')
-    expect(wrapper.text()).not.toContain('Streak intact')
+    expect(wrapper.text()).not.toContain('Check-in answered')
     wrapper.unmount()
   })
 
