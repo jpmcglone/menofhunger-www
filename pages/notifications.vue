@@ -204,6 +204,7 @@ const {
   loading,
   hasFetched,
   fetchError,
+  pendingRefresh,
   activeKind,
   unreadByKind,
   unreadByCategory,
@@ -220,6 +221,7 @@ const {
 async function retryFetch() {
   await fetchList({ forceRefresh: true })
 }
+const notificationsTabReturnGate = useTabReturnRefreshGate('notifications')
 
 const kindChips = computed(() => {
   const chips: { label: string; kind: NotificationKind | 'other' | null }[] = [
@@ -614,11 +616,14 @@ function syncNotificationsOnEntry() {
   entrySyncPromise = (async () => {
     const badgeCountAtEntry = notifBadge.count.value
     const kind = kindFromQuery()
+    const missedWhileAway = pendingRefresh.value
     if (route.query.kind === 'checkin_post') void router.replace({ query: { ...route.query, kind: 'followed_post' } })
     if (kind !== activeKind.value || !hasFetched.value) {
       await setKind(kind)
-    } else {
+      notificationsTabReturnGate.markSuccess()
+    } else if (badgeCountAtEntry > 0 || missedWhileAway || notificationsTabReturnGate.shouldRefresh()) {
       await fetchList({ forceRefresh: true })
+      notificationsTabReturnGate.markSuccess()
     }
     pinEntryHighlights(badgeCountAtEntry)
     markDeliveredInBackground(true)

@@ -246,10 +246,10 @@ describe('hydration guardrails (structural)', () => {
     expect(home).not.toMatch(/watch\(myGroups/)
   })
 
-  it('hides Check-ins notification chips for operated pages', () => {
+  it('folds Check-ins notification chips into Posts', () => {
     const notifications = readFromRepo('pages/notifications.vue')
-    expect(notifications).toMatch(/isPageAccount\.value \? chips\.filter\(\(chip\) => chip\.kind !== 'checkin_post'\)/)
-    expect(notifications).toMatch(/isPageAccount\.value && q === 'checkin_post'/)
+    expect(notifications).not.toContain("label: 'Check-ins'")
+    expect(notifications).toContain("if (q === 'checkin_post') return 'followed_post'")
   })
 
   // ---- Chat performance guardrails ------------------------------------------
