@@ -1,0 +1,17 @@
+---
+description: Keep Vitest unit tests free of real Socket.IO, leftover mockOnce queues, and other CI-only crashes
+globs: tests/**/*.ts,vitest.config.ts,tests/stubs/**
+alwaysApply: false
+---
+
+# Unit tests (Vitest + happy-dom)
+
+Read the [validation matrix](../../docs/engineering-policy.md#validation-matrix)
+row for Vitest stubs and `mock*Once`. Render's `prebuild` runs `npm test`.
+`npx nuxt build` does not.
+
+- Do not open a real Socket.IO / `ws` connection in unit tests. `socket.io-client` is aliased to `tests/stubs/socket.io-client.ts` because happy-dom throws `TypeError: Illegal invocation` on engine.io `WebSocket.close()`. Keep the sentry, posthog, and socket aliases. Live sockets belong in browser/Playwright checks.
+- Nuxt's test app boots client plugins that call `usePresence()`. Mocking `usePresence` in one file does not stop those plugins. The transport stub is what makes plugin boot safe.
+- `vi.clearAllMocks()` does not drain `mockResolvedValueOnce` / `mockRejectedValueOnce`. Reset fetch/presence spies with `mockReset()` in `beforeEach` so a failed case cannot poison the next one.
+- When asserting logout/auth against presence, `vi.mock('~/composables/usePresence')` so the spies are the functions `useAuth` actually calls. Include `addUsersCallback` if `useAuth` hooks the socket on mount.
+- Unmount wrappers in `afterEach`. Do not leave detached sockets, timers, or `once` queues.

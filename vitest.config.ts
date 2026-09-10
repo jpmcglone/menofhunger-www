@@ -4,8 +4,12 @@ import { fileURLToPath } from 'node:url'
 export default defineVitestConfig({
   test: {
     alias: {
+      // Client plugins boot in every Nuxt test app. Keep these SDKs inert:
+      // Sentry/PostHog must not start telemetry, and socket.io must not open
+      // `ws` (happy-dom throws `Illegal invocation` on WebSocket.close).
       '@sentry/nuxt': fileURLToPath(new URL('./tests/stubs/sentry.ts', import.meta.url)),
       'posthog-js': fileURLToPath(new URL('./tests/stubs/posthog.ts', import.meta.url)),
+      'socket.io-client': fileURLToPath(new URL('./tests/stubs/socket.io-client.ts', import.meta.url)),
     },
     environment: 'nuxt',
     globals: true,

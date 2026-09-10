@@ -37,6 +37,7 @@ Use the [validation matrix](docs/engineering-policy.md#validation-matrix) for co
 | Delete safely by checking cross-platform callers and choosing delete, redirect, handoff, or deprecate | [20-deletion-deprecation](.cursor/rules/20-deletion-deprecation.mdc) |
 | Do not start dev servers/watchers (user runs them). | [25-no-dev-servers](.cursor/rules/25-no-dev-servers.mdc) |
 | Keep local and CI loops fast; add automation only after simplifying the surface | [30-local-loop](.cursor/rules/30-local-loop.mdc) |
+| Vitest unit tests must not open real Socket.IO connections; reset mockOnce queues between cases | [32-unit-tests](.cursor/rules/32-unit-tests.mdc) |
 | Preserve in-page layout for tab and filter URL changes | [35-in-place-route-state](.cursor/rules/35-in-place-route-state.mdc) |
 | Definition of done for substantive www features (lint, types, tests, build, hydration) | [40-feature-done-checklist](.cursor/rules/40-feature-done-checklist.mdc) |
 | Internal navigation must render a real <a> element for cmd/middle/right-click "Open in new tab" to work | [40-internal-links](.cursor/rules/40-internal-links.mdc) |

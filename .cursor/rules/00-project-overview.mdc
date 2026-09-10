@@ -24,6 +24,11 @@ alwaysApply: false
 ## Links
 - Every internal navigation MUST render a real `<a>` so right-click / cmd+click / middle-click "Open in new tab" works. See rule `40-internal-links.mdc` and skill `.agents/skills/clickable-rows/SKILL.md`.
 
+## Unit tests
+- happy-dom cannot close a real Socket.IO/`ws` connection. `vitest.config.ts` aliases `socket.io-client` (and Sentry/PostHog) to `tests/stubs/`. Do not remove those aliases. See rule `32-unit-tests.mdc`.
+- `vi.clearAllMocks()` does not drain `mockResolvedValueOnce` / `mockRejectedValueOnce`. Reset spies with `mockReset()` in `beforeEach`.
+- Render's `prebuild` runs `npm test`. `npx nuxt build` does not. After touching tests, stubs, client plugins, or presence, run the full suite.
+
 ## Real-time first
 - Pages that show mutable server state must wire a websocket subscription via `usePresence()` AND fetch on mount/activation. HTTP is the on-load sync; sockets are the live feed. See rule `60-realtime-first.mdc` and skill `.agents/skills/realtime-page-sync/SKILL.md`.
 
