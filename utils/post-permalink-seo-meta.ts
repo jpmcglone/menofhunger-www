@@ -105,6 +105,35 @@ function identityTitle(at: string, kind?: string): string {
   return at || 'Post'
 }
 
+function attributionLine(at: string): string {
+  return at ? `Post by ${at} on ${siteConfig.name}.` : `Post on ${siteConfig.name}.`
+}
+
+/** Text that did not fit in the title excerpt, if any. */
+function bodyAfterTitleExcerpt(body: string, titleBudget: number): string {
+  const t = normalizeForMeta(body)
+  if (!t) return ''
+  const titleExcerpt = excerpt(t, titleBudget)
+  const lead = titleExcerpt.replace(/…$/, '')
+  if (t.startsWith(lead)) return t.slice(lead.length).trim()
+  if (t.length <= titleBudget) return ''
+  return t.slice(Math.max(0, titleBudget - 1)).trim()
+}
+
+/**
+ * X/OG cards show title and description together. Repeating the post body in both
+ * looks like a duplicate unfurl. Short posts: title is the body, description is
+ * attribution. Long posts: title is the lead; description continues the rest.
+ * `extraUnique` (link-preview copy) is used only when the body is fully in the title.
+ */
+function publicShareDescription(body: string, titleBudget: number, at: string, extraUnique = ''): string {
+  const rest = bodyAfterTitleExcerpt(body, titleBudget)
+  if (rest) return excerpt(rest, DESC_PUBLIC_MAX)
+  const extra = normalizeForMeta(extraUnique)
+  if (extra) return excerpt(extra, DESC_PUBLIC_MAX)
+  return attributionLine(at)
+}
+
 function toAbs(pathOrUrl: string): string {
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl
   return `${siteConfig.url}${pathOrUrl.startsWith('/') ? '' : '/'}${pathOrUrl}`
@@ -277,14 +306,14 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
         const votesLabel = `${votes} vote${votes === 1 ? '' : 's'}`
         const endsAtText = (pollMetaPublic.endsAtText ?? '').trim()
         const prefix = endsAtText ? `Poll · ${votesLabel} · ${endsAtText}` : `Poll · ${votesLabel}`
-        const main = hasBody ? excerpt(bodyText, DESC_PUBLIC_MAX - 40) : at ? `Poll by ${at}.` : 'Poll.'
+        const main = hasBody
+          ? publicShareDescription(bodyText, titleCoreBudget, at)
+          : at ? `Poll by ${at}.` : 'Poll.'
         description = excerpt(`${prefix} — ${main}`, DESC_PUBLIC_MAX) || 'Poll.'
       } else if (primaryMedia) {
         description = hasBody
-          ? excerpt(bodyText, DESC_PUBLIC_MAX)
-          : at
-            ? `Post by ${at} on ${siteConfig.name}.`
-            : `Post on ${siteConfig.name}.`
+          ? publicShareDescription(bodyText, titleCoreBudget, at)
+          : attributionLine(at)
       } else {
         const external = (previewLink ?? '').trim()
         if (external) {
@@ -299,29 +328,24 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
               else description = 'Shared link.'
             }
           } else {
-            let d = excerpt(bodyText, DESC_PUBLIC_MAX)
-            const linkDesc = (linkMeta?.description ?? '').trim()
-            if (linkDesc && d.length < 160) {
-              const remaining = Math.max(0, DESC_PUBLIC_MAX - d.length - 3)
-              if (remaining >= 24) d = `${d} — ${excerpt(linkDesc, remaining)}`
-            }
-            description = d || 'Post.'
+            description = publicShareDescription(
+              bodyText,
+              titleCoreBudget,
+              at,
+              (linkMeta?.description ?? '').trim(),
+            )
           }
         } else {
           description = hasBody
-            ? excerpt(bodyText, DESC_PUBLIC_MAX)
-            : at
-              ? `Post by ${at} on ${siteConfig.name}.`
-              : 'Post.'
+            ? publicShareDescription(bodyText, titleCoreBudget, at)
+            : attributionLine(at)
         }
       }
     }
   }
 
-  // Surface the group in the description too. Suffix-style so we don't disrupt
-  // the existing "first sentence is the body excerpt" structure that crawlers
-  // rely on. We always include the group line even when title already contains
-  // it, since description is what most search snippets show.
+  // Group line stays in the description (complementary to the title suffix).
+  // Search snippets read description; unfurls already show the group in the title.
   if (groupRef && description) {
     const groupLine = `From the ${groupRef.name} group on ${siteConfig.name}.`
     const combined = `${description.replace(/\s+$/, '')} ${groupLine}`.trim()

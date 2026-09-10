@@ -99,11 +99,22 @@ describe('computePostPermalinkSeo — public posts', () => {
     )
     expect(r.title).toContain('This is a public post')
     expect(r.title).toContain('@alice')
-    expect(r.description.length).toBeGreaterThan(80)
-    expect(r.description).toContain('public post')
+    expect(r.description).toContain('search results clearly for everyone')
+    expect(r.description.startsWith('This is a public post')).toBe(false)
     expect(r.author).toBe('@alice')
     expect(r.noindex).toBe(false)
     expect(r.ogType).toBe('article')
+  })
+
+  it('does not repeat a short public body as both title and description', () => {
+    const body = 'Charlie Kirk was shot exactly 1 year ago today at 2:23 PM EDT.'
+    const r = computePostPermalinkSeo(
+      input({ post: basePost({ body }), bodyTextSansLinks: body }),
+    )
+    expect(r.title).toContain('Charlie Kirk')
+    expect(r.title).toContain('@alice')
+    expect(r.description).not.toContain('Charlie Kirk')
+    expect(r.description).toBe('Post by @alice on Men of Hunger.')
   })
 
   it('puts the public caption in the title for a YouTube post', () => {
@@ -118,8 +129,33 @@ describe('computePostPermalinkSeo — public posts', () => {
     )
     expect(r.title).toContain(caption)
     expect(r.title).toContain('@alice')
-    expect(r.description).toContain(caption)
+    expect(r.description).not.toContain(caption)
+    expect(r.description).toBe('Post by @alice on Men of Hunger.')
     expect(r.image).toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg')
+  })
+
+  it('uses link-preview copy as the description when the caption already fills the title', () => {
+    const ytUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    const caption = 'Watch this one with us tonight'
+    const r = computePostPermalinkSeo(
+      input({
+        post: basePost({ body: `${caption} ${ytUrl}` }),
+        previewLink: ytUrl,
+        bodyTextSansLinks: caption,
+        linkMeta: {
+          url: ytUrl,
+          title: 'Rick Roll',
+          description: 'Official music video for Never Gonna Give You Up',
+          siteName: 'YouTube',
+          imageUrl: null,
+          socialPost: null,
+          videoEmbed: null,
+        },
+      }),
+    )
+    expect(r.title).toContain(caption)
+    expect(r.description).toBe('Official music video for Never Gonna Give You Up')
+    expect(r.description).not.toContain(caption)
   })
 
   it('og:image prefers media over avatar over logo', () => {
