@@ -590,5 +590,21 @@
     "webSelected": "shield-filled",
     "figma": true,
     "selectedTreatment": "fill"
+  },
+  "inbox": {
+    "web": "inbox",
+    "webSelected": "inbox",
+    "ios": "tray",
+    "iosSelected": "tray",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
+  },
+  "blocked": {
+    "web": "user-off",
+    "webSelected": "user-off",
+    "ios": "person.slash",
+    "iosSelected": "person.slash",
+    "selectedTreatment": "bold",
+    "iosSelectedTreatment": "bold"
   }
 }

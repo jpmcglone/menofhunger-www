@@ -108,6 +108,8 @@ export function useAppNav() {
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: false, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'crew', label: crewLabel.value, to: '/crew', icon: 'tabler:shield-check', iconActive: 'tabler:shield-check-filled', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'quote', label: 'Quote', to: '/daily/quote', icon: 'tabler:quote', iconActive: 'tabler:quote', requiresAuth: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'word', label: 'Word', to: '/daily/word', icon: 'tabler:book', iconActive: 'tabler:book', requiresAuth: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
     // Keep these as the Heroicons pair (you preferred the filled/outline look here).
     { key: 'profile', label: 'Profile', to: profileTo.value, icon: 'heroicons-outline:user-circle', iconActive: 'heroicons-solid:user-circle', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'only-me', label: 'Only me', to: '/only-me', icon: 'heroicons-outline:eye-slash', iconActive: 'heroicons-solid:eye-slash', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },

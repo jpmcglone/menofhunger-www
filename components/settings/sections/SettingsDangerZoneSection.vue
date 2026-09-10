@@ -3,7 +3,10 @@
     <!-- Log out on all devices -->
     <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/40 p-4 space-y-3">
       <div class="space-y-1">
-        <div class="text-sm font-semibold moh-text">Log out on all devices</div>
+        <div class="flex items-center gap-2 text-sm font-semibold moh-text">
+          <AppIconGlyph name="logout" :size="20" class="text-[var(--moh-text-muted)]" />
+          Log out on all devices
+        </div>
         <p class="text-xs moh-text-muted leading-relaxed">
           Revokes your session on every browser, phone, and tablet. You'll need to log in again everywhere.
         </p>
@@ -23,7 +26,10 @@
     <!-- Delete account -->
     <div class="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-4 space-y-3">
       <div class="space-y-1">
-        <div class="text-sm font-semibold text-red-800 dark:text-red-300">Delete account</div>
+        <div class="flex items-center gap-2 text-sm font-semibold text-red-800 dark:text-red-300">
+          <AppIconGlyph name="delete" :size="20" />
+          Delete account
+        </div>
         <p class="text-xs text-red-700 dark:text-red-400 leading-relaxed">
           This signs you out immediately and schedules your account for deletion in 30 days.
           Log back in before then to cancel.

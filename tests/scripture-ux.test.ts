@@ -80,4 +80,21 @@ describe('primary app navigation order', () => {
     expect(messages).toBeLessThan(notifications)
     expect(source).toMatch(/items\.slice\(0, 4\)/)
   })
+
+  it('exposes quote and word in overflow nav after bookmarks', () => {
+    const source = readFromRepo('composables/useAppNav.ts')
+    const bookmarks = source.indexOf("key: 'bookmarks'")
+    const quote = source.indexOf("key: 'quote'")
+    const word = source.indexOf("key: 'word'")
+    const profile = source.indexOf("key: 'profile'")
+
+    expect(bookmarks).toBeGreaterThan(-1)
+    expect(bookmarks).toBeLessThan(quote)
+    expect(quote).toBeLessThan(word)
+    expect(word).toBeLessThan(profile)
+    expect(source).toContain("to: '/daily/quote'")
+    expect(source).toContain("to: '/daily/word'")
+    expect(source).toMatch(/key: 'quote'[\s\S]*requiresPersonAccount: true/)
+    expect(source).toMatch(/key: 'word'[\s\S]*requiresPersonAccount: true/)
+  })
 })

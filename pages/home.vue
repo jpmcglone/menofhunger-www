@@ -177,13 +177,6 @@
 
       <div ref="homeFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
-      <!-- Daily quote: demoted from the top stack so the check-in hero owns the daily slot.
-           Kept mobile-only since the right rail still surfaces it on desktop.
-           ClientOnly: page accounts must not flash the quote before auth resolves. -->
-      <ClientOnly>
-        <AppFeedDailyQuoteCard v-if="!isPageAccount" />
-      </ClientOnly>
-
       <div v-if="feedCtaKind === 'verify'" class="mx-3 mt-3 sm:mx-4 sm:mt-4">
         <AppAccessGateCard kind="verify" />
       </div>

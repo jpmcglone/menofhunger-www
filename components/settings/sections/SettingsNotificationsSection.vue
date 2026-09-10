@@ -32,91 +32,91 @@
           <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Browser notifications (push)
           </div>
-          <div class="grid gap-3">
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Replies</div>
-                <div class="text-xs moh-text-muted">When someone replies to you.</div>
-              </div>
+          <div class="moh-divide">
+            <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="reply" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Replies</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushComment" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Boosts</div>
-                <div class="text-xs moh-text-muted">When someone boosts your post.</div>
-              </div>
+            </label>
+            <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="boost" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Boosts</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushBoost" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Follows</div>
-                <div class="text-xs moh-text-muted">When someone follows you.</div>
-              </div>
+            </label>
+            <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="profile" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Follows</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushFollow" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Mentions</div>
-                <div class="text-xs moh-text-muted">When someone mentions you.</div>
-              </div>
+            </label>
+            <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="write" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Mentions</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushMention" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Messages</div>
-                <div class="text-xs moh-text-muted">Direct messages.</div>
-              </div>
+            </label>
+            <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="messages" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Messages</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushMessage" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Reposts</div>
-                <div class="text-xs moh-text-muted">When someone reposts your post.</div>
-              </div>
+            </label>
+            <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="repost" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Reposts</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushRepost" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div v-if="!isPageAccount" class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Nudges</div>
-                <div class="text-xs moh-text-muted">When someone nudges you.</div>
-              </div>
+            </label>
+            <label v-if="!isPageAccount" class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="nudge" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Nudges</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushNudge" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Posts and bell activity</div>
-                <div class="text-xs moh-text-muted">Posts, articles, spaces, and status updates from people you follow, plus replies from profiles you bell.</div>
-              </div>
+            </label>
+            <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="article" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Followed activity</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushFollowedPost" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Reply nudges</div>
-                <div class="text-xs moh-text-muted">One reminder if a reply to your post is still unread after 24 hours.</div>
-              </div>
+            </label>
+            <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="history" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Reply nudges</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushReplyNudge" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div v-if="!isPageAccount" class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Crew streak</div>
-                <div class="text-xs moh-text-muted">When your crew's streak advances or breaks. The single most important push in the app.</div>
-              </div>
+            </label>
+            <label v-if="!isPageAccount" class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="streak" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Crew streak</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushCrewStreak" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div v-if="!isPageAccount" class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Word &amp; quote of the day</div>
-                <div class="text-xs moh-text-muted">Daily 9am word and 9:30am quote push notifications.</div>
-              </div>
+            </label>
+            <label v-if="!isPageAccount" class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="quote" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Word &amp; quote</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushDailyContent" binary :disabled="notifPrefsSaving" />
-            </div>
-            <div v-if="!isPageAccount" class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Check-in reminder</div>
-                <div class="text-xs moh-text-muted">6pm reminder if you haven't checked in yet today.</div>
-              </div>
+            </label>
+            <label v-if="!isPageAccount" class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <AppIconGlyph name="checkin" :size="20" class="text-[var(--moh-text-muted)]" />
+                <span class="font-medium">Check-in reminder</span>
+              </span>
               <Checkbox v-model="notifPrefs.pushCheckinReminder" binary :disabled="notifPrefsSaving" />
-            </div>
+            </label>
           </div>
         </div>
 
@@ -125,7 +125,7 @@
             Email
           </div>
           <div v-if="!authUser?.email" class="text-sm text-gray-600 dark:text-gray-300">
-            Add an email in <NuxtLink to="/settings/account" class="font-medium hover:underline">Your account</NuxtLink> to enable email notifications.
+            Add an email in <NuxtLink to="/settings/account" class="font-medium hover:underline">Account</NuxtLink> to enable email notifications.
           </div>
           <div v-else class="grid gap-3">
             <div
@@ -142,53 +142,49 @@
                 </NuxtLink>
               </div>
             </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Weekly digest</div>
-                <div class="text-xs moh-text-muted">A Sunday morning recap: best post of the week + new members.</div>
-              </div>
-              <Checkbox v-model="notifPrefs.emailDigestWeekly" binary :disabled="notifPrefsSaving || !emailIsVerified" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Newsletters</div>
-                <div class="text-xs moh-text-muted">Occasional notes from us.</div>
-              </div>
-              <Checkbox v-model="notifPrefs.emailNewsletter" binary :disabled="notifPrefsSaving || !emailIsVerified" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">New notifications</div>
-                <div class="text-xs moh-text-muted">A nudge when you have unread notifications.</div>
-              </div>
-              <Checkbox v-model="notifPrefs.emailNewNotifications" binary :disabled="notifPrefsSaving || !emailIsVerified" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Instant emails (high-signal)</div>
-                <div class="text-xs moh-text-muted">
-                  Messages, mentions, and replies. Batched + throttled so it won’t spam you.
-                </div>
-              </div>
-              <Checkbox v-model="notifPrefs.emailInstantHighSignal" binary :disabled="notifPrefsSaving || !emailIsVerified" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Streak reminder</div>
-                <div class="text-xs moh-text-muted">
-                  An evening nudge when your check-in streak is at risk.
-                </div>
-              </div>
-              <Checkbox v-model="notifPrefs.emailStreakReminder" binary :disabled="notifPrefsSaving || !emailIsVerified" />
-            </div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="font-medium">Articles and spaces from people you follow</div>
-                <div class="text-xs moh-text-muted">
-                  Get an email when someone you follow publishes an article or schedules a space.
-                </div>
-              </div>
-              <Checkbox v-model="notifPrefs.emailFollowedArticle" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+            <div class="moh-divide">
+              <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+                <span class="flex min-w-0 items-center gap-3">
+                  <AppIconGlyph name="mail" :size="20" class="text-[var(--moh-text-muted)]" />
+                  <span class="font-medium">Weekly digest</span>
+                </span>
+                <Checkbox v-model="notifPrefs.emailDigestWeekly" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+              </label>
+              <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+                <span class="flex min-w-0 items-center gap-3">
+                  <AppIconGlyph name="article" :size="20" class="text-[var(--moh-text-muted)]" />
+                  <span class="font-medium">Newsletters</span>
+                </span>
+                <Checkbox v-model="notifPrefs.emailNewsletter" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+              </label>
+              <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+                <span class="flex min-w-0 items-center gap-3">
+                  <AppIconGlyph name="notifications" :size="20" class="text-[var(--moh-text-muted)]" />
+                  <span class="font-medium">New notifications</span>
+                </span>
+                <Checkbox v-model="notifPrefs.emailNewNotifications" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+              </label>
+              <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+                <span class="flex min-w-0 items-center gap-3">
+                  <AppIconGlyph name="messages" :size="20" class="text-[var(--moh-text-muted)]" />
+                  <span class="font-medium">Instant emails</span>
+                </span>
+                <Checkbox v-model="notifPrefs.emailInstantHighSignal" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+              </label>
+              <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+                <span class="flex min-w-0 items-center gap-3">
+                  <AppIconGlyph name="streak" :size="20" class="text-[var(--moh-text-muted)]" />
+                  <span class="font-medium">Streak reminder</span>
+                </span>
+                <Checkbox v-model="notifPrefs.emailStreakReminder" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+              </label>
+              <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+                <span class="flex min-w-0 items-center gap-3">
+                  <AppIconGlyph name="spaces" :size="20" class="text-[var(--moh-text-muted)]" />
+                  <span class="font-medium">Followed articles and spaces</span>
+                </span>
+                <Checkbox v-model="notifPrefs.emailFollowedArticle" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+              </label>
             </div>
           </div>
         </div>

@@ -9,6 +9,7 @@ const props = withDefaults(defineProps<{ item: AppNavItem; selected?: boolean; s
 const mapping: Record<string, keyof typeof catalog> = {
   home: 'home', explore: 'search', messages: 'messages', notifications: 'notifications',
   articles: 'article', groups: 'group', crew: 'crew', bookmarks: 'bookmark',
+  quote: 'quote', word: 'word',
   spaces: 'navSpaces', 'check-ins': 'streak', fitness: 'fitness', 'only-me': 'onlyMe', scheduled: 'scheduled',
   invite: 'invite', settings: 'settings', feedback: 'reply', profile: 'profile', admin: 'moderation', more: 'more',
 }

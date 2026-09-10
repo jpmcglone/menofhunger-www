@@ -1,7 +1,10 @@
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between gap-3">
-      <label for="animate-avatars">Animate avatars</label>
+      <label for="animate-avatars" class="flex items-center gap-2">
+        <AppIconGlyph name="video" :size="20" class="text-[var(--moh-text-muted)]" />
+        Animate avatars
+      </label>
       <ToggleSwitch v-model="animateAvatars" input-id="animate-avatars" />
     </div>
     <AppUsernameField

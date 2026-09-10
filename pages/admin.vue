@@ -25,10 +25,10 @@
                     :class="sidebarRowClass(item)"
                   >
                     <div class="flex items-center gap-3">
-                      <Icon :name="item.icon" class="text-lg" aria-hidden="true" />
-                      <div class="min-w-0 flex-1">
-                        <div class="flex items-center justify-between gap-2 font-semibold"><span class="truncate">{{ item.label }}</span><span v-if="item.key === 'verification' && pendingVerifications" class="rounded-full moh-surface-2 px-2 text-sm tabular-nums" :aria-label="`${pendingVerifications} pending requests`">{{ pendingVerifications }}</span></div>
-                        <div class="text-sm text-gray-600 dark:text-gray-300 truncate">{{ item.description }}</div>
+                      <Icon :name="item.icon" class="text-lg text-[var(--moh-text-muted)]" aria-hidden="true" />
+                      <div class="min-w-0 flex-1 flex items-center justify-between gap-2 font-semibold">
+                        <span class="truncate">{{ item.label }}</span>
+                        <span v-if="item.key === 'verification' && pendingVerifications" class="rounded-full moh-surface-2 px-2 text-sm tabular-nums" :aria-label="`${pendingVerifications} pending requests`">{{ pendingVerifications }}</span>
                       </div>
                     </div>
                   </NuxtLink>

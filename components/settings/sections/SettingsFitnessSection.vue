@@ -1,7 +1,10 @@
 <template>
   <div class="space-y-6">
     <div class="space-y-1">
-      <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Fitness</div>
+      <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-50">
+        <AppIconGlyph name="fitness" :size="20" class="text-[var(--moh-text-muted)]" />
+        Fitness
+      </div>
       <div class="text-sm text-gray-600 dark:text-gray-300">
         Connect fitness apps to track activity, weight, and progress.
       </div>

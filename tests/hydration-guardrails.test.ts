@@ -227,9 +227,12 @@ describe('hydration guardrails (structural)', () => {
     expect(explore).toMatch(/<ClientOnly>[\s\S]*?v-if="didAttempt && isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
   })
 
-  it('hides the home daily quote for operated pages without hydrating it', () => {
+  it('keeps quote and word off the home feed', () => {
     const home = readFromRepo('pages/home.vue')
-    expect(home).toMatch(/<ClientOnly>[\s\S]*?<AppFeedDailyQuoteCard v-if="!isPageAccount"[\s\S]*?<\/ClientOnly>/)
+    expect(home).not.toContain('AppFeedDailyQuoteCard')
+    expect(home).not.toContain('DailyQuoteCard')
+    expect(home).not.toContain('/daily/quote')
+    expect(home).not.toContain('/daily/word')
   })
 
   it('hides home get-started and join-group cards for operated pages', () => {

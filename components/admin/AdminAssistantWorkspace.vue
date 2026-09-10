@@ -45,10 +45,15 @@
         <summary class="marv-summary font-semibold">All admin tools</summary>
         <div class="moh-divide mt-2">
           <div v-for="capability in workspace.capabilities.filter(item => item.id !== 'assistant')" :key="capability.id" class="py-3">
-            <NuxtLink v-if="capability.path" :to="capability.path" class="font-semibold hover:underline">{{ capability.title }}</NuxtLink>
-            <p v-else class="font-semibold">{{ capability.title }}</p>
-            <p class="text-sm moh-text-muted">{{ capability.summary }}</p>
-            <p class="text-xs moh-text-muted mt-1">{{ capability.id === 'local-artifacts' ? 'Available on your computer only' : capability.tools.length ? 'MARV can help investigate this area' : 'Use the dedicated admin controls' }}</p>
+            <NuxtLink v-if="capability.path" :to="capability.path" class="flex items-center gap-3 font-semibold hover:underline">
+              <Icon :name="capability.icon" class="text-lg text-[var(--moh-text-muted)]" aria-hidden="true" />
+              <span>{{ capability.title }}</span>
+            </NuxtLink>
+            <p v-else class="flex items-center gap-3 font-semibold">
+              <Icon :name="capability.icon" class="text-lg text-[var(--moh-text-muted)]" aria-hidden="true" />
+              <span>{{ capability.title }}</span>
+            </p>
+            <p class="mt-1 pl-8 text-sm moh-text-muted">{{ capability.summary }}</p>
           </div>
         </div>
       </details>

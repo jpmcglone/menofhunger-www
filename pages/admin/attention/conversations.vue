@@ -5,7 +5,7 @@
         <Icon name="tabler:arrow-left" aria-hidden="true" /> Attention inbox
       </NuxtLink>
       <h1 class="text-2xl font-semibold">Conversations needing a reply</h1>
-      <p class="text-sm moh-text-muted">Public posts from the past 14 days with no human replies.</p>
+      <p class="text-sm moh-text-muted">Public posts from the past 14 days with no human replies. Member posts are listed first.</p>
       <Button label="Refresh" severity="secondary" rounded size="small" class="min-h-11" :loading="loading" @click="refresh" />
     </header>
     <div v-if="error" role="alert" class="moh-gutter-x space-y-3 py-5">

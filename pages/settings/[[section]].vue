@@ -30,11 +30,14 @@
               :to="`/settings/${s.key}`"
               :class="sectionRowClass(s.key)"
             >
-              <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="font-semibold truncate text-gray-900 dark:text-gray-50">{{ s.label }}</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-300 truncate">{{ s.description }}</div>
-                </div>
+              <div class="flex items-center gap-3">
+                <AppIconGlyph
+                  :name="s.icon"
+                  :selected="selectedSection === s.key"
+                  :size="20"
+                  class="shrink-0 text-[var(--moh-text-muted)]"
+                />
+                <div class="min-w-0 flex-1 font-semibold truncate text-gray-900 dark:text-gray-50">{{ s.label }}</div>
                 <Icon name="tabler:chevron-right" class="text-gray-400" aria-hidden="true" />
               </div>
             </NuxtLink>
@@ -92,7 +95,8 @@
 
               <div v-if="showsBlock('blocked')" class="space-y-4">
                 <div v-if="composedBlocks.length > 1" class="border-t moh-border pt-6 -mt-2">
-                  <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+                  <div class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    <AppIconGlyph name="blocked" :size="16" />
                     Blocked users
                   </div>
                 </div>
@@ -143,6 +147,7 @@ import SettingsNotificationsSection from '~/components/settings/sections/Setting
 import SettingsDangerZoneSection from '~/components/settings/sections/SettingsDangerZoneSection.vue'
 import SettingsFitnessSection from '~/components/settings/sections/SettingsFitnessSection.vue'
 
+// Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=414-12178
 definePageMeta({
   layout: 'app',
   title: 'Settings',
@@ -269,37 +274,46 @@ const sections = computed(() => {
   const all = [
     {
       key: 'account' as const,
-      label: 'Your account',
-      description: isPageAccount.value
-        ? 'Username, email, profile, and helpful links.'
-        : 'Username, email, profile, and helpful links.',
+      label: 'Account',
+      icon: 'profile' as const,
+      description: 'Username, email, profile, and helpful links.',
     },
     {
       key: 'verification' as const,
       label: 'Verification',
+      icon: 'verified' as const,
       description: 'Your verified profile and video-call request.',
     },
     {
       key: 'notifications' as const,
       label: 'Notifications',
+      icon: 'notifications' as const,
       description: 'Browser permission and per-event alert preferences.',
     },
     {
       key: 'privacy' as const,
-      label: 'Privacy & Safety',
+      label: 'Privacy',
+      icon: 'private' as const,
       description: 'Visibility settings and blocked users.',
     },
     {
       key: 'billing' as const,
       label: 'Billing',
+      icon: 'premium' as const,
       description: 'Premium and Premium+ subscriptions.',
     },
     {
       key: 'marv' as const,
-      label: 'M.A.R.V (AI helper)',
+      label: 'MARV',
+      icon: 'marv' as const,
       description: 'Preferred reply mode, credits, and recent activity.',
     },
-    { key: 'fitness' as const, label: 'Fitness', description: 'Track weight, connect Apple Health, and more.' },
+    {
+      key: 'fitness' as const,
+      label: 'Fitness',
+      icon: 'fitness' as const,
+      description: 'Track weight, connect Apple Health, and more.',
+    },
   ]
   return all.filter((s) => allowedSections.value.includes(s.key))
 })

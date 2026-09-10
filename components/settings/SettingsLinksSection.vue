@@ -9,23 +9,23 @@
         class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200"
         @click="iosAppLink.trackClick('settings')"
       >
-        <Icon name="tabler:device-mobile" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        <AppIconGlyph name="platformIOS" :size="20" class="text-[var(--moh-text-muted)]" />
         <span class="font-medium">Get the app</span>
       </a>
       <NuxtLink to="/about" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-        <Icon name="tabler:info-circle" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        <AppIconGlyph name="help" :size="20" class="text-[var(--moh-text-muted)]" />
         <span class="font-medium">About</span>
       </NuxtLink>
       <NuxtLink to="/privacy" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-        <Icon name="tabler:lock" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        <AppIconGlyph name="private" :size="20" class="text-[var(--moh-text-muted)]" />
         <span class="font-medium">Privacy</span>
       </NuxtLink>
       <NuxtLink to="/terms" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-        <Icon name="tabler:file-text" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        <AppIconGlyph name="article" :size="20" class="text-[var(--moh-text-muted)]" />
         <span class="font-medium">Terms</span>
       </NuxtLink>
       <NuxtLink to="/feedback" class="inline-flex items-center gap-3 text-gray-800 hover:underline dark:text-gray-200">
-        <Icon name="tabler:message-circle" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        <AppIconGlyph name="messages" :size="20" class="text-[var(--moh-text-muted)]" />
         <span class="font-medium">Send feedback</span>
       </NuxtLink>
       <button
@@ -33,7 +33,7 @@
         class="inline-flex items-center gap-3 text-left text-gray-800 hover:underline dark:text-gray-200"
         @click="requestLogout"
       >
-        <Icon name="tabler:door-exit" class="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        <AppIconGlyph name="logout" :size="20" class="text-[var(--moh-text-muted)]" />
         <span class="font-medium">Log out</span>
       </button>
     </div>

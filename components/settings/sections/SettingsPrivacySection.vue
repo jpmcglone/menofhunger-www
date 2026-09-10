@@ -1,7 +1,10 @@
 <template>
   <div class="space-y-6">
     <div class="space-y-2">
-      <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Follow visibility</div>
+      <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-50">
+        <AppIconGlyph name="globe" :size="20" class="text-[var(--moh-text-muted)]" />
+        Follow visibility
+      </div>
       <div class="text-sm text-gray-600 dark:text-gray-300">
         Choose who can see your follower/following counts and lists.
       </div>
@@ -18,7 +21,10 @@
     />
 
     <div class="space-y-2">
-      <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">Birthday visibility</div>
+      <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-50">
+        <AppIconGlyph name="calendar" :size="20" class="text-[var(--moh-text-muted)]" />
+        Birthday visibility
+      </div>
       <div class="text-sm text-gray-600 dark:text-gray-300">
         Control whether your profile shows your full birthday, month/day only, or nothing.
       </div>
