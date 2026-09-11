@@ -1,11 +1,11 @@
 <template>
   <section
-    class="mt-8 border-t border-gray-200 pt-6 dark:border-zinc-800"
+    class="mt-8 border-t moh-border pt-6"
     :style="{ '--article-accent': accentColor }"
   >
-    <h2 class="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">
+    <h2 class="mb-4 text-base font-semibold text-[var(--moh-text)]">
       Replies
-      <span v-if="(totalCount ?? 0) > 0" class="ml-1 text-sm font-normal text-gray-500 dark:text-zinc-400">({{ totalCount }})</span>
+      <span v-if="(totalCount ?? 0) > 0" class="ml-1 text-sm font-normal moh-text-muted">({{ totalCount }})</span>
     </h2>
 
     <!-- Compose box -->
@@ -21,55 +21,62 @@
               v-model="newCommentBody"
               placeholder="Write a reply…"
               :maxlength="commentMaxLength"
+              :hide-count="true"
               :disabled="submitting"
               :priority-users="composePriorityUsers"
               @submit="submitComment"
             />
-            <div class="mt-2 flex justify-end">
+            <div class="mt-2 flex items-center justify-end gap-3">
               <button
                 type="button"
-                class="rounded-lg px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
+                class="inline-flex min-h-11 items-center rounded-full px-5 text-[15px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
                 :style="{ backgroundColor: accentColor }"
                 :disabled="!newCommentBody.trim() || submitting || newCommentBodyOverLimit"
                 @click="submitComment"
               >
                 {{ submitting ? 'Posting…' : 'Post' }}
               </button>
+              <span
+                class="text-[11px] tabular-nums moh-text-soft"
+                :class="{ 'text-red-500 font-medium': newCommentBodyOverLimit }"
+              >{{ newCommentBody.length }} / {{ commentMaxLength }}</span>
             </div>
           </div>
         </div>
       </template>
 
       <!-- CTA: not logged in -->
-      <div v-else-if="!isAuthed" class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 dark:border-zinc-700 dark:bg-zinc-900">
-        <Icon name="tabler:message-circle" class="mt-0.5 shrink-0 text-gray-400 dark:text-zinc-500" size="20" />
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Want to join the conversation?</p>
-          <div class="mt-2 flex flex-wrap items-center gap-3">
-            <NuxtLink
-              to="/login"
-              class="inline-flex items-center rounded-lg px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
-              :style="{ backgroundColor: accentColor }"
-            >
-              Log in
-            </NuxtLink>
-            <NuxtLink to="/login" class="text-sm text-gray-500 hover:underline dark:text-zinc-400">
-              or create a free account →
-            </NuxtLink>
+      <div v-else-if="!isAuthed">
+        <div class="flex items-start gap-3 rounded-xl border moh-border moh-surface-2 px-5 py-4">
+          <AppIconGlyph name="reply" :size="20" class="mt-0.5 shrink-0 moh-text-soft" />
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-[var(--moh-text)]">Want to join the conversation?</p>
+            <div class="mt-2">
+              <NuxtLink
+                to="/login"
+                class="inline-flex min-h-11 items-center rounded-full px-5 text-[15px] font-semibold text-white transition-opacity hover:opacity-85"
+                :style="{ backgroundColor: accentColor }"
+              >
+                Log in
+              </NuxtLink>
+            </div>
           </div>
         </div>
+        <NuxtLink to="/login" class="mt-3 inline-block text-sm moh-text-muted hover:underline">
+          or create a free account →
+        </NuxtLink>
       </div>
 
       <!-- CTA: logged in but unverified -->
-      <div v-else-if="!isVerified && !isPremium" class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 dark:border-zinc-700 dark:bg-zinc-900">
-        <Icon name="tabler:rosette-discount-check" class="mt-0.5 shrink-0 text-gray-400 dark:text-zinc-500" size="20" />
+      <div v-else-if="!isVerified && !isPremium" class="flex items-start gap-3 rounded-xl border moh-border moh-surface-2 px-5 py-4">
+        <AppIconGlyph name="verified" :size="20" class="mt-0.5 shrink-0 moh-text-soft" />
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Want to join the conversation?</p>
-          <p class="mt-0.5 text-sm text-gray-500 dark:text-zinc-400">Verification lets you reply on articles.</p>
+          <p class="text-sm font-medium text-[var(--moh-text)]">Want to join the conversation?</p>
+          <p class="mt-0.5 text-sm moh-text-muted">Verification lets you reply on articles.</p>
           <div class="mt-2">
             <NuxtLink
               to="/verification"
-              class="inline-flex items-center rounded-lg px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
+              class="inline-flex min-h-11 items-center rounded-full px-5 text-[15px] font-semibold text-white transition-opacity hover:opacity-85"
               :style="{ backgroundColor: accentColor }"
             >
               Get Verified
@@ -79,15 +86,15 @@
       </div>
 
       <!-- CTA: verified but article is premium-only -->
-      <div v-else-if="visibility === 'premiumOnly' && !isPremium" class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 dark:border-amber-900/40 dark:bg-amber-950/30">
-        <Icon name="tabler:crown" class="mt-0.5 shrink-0 text-amber-500" size="20" />
+      <div v-else-if="visibility === 'premiumOnly' && !isPremium" class="flex items-start gap-3 rounded-xl border moh-border moh-surface-2 px-5 py-4">
+        <AppIconGlyph name="premium" :size="20" class="mt-0.5 shrink-0 text-[var(--moh-premium)]" />
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Want to join the conversation?</p>
-          <p class="mt-0.5 text-sm text-gray-500 dark:text-zinc-400">Premium members can reply on all articles.</p>
+          <p class="text-sm font-medium text-[var(--moh-text)]">Want to join the conversation?</p>
+          <p class="mt-0.5 text-sm moh-text-muted">Premium members can reply on all articles.</p>
           <div class="mt-2">
             <NuxtLink
               to="/settings/billing"
-              class="inline-flex items-center rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
+              class="inline-flex min-h-11 items-center rounded-full bg-[var(--moh-premium)] px-5 text-[15px] font-semibold text-white transition-opacity hover:opacity-85"
             >
               Upgrade to Premium
             </NuxtLink>
@@ -98,7 +105,7 @@
 
     <!-- Loading state -->
     <div v-if="loading" class="flex justify-center py-8">
-      <Icon name="tabler:loader-2" class="animate-spin text-gray-400" />
+      <Icon name="tabler:loader-2" class="animate-spin moh-text-soft" />
     </div>
 
     <!-- Comment list -->
@@ -115,7 +122,7 @@
         />
 
         <!-- Replies -->
-        <div v-if="comment.replies?.length" class="ml-10 mt-3 space-y-4 border-l-2 border-gray-100 pl-4 dark:border-zinc-800">
+        <div v-if="comment.replies?.length" class="ml-10 mt-3 space-y-4 border-l-2 moh-border pl-4">
           <AppArticleCommentRow
             v-for="reply in comment.replies"
             :key="reply.id"
@@ -131,10 +138,10 @@
             @delete="handleDelete"
           />
         </div>
-        <div v-if="hasMoreReplies(comment)" class="ml-10 mt-2 border-l-2 border-gray-100 pl-4 dark:border-zinc-800">
+        <div v-if="hasMoreReplies(comment)" class="ml-10 mt-2 border-l-2 moh-border pl-4">
           <button
             type="button"
-            class="text-xs font-medium text-gray-500 transition-colors hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200 tabular-nums"
+            class="text-xs font-medium moh-text-muted transition-colors hover:text-[var(--moh-text)] tabular-nums"
             :disabled="isLoadingReplies(comment.id)"
             @click="onLoadMoreReplies(comment.id)"
           >
@@ -161,14 +168,18 @@
               <div class="mt-2 flex gap-2">
                 <button
                   type="button"
-                  class="rounded-lg px-3 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
+                  class="inline-flex min-h-11 items-center rounded-full px-5 text-[15px] font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-40"
                   :style="{ backgroundColor: accentColor }"
                   :disabled="!replyBody.trim() || submitting || replyBodyOverLimit"
                   @click="submitReply(replyingToId)"
                 >
                   {{ submitting ? 'Posting…' : 'Reply' }}
                 </button>
-                <button type="button" class="text-xs text-gray-500 hover:text-gray-700 dark:text-zinc-400" @click="cancelReply">
+                <button
+                  type="button"
+                  class="inline-flex min-h-11 items-center rounded-full px-4 text-sm moh-text-muted hover:bg-[var(--moh-surface-hover)]"
+                  @click="cancelReply"
+                >
                   Cancel
                 </button>
               </div>
@@ -181,13 +192,13 @@
       <button
         v-if="nextCursor"
         type="button"
-        class="w-full rounded-xl border border-gray-200 py-2.5 text-sm text-gray-500 transition-colors hover:bg-gray-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900"
+        class="w-full rounded-xl border moh-border py-2.5 text-sm moh-text-muted transition-colors hover:bg-[var(--moh-surface-hover)]"
         @click="loadMore"
       >
         Load more replies
       </button>
 
-      <p v-if="!loading && comments.length === 0" class="py-6 text-center text-sm text-gray-400 dark:text-zinc-500">
+      <p v-if="!loading && comments.length === 0" class="py-6 text-center text-sm moh-text-muted">
         No replies yet. Be the first!
       </p>
     </div>

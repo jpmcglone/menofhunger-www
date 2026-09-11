@@ -1,6 +1,6 @@
 <template>
   <div
-    :class="['group relative flex items-stretch border-t border-gray-200 dark:border-zinc-800 transition-colors cursor-pointer', hoverClass]"
+    :class="['group relative flex items-stretch transition-colors cursor-pointer', hoverClass]"
     role="link"
     tabindex="0"
     @click="onRowClick(destination, $event)"
@@ -27,7 +27,7 @@
       <!-- Content -->
       <div class="flex flex-1 flex-col gap-2 min-w-0">
         <!-- Title -->
-        <h3 class="line-clamp-3 text-xl font-bold leading-snug text-gray-900 dark:text-gray-100">
+        <h3 class="line-clamp-3 text-xl font-bold leading-snug text-[var(--moh-text)]">
           {{ article.title || 'Untitled' }}
         </h3>
 
@@ -39,7 +39,7 @@
             ? 'opacity: 0.75; mask-image: linear-gradient(to bottom, black 30%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 100%);'
             : ''"
         >
-          <p class="line-clamp-2 text-sm leading-relaxed text-gray-500 dark:text-zinc-400">
+          <p class="line-clamp-2 text-sm leading-relaxed moh-text-muted">
             {{ article.excerpt }}
           </p>
         </div>
@@ -50,13 +50,13 @@
             v-for="tag in article.tags.slice(0, 4)"
             :key="tag.tag"
             :to="`/topics/${encodeURIComponent(tag.tag)}`"
-            class="relative z-10 inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 transition-colors"
+            class="relative z-10 inline-flex items-center rounded-full border moh-border moh-surface-hover px-2 py-0.5 text-[10px] font-medium moh-text-muted hover:text-[var(--moh-text)] transition-colors"
             @click.stop
           >{{ tag.label }}</NuxtLink>
         </div>
 
         <!-- Meta row -->
-        <div class="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs uppercase tracking-wide text-gray-400 dark:text-zinc-500">
+        <div class="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs uppercase tracking-wide moh-text-soft">
           <template v-if="article.isDraft">
             <span class="normal-case tracking-normal">Saved {{ savedLabel }}</span>
           </template>
@@ -75,8 +75,8 @@
               :class="[
                 'normal-case tracking-normal inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
                 article.visibility === 'premiumOnly'
-                  ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
-                  : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+                  ? 'bg-[var(--moh-premium)] text-[var(--moh-bg)]'
+                  : 'bg-[var(--moh-verified)] text-[var(--moh-bg)]',
               ]"
             >
               <Icon name="tabler:lock" class="text-[9px]" aria-hidden="true" />
@@ -129,7 +129,7 @@
       <!-- Thumbnail -->
       <div
         v-if="article.thumbnailUrl"
-        class="relative flex-shrink-0 w-28 sm:w-36 overflow-hidden rounded-md bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700"
+        class="relative flex-shrink-0 w-28 sm:w-36 overflow-hidden rounded-md moh-surface-2 border moh-border"
         style="aspect-ratio: 16/9;"
       >
         <img
@@ -152,7 +152,7 @@
       <div class="relative">
         <button
           type="button"
-          class="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:text-zinc-500 dark:hover:text-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+          class="flex items-center justify-center w-8 h-8 rounded-full moh-text-soft hover:text-[var(--moh-text)] hover:bg-[var(--moh-surface-hover)] transition-colors"
           aria-label="More options"
           @click.prevent.stop="toggleMenu"
         >
@@ -162,7 +162,7 @@
         <Transition name="more-menu">
           <div
             v-if="menuOpen"
-            class="absolute right-0 top-full z-30 mt-1 w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-black"
+            class="absolute right-0 top-full z-30 mt-1 w-36 overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
             role="menu"
           >
             <button

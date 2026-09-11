@@ -1,13 +1,13 @@
 <template>
   <NuxtLink
     :to="`/a/${article.id}`"
-    class="group mt-2 block overflow-hidden rounded-xl border border-gray-200 dark:border-zinc-700"
+    class="group mt-2 block overflow-hidden rounded-xl border moh-border"
     @click.stop
   >
     <!-- Thumbnail -->
     <div
       v-if="article.thumbnailUrl"
-      class="relative aspect-[16/9] w-full overflow-hidden bg-gray-100 dark:bg-zinc-800"
+      class="relative aspect-[16/9] w-full overflow-hidden moh-surface-2"
     >
       <img
         :src="article.thumbnailUrl"
@@ -30,13 +30,14 @@
     <div class="p-3">
       <!-- Article label -->
       <div class="mb-1.5 flex items-center gap-1.5 flex-wrap">
-        <Icon name="tabler:article" class="text-[11px] text-gray-400 dark:text-zinc-500" aria-hidden="true" />
-        <span class="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-zinc-500">Article</span>
-        <span v-if="readingTime" class="text-[11px] text-gray-400 dark:text-zinc-500">· {{ readingTime }}</span>
+        <Icon name="tabler:article" class="text-[11px] moh-text-soft" aria-hidden="true" />
+        <span class="text-[11px] font-medium uppercase tracking-wide moh-text-soft">Article</span>
+        <span v-if="readingTime" class="text-[11px] moh-text-soft">· {{ readingTime }}</span>
         <!-- Access gate chip: shown when server stripped the excerpt due to viewer's tier -->
         <span
           v-if="isGated"
-          class="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50"
+          class="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-[var(--moh-bg)]"
+          :class="article.visibility === 'premiumOnly' ? 'bg-[var(--moh-premium)]' : 'bg-[var(--moh-verified)]'"
         >
           <Icon name="tabler:lock" class="text-[10px] shrink-0" aria-hidden="true" />
           {{ gateLabel }}
@@ -44,12 +45,12 @@
       </div>
 
       <!-- Title -->
-      <p class="line-clamp-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+      <p class="line-clamp-2 text-sm font-semibold text-[var(--moh-text)]">
         {{ article.title }}
       </p>
 
       <!-- Excerpt -->
-      <p v-if="article.excerpt" class="mt-1 line-clamp-2 text-xs text-gray-500 dark:text-zinc-400">
+      <p v-if="article.excerpt" class="mt-1 line-clamp-2 text-xs moh-text-muted">
         {{ article.excerpt }}
       </p>
 
@@ -61,7 +62,7 @@
           size="xs"
           class="flex-shrink-0"
         />
-        <span class="truncate text-[11px] text-gray-500 dark:text-zinc-400">
+        <span class="truncate text-[11px] moh-text-muted">
           {{ article.author?.name || article.author?.username || 'Unknown' }}
         </span>
       </div>

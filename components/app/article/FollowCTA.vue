@@ -1,17 +1,17 @@
 <template>
   <div
     v-if="shouldShow"
-    class="my-10 rounded-2xl border moh-border moh-surface p-5"
+    class="my-10 rounded-2xl border moh-border moh-surface-2 p-5"
   >
     <div class="flex items-center gap-4">
       <NuxtLink :to="`/u/${author.username}`" class="flex-shrink-0">
         <AppUserAvatar :user="author" size="lg" />
       </NuxtLink>
       <div class="flex-1 min-w-0">
-        <p class="font-semibold text-gray-900 dark:text-gray-100">
+        <p class="font-semibold text-[var(--moh-text)]">
           {{ author.name || author.username || 'This author' }}
         </p>
-        <p class="mt-0.5 text-sm text-gray-500 dark:text-zinc-400">
+        <p class="mt-0.5 text-sm moh-text-muted">
           Follow to get their articles delivered to your feed.
         </p>
       </div>

@@ -3,7 +3,7 @@
     <!-- Sticky toolbar -->
     <div
       ref="toolbarEl"
-      class="toolbar-scroll sticky z-10 mb-3 flex flex-nowrap items-center gap-1 border-b border-gray-100 px-4 py-2 transition-colors duration-200 dark:border-zinc-800 sm:px-6 lg:px-8"
+      class="toolbar-scroll sticky z-10 mb-3 flex flex-nowrap items-center gap-1 border-b moh-border px-4 py-2 transition-colors duration-200 sm:px-6 lg:px-8"
       :style="{ top: 'var(--editor-topbar-h, 3.5rem)' }"
       :class="[
         isToolbarScrollable
@@ -15,7 +15,7 @@
         v-for="item in toolbarItems"
         :key="item.title"
         type="button"
-        class="shrink-0 flex items-center justify-center rounded p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+        class="shrink-0 flex items-center justify-center rounded p-1.5 moh-text-muted transition-colors hover:bg-[var(--moh-surface-hover)] hover:text-[var(--moh-text)] disabled:opacity-40"
         :class="item.active?.() ? 'toolbar-item-active' : ''"
         :title="item.title"
         @click="item.action()"
@@ -23,12 +23,12 @@
         <Icon :name="item.icon" class="text-[16px]" />
       </button>
 
-      <div class="mx-1 h-4 w-px shrink-0 self-center bg-gray-200 dark:bg-zinc-700" />
+      <div class="mx-1 h-4 w-px shrink-0 self-center bg-[var(--moh-border)]" />
 
       <!-- Image insert -->
       <button
         type="button"
-        class="shrink-0 flex items-center justify-center rounded p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+        class="shrink-0 flex items-center justify-center rounded p-1.5 moh-text-muted transition-colors hover:bg-[var(--moh-surface-hover)] hover:text-[var(--moh-text)] disabled:opacity-40"
         title="Insert image"
         :disabled="uploading"
         @click="triggerImageUpload"
@@ -50,14 +50,14 @@
       @update:visible="onCloseLinkDialog"
     >
       <div class="space-y-2">
-        <label class="block text-sm font-medium text-gray-700 dark:text-zinc-200" for="article-editor-url-input">
+        <label class="block text-sm font-medium text-[var(--moh-text)]" for="article-editor-url-input">
           {{ linkDialogMode === 'youtube' ? 'YouTube URL' : 'URL' }}
         </label>
         <input
           id="article-editor-url-input"
           v-model.trim="linkDialogUrl"
           type="url"
-          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-500"
+          class="w-full rounded-lg border moh-border moh-surface px-3 py-2 text-sm text-[var(--moh-text)] outline-none transition-colors focus:border-[var(--moh-brass)]"
           :placeholder="linkDialogMode === 'youtube' ? 'https://www.youtube.com/watch?v=...' : 'https://example.com'"
           autocomplete="off"
           @keydown.enter.prevent="onSubmitLinkDialog"
@@ -384,13 +384,9 @@ onBeforeUnmount(() => {
 .tiptap-editor-content .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: #9ca3af; /* gray-400 */
+  color: var(--moh-text-soft);
   pointer-events: none;
   height: 0;
-}
-
-.dark .tiptap-editor-content .ProseMirror p.is-editor-empty:first-child::before {
-  color: #52525b; /* zinc-600 */
 }
 
 .tiptap-editor-content .ProseMirror {
@@ -406,11 +402,7 @@ onBeforeUnmount(() => {
 
 .tiptap-editor-content .ProseMirror img {
   border-radius: 0.5rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.dark .tiptap-editor-content .ProseMirror img {
-  border-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--moh-border);
 }
 
 /* Keep callouts tighter while composing. */

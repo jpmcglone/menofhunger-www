@@ -4,7 +4,7 @@
       ref="textareaEl"
       v-model="model"
       :class="[
-        'article-comment-textarea w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-100 dark:placeholder-zinc-500',
+        'article-comment-textarea w-full resize-none rounded-xl border moh-border moh-surface px-3 py-2.5 text-sm text-[var(--moh-text)] placeholder-[var(--moh-text-soft)] focus:outline-none',
         'overflow-y-auto',
       ]"
       :style="textareaStyle"
@@ -19,10 +19,10 @@
       @request-close="mention.onRequestClose"
     />
   </div>
-  <div v-if="maxlength" class="mt-1 flex justify-end">
+  <div v-if="maxlength && !hideCount" class="mt-1 flex justify-end">
     <span
       class="text-[11px] tabular-nums transition-colors"
-      :class="isOverLimit ? 'text-red-500 font-medium' : isNearLimit ? 'text-amber-500' : 'text-gray-400 dark:text-zinc-500'"
+      :class="isOverLimit ? 'text-red-500 font-medium' : isNearLimit ? 'text-amber-500' : 'moh-text-soft'"
     >
       {{ model.length }} / {{ maxlength }}
     </span>
@@ -42,6 +42,7 @@ const props = defineProps<{
   maxlength?: number
   disabled?: boolean
   autofocus?: boolean
+  hideCount?: boolean
   priorityUsers?: FollowListUser[]
 }>()
 

@@ -1,7 +1,7 @@
 <template>
   <div>
     <div v-if="checkingAccess" class="flex min-h-screen items-center justify-center">
-      <Icon name="tabler:loader-2" class="animate-spin text-2xl text-gray-400" aria-hidden="true" />
+      <Icon name="tabler:loader-2" class="animate-spin text-2xl moh-text-soft" aria-hidden="true" />
     </div>
     <AppArticleEditorPage v-else :article="null" @created="onDraftCreated" />
   </div>

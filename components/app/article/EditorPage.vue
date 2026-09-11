@@ -1,9 +1,9 @@
 <template>
   <div ref="editorRootEl" class="flex min-h-screen flex-col">
     <!-- Top bar -->
-    <div ref="topBarEl" class="sticky top-0 z-20 flex items-center gap-2 border-b border-gray-200 bg-white px-4 pb-2.5 pt-[calc(var(--moh-safe-top,0px)+0.5rem)] dark:border-zinc-800 dark:bg-black sm:gap-3 sm:py-3">
+    <div ref="topBarEl" class="sticky top-0 z-20 flex items-center gap-2 border-b moh-border moh-frosted px-4 pb-2.5 pt-[calc(var(--moh-safe-top,0px)+0.5rem)] sm:gap-3 sm:py-3">
       <!-- Back -->
-      <NuxtLink to="/articles" class="flex-shrink-0 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800">
+      <NuxtLink to="/articles" class="flex-shrink-0 rounded-lg p-1.5 moh-text-muted hover:bg-[var(--moh-surface-hover)]">
         <Icon name="tabler:arrow-left" class="text-lg" aria-hidden="true" />
       </NuxtLink>
 
@@ -19,7 +19,7 @@
 
       <div class="ml-auto flex items-center gap-2">
         <!-- Save status -->
-        <p class="hidden truncate text-xs text-gray-400 dark:text-zinc-500 sm:block">
+        <p class="hidden truncate text-xs moh-text-soft sm:block">
           <span v-if="editor.saveStatus.value === 'saving'">
             <Icon name="tabler:loader-2" class="animate-spin text-[10px] mr-0.5" aria-hidden="true" />
             Saving…
@@ -32,7 +32,7 @@
         <!-- Save draft button -->
         <button
           type="button"
-          class="hidden rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 sm:inline-flex"
+          class="hidden min-h-11 items-center rounded-full border moh-border px-4 text-sm font-medium moh-text-muted transition-colors hover:bg-[var(--moh-surface-hover)] disabled:opacity-40 sm:inline-flex"
           :disabled="!editor.isDirty.value || editor.saveStatus.value === 'saving'"
           @click="editor.save()"
         >
@@ -40,7 +40,7 @@
         </button>
         <button
           type="button"
-          class="inline-flex rounded-lg border border-gray-200 p-2 text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 sm:hidden"
+          class="inline-flex size-11 items-center justify-center rounded-full border moh-border moh-text-muted transition-colors hover:bg-[var(--moh-surface-hover)] disabled:opacity-40 sm:hidden"
           :disabled="!editor.isDirty.value || editor.saveStatus.value === 'saving'"
           aria-label="Save draft"
           @click="editor.save()"
@@ -50,7 +50,7 @@
 
         <button
           type="button"
-          class="rounded-lg px-4 py-1.5 text-sm font-semibold transition-opacity hover:opacity-95 disabled:opacity-50"
+          class="min-h-11 rounded-full px-5 text-sm font-semibold transition-opacity hover:opacity-95 disabled:opacity-50"
           :class="primaryActionClass"
           :style="primaryActionStyle"
           :disabled="primaryActionDisabled"
@@ -70,13 +70,13 @@
       <div ref="thumbnailSectionEl" class="mb-6 px-4 sm:px-6 lg:px-8">
         <div
           v-if="editor.thumbnailUrl.value"
-          class="group relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-zinc-800"
+          class="group relative aspect-[16/9] w-full overflow-hidden rounded-xl moh-surface-2"
         >
           <img :src="editor.thumbnailUrl.value" alt="Article thumbnail" class="h-full w-full object-cover" />
           <div class="absolute inset-0 flex items-center justify-center gap-3 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 max-sm:opacity-100">
             <button
               type="button"
-              class="rounded-lg bg-white/90 px-3 py-1.5 text-xs font-semibold text-gray-900 hover:bg-white"
+              class="rounded-lg bg-white/90 px-3 py-1.5 text-xs font-semibold text-[var(--moh-text)] hover:bg-white"
               @click="triggerThumbnailUpload"
             >
               Change
@@ -93,7 +93,7 @@
         <button
           v-else
           type="button"
-          class="flex aspect-[16/9] w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 p-4 text-sm text-gray-400 transition-colors hover:border-gray-300 hover:text-gray-500 dark:border-zinc-700 dark:text-zinc-500 dark:hover:border-zinc-600"
+          class="flex aspect-[16/9] w-full items-center justify-center gap-2 rounded-xl moh-surface-2 p-4 text-sm moh-text-muted transition-colors hover:bg-[var(--moh-surface-hover)]"
           :disabled="thumbnailUploading"
           @click="triggerThumbnailUpload"
         >
@@ -117,7 +117,7 @@
       <textarea
         ref="titleEl"
         v-model="editor.title.value"
-        class="article-title-input mb-2 w-full resize-none border-0 bg-transparent px-4 text-3xl font-bold text-gray-900 placeholder-gray-300 focus:outline-none dark:text-gray-100 dark:placeholder-zinc-600 sm:px-6 lg:px-8"
+        class="article-title-input mb-2 w-full resize-none border-0 bg-transparent px-4 text-3xl font-bold text-[var(--moh-text)] placeholder-[var(--moh-text-soft)] focus:outline-none sm:px-6 lg:px-8"
         :class="titleToneClass"
         placeholder="Article title…"
         :rows="1"

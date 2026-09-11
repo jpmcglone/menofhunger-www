@@ -1,7 +1,7 @@
 <template>
   <div v-if="articles.length > 0">
-    <div class="border-t border-gray-200 dark:border-zinc-800 px-4 pt-6 pb-2">
-      <p class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-zinc-500">
+    <div class="border-t moh-border px-4 pt-6 pb-2">
+      <p class="text-xs font-semibold uppercase tracking-widest moh-text-soft">
         More on {{ activeTagLabel }}
       </p>
     </div>

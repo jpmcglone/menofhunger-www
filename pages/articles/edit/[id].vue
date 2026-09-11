@@ -1,9 +1,9 @@
 <template>
   <div>
     <div v-if="pending" class="flex items-center justify-center py-20">
-      <Icon name="tabler:loader-2" class="animate-spin text-gray-400 text-2xl" />
+      <Icon name="tabler:loader-2" class="animate-spin moh-text-soft text-2xl" />
     </div>
-    <div v-else-if="error" class="px-4 py-20 text-center text-sm text-red-500">
+    <div v-else-if="error" class="px-4 py-20 text-center text-sm moh-text-muted">
       Article not found.
     </div>
     <AppArticleEditorPage v-else-if="article" :article="article" />

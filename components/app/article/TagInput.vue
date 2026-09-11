@@ -6,12 +6,12 @@
         <span
           v-for="tag in modelValue"
           :key="tag.tag"
-          class="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 pl-2.5 pr-1.5 py-0.5 text-xs font-medium text-gray-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 group"
+          class="inline-flex items-center gap-1 rounded-full border moh-border moh-surface-2 pl-2.5 pr-1.5 py-0.5 text-xs font-medium text-[var(--moh-text)] group"
         >
           {{ tag.label }}
           <button
             type="button"
-            class="flex h-3.5 w-3.5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:text-zinc-500 dark:hover:bg-zinc-700 dark:hover:text-zinc-300 transition-colors"
+            class="flex h-3.5 w-3.5 items-center justify-center rounded-full moh-text-soft hover:bg-[var(--moh-surface-hover)] hover:text-[var(--moh-text)] transition-colors"
             :aria-label="`Remove tag ${tag.label}`"
             @click="removeTag(tag.tag)"
           >
@@ -26,9 +26,9 @@
           ref="inputEl"
           v-model="inputText"
           type="text"
-          :placeholder="modelValue.length === 0 ? 'Add tags…' : 'Add another…'"
+          :placeholder="modelValue.length === 0 ? 'Add a tag…' : 'Add another…'"
           :class="[
-            'w-full border-0 bg-transparent py-0.5 text-xs text-gray-600 placeholder-gray-300 focus:outline-none dark:text-zinc-300 dark:placeholder-zinc-600',
+            'w-full border-0 bg-transparent py-0.5 text-xs text-[var(--moh-text)] placeholder-[var(--moh-text-soft)] focus:outline-none',
             showAddAnotherHint ? 'pr-28 sm:pr-32' : '',
           ]"
           autocomplete="off"
@@ -47,12 +47,12 @@
         />
         <div
           v-if="showAddAnotherHint"
-          class="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 items-center gap-1 text-[10px] text-gray-400 dark:text-zinc-500"
+          class="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 items-center gap-1 text-[10px] moh-text-soft"
           aria-hidden="true"
         >
-          <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 font-medium text-[9px] leading-none dark:border-zinc-700 dark:bg-zinc-800">Enter</kbd>
+          <kbd class="rounded border moh-border moh-surface-2 px-1 py-0.5 font-medium text-[9px] leading-none">Enter</kbd>
           <span>/</span>
-          <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 font-medium text-[9px] leading-none dark:border-zinc-700 dark:bg-zinc-800">Tab</kbd>
+          <kbd class="rounded border moh-border moh-surface-2 px-1 py-0.5 font-medium text-[9px] leading-none">Tab</kbd>
         </div>
 
         <Teleport to="body">
@@ -61,7 +61,7 @@
             v-if="showDropdown && suggestions.length > 0"
             ref="menuEl"
             role="listbox"
-            class="fixed z-[2000] max-h-48 w-48 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+            class="fixed z-[2000] max-h-48 w-48 overflow-y-auto rounded-xl border moh-border moh-surface py-1 shadow-lg"
             :style="menuStyle"
           >
             <li
@@ -71,19 +71,19 @@
               :aria-selected="i === activeSuggestion"
               class="flex cursor-pointer items-center justify-between px-3 py-1.5 text-xs transition-colors"
               :class="i === activeSuggestion
-                ? 'bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-gray-100'
-                : 'text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800/60'"
+                ? 'bg-[var(--moh-surface-hover)] text-[var(--moh-text)]'
+                : 'text-[var(--moh-text)] hover:bg-[var(--moh-surface-hover)]'"
               @mousedown.prevent="selectSuggestion(s)"
             >
               <span class="font-medium">{{ s.label }}</span>
-              <span class="ml-2 text-gray-400 dark:text-zinc-500 uppercase">{{ s.kind }}</span>
+              <span class="ml-2 moh-text-soft uppercase">{{ s.kind }}</span>
             </li>
           </ul>
         </Transition>
         </Teleport>
       </div>
 
-      <span v-if="modelValue.length >= MAX_TAGS" class="text-[10px] text-gray-400 dark:text-zinc-600 ml-1">
+      <span v-if="modelValue.length >= MAX_TAGS" class="text-[10px] moh-text-soft ml-1">
         Max {{ MAX_TAGS }} tags
       </span>
     </div>

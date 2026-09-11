@@ -22,7 +22,7 @@
       <!-- Author + timestamp -->
       <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
         <span
-          class="text-sm font-semibold text-gray-900 dark:text-gray-100 cursor-pointer hover:underline"
+          class="text-sm font-semibold text-[var(--moh-text)] cursor-pointer hover:underline"
           @mouseenter="authorEnter"
           @mousemove="authorMove"
           @mouseleave="authorLeave"
@@ -40,11 +40,11 @@
           :orgs="comment.author.orgAffiliations"
           size="xs"
         />
-        <span class="text-[11px] text-gray-400 dark:text-zinc-500">@{{ comment.author.username }}</span>
-        <span class="text-[11px] text-gray-400 dark:text-zinc-500">·</span>
+        <span class="text-[11px] moh-text-soft">@{{ comment.author.username }}</span>
+        <span class="text-[11px] moh-text-soft">·</span>
         <a
           :href="`/a/${articleId}#comment-${comment.id}`"
-          class="text-[11px] text-gray-400 dark:text-zinc-500 hover:underline hover:text-gray-600 dark:hover:text-zinc-300"
+          class="text-[11px] moh-text-soft hover:underline hover:text-[var(--moh-text-muted)]"
           :title="fullTimestamp"
           @click.prevent="onTimestampClick"
         >{{ timeAgo }}</a>
@@ -59,7 +59,7 @@
         >
           <p
             ref="bodyTextEl"
-            class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
+            class="text-sm text-[var(--moh-text)] whitespace-pre-wrap break-words"
           >
             {{ comment.body }}
           </p>
@@ -67,13 +67,13 @@
         <button
           v-if="isTruncatable"
           type="button"
-          class="mt-0.5 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          class="mt-0.5 text-xs font-medium moh-text-muted hover:text-[var(--moh-text)]"
           @click="toggleExpand"
         >
           {{ expanded ? 'Show less' : 'Show more' }}
         </button>
       </div>
-      <p v-else class="mt-0.5 text-sm italic text-gray-400 dark:text-zinc-500">[deleted]</p>
+      <p v-else class="mt-0.5 text-sm italic moh-text-muted">[deleted]</p>
 
       <!-- Reaction pills + inline actions -->
       <div v-if="!deleted" class="mt-1.5">
@@ -88,12 +88,12 @@
             v-tooltip.bottom="replyTooltip"
             @click="emit('reply', isReply ? (parentId ?? comment.id) : comment.id, comment.author.username ?? undefined)"
           >
-            <span class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300">
+            <span class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]">
               <Icon name="tabler:message-circle" size="15" aria-hidden="true" />
             </span>
             <span
               v-if="replyCountDisplay > 0"
-              class="tabular-nums text-[12px] font-semibold leading-none text-gray-700 dark:text-zinc-200"
+              class="tabular-nums text-[12px] font-semibold leading-none text-[var(--moh-text)]"
             >{{ replyCountDisplay }}</span>
           </button>
 
@@ -110,7 +110,7 @@
               <button
                 ref="reactButtonDesktopRef"
                 type="button"
-                class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+                class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]"
                 aria-label="Add reaction"
                 v-tooltip.bottom="reactTooltip"
                 @click="toggleReactionPicker(reactButtonDesktopRef)"
@@ -124,7 +124,7 @@
             <!-- Share -->
             <button
               type="button"
-              class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+              class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]"
               aria-label="Share reply"
               v-tooltip.bottom="shareTooltip"
               @click="toggleShareMenu($event)"
@@ -168,7 +168,7 @@
             <div v-if="hasMoreOptions" ref="moreWrapRef">
               <button
                 type="button"
-                class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+                class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]"
                 aria-label="More options"
                 v-tooltip.bottom="moreTooltip"
                 @click="onMoreClick"
@@ -180,7 +180,7 @@
                   <div
                     v-if="moreOpen"
                     ref="moreMenuEl"
-                    class="fixed z-[9999] w-36 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+                    class="fixed z-[9999] w-36 overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
                     :style="moreMenuStyle"
                   >
                     <button
@@ -209,8 +209,8 @@
                   type="button"
                   class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-medium transition-colors"
                   :class="r.viewerHasReacted
-                    ? 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                    : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300 hover:bg-gray-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-700'"
+                    ? 'border-[var(--moh-marv)] bg-[color-mix(in_srgb,var(--moh-marv)_12%,transparent)] text-[var(--moh-text)]'
+                    : 'border-[var(--moh-border)] moh-surface-2 text-[var(--moh-text)] hover:bg-[var(--moh-surface-hover)]'"
                   :aria-pressed="r.viewerHasReacted"
                   :aria-label="`${r.emoji} ${r.count} reactions`"
                   @click="reactionState.toggle(r.reactionId, r.emoji)"
@@ -224,7 +224,7 @@
               <button
                 ref="reactButtonMobileRef"
                 type="button"
-                class="inline-flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300"
+                class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]"
                 aria-label="Add reaction"
                 v-tooltip.bottom="reactTooltip"
                 @click="toggleReactionPicker(reactButtonMobileRef)"
@@ -242,7 +242,7 @@
       <div
         v-if="reactPickerOpen"
         ref="reactionPickerEl"
-        class="fixed z-[10020] flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+        class="fixed z-[10020] flex items-center gap-1 rounded-xl border moh-border moh-surface p-2 shadow-lg"
         :style="reactionPickerStyle"
         role="menu"
         aria-label="Pick a reaction"
@@ -251,7 +251,7 @@
           v-for="reaction in REACTIONS"
           :key="`picker-${reaction.id}`"
           type="button"
-          class="flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-colors hover:bg-gray-100 dark:hover:bg-zinc-800"
+          class="flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-colors hover:bg-[var(--moh-surface-hover)]"
           :aria-label="reaction.label"
           :title="reaction.label"
           @click="pickReaction(reaction.id, reaction.emoji)"
@@ -267,7 +267,7 @@
         v-if="confirmingDelete"
         class="absolute inset-x-0 bottom-0 flex items-center gap-2 rounded-b-xl bg-red-50 px-3 py-2 dark:bg-red-950/40"
       >
-        <span class="flex-1 text-xs text-gray-600 dark:text-zinc-300">Delete this reply?</span>
+        <span class="flex-1 text-xs text-[var(--moh-text)]">Delete this reply?</span>
         <button
           type="button"
           class="rounded px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40"
@@ -277,7 +277,7 @@
         </button>
         <button
           type="button"
-          class="rounded px-2.5 py-1 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800"
+          class="rounded px-2.5 py-1 text-xs moh-text-muted hover:bg-[var(--moh-surface-hover)]"
           @click="confirmingDelete = false"
         >
           Cancel

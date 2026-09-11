@@ -13,15 +13,15 @@
 
     <!-- Not found (404) -->
     <div v-else-if="!article && articleIsNotFound" class="px-4 py-20 text-center">
-      <p class="text-lg font-semibold text-gray-600 dark:text-zinc-400">Article not found.</p>
-      <NuxtLink to="/articles" class="mt-3 inline-block text-sm text-orange-500 hover:underline">Browse articles</NuxtLink>
+      <p class="text-lg font-semibold moh-text-muted">Article not found.</p>
+      <NuxtLink to="/articles" class="mt-3 inline-block text-sm text-[var(--moh-marv)] hover:underline">Browse articles</NuxtLink>
     </div>
 
     <!-- Real load failure (network/5xx) — don't claim the article doesn't exist -->
     <div v-else-if="!article" class="px-4 py-20 text-center">
-      <p class="text-lg font-semibold text-gray-600 dark:text-zinc-400">Couldn't load this article.</p>
+      <p class="text-lg font-semibold moh-text-muted">Couldn't load this article.</p>
       <p class="mt-1 text-sm moh-text-muted">{{ getApiErrorMessage(articleError) || 'Please try again.' }}</p>
-      <Button label="Retry" severity="secondary" class="mt-3" @click="refreshArticle()" />
+      <AppActionButton label="Retry" kind="secondary" class="mt-3" @click="refreshArticle()" />
     </div>
 
     <!-- Article -->
@@ -29,7 +29,7 @@
       <!-- Centered content column -->
       <div class="mx-auto max-w-3xl px-4 pt-8 pb-4 sm:px-6 lg:px-8">
         <!-- Thumbnail hero -->
-        <div v-if="article.thumbnailUrl" class="relative mb-8 aspect-[16/9] overflow-hidden rounded-2xl bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700">
+        <div v-if="article.thumbnailUrl" class="relative mb-8 aspect-[16/9] overflow-hidden rounded-2xl moh-surface-2 border moh-border">
           <img
             :src="article.thumbnailUrl"
             :alt="article.title"
@@ -47,25 +47,25 @@
 
         <!-- Title -->
         <div class="flex items-start justify-between gap-4">
-          <h1 class="text-3xl font-bold leading-snug text-gray-900 dark:text-gray-100 sm:text-4xl">
+          <h1 class="text-3xl font-bold leading-snug text-[var(--moh-text)] sm:text-4xl">
             {{ article.title }}
           </h1>
           <NuxtLink
             v-if="viewerIsAuthor"
             :to="`/articles/edit/${article.id}`"
-            class="mt-1.5 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-zinc-700 px-3 py-1 text-xs font-medium text-gray-500 dark:text-zinc-400 hover:border-gray-400 dark:hover:border-zinc-500 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors"
+            class="mt-1.5 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border px-3 py-1 text-xs font-medium moh-text-muted hover:border-[var(--moh-text-muted)] hover:text-[var(--moh-text)] transition-colors"
           >
-            <Icon name="tabler:pencil" class="text-[12px]" aria-hidden="true" />
+            <AppIconGlyph name="write" :size="16" />
             Edit
           </NuxtLink>
         </div>
 
         <!-- Meta: author, date, read time -->
-        <div class="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-gray-500 dark:text-zinc-400">
+        <div class="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm moh-text-muted">
           <span>by</span>
           <NuxtLink
             :to="`/u/${article.author.username}`"
-            class="font-medium text-gray-900 dark:text-gray-100 hover:underline underline-offset-2"
+            class="font-medium text-[var(--moh-text)] hover:underline underline-offset-2"
             @mouseenter="(e) => authorEnter(e)"
             @mousemove="(e) => authorMove(e)"
             @mouseleave="authorLeave"
@@ -73,7 +73,7 @@
           <span class="mx-1">·</span>
           <time :datetime="article.publishedAt ?? article.createdAt">{{ publishedLabel }}</time>
           <span v-if="readingTime && article.viewerCanAccess !== false">· {{ readingTime }}</span>
-          <time v-if="article.editedAt" :datetime="article.editedAt" class="text-xs text-gray-400 dark:text-zinc-500">· Edited {{ editedLabel }}</time>
+          <time v-if="article.editedAt" :datetime="article.editedAt" class="text-xs moh-text-soft">· Edited {{ editedLabel }}</time>
           <button
             v-if="article.viewerCanAccess !== false && displayCommentCount > 0"
             type="button"
@@ -88,7 +88,7 @@
             v-for="tag in article.tags"
             :key="tag.tag"
             :to="`/topics/${encodeURIComponent(tag.tag)}`"
-            class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-200 transition-colors"
+            class="inline-flex items-center rounded-full border moh-border moh-surface-hover px-2.5 py-0.5 text-xs font-medium moh-text-muted hover:text-[var(--moh-text)] transition-colors"
           >{{ tag.label }}</NuxtLink>
         </div>
 
@@ -98,8 +98,8 @@
             :class="[
               'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
               article.visibility === 'premiumOnly'
-                ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
-                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                ? 'bg-[var(--moh-premium-soft)] text-[var(--moh-premium)]'
+                : 'bg-[var(--moh-verified-soft)] text-[var(--moh-verified)]'
             ]"
           >
             {{ article.visibility === 'premiumOnly' ? 'Premium only' : 'Verified only' }}
@@ -126,36 +126,33 @@
             class="relative overflow-hidden mt-8"
             style="opacity: 0.75; mask-image: linear-gradient(to bottom, black 30%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 100%);"
           >
-            <p class="text-base leading-relaxed text-gray-700 dark:text-zinc-300">
+            <p class="text-base leading-relaxed text-[var(--moh-text)]">
               {{ article.excerpt }}
             </p>
           </div>
 
           <!-- Access gate card -->
           <div
-            class="mt-6 flex flex-col items-center gap-4 rounded-2xl border px-6 py-10 text-center"
-          :class="article.visibility === 'premiumOnly'
-            ? 'border-orange-200 bg-orange-50 dark:border-orange-900/40 dark:bg-orange-950/20'
-            : 'border-blue-200 bg-blue-50 dark:border-blue-900/40 dark:bg-blue-950/20'"
-        >
+            class="mt-6 flex flex-col items-center gap-4 rounded-2xl border moh-border moh-surface-2 px-6 py-10 text-center"
+          >
           <div
             class="flex h-14 w-14 items-center justify-center rounded-full"
             :class="article.visibility === 'premiumOnly'
-              ? 'bg-orange-100 dark:bg-orange-900/40'
-              : 'bg-blue-100 dark:bg-blue-900/40'"
+              ? 'bg-[var(--moh-premium-soft)]'
+              : 'bg-[var(--moh-verified-soft)]'"
           >
             <Icon
               name="tabler:lock"
               class="text-2xl"
-              :class="article.visibility === 'premiumOnly' ? 'text-orange-500' : 'text-blue-500'"
+              :class="article.visibility === 'premiumOnly' ? 'text-[var(--moh-premium)]' : 'text-[var(--moh-verified)]'"
               aria-hidden="true"
             />
           </div>
           <div>
-            <p class="text-lg font-bold text-gray-900 dark:text-gray-100">
+            <p class="text-lg font-bold text-[var(--moh-text)]">
               {{ article.visibility === 'premiumOnly' ? 'Premium members only' : 'Verified members only' }}
             </p>
-            <p class="mt-1 text-sm text-gray-500 dark:text-zinc-400">
+            <p class="mt-1 text-sm moh-text-muted">
               {{ article.visibility === 'premiumOnly'
                 ? 'This article is exclusively for premium members. Upgrade to read the full article.'
                 : 'This article is for verified members. Get verified to read the full article.' }}
@@ -164,8 +161,8 @@
           <NuxtLink
             :to="article.visibility === 'premiumOnly' ? '/tiers' : '/settings/verification'"
             :class="[
-              'mt-2 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow transition-opacity hover:opacity-90',
-              article.visibility === 'premiumOnly' ? 'bg-orange-500' : 'bg-blue-500',
+              'mt-2 inline-flex min-h-11 items-center gap-2 rounded-full px-5 py-2.5 text-[15px] font-semibold text-white transition-opacity hover:opacity-90',
+              article.visibility === 'premiumOnly' ? 'bg-[var(--moh-premium)]' : 'bg-[var(--moh-verified)]',
             ]"
           >
             <Icon name="tabler:arrow-right" aria-hidden="true" />
@@ -181,7 +178,7 @@
         <div v-if="article.viewerCanAccess !== false" ref="viewSentinelEl" aria-hidden="true" />
 
         <!-- Divider -->
-        <hr class="my-8 border-gray-200 dark:border-zinc-800" />
+        <hr class="my-8 border-[var(--moh-border)]" />
 
         <!-- Engagement bar — same style as PostRow -->
         <div class="flex items-center justify-between moh-text-muted">
@@ -278,18 +275,18 @@
         </div>
 
         <!-- Author bio section -->
-        <div class="relative mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-6 dark:border-zinc-800 dark:bg-zinc-900" @click.stop>
-          <p class="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-zinc-500">About the author</p>
+        <div class="relative mt-6 rounded-2xl border moh-border moh-surface-2 p-5" @click.stop>
+          <p class="mb-4 text-[11px] font-semibold uppercase tracking-widest moh-text-soft">About the author</p>
 
           <!-- Tip button -->
           <div v-if="canTip" class="absolute top-4 right-4">
             <button
               type="button"
-              class="moh-tap inline-flex items-center gap-1 h-8 px-2.5 rounded-full border border-amber-300/60 dark:border-amber-600/40 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-medium transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/40"
+              class="moh-tap inline-flex items-center gap-1 h-8 px-2.5 rounded-full border border-[var(--moh-brass)] text-[var(--moh-brass)] text-[11px] font-medium transition-colors hover:bg-[var(--moh-surface-hover)]"
               aria-label="Send coins to author"
               @click.stop="tipOpen = !tipOpen"
             >
-              <Icon name="tabler:coin" class="text-[14px]" aria-hidden="true" />
+              <AppIconGlyph name="coins" :size="16" />
               Tip
             </button>
 
@@ -371,7 +368,8 @@
                     v-if="isAuthed"
                     :user-id="article.author.id"
                     :username="article.author.username"
-                    size="small"
+                    :show-icon="false"
+                    button-class="!min-h-11"
                   />
                   <Button
                     v-else
@@ -390,7 +388,8 @@
                   v-if="isAuthed"
                   :user-id="article.author.id"
                   :username="article.author.username"
-                  size="small"
+                  :show-icon="false"
+                  button-class="!min-h-11"
                 />
                 <Button
                   v-else
@@ -400,7 +399,7 @@
                   @click="showAuthActionModal({ kind: 'login', action: 'follow' })"
                 />
               </div>
-              <p v-if="authorBio" class="mt-2 text-sm text-gray-600 dark:text-zinc-400 line-clamp-4">
+              <p v-if="authorBio" class="mt-2 text-sm moh-text-muted line-clamp-4">
                 {{ authorBio }}
               </p>
             </div>
@@ -441,7 +440,7 @@
         <AppArticleShareCard v-if="articleSharePreview" :article="articleSharePreview" />
         <textarea
           v-model="shareCommentText"
-          class="w-full rounded-xl border moh-border bg-transparent px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--p-primary-color)]/30 resize-none min-h-[80px]"
+          class="w-full rounded-xl border moh-border bg-transparent px-3 py-2 text-sm text-[var(--moh-text)] placeholder:text-[var(--moh-text-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--moh-brass)]/30 resize-none min-h-[80px]"
           placeholder="Add a note (optional)…"
           rows="3"
         />

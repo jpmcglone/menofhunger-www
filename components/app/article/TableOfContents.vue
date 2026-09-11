@@ -1,11 +1,11 @@
 <template>
   <nav
     v-if="items.length >= 2"
-    class="my-6 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 dark:border-zinc-700 dark:bg-zinc-800/60"
+    class="my-6 rounded-xl moh-surface-2 px-3.5 py-3"
     aria-label="Table of contents"
   >
-    <p class="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-zinc-500">
-      Contents
+    <p class="mb-1.5 text-[11px] font-semibold moh-text-soft">
+      On this page
     </p>
     <ol class="space-y-1">
       <li
@@ -15,7 +15,7 @@
       >
         <a
           :href="`#${item.id}`"
-          class="text-sm text-gray-600 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:underline underline-offset-2 transition-colors"
+          class="text-[13px] moh-text-muted hover:text-[var(--moh-text)] hover:underline underline-offset-2 transition-colors"
           @click.prevent="scrollTo(item.id)"
         >
           {{ item.text }}

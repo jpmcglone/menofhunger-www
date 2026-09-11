@@ -8,7 +8,7 @@
     @update:visible="(v) => emit('update:modelValue', Boolean(v))"
   >
     <div class="space-y-3">
-      <div class="min-w-0 rounded-xl border border-gray-200 bg-white p-3 dark:border-zinc-800 dark:bg-black/20">
+      <div class="min-w-0 rounded-xl border moh-border moh-surface-2 p-3">
         <ClientOnly>
           <Cropper
             v-if="cropSrc"
@@ -25,7 +25,7 @@
           />
         </ClientOnly>
       </div>
-      <div class="text-xs text-gray-500 dark:text-gray-400">
+      <div class="text-xs moh-text-muted">
         Crop to 16:9. We'll save a 1600×900 image.
       </div>
     </div>

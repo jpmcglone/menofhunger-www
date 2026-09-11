@@ -34,7 +34,7 @@ export function useArticleFeed(opts?: {
       if (cursor) params.set('cursor', cursor)
       return { path: '/articles', query: Object.fromEntries(params.entries()) }
     },
-    defaultErrorMessage: 'Failed to load articles.',
+    defaultErrorMessage: "Couldn't load articles.",
   })
   const articles = articlesFeed.items
   const nextCursor = articlesFeed.nextCursor

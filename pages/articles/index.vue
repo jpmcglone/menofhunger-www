@@ -1,13 +1,13 @@
 <template>
   <AppPageContent bottom="standard">
     <!-- Header -->
-    <div class="flex items-center justify-between px-4 pt-4 pb-3">
-      <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Articles</h1>
+    <div class="flex items-center justify-between moh-gutter-x pt-4 pb-3">
+      <h1 class="moh-h1">Articles</h1>
       <div class="flex items-center gap-2">
         <button
           v-tooltip.bottom="'Copy RSS feed link'"
           type="button"
-          class="inline-flex items-center justify-center w-10 h-10 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+          class="moh-tap moh-focus inline-flex items-center justify-center size-11 rounded-full moh-text-muted hover:text-[var(--moh-text)] moh-surface-hover transition-colors"
           aria-label="Copy RSS feed link"
           @click="copyArticlesRss"
         >
@@ -16,17 +16,17 @@
         <NuxtLink
           v-if="isVerifiedMember"
           to="/articles/new"
-          class="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          class="moh-tap moh-focus inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
           :style="{ backgroundColor: activeTabColor }"
         >
-          <Icon name="tabler:pencil" class="text-[14px]" aria-hidden="true" />
+          <AppIconGlyph name="write" :size="16" />
           Write
         </NuxtLink>
       </div>
     </div>
 
     <!-- Scope + Filter bar -->
-    <div class="flex items-center justify-between gap-2 px-4 pb-3 border-b border-gray-200 dark:border-zinc-800">
+    <div class="flex items-center justify-between gap-2 moh-gutter-x pb-3 border-b moh-border">
       <!-- All / Following scope toggle — always rendered when authed, fades out on drafts tab -->
       <ClientOnly>
         <div
@@ -61,15 +61,15 @@
     <Transition name="tag-banner">
       <div
         v-if="activeTag"
-        class="flex items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/60"
+        class="flex items-center gap-2 moh-gutter-x py-2 border-b moh-border moh-surface-2"
       >
-        <Icon name="tabler:tag" class="text-xs text-gray-400 dark:text-zinc-500 shrink-0" aria-hidden="true" />
-        <span class="text-xs text-gray-500 dark:text-zinc-400">Filtered by tag:</span>
-        <span class="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-800 pl-2.5 pr-1.5 py-0.5 text-xs font-medium text-gray-700 dark:text-zinc-300">
+        <Icon name="tabler:tag" class="text-xs moh-text-soft shrink-0" aria-hidden="true" />
+        <span class="text-xs moh-text-muted">Filtered by tag:</span>
+        <span class="inline-flex items-center gap-1 rounded-full border moh-border moh-surface pl-2.5 pr-1.5 py-0.5 text-xs font-medium moh-text">
           {{ activeTag }}
           <button
             type="button"
-            class="flex h-3.5 w-3.5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:text-zinc-500 dark:hover:bg-zinc-700 transition-colors"
+            class="flex h-3.5 w-3.5 items-center justify-center rounded-full moh-text-soft hover:bg-[var(--moh-surface-hover)] hover:text-[var(--moh-text)] transition-colors"
             aria-label="Clear tag filter"
             @click="clearTagFilter"
           >
@@ -80,7 +80,7 @@
     </Transition>
 
     <!-- Content tabs (Published | Drafts) for verified+ users -->
-    <div v-if="isVerifiedMember" ref="tabBarEl" role="tablist" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
+    <div v-if="isVerifiedMember" ref="tabBarEl" role="tablist" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b moh-border">
       <button
         v-for="tab in tabs"
         :key="tab.key"
@@ -90,15 +90,15 @@
         :aria-selected="activeTab === tab.key"
         class="relative cursor-pointer px-5 py-3 text-sm font-semibold transition-colors"
         :class="activeTab === tab.key
-          ? 'text-gray-900 dark:text-gray-100'
-          : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'"
+          ? 'text-[var(--moh-text)]'
+          : 'moh-text-soft hover:text-[var(--moh-text-muted)]'"
         @click="onArticlesTabChange(tab.key)"
       >
         {{ tab.label }}
         <span
           v-if="tab.count != null"
           class="ml-1.5 text-xs font-medium"
-          :class="activeTab === tab.key ? 'text-gray-400 dark:text-zinc-400' : 'text-gray-300 dark:text-zinc-600'"
+          :class="activeTab === tab.key ? 'moh-text-muted' : 'moh-text-soft'"
         >{{ tab.count }}</span>
       </button>
       <!-- Animated sliding underline -->
@@ -118,11 +118,21 @@
     <!-- Published articles feed -->
     <div v-if="tabActivated.published" v-show="activeTab === 'published'" role="tabpanel">
       <AppSubtleSectionLoader :loading="publishedInitialLoading" min-height-class="min-h-[220px]">
-        <div v-if="publishedFeed.error.value" class="py-8 text-center text-sm text-red-500">
-          {{ publishedFeed.error.value }}
+        <div v-if="publishedFeed.error.value" class="py-12 text-center">
+          <p class="moh-body">Couldn't load articles.</p>
+          <p
+            v-if="publishedFeed.error.value !== 'Couldn\'t load articles.'"
+            class="mt-1 moh-meta"
+          >{{ publishedFeed.error.value }}</p>
+          <AppActionButton
+            class="mt-3"
+            label="Retry"
+            kind="secondary"
+            @click="publishedFeed.load({ force: true })"
+          />
         </div>
         <div v-else>
-          <TransitionGroup name="articles-list" tag="div">
+          <TransitionGroup name="articles-list" tag="div" class="moh-divide">
             <AppArticleListCard
               v-for="article in publishedFeed.articles.value"
               :key="article.id"
@@ -132,13 +142,13 @@
           <button
             v-if="publishedFeed.nextCursor.value"
             type="button"
-            class="w-full border-t border-gray-200 dark:border-zinc-800 py-3 text-sm text-gray-500 transition-colors hover:bg-gray-50 dark:text-zinc-400 dark:hover:bg-zinc-900"
+            class="w-full border-t moh-border py-3 text-sm moh-text-muted transition-colors hover:bg-[var(--moh-surface-hover)]"
             :disabled="publishedFeed.loadingMore.value"
             @click="publishedFeed.loadMore()"
           >
             {{ publishedFeed.loadingMore.value ? 'Loading…' : 'Load more' }}
           </button>
-          <p v-if="publishedFeed.hasLoadedOnce.value && publishedFeed.articles.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
+          <p v-if="publishedFeed.hasLoadedOnce.value && publishedFeed.articles.value.length === 0" class="py-12 text-center moh-meta">
             No articles found.
             <template v-if="isVerifiedMember">
               <NuxtLink to="/articles/new" class="hover:underline" :style="{ color: activeTabColor }">Write the first one!</NuxtLink>
@@ -151,11 +161,21 @@
     <!-- Drafts -->
     <div v-if="tabActivated.drafts" v-show="activeTab === 'drafts'" role="tabpanel">
       <AppSubtleSectionLoader :loading="draftsInitialLoading" min-height-class="min-h-[220px]">
-        <div v-if="draftsState.error.value" class="py-8 text-center text-sm text-red-500">
-          {{ draftsState.error.value }}
+        <div v-if="draftsState.error.value" class="py-12 text-center">
+          <p class="moh-body">Couldn't load articles.</p>
+          <p
+            v-if="draftsState.error.value !== 'Couldn\'t load articles.'"
+            class="mt-1 moh-meta"
+          >{{ draftsState.error.value }}</p>
+          <AppActionButton
+            class="mt-3"
+            label="Retry"
+            kind="secondary"
+            @click="draftsState.load()"
+          />
         </div>
         <div v-else>
-          <TransitionGroup name="articles-list" tag="div">
+          <TransitionGroup name="articles-list" tag="div" class="moh-divide">
             <AppArticleListCard
               v-for="draft in draftsState.drafts.value"
               :key="draft.id"
@@ -163,7 +183,7 @@
               @delete="confirmDelete"
             />
           </TransitionGroup>
-          <p v-if="draftsState.hasLoadedOnce.value && draftsState.drafts.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
+          <p v-if="draftsState.hasLoadedOnce.value && draftsState.drafts.value.length === 0" class="py-12 text-center moh-meta">
             No drafts found.
             <NuxtLink to="/articles/new" class="hover:underline" :style="{ color: activeTabColor }">Start writing!</NuxtLink>
           </p>
