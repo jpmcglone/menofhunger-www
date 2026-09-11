@@ -2,7 +2,11 @@
   <div
     class="relative overflow-hidden transition-colors"
     :class="[
-      compact ? '' : rowKind === 'quiet' ? 'rounded-xl border moh-border px-2.5 py-1.5' : 'rounded-xl border moh-border p-2.5',
+      compact
+        ? ''
+        : preview
+          ? (rowKind === 'quiet' ? 'rounded-xl border moh-border px-2.5 py-1.5' : 'rounded-xl border moh-border p-2.5')
+          : 'py-2.5',
       !compact && selectedSpaceId === space.id ? 'bg-black/[0.03] dark:bg-white/[0.04]' : '',
       clickable ? 'cursor-pointer moh-focus hover:bg-black/[0.03] dark:hover:bg-white/[0.04]' : '',
     ]"

@@ -1,41 +1,36 @@
 <template>
   <div ref="panelEl" class="relative z-20">
-    <div
-      class="rounded-xl border moh-border p-4 moh-bg"
-      :class="expanded ? 'rounded-b-none z-30' : ''"
-    >
-      <div class="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          class="moh-tap moh-focus inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider moh-meta"
-          :aria-expanded="expanded"
-          aria-controls="space-owner-controls-body"
-          @click="onToggleExpanded"
-        >
-          <span>Owner Controls</span>
-          <Icon
-            :name="expanded ? 'tabler:chevron-up' : 'tabler:chevron-down'"
-            class="text-[14px] opacity-80"
-            aria-hidden="true"
-          />
-        </button>
-        <button
-          type="button"
-          class="moh-tap moh-focus text-xs font-medium px-3 py-1 rounded-full transition-colors"
-          :class="space.isActive
-            ? 'bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20'
-            : 'bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20'"
-          @click="toggleActive"
-        >
-          {{ space.isActive ? 'End' : 'Go live' }}
-        </button>
-      </div>
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        class="moh-tap moh-focus inline-flex items-center gap-1 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
+        :aria-expanded="expanded"
+        aria-controls="space-owner-controls-body"
+        @click="onToggleExpanded"
+      >
+        <span>Edit</span>
+        <Icon
+          :name="expanded ? 'tabler:chevron-up' : 'tabler:chevron-down'"
+          class="text-[14px] opacity-80"
+          aria-hidden="true"
+        />
+      </button>
+      <button
+        type="button"
+        class="moh-tap moh-focus text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
+        :class="space.isActive
+          ? 'bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20'
+          : 'bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20'"
+        @click="toggleActive"
+      >
+        {{ space.isActive ? 'End' : 'Go live' }}
+      </button>
     </div>
 
     <div
       v-if="expanded"
       id="space-owner-controls-body"
-      class="absolute inset-x-0 top-full z-30 -mt-px space-y-3 rounded-b-xl border-x border-b moh-border px-4 pb-4 moh-bg shadow-lg"
+      class="absolute right-0 top-full z-30 mt-1 w-[min(22rem,calc(100vw-2rem))] space-y-3 rounded-xl border moh-border px-4 pb-4 pt-3 moh-bg shadow-lg"
     >
       <div class="space-y-1.5">
         <label for="space-owner-title" class="text-xs font-semibold uppercase tracking-wider moh-meta">Title</label>

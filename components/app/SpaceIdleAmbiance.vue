@@ -2,7 +2,7 @@
   <div
     class="space-idle relative w-full h-full overflow-hidden rounded-xl select-none"
     role="img"
-    aria-label="Space is idle"
+    aria-label="Idle. Hang out. Chat is open."
   >
     <!-- Soft charcoal base + warm radial wash -->
     <div class="space-idle-base absolute inset-0" aria-hidden="true" />
@@ -33,7 +33,8 @@
             aria-hidden="true"
           />
         </div>
-        <p class="space-idle-caption mt-3 text-sm">Space is idle</p>
+        <p class="space-idle-caption mt-3 text-sm">Idle</p>
+        <p class="mt-1 text-xs" style="color: rgba(212, 212, 216, 0.45)">Hang out. Chat is open.</p>
       </div>
     </div>
   </div>

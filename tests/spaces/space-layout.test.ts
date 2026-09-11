@@ -94,17 +94,17 @@ describe('space layout', () => {
     expect(row).not.toMatch(/@click="onEnterSpace"/)
   })
 
-  it('puts reactions above a wrapping presence grid', () => {
+  it('puts reactions beside a compact presence stack', () => {
     const page = readFromRepo('pages/s/[username].vue')
     const reactionsIdx = page.indexOf('v-for="r in reactions"')
-    const gridIdx = page.indexOf('grid-cols-[repeat(auto-fill,3.25rem)]')
+    const stackIdx = page.indexOf('presenceStack')
     expect(reactionsIdx).toBeGreaterThan(-1)
-    expect(gridIdx).toBeGreaterThan(reactionsIdx)
-    expect(page).toMatch(/grid-cols-\[repeat\(auto-fill,3\.25rem\)\]/)
-    expect(page).toMatch(/max-h-52/)
-    expect(page).toMatch(/overscroll-contain/)
-    expect(page).toMatch(/-mx-4 max-h-52 overflow-y-auto overscroll-contain px-4 py-4/)
-    expect(page).toMatch(/flex h-\[3\.25rem\] w-\[3\.25rem\] items-center justify-center/)
+    expect(stackIdx).toBeGreaterThan(reactionsIdx)
+    expect(page).toMatch(/PRESENCE_STACK_MAX = 8/)
+    expect(page).toMatch(/-space-x-2/)
+    expect(page).toMatch(/\{\{ members\.length \}\} here/)
+    expect(page).not.toMatch(/You're the first/)
+    expect(page).not.toMatch(/grid-cols-\[repeat\(auto-fill,3\.25rem\)\]/)
   })
 
   it('tracks a space page view once per space', () => {
@@ -128,9 +128,11 @@ describe('space layout', () => {
   it('overlays expanded owner controls instead of pushing the player down', () => {
     const panel = readFromRepo('components/SpaceOwnerPanel.vue')
     const page = readFromRepo('pages/s/[username].vue')
-    expect(panel).toMatch(/absolute inset-x-0 top-full z-30/)
+    expect(panel).toMatch(/absolute right-0 top-full z-30/)
     expect(panel).toMatch(/aria-expanded/)
-    expect(panel).toMatch(/rounded-xl border moh-border p-4 moh-bg/)
+    expect(panel).toMatch(/rounded-xl border moh-border px-4 pb-4 pt-3 moh-bg/)
+    expect(panel).toMatch(/>Edit</)
+    expect(panel).not.toMatch(/Owner Controls/)
     expect(panel).not.toMatch(/invisible pointer-events-none/)
     expect(panel).toMatch(/id="space-owner-type"/)
     expect(panel).toMatch(/<Select/)
@@ -144,7 +146,8 @@ describe('space layout', () => {
       /async function onSave\(\) \{\s*const saved = await applyAll\(\)\s*if \(saved\) \{\s*toast\.push[\s\S]*?expanded\.value = false/,
     )
     expect(panel).not.toMatch(/onModeSelect/)
-    expect(page).toMatch(/v-if="isOwner" class="moh-gutter-x pb-2"/)
+    expect(page).toMatch(/v-if="isOwner && canJoinSpace"/)
+    expect(page).toMatch(/border-b moh-border/)
     expect(page).toMatch(/flex items-start justify-center/)
     expect(page).toMatch(/WATCH_PARTY' && space\?\.watchPartyUrl/)
     expect(page).toMatch(/tabler:device-tv/)

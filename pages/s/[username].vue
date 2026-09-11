@@ -15,7 +15,7 @@
       </div>
 
       <template v-else>
-        <div class="moh-gutter-x pt-4 pb-3 flex items-start justify-between gap-3 shrink-0">
+        <div class="moh-gutter-x pt-4 pb-3 flex items-start justify-between gap-3 shrink-0 border-b moh-border">
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
               <h1 class="moh-h1">{{ displayTitle }}</h1>
@@ -31,7 +31,7 @@
               Hosted by @{{ space.owner?.username ?? 'unknown' }}
             </p>
           </div>
-          <div class="shrink-0 mt-1 flex items-center gap-2">
+          <div class="shrink-0 mt-1 flex flex-wrap items-center justify-end gap-2">
             <AppSpaceNotifyCount
               v-if="showHostReminders"
               :count="hostNotifyCount"
@@ -65,6 +65,11 @@
                 Leave
               </button>
             </template>
+            <SpaceOwnerPanel
+              v-if="isOwner && canJoinSpace"
+              :space="space"
+              @space-updated="(s) => { space = s; upsertSpace(s) }"
+            />
           </div>
         </div>
 
@@ -72,7 +77,7 @@
         <div v-if="!canJoinSpace" class="moh-gutter-x flex-1 flex items-center justify-center min-h-[40vh]">
           <div class="text-center max-w-sm">
             <Icon name="tabler:lock" class="text-[48px] opacity-20 mx-auto" aria-hidden="true" />
-            <p class="mt-3 text-lg font-semibold moh-text">This space requires a verified account</p>
+            <p class="mt-3 text-lg font-semibold moh-text">Verified members only</p>
             <p class="mt-1 text-sm moh-meta">
               {{ isAuthed ? 'Upgrade to Verified or Premium to join spaces.' : 'Log in or create an account to join.' }}
             </p>
@@ -91,14 +96,6 @@
         </div>
 
         <template v-else>
-          <!-- Owner controls -->
-          <div v-if="isOwner" class="moh-gutter-x pb-2">
-            <SpaceOwnerPanel
-              :space="space"
-              @space-updated="(s) => { space = s; upsertSpace(s) }"
-            />
-          </div>
-
           <!-- Watch party hugs the 16:9 player. Radio / idle still fill. -->
           <div
             class="moh-gutter-x flex items-start justify-center"
@@ -153,8 +150,8 @@
           </div>
 
           <!-- Reactions + who is here -->
-          <div class="moh-gutter-x pb-4 pt-2 shrink-0 border-t moh-border">
-            <div class="flex items-start justify-between gap-3">
+          <div class="moh-gutter-x pb-3 pt-2 shrink-0 border-t moh-border">
+            <div class="flex items-center justify-between gap-3">
               <div v-if="space" class="flex min-w-0 flex-wrap items-center gap-1.5">
                 <button
                   v-for="r in reactions"
@@ -167,76 +164,73 @@
                   {{ r.emoji }}
                 </button>
               </div>
-              <button
-                type="button"
-                class="min-[962px]:hidden moh-tap moh-focus shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
-                :aria-label="spaceChatSheetOpen ? 'Close chat' : 'Open chat'"
-                @click="spaceChatSheetOpen = !spaceChatSheetOpen"
-              >
-                <Icon name="tabler:messages" class="text-[14px]" aria-hidden="true" />
-                Chat
-              </button>
-            </div>
-
-            <div class="mt-4 text-sm text-gray-600 dark:text-gray-300">
-              <span class="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{{ members.length }}</span>
-              <span> here</span>
-            </div>
-
-            <div v-if="isAloneHere" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
-              You're the first — share the link to invite others.
-            </div>
-
-            <div
-              v-else-if="space && members.length"
-              class="mt-2 -mx-4 max-h-52 overflow-y-auto overscroll-contain px-4 py-4"
-            >
-              <div class="grid grid-cols-[repeat(auto-fill,3.25rem)] justify-items-center gap-2">
-              <template v-for="u in lobbyMembers" :key="u.id">
-                <NuxtLink
-                  v-if="u.username"
-                  :to="`/u/${encodeURIComponent(u.username)}`"
-                  class="group moh-focus flex h-[3.25rem] w-[3.25rem] items-center justify-center"
-                  :aria-label="`View @${u.username}`"
-                  v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
-                >
-                  <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
-                    <AppUserAvatar
-                      :user="u"
-                      size-class="h-10 w-10"
-                      bg-class="moh-surface dark:bg-black"
-                      :show-presence="false"
-                    />
-                    <Transition name="moh-avatar-pause-fade">
-                      <div
-                        v-if="space.mode === 'RADIO' && (u.paused || u.muted)"
-                        class="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
-                        aria-hidden="true"
-                      >
-                        <Icon
-                          :name="u.paused ? 'tabler:player-pause' : 'tabler:volume-off'"
-                          class="text-[13px] text-white"
-                          aria-hidden="true"
-                        />
-                      </div>
-                    </Transition>
-                  </div>
-                </NuxtLink>
+              <div class="flex items-center gap-2 shrink-0">
                 <div
-                  v-else
-                  class="group flex h-[3.25rem] w-[3.25rem] items-center justify-center"
-                  v-tooltip.bottom="tinyTooltip('User')"
+                  v-if="space && members.length"
+                  class="flex items-center gap-2"
                 >
-                  <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
-                    <AppUserAvatar
-                      :user="u"
-                      size-class="h-10 w-10"
-                      bg-class="moh-surface dark:bg-black"
-                      :show-presence="false"
-                    />
+                  <span class="moh-meta text-xs tabular-nums">{{ members.length }} here</span>
+                  <div class="flex items-center -space-x-2">
+                    <template v-for="u in presenceStack" :key="u.id">
+                      <NuxtLink
+                        v-if="u.username"
+                        :to="`/u/${encodeURIComponent(u.username)}`"
+                        class="relative moh-focus"
+                        :aria-label="`View @${u.username}`"
+                        v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
+                      >
+                        <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
+                          <AppUserAvatar
+                            :user="u"
+                            size-class="h-8 w-8 ring-2 ring-[var(--moh-bg)]"
+                            bg-class="moh-surface dark:bg-black"
+                            :show-presence="false"
+                          />
+                          <Transition name="moh-avatar-pause-fade">
+                            <div
+                              v-if="space.mode === 'RADIO' && (u.paused || u.muted)"
+                              class="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-black/70 flex items-center justify-center ring-1 ring-white/20"
+                              aria-hidden="true"
+                            >
+                              <Icon
+                                :name="u.paused ? 'tabler:player-pause' : 'tabler:volume-off'"
+                                class="text-[11px] text-white"
+                                aria-hidden="true"
+                              />
+                            </div>
+                          </Transition>
+                        </div>
+                      </NuxtLink>
+                      <div
+                        v-else
+                        class="relative"
+                        v-tooltip.bottom="tinyTooltip('User')"
+                      >
+                        <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
+                          <AppUserAvatar
+                            :user="u"
+                            size-class="h-8 w-8 ring-2 ring-[var(--moh-bg)]"
+                            bg-class="moh-surface dark:bg-black"
+                            :show-presence="false"
+                          />
+                        </div>
+                      </div>
+                    </template>
                   </div>
+                  <span
+                    v-if="presenceOverflowCount > 0"
+                    class="moh-meta text-xs font-semibold tabular-nums"
+                  >+{{ presenceOverflowCount }}</span>
                 </div>
-              </template>
+                <button
+                  type="button"
+                  class="min-[962px]:hidden moh-tap moh-focus shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border-subtle px-3 py-1.5 text-xs font-medium moh-meta moh-surface-hover transition-colors"
+                  :aria-label="spaceChatSheetOpen ? 'Close chat' : 'Open chat'"
+                  @click="spaceChatSheetOpen = !spaceChatSheetOpen"
+                >
+                  <Icon name="tabler:messages" class="text-[14px]" aria-hidden="true" />
+                  Chat
+                </button>
               </div>
             </div>
           </div>
@@ -407,15 +401,11 @@ const spacesReactionsCb = {
   },
 }
 
-const lobbyMembers = computed(() => members.value ?? [])
-
-/** Empty lobby after a silent join looks like “you're first.” Only say that when we actually joined a live room and we're the only member. */
-const isAloneHere = computed(() => {
-  if (!space.value?.isActive) return false
-  const list = members.value ?? []
-  if (list.length !== 1) return false
-  return list[0]?.id === user.value?.id
-})
+const PRESENCE_STACK_MAX = 8
+const presenceStack = computed(() => (members.value ?? []).slice(0, PRESENCE_STACK_MAX))
+const presenceOverflowCount = computed(() =>
+  Math.max(0, (members.value?.length ?? 0) - presenceStack.value.length),
+)
 
 const spaceShareUrl = computed(() =>
   username.value ? `${siteConfig.url}/s/${encodeURIComponent(username.value)}` : '',

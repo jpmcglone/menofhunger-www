@@ -7,7 +7,7 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <h1 class="moh-h1">Spaces</h1>
-            <p class="mt-1 moh-meta">Join a space to chat and hang out. Create your own to host.</p>
+            <p class="mt-1 moh-meta">Join a room. Host your own.</p>
           </div>
           <button
             v-if="user && !mySpace"
@@ -35,26 +35,17 @@
         <span>Loading spaces…</span>
       </div>
       <div v-else-if="spaces.length === 0 && !loading" class="moh-gutter-x py-4 moh-meta">
-        No live or upcoming spaces right now. Be the first to create one!
+        No live or upcoming spaces.
       </div>
 
       <!-- Space rows — own → notifying → following → live → soonest schedule -->
-      <TransitionGroup v-else name="moh-spaces-row" tag="div" class="relative flex flex-col gap-3 moh-gutter-x">
+      <TransitionGroup v-else name="moh-spaces-row" tag="div" class="relative moh-divide moh-gutter-x">
         <AppSpaceRow
           v-for="space in spaces"
           :key="space.id"
           :space="space"
         />
       </TransitionGroup>
-
-      <div v-if="loadedOnce" class="moh-gutter-x pt-4">
-        <p v-if="!currentSpace" class="moh-meta">
-          Pick a space to see who's here. Share a space link to bring others in.
-        </p>
-        <p v-else-if="isAloneHere" class="moh-meta">
-          You're the first in {{ currentSpace.title }} — share the link to invite others.
-        </p>
-      </div>
     </div>
   </AppPageContent>
 </template>
@@ -77,7 +68,6 @@ usePageSeo({
 
 const { user } = useAuth()
 const { spaces, loading, loadedOnce, loadSpaces } = useSpaces()
-const { currentSpace, members } = useSpaceLobby()
 const { getMySpace, createSpace } = useSpaceOwner()
 const toast = useAppToast()
 
@@ -87,13 +77,6 @@ const mySpaceHref = computed(() => {
   const username = String(mySpace.value?.owner?.username ?? user.value?.username ?? '').trim()
   if (!username) return null
   return `/s/${encodeURIComponent(username)}`
-})
-
-const isAloneHere = computed(() => {
-  if (!currentSpace.value?.isActive) return false
-  const list = members.value ?? []
-  if (list.length !== 1) return false
-  return list[0]?.id === user.value?.id
 })
 
 async function onCreateSpace() {
