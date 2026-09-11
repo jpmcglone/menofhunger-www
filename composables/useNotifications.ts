@@ -886,7 +886,7 @@ export function useNotifications() {
     }
     // Article-related notifications always route to the article page.
     if (n.subjectArticleId && (
-      n.kind === 'followed_article' || n.kind === 'comment' || n.kind === 'mention' || n.kind === 'boost'
+      n.kind === 'followed_article' || n.kind === 'comment' || n.kind === 'mention' || n.kind === 'boost' || n.kind === 'generic'
     )) {
       const hash = n.subjectArticleCommentId ? `#comment-${n.subjectArticleCommentId}` : ''
       return `/a/${encodeURIComponent(n.subjectArticleId)}${hash}`

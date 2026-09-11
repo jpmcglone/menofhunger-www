@@ -5,8 +5,14 @@
         <AppIconGlyph name="premium" :size="20" class="text-[var(--moh-text-muted)]" />
         Billing
       </div>
-      <div class="text-sm text-gray-600 dark:text-gray-300">
-        Manage Premium and Premium+.
+      <div class="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+        <p>Premium is membership — full access.</p>
+        <p>
+          Premium+ is Steward: flair, and you support Men of Hunger.
+          <NuxtLink to="/tiers" class="font-medium text-gray-700 underline decoration-gray-300 underline-offset-2 hover:text-gray-900 dark:text-gray-300 dark:decoration-zinc-600 dark:hover:text-gray-100">
+            See tiers
+          </NuxtLink>
+        </p>
       </div>
     </div>
 
@@ -95,7 +101,7 @@
       />
       <Button
         v-if="billingMe?.verified && !billingMe?.premiumPlus"
-        label="Get Premium+"
+        :label="billingMe?.premium ? 'Upgrade to Steward' : 'Get Premium+'"
         severity="secondary"
         :loading="checkoutLoading === 'premiumPlus'"
         :disabled="Boolean(checkoutLoading)"
@@ -282,7 +288,12 @@
               Welcome to {{ checkoutSuccessTier === 'premiumPlus' ? 'Premium+' : 'Premium' }}!
             </h2>
             <p class="text-sm text-gray-600 dark:text-gray-300">
-              Thank you for supporting Men of Hunger. Your subscription is now active and you have access to all {{ checkoutSuccessTier === 'premiumPlus' ? 'Premium+' : 'Premium' }} features.
+              <template v-if="checkoutSuccessTier === 'premiumPlus'">
+                You're a Steward. Thank you for supporting Men of Hunger.
+              </template>
+              <template v-else>
+                Your Premium membership is active — full access.
+              </template>
             </p>
             <div class="flex flex-col gap-2 pt-2">
               <NuxtLink

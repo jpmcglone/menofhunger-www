@@ -300,7 +300,7 @@ const sections = computed(() => {
       key: 'billing' as const,
       label: 'Billing',
       icon: 'premium' as const,
-      description: 'Premium and Premium+ subscriptions.',
+      description: 'Premium membership and Premium+ Steward.',
     },
     {
       key: 'marv' as const,

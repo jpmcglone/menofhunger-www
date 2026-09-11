@@ -18,7 +18,8 @@
           { "/": "/check-ins", "comment": "Check-ins hub" },
           { "/": "/daily", "comment": "Daily word / quote hub" },
           { "/": "/daily/*", "comment": "Daily sub-pages (word, quote)" },
-          { "/": "/a/*", "comment": "Articles — opens in-app authenticated web view" },
+          { "/": "/a/*", "comment": "Native article reader, including #comment- deep links" },
+          { "/": "/articles", "comment": "Articles list. Writer paths /articles/new and /articles/edit/* stay on the web." },
           { "/": "/c/*", "comment": "Crews — opens in-app authenticated web view" }
         ]
       }

@@ -100,6 +100,41 @@ export function useArticleComments(articleId: Ref<string>) {
     }
   }
 
+  function findLocal(commentId: string): ArticleComment | undefined {
+    for (const c of comments.value) {
+      if (c.id === commentId) return c
+      const reply = c.replies?.find((r) => r.id === commentId)
+      if (reply) return reply
+    }
+  }
+
+  /** Pull a specific comment into the list so `#comment-` / push landings can scroll to it. */
+  async function ensureComment(commentId: string): Promise<ArticleComment | null> {
+    const existing = findLocal(commentId)
+    if (existing) return existing
+    try {
+      const jump = await apiFetchData<{ comment: ArticleComment, parent: ArticleComment | null }>(
+        `/articles/${articleId.value}/comments/${commentId}`,
+      )
+      if (jump.parent) {
+        const idx = comments.value.findIndex((c) => c.id === jump.parent!.id)
+        if (idx >= 0) {
+          const existingReplies = comments.value[idx]!.replies ?? []
+          if (!existingReplies.some((r) => r.id === jump.comment.id)) {
+            comments.value[idx]!.replies = [...existingReplies, jump.comment]
+          }
+        } else {
+          comments.value.unshift(jump.parent)
+        }
+      } else if (!comments.value.some((c) => c.id === jump.comment.id)) {
+        comments.value.unshift(jump.comment)
+      }
+      return jump.comment
+    } catch {
+      return null
+    }
+  }
+
   async function deleteComment(commentId: string, parentId?: string | null) {
     await apiFetchData(`/articles/comments/${commentId}`, { method: 'DELETE' })
     if (parentId) {
@@ -123,6 +158,7 @@ export function useArticleComments(articleId: Ref<string>) {
     loadMoreReplies,
     isLoadingReplies,
     createComment,
+    ensureComment,
     deleteComment,
   }
 }

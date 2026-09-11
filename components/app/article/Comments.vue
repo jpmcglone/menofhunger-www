@@ -243,6 +243,7 @@ const {
   loadMoreReplies,
   isLoadingReplies,
   createComment,
+  ensureComment,
   deleteComment,
 } = useArticleComments(computed(() => props.articleId))
 
@@ -366,6 +367,14 @@ onMounted(() => {
   load()
   addArticlesCallback(articlesCallback)
 })
+
+watch(
+  () => [props.highlightedCommentId, loading.value] as const,
+  async ([id, isLoading]) => {
+    if (!id || isLoading) return
+    await ensureComment(id)
+  },
+)
 
 onUnmounted(() => {
   removeArticlesCallback(articlesCallback)

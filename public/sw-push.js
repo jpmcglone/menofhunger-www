@@ -5,7 +5,7 @@
  */
 
 // IMPORTANT: bump this whenever caching logic changes so old caches are purged.
-self.__MOH_SW_VERSION = 'moh-sw-dev-1788805781651';
+self.__MOH_SW_VERSION = 'moh-sw-article-push-20260911';
 const CACHE_PREFIX = 'moh-sw'
 const NUXT_ASSETS_CACHE = `${CACHE_PREFIX}:nuxt:${self.__MOH_SW_VERSION}`
 const STATIC_ASSETS_CACHE = `${CACHE_PREFIX}:static:${self.__MOH_SW_VERSION}`
@@ -225,11 +225,15 @@ self.addEventListener('notificationclick', function (event) {
   const kind = data.kind || 'generic'
   const tag = data.tag || ''
   // Append click-through params for analytics (client reads and sends to Posthog).
+  // Use the URL API so `#comment-` fragments on article pushes stay on the hash,
+  // not glued onto a query string after the fragment.
   const recipientUserId = typeof data.recipientUserId === 'string' ? data.recipientUserId : ''
-  const sep = url.includes('?') ? '&' : '?'
-  let extra = 'from=push&kind=' + encodeURIComponent(kind) + '&tag=' + encodeURIComponent(tag)
-  if (recipientUserId) extra += '&as=' + encodeURIComponent(recipientUserId)
-  const fullUrl = new URL(url + sep + extra, self.location.origin).href
+  const parsed = new URL(url, self.location.origin)
+  parsed.searchParams.set('from', 'push')
+  parsed.searchParams.set('kind', kind)
+  parsed.searchParams.set('tag', tag)
+  if (recipientUserId) parsed.searchParams.set('as', recipientUserId)
+  const fullUrl = parsed.href
 
   event.waitUntil(
     Promise.resolve()

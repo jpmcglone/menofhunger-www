@@ -30,7 +30,8 @@ export default defineNuxtPlugin((nuxtApp) => {
     delete cleanQuery.kind
     delete cleanQuery.tag
     delete cleanQuery.as
-    const then = router.resolve({ path: route.path, query: cleanQuery }).fullPath
+    const hash = route.hash || ''
+    const then = router.resolve({ path: route.path, query: cleanQuery, hash }).fullPath
 
     const { user } = useAuth()
     const { accounts, refresh, switchTo } = useAccountSwitcher()
@@ -43,11 +44,11 @@ export default defineNuxtPlugin((nuxtApp) => {
           await switchTo(asUserId, { then })
           return
         }
-        router.replace({ path: route.path, query: cleanQuery }).catch(() => {})
+        router.replace({ path: route.path, query: cleanQuery, hash }).catch(() => {})
       })()
       return
     }
 
-    router.replace({ path: route.path, query: cleanQuery }).catch(() => {})
+    router.replace({ path: route.path, query: cleanQuery, hash }).catch(() => {})
   })
 })

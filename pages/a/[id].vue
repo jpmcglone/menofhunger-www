@@ -733,6 +733,13 @@ function extractCommentIdFromHash(hash: string): string | null {
   return m?.[1] ?? null
 }
 
+function commentIdFromRoute(): string | null {
+  const fromHash = extractCommentIdFromHash(route.hash)
+  if (fromHash) return fromHash
+  const q = route.query.comment
+  return typeof q === 'string' && q.trim() ? q : null
+}
+
 /**
  * Scroll the custom middle scroller the minimum amount needed to bring `el`
  * fully into view, with `padding` px of breathing room above and below.
@@ -796,8 +803,8 @@ watch(
 
 watch(
   () => route.hash,
-  (hash) => {
-    const commentId = extractCommentIdFromHash(hash)
+  () => {
+    const commentId = commentIdFromRoute()
     if (commentId) scrollToComment(commentId)
   },
 )
@@ -811,7 +818,7 @@ watch(
   article,
   (art) => {
     if (!art || deepLinkInterval !== null) return
-    const commentId = extractCommentIdFromHash(route.hash)
+    const commentId = commentIdFromRoute()
     if (!commentId) return
 
     highlightedCommentId.value = commentId
