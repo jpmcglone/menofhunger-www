@@ -1,5 +1,6 @@
 ---
 description: Preserve in-page layout for tab and filter URL changes
+globs: "pages/**/*.vue,composables/useUrlFeedFilters.ts,composables/useFeedFilters.ts,composables/useAppNav.ts"
 alwaysApply: false
 ---
 

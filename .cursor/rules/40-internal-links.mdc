@@ -1,5 +1,6 @@
 ---
 description: Internal navigation must render a real <a> element for cmd/middle/right-click "Open in new tab" to work
+globs: "components/**/*.vue,pages/**/*.vue,layouts/**/*.vue"
 alwaysApply: false
 ---
 

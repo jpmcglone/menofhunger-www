@@ -1,9 +1,12 @@
 ---
 description: Real-time first — pages must reflect server-side changes live via websockets, with HTTP fetch as the on-mount sync.
+globs: "pages/**/*.vue,composables/**/*.ts,plugins/**/*.ts"
 alwaysApply: false
 ---
 
 # Real-time First (Web)
+
+This rule is platform-specific and is not a checked copy.
 
 The default for every page in this app is **real-time over websockets, with the HTTP fetch as the on-mount/on-activate sync**. The user should never need to refresh to see something the server already knows about.
 
