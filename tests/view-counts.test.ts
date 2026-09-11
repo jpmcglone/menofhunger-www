@@ -72,6 +72,8 @@ describe('unique people + total views', () => {
     expect(articlePage).toContain('/views/breakdown?fresh=1')
     expect(articlePage).toContain('people-verb="read this"')
     expect(articlePage).toContain(':has-viewed="hasViewedArticle"')
+    expect(articlePage).not.toContain('absolute top-4 right-4')
+    expect(articlePage).toContain('flex shrink-0 items-center gap-2')
     expect(tracker).toContain('uniqueCounted')
   })
 
