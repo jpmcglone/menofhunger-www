@@ -84,6 +84,7 @@
     "happy-dom": "^20.7.0",
     "playwright": "^1.59.1",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "vue-tsc": "^3.3.11"
   }
 }

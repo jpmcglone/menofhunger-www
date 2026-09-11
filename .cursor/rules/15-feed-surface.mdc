@@ -1,5 +1,6 @@
 ---
 description: Keep feed concepts consistent across API, web, and iOS
+globs: "composables/use*Feed*.ts,composables/useFeed*.ts,composables/useUrlFeedFilters.ts,composables/composer/**/*.ts,composables/useComposerMedia.ts,pages/index.vue,pages/home.vue,pages/feeds.vue,pages/new-posts.vue,pages/only-me.vue,pages/g/**,pages/u/**,pages/admin/media-review/**,components/app/feed/**,components/app/Feed*.vue"
 alwaysApply: false
 ---
 

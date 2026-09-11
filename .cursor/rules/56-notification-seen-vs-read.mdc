@@ -1,5 +1,6 @@
 ---
 description: Bell badge is unseen; list highlight is unread. Do not mix deliveredAt and readAt.
+globs: "composables/useNotifications.ts,composables/useNotificationsBadge.ts,composables/useAppIconBadge.ts,pages/notifications.vue,components/app/Notification*.vue,plugins/notifications-realtime-sync.client.ts,utils/notification-presentation.ts"
 alwaysApply: false
 ---
 
