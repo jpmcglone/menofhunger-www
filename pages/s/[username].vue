@@ -174,10 +174,10 @@
                     <template v-for="u in presenceStack" :key="u.id">
                       <NuxtLink
                         v-if="u.username"
+                        v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
                         :to="`/u/${encodeURIComponent(u.username)}`"
                         class="relative moh-focus"
                         :aria-label="`View @${u.username}`"
-                        v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
                       >
                         <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
                           <AppUserAvatar
@@ -203,8 +203,8 @@
                       </NuxtLink>
                       <div
                         v-else
-                        class="relative"
                         v-tooltip.bottom="tinyTooltip('User')"
+                        class="relative"
                       >
                         <div :ref="(el) => setAvatarEl(u.id, el as HTMLElement | null)" class="relative">
                           <AppUserAvatar
@@ -255,7 +255,7 @@ const route = useRoute()
 const username = computed(() => (route.params.username as string)?.trim() ?? '')
 
 const { fetchSpaceByUsername, upsertSpace, getById, getByOwnerUsername } = useSpaces()
-const { selectedSpaceId, select, leave, currentSpace, members } = useSpaceLobby()
+const { selectedSpaceId, select, leave, members } = useSpaceLobby()
 const { requestCurrentState } = useWatchParty()
 const { stop } = useSpaceAudio()
 const { subscribeToSchedule, unsubscribeFromSchedule } = useSpaceOwner()
