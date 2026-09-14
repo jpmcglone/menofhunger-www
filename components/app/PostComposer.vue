@@ -5,6 +5,7 @@
   <div
     :class="[
       'pb-4',
+      mode === 'edit' && !scheduledEditId ? 'moh-edit-composer' : '',
       checkinPrompt ? 'moh-prompt-composer' : '',
       omitAvatar ? 'pr-[var(--moh-gutter-x)]' : 'moh-gutter-x',
       inReplyThread ? 'pt-2' : 'pt-4',
@@ -19,11 +20,12 @@
       <div
         v-if="!replyTo || $slots.close"
         :class="[
-          'row-start-1 flex flex-wrap items-center gap-2',
+          mode === 'edit' && !scheduledEditId ? 'row-start-1 flex items-center gap-2' : 'row-start-1 flex flex-wrap items-center gap-2',
           checkinPrompt ? 'col-span-2 mb-5' : (inlineAudience ? 'col-start-2 mb-2' : 'col-span-2 mb-3'),
         ]"
       >
         <slot name="close" />
+        <slot name="audience">
         <div v-if="!replyTo" class="flex min-w-0 flex-wrap items-center gap-2" :class="(!inlineAudience || checkinPrompt) && 'ml-auto'">
           <AppComposerVisibilityPicker
             v-if="showVisibilityPicker"
@@ -56,8 +58,10 @@
             @update:model-value="selectGroup"
             @open="loadMyGroups"
           />
-          <span v-if="effectiveGroupId" class="text-xs moh-text-muted">{{ selectedGroupReadLabel }}</span>
+          <span v-if="effectiveGroupId && mode !== 'edit'" class="text-xs moh-text-muted">{{ selectedGroupReadLabel }}</span>
         </div>
+
+        </slot>
 
         <!-- Right: scheduled time — shown when a time is confirmed (not applicable for check-ins) -->
         <button
@@ -232,7 +236,7 @@
           </Teleport>
         </ClientOnly>
 
-        <div :class="[checkinPrompt ? 'mt-5 border-t moh-border pt-4' : (composerMedia.length ? 'mt-5' : 'mt-3'), !omitAvatar && '-ml-[3.25rem]']" class="flex flex-col gap-1">
+        <div :class="[checkinPrompt ? 'mt-5 border-t moh-border pt-4' : (composerMedia.length ? 'mt-5' : 'mt-3'), mode === 'edit' && !scheduledEditId && 'moh-edit-actions']" class="flex flex-col gap-1">
           <AppComposerActionBar>
             <template #tools>
               <template v-if="!disableMedia">
@@ -337,7 +341,7 @@
                 submitting ||
                 !canPost ||
                 (mode === 'edit' && !scheduledEditId
-                  ? !draft.trim()
+                  ? (!draft.trim() || !hasEditChanges)
                   : !(draft.trim() || composerMedia.length || hasPoll)) ||
                 postCharCount > postMaxLen ||
                 composerUploading ||
@@ -404,7 +408,7 @@
           </div>
         </div>
 
-        <div class="mt-3 flex items-center justify-between" :class="!omitAvatar && '-ml-[3.25rem]'">
+        <div class="mt-3 flex items-center justify-between" :class="mode === 'edit' && !scheduledEditId && 'moh-edit-actions'">
           <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 opacity-40">
             <Button text rounded severity="secondary" disabled aria-hidden="true">
               <template #icon>
@@ -1329,6 +1333,7 @@ function onUpdateAltText(localId: string, value: string) {
 }
 
 /** True when the composer has draft text or media (for "discard?" confirm before link nav). */
+const hasEditChanges = computed(() => draft.value.trim() !== (props.initialText ?? '').trim())
 const hasUnsavedContent = computed(
   () => (draft.value?.trim() ?? '') !== '' || (composerMedia.value?.length ?? 0) > 0 || hasPoll.value,
 )
@@ -1355,7 +1360,6 @@ function focus() {
 
 /** Expose draft text as a readonly string ref for consumers that need to watch typing (e.g. ReplyModal typing presence). */
 const draftText = computed(() => draft.value)
-defineExpose({ hasUnsavedContent, draftSnapshot, clearComposer, focus, draftText })
 
 const shouldRegisterUnsavedGuard = computed(() =>
   // Register for create + reply composers so refresh/close warns about losing work.
@@ -1568,11 +1572,12 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     }
 
     if (mode.value === 'edit') {
+      if (!hasEditChanges.value) return
       const id = editPostId.value
       if (!id) throw new Error('Missing editPostId.')
       const basePath = editPostIsDraft.value ? '/drafts/' : '/posts/'
       const patchBody: Record<string, unknown> = { body: draft.value }
-      if (editPostIsDraft.value) {
+      if (editPostIsDraft.value && !props.disableMedia) {
         const mediaPayload: CreateMediaPayload[] = toCreatePayload(composerMedia.value)
         patchBody.media = mediaPayload
       }
@@ -1870,6 +1875,7 @@ watch(
   },
 )
 
+defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, clearComposer, focus, draftText })
 </script>
 
 <style scoped>
@@ -1922,6 +1928,18 @@ watch(
   font-size: 20px;
   line-height: 1.75rem;
 }
+
+/* Figma compact editing: 550:2169. Content sets height; footer remains visible. */
+.moh-edit-composer { padding: 20px 24px; }
+.moh-edit-composer .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) {
+  min-height: 0;
+  max-height: min(24rem, 50dvh);
+  padding-block: 4px;
+}
+.moh-edit-actions :deep(.composer-action-layout) { flex-direction: row; align-items: center; }
+.moh-edit-actions :deep(.composer-tools) { flex: 1 1 0; }
+.moh-edit-actions :deep(.composer-publish) { flex: 0 0 auto; gap: 16px; }
+@media (max-width: 639px) { .moh-edit-composer { padding: 16px; } }
 
 /* Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=396-1894 */
 .moh-prompt-composer {

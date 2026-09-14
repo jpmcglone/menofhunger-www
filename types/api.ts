@@ -1242,10 +1242,14 @@ export type GiphySearchResponse = GiphyItem[]
 export type FollowVisibility = Contracts.FollowVisibility
 export type BirthdayVisibility = Contracts.BirthdayVisibility
 
+export type UserNotificationPreference = Contracts.UserNotificationPreference
+export type UserNotificationPreferences = Contracts.UserNotificationPreferencesDto
+
 export type FollowRelationship = {
   viewerFollowsUser: boolean
   userFollowsViewer: boolean
   viewerPostNotificationsEnabled: boolean
+  viewerNotificationPreference?: UserNotificationPreference
 }
 
 export type NudgeState = {
@@ -1816,6 +1820,7 @@ export type WsFollowsChangedPayload = {
   actorUserId: string
   targetUserId: string
   viewerFollowsUser: boolean
+  viewerNotificationPreference?: UserNotificationPreference
 }
 
 export type WsPostInteractionKind = 'boost' | 'bookmark' | 'repost'

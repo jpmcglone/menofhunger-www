@@ -12,5 +12,8 @@ export function hydrateFollowRelationship(
 ): FollowRelationship | null {
   if (!incoming) return existing ?? null
   if (existing?.viewerFollowsUser && !incoming.viewerFollowsUser) return existing
+  if (existing?.viewerNotificationPreference && incoming.viewerNotificationPreference === undefined && incoming.viewerFollowsUser) {
+    return { ...incoming, viewerNotificationPreference: existing.viewerNotificationPreference, viewerPostNotificationsEnabled: existing.viewerNotificationPreference === 'all' }
+  }
   return incoming
 }

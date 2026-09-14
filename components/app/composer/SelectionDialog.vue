@@ -1,5 +1,6 @@
 <template>
   <Dialog v-model:visible="visible" modal :dismissable-mask="!busy" :closable="!busy" :close-on-escape="!busy" :header="title" :style="{ width: '488px', maxWidth: 'calc(100vw - 24px)' }" :pt="{ root: { class: 'moh-selection-dialog' }, content: { class: '!px-3 !pb-4' } }">
+    <template v-if="$slots.header" #header><slot name="header" /></template>
     <p class="moh-meta px-3 pb-5">{{ description }}</p>
     <slot />
     <template v-if="$slots.footer" #footer><slot name="footer" /></template>

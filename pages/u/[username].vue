@@ -1007,6 +1007,7 @@ const followRelationship = computed<FollowRelationship | null>(() => {
     viewerFollowsUser: s.viewerFollowsUser,
     userFollowsViewer: s.userFollowsViewer,
     viewerPostNotificationsEnabled: s.viewerPostNotificationsEnabled,
+    viewerNotificationPreference: s.viewerNotificationPreference,
   }
 })
 

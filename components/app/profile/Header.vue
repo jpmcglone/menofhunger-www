@@ -249,15 +249,15 @@
             size="small"
             @click="showAuthActionModal({ kind: 'login', action: 'follow' })"
           />
-          <AppActionButton
+          <Button
             v-if="showPostBell"
-            v-tooltip.bottom="tinyTooltip(bellEnabled ? 'You’ll get their replies too' : 'Get their replies too')"
-            label="Post notifications"
-            kind="outline"
-            :disabled="bellInflight"
-            :aria-pressed="bellEnabled"
-            @click="togglePostBell"
-          />
+            v-tooltip.bottom="`Notifications: ${notificationLabel}`"
+            rounded text severity="secondary"
+            class="!h-11 !w-11 !border moh-border"
+            :aria-label="`Notifications: ${notificationLabel}`"
+            aria-haspopup="dialog"
+            @click="notificationPreferencesOpen = true"
+          ><Icon :name="notificationPreference === 'off' ? 'tabler:bell-off' : notificationPreference === 'all' ? 'tabler:bell-filled' : 'tabler:bell'" class="text-xl" aria-hidden="true" /></Button>
           <AppActionButton
             v-if="canOpenMenu"
             label="More"
@@ -419,6 +419,8 @@
     </div>
   </div>
 
+  <AppProfileUserNotificationPreferences v-if="notificationPreferencesOpen && profile?.username" v-model="notificationPreferencesOpen" :person="{ ...profile, username: profile.username }" />
+
   <Menu v-if="canOpenMenu" ref="menuRef" :model="menuItems" popup>
     <template #item="{ item, props: itemProps }">
       <a v-bind="itemProps.action" class="flex items-center gap-2" :class="item.class">
@@ -500,6 +502,7 @@
 </template>
 
 <script setup lang="ts">
+import { userNotificationOptions, userNotificationPreference } from '~/utils/user-notification-preference'
 import type { FollowRelationship, NudgeState, PublicProfile } from '~/types/api'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { buildSocialLinks } from '~/utils/social-links'
@@ -705,7 +708,6 @@ function onCrewPillLeave() {
 }
 
 const viewerFollowsUser = computed(() => Boolean(followRelationship.value?.viewerFollowsUser))
-const bellEnabled = computed(() => Boolean(followRelationship.value?.viewerPostNotificationsEnabled))
 const showPostBell = computed(() => {
   if (!isAuthed.value) return false
   if (isSelf.value) return false
@@ -713,23 +715,11 @@ const showPostBell = computed(() => {
   return viewerFollowsUser.value
 })
 
-const bellInflight = computed(() => Boolean(followState.inflight.value[`follow-bell:${profile.value?.id ?? ''}`]))
-async function togglePostBell() {
-  const id = profile.value?.id ?? null
-  const username = profile.value?.username ?? null
-  if (!id || !username) return
-  const nextEnabled = !bellEnabled.value
-  if (!nextEnabled) {
-    const ok = await confirm({
-      header: 'Turn off reply notifications?',
-      message: `You won’t be notified when @${username} replies to posts.`,
-      confirmLabel: 'Turn off',
-      confirmSeverity: 'danger',
-    })
-    if (!ok) return
-  }
-  await followState.setPostNotificationsEnabled({ userId: id, username, enabled: nextEnabled })
-}
+const notificationPreferencesOpen = ref(false)
+const notificationPreference = computed(() => userNotificationPreference(followRelationship.value))
+const notificationLabel = computed(() => userNotificationOptions.find(option => option.value === notificationPreference.value)?.label || 'Off')
+watch(() => profile.value?.id, () => { notificationPreferencesOpen.value = false })
+watch(showPostBell, shown => { if (!shown) notificationPreferencesOpen.value = false })
 
 const showChatButton = computed(() => {
   if (!isAuthed.value) return false

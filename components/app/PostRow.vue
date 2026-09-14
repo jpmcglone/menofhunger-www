@@ -338,29 +338,7 @@
   </div>
 
 
-  <Dialog
-    v-if="editOpen"
-    v-model:visible="editOpen"
-    modal
-    header="Edit post"
-    :draggable="false"
-    class="w-[min(40rem,calc(100vw-2rem))]"
-  >
-    <AppPostComposer
-      auto-focus
-      :show-divider="false"
-      placeholder="Edit your post…"
-      :initial-text="postView.body"
-      :locked-visibility="postView.visibility"
-      hide-visibility-picker
-      disable-media
-      :register-unsaved-guard="false"
-      mode="edit"
-      :edit-post-id="postView.id"
-      :edit-post-is-draft="Boolean(postView.isDraft)"
-      @edited="onEdited"
-    />
-  </Dialog>
+  <AppEditPostDialog v-if="editOpen" v-model="editOpen" :post="postView" @edited="onEdited" />
 
   <AppReportDialog
     v-model:visible="reportOpen"
@@ -832,8 +810,7 @@ const {
   onGroupPinChanged: () => emit('groupPinChanged'),
 })
 
-// Report dialog registers its own dismissal; only the edit dialog is owned here.
-useOverlayDismiss(editOpen, () => (editOpen.value = false))
+// Edit and report dialogs own their dismissal and unsaved-change guards.
 
 function onEdited(payload: { id: string; post: FeedPost }) {
   if (payload?.id !== postView.value.id) return

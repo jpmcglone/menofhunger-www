@@ -1,4 +1,4 @@
-import type { FollowRelationship } from '~/types/api'
+import type { FollowRelationship, UserNotificationPreference, UserNotificationPreferences } from '~/types/api'
 import { hydrateFollowRelationship } from '~/utils/follow-relationship'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { runOptimisticRequest } from '~/utils/optimistic-request'
@@ -29,7 +29,12 @@ export function useFollowState() {
           const targetId = payload?.targetUserId ?? null
           if (!actorId || !targetId) return
           if (actorId !== me.value?.id) return
-          upsert(targetId, { viewerFollowsUser: Boolean(payload.viewerFollowsUser) })
+          const preference = payload.viewerNotificationPreference
+          upsert(targetId, {
+            viewerFollowsUser: Boolean(payload.viewerFollowsUser),
+            ...(preference ? { viewerNotificationPreference: preference, viewerPostNotificationsEnabled: preference === 'all' } : {}),
+            ...(!payload.viewerFollowsUser ? { viewerNotificationPreference: 'off' as const, viewerPostNotificationsEnabled: false } : {}),
+          })
         },
       }
       wsCbRef.value = cb
@@ -78,7 +83,7 @@ export function useFollowState() {
       apply: () => {
         const prev = get(userId)
         // Bell defaults ON for normal follows (matches server / DB default).
-        upsert(userId, { viewerFollowsUser: true, viewerPostNotificationsEnabled: true })
+        upsert(userId, { viewerFollowsUser: true, viewerPostNotificationsEnabled: true, viewerNotificationPreference: 'all' })
         return { prev }
       },
       request: async () => {
@@ -107,7 +112,7 @@ export function useFollowState() {
       apply: () => {
         const prev = get(userId)
         // Unfollow: clear bell.
-        upsert(userId, { viewerFollowsUser: false, viewerPostNotificationsEnabled: false })
+        upsert(userId, { viewerFollowsUser: false, viewerPostNotificationsEnabled: false, viewerNotificationPreference: 'off' })
         return { prev }
       },
       request: async () => {
@@ -135,7 +140,7 @@ export function useFollowState() {
       inflight,
       apply: () => {
         const prev = get(userId)
-        upsert(userId, { viewerPostNotificationsEnabled: Boolean(enabled) })
+        upsert(userId, { viewerPostNotificationsEnabled: Boolean(enabled), viewerNotificationPreference: enabled ? 'all' : 'posts' })
         return { prev }
       },
       request: async () => {
@@ -153,6 +158,23 @@ export function useFollowState() {
     invalidateUserPreviewCache(username)
   }
 
-  return { state, inflight, error, get, set, upsert, ingest, follow, unfollow, setPostNotificationsEnabled }
+  async function setNotificationPreference(params: { userId: string; username: string; preference: UserNotificationPreference }) {
+    const key = `follow-bell:${params.userId}`
+    if (inflight.value[key]) return null
+    const viewerId = me.value?.id
+    inflight.value[key] = true
+    try {
+      const result = await apiFetchData<UserNotificationPreferences>(
+        `/follows/${encodeURIComponent(params.username)}/post-notifications`,
+        { method: 'PATCH', body: { preference: params.preference } },
+      )
+      if (me.value?.id !== viewerId) return null
+      upsert(params.userId, { viewerNotificationPreference: result.preference, viewerPostNotificationsEnabled: result.enabled })
+      invalidateUserPreviewCache(params.username)
+      return result
+    } finally { inflight.value[key] = false }
+  }
+
+  return { state, inflight, error, get, set, upsert, ingest, follow, unfollow, setPostNotificationsEnabled, setNotificationPreference }
 }
 
