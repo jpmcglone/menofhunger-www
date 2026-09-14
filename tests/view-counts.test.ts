@@ -27,10 +27,41 @@ describe('unique people + total views', () => {
   it('re-reports after 30s and applies HTTP view acks', () => {
     const tracker = readFromRepo('composables/usePostViewTracker.ts')
     expect(tracker).toContain('REREPORT_INTERVAL_MS = 30_000')
+    expect(tracker).toContain('function canReport')
     expect(tracker).toContain('applyAcks')
     expect(tracker).toContain('ack.totalCounted')
     expect(tracker).toContain('ack.uniqueCounted')
     expect(tracker).toContain('delta.totalViewCount')
+    expect(tracker).toContain('Sitting still does not re-report')
+    expect(tracker).not.toMatch(/setInterval\([^)]*REREPORT/)
+  })
+
+  it('tracks views on every www surface that renders a post row', () => {
+    const pages = [
+      'pages/home.vue',
+      'pages/explore.vue',
+      'pages/u/[username].vue',
+      'pages/check-ins/day/[dayKey].vue',
+      'pages/check-ins/[sort].vue',
+      'pages/groups/index.vue',
+      'pages/g/[slug]/index.vue',
+      'pages/c/[slug]/index.vue',
+      'pages/state/[code].vue',
+      'pages/new-posts.vue',
+      'pages/p/[id].vue',
+      'pages/bookmarks/[[slug]].vue',
+      'pages/only-me.vue',
+      'pages/notifications.vue',
+    ]
+    for (const rel of pages) {
+      const src = readFromRepo(rel)
+      const tracks = src.includes('AppFeedPostRow') || src.includes('AppPostRow')
+      expect(tracks, rel).toBe(true)
+    }
+    const postRow = readFromRepo('components/app/PostRow.vue')
+    expect(postRow).toContain('trackViews: true')
+    const feedRow = readFromRepo('components/app/FeedPostRow.vue')
+    expect(feedRow).toContain('observe(postIds, wrapperEl.value')
   })
 
   it('keeps the view chip under the body with person/eye icons', () => {
@@ -100,6 +131,8 @@ describe('unique people + total views', () => {
     expect(permalink).toContain('await usePostPermalink(postId)')
     expect(watchBody).toContain('reportPermalinkViews')
     expect(watchBody).not.toContain('viewTrackerHydrated')
+    expect(watchBody).toContain("() => post.value?.id")
+    expect(watchBody).not.toMatch(/watch\(\s*\(\) => post\.value,/)
     expect(watchBody).toMatch(/immediate:\s*true/)
     expect(watchBody).toContain('onMounted(() => { reportPermalinkViews(post.value) })')
     expect(watchBody).toContain('onActivated(() => { reportPermalinkViews(post.value) })')

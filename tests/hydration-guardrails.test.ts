@@ -754,6 +754,7 @@ describe('hydration guardrails (structural)', () => {
     const permalink = readFromRepo('pages/p/[id].vue')
     const watchBody = permalink.slice(permalink.indexOf('const { markEngaged }'), permalink.indexOf('function onDeleted'))
     expect(watchBody).toMatch(/markEngaged\(chainIds\)/)
+    expect(watchBody).toMatch(/\(\) => post\.value\?\.id/)
     expect(watchBody).toMatch(/immediate:\s*true/)
     expect(watchBody).toMatch(/onMounted\(\(\) => \{ reportPermalinkViews\(post\.value\) \}\)/)
     expect(watchBody).toMatch(/onActivated\(\(\) => \{ reportPermalinkViews\(post\.value\) \}\)/)

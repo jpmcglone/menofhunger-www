@@ -424,7 +424,9 @@ watch(
 // Landing on /p/:id is itself a view of this post (and ancestors if it's a reply).
 // Do not wait for IntersectionObserver or moh-hydrated — feed rows above/below
 // have their own observers, but the permalink target used to miss entirely.
-// The API (and the tracker 30s window) collapse refresh-spam to one impression.
+// Watch the post id, not the object: live count patches clone `data.value` and
+// must not look like a new render. The 30s client/server window still collapses
+// reload / keep-alive spam from the same person.
 const { markEngaged } = usePostViewTracker()
 function reportPermalinkViews(p: FeedPost | null | undefined) {
   if (!import.meta.client || !p?.id) return
@@ -437,8 +439,8 @@ function reportPermalinkViews(p: FeedPost | null | undefined) {
   if (chainIds.length) markEngaged(chainIds)
 }
 watch(
-  () => post.value,
-  (p) => { reportPermalinkViews(p) },
+  () => post.value?.id,
+  () => { reportPermalinkViews(post.value) },
   { immediate: true },
 )
 onMounted(() => { reportPermalinkViews(post.value) })

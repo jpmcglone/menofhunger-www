@@ -14,6 +14,8 @@
  *
  * The API decides whether a report counts (unique once; total again after 30s).
  * Client only skips re-POSTing the same post within 30s to avoid network spam.
+ * Sitting still does not re-report: IntersectionObserver fires on visibility
+ * edges, not on a 30s heartbeat. A new appear after 30s may count again.
  */
 
 const FLUSH_INTERVAL_MS = 4_000
