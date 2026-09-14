@@ -148,7 +148,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     // composer visibility preference (see openComposerWithVisibility).
     if (composerCheckinPrompt.value) return 'verifiedOnly'
     if (composerIsFromOnlyMe.value) return null
-    if (composerIsGroupMode.value) return 'public'
+    if (composerIsGroupMode.value) return 'verifiedOnly'
     if (!viewerIsVerified.value) return 'onlyMe'
     if (isOnlyMePage.value) return 'onlyMe'
     // Only lock when quoting an onlyMe post — private content can't be broadcast.
@@ -158,7 +158,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
 
   const composerAllowedVisibilities = computed<PostVisibility[] | null>(() => {
     if (composerCustomAllowedVisibilities.value?.length) return composerCustomAllowedVisibilities.value
-    if (groupComposerCtx.value) return ['public']
+    if (groupComposerCtx.value) return ['verifiedOnly']
     if (composerIsFromOnlyMe.value) return ['public', 'verifiedOnly', 'premiumOnly']
     if (!viewerIsVerified.value) return ['onlyMe']
     if (isOnlyMePage.value) return ['onlyMe']
@@ -240,6 +240,9 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     if (viewerIsVerified.value && !isOnlyMePage.value && composerVisibility.value === 'onlyMe') {
       composerVisibility.value = composerNonOnlyMeVisibility.value ?? 'public'
     }
+    if (viewerIsVerified.value && !isOnlyMePage.value && shareDestination.value.kind === 'group') {
+      composerInitialGroupId.value = shareDestination.value.groupId
+    }
     composerInitialText.value = (initialText ?? defaultComposerInitialTextForRoute()) || null
     composerModalOpen.value = true
   }
@@ -255,7 +258,8 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     // Check-in Answer locks visibility on the modal only — do not overwrite the
     // user's session feed-visibility preference used by the regular composer.
     const isCheckinOpen = Boolean((options?.checkinPrompt ?? '').trim())
-    if (!isCheckinOpen) {
+    const isGroupOpen = Boolean(options?.communityGroupId || options?.groupName || groupComposerCtx.value)
+    if (!isCheckinOpen && !isGroupOpen) {
       if (visibility) {
         const next = !viewerIsVerified.value
           ? 'onlyMe'
@@ -281,8 +285,8 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     const gCtx = groupComposerCtx.value
     if (gCtx) {
       openComposerWithVisibility({
-        visibility: 'public',
-        allowedVisibilities: ['public'],
+        visibility: 'verifiedOnly',
+        allowedVisibilities: ['verifiedOnly'],
         placeholder: `Post to ${gCtx.groupName}…`,
         groupName: gCtx.groupName,
       }, initialText)
@@ -400,8 +404,12 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
   })
 
   // Post button (FAB + left nav): color matches composer scope. Public = black/white (light) or white/black (dark).
+  const { destination: shareDestination } = useShareDestination()
+  const fabTargetsGroup = computed(() => Boolean(isGroupPage.value && groupComposerCtx.value) || (
+    !isOnlyMePage.value && viewerIsVerified.value && shareDestination.value.kind === 'group'
+  ))
   const fabButtonClass = computed(() => {
-    if (isGroupPage.value && groupComposerCtx.value) return 'moh-btn-tone'
+    if (fabTargetsGroup.value) return 'moh-btn-tone'
     // On /only-me, always present the "Only me" purple button and default the composer to onlyMe.
     // (We don't permanently change the cookie just by visiting the page.)
     if (isOnlyMePage.value || !viewerIsVerified.value) return 'moh-btn-onlyme moh-btn-tone'
@@ -416,7 +424,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     return 'bg-black text-white dark:bg-white dark:text-black'
   })
   const fabButtonStyle = computed(() => {
-    if (isGroupPage.value && groupComposerCtx.value) {
+    if (fabTargetsGroup.value) {
       return { backgroundColor: 'var(--moh-group)', color: '#fff' }
     }
     return {}

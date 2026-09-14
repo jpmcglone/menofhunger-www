@@ -3,21 +3,9 @@
     <NuxtLink
       :to="`/g/${encodeURIComponent(invite.group.slug)}`"
       class="shrink-0"
+      :aria-label="invite.group.name"
     >
-      <AppImg
-        v-if="invite.group.avatarImageUrl"
-        :src="invite.group.avatarImageUrl"
-        class="h-10 w-10 rounded-full object-cover"
-        :alt="invite.group.name"
-        sizes="40px"
-      />
-      <div
-        v-else
-        class="flex h-10 w-10 items-center justify-center rounded-full bg-black/10 dark:bg-white/10"
-        aria-hidden="true"
-      >
-        <Icon name="heroicons-solid:user-group" class="text-[16px] opacity-70" />
-      </div>
+      <AppGroupsGroupAvatar :name="invite.group.name" :src="invite.group.avatarImageUrl" :size="40" />
     </NuxtLink>
 
     <div class="min-w-0 flex-1">

@@ -3440,3 +3440,14 @@ export type DelegationWorkspaceDto = Contracts.DelegationWorkspaceDto
 export type DelegationJobDto = Contracts.DelegationJobDto
 export type DelegationActionDto = Contracts.DelegationActionDto
 export type DelegationScheduleDto = Contracts.DelegationScheduleDto
+
+export type GroupNotificationPreferences = {
+  groupId: string
+  preference: 'all' | 'repliesAndMentions' | 'muted'
+}
+export type GroupActivity = {
+  groupId: string
+  through: string
+  newPostCount: number
+  newPostIds: string[]
+}

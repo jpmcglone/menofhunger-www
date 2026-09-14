@@ -4,43 +4,22 @@
       <div class="moh-gutter-x border-b moh-border pb-4 pt-4 space-y-4">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 class="moh-h1">Your Groups Feed</h1>
-            <p class="mt-1 moh-meta max-w-xl">
-              Posts and media from every group you're in.
-            </p>
+            <h1 class="moh-h1">Groups</h1>
+
           </div>
-          <div class="flex flex-wrap gap-2 shrink-0 sm:pt-1">
-            <Button
-              v-if="canCreateGroup"
-              as="NuxtLink"
-              to="/groups/new"
-              label="Create group"
-              rounded
-            >
-              <template #icon>
-                <Icon name="tabler:plus" aria-hidden="true" />
-              </template>
-            </Button>
-            <Button
-              v-else-if="isAuthed"
-              as="NuxtLink"
-              to="/tiers"
-              label="Upgrade to create"
-              rounded
-              severity="secondary"
-            >
-              <template #icon>
-                <Icon name="tabler:sparkles" aria-hidden="true" />
-              </template>
-            </Button>
+          <div class="flex items-center gap-2">
+            <Button v-if="mine.length" label="Post to a group" class="!bg-[var(--moh-group)] !border-[var(--moh-group)] !text-white" @click="postPickerOpen = true" />
+            <Button as="NuxtLink" to="/groups/explore" label="Explore" text severity="secondary" />
+            <Button v-if="canCreateGroup" as="NuxtLink" to="/groups/new" label="Create group" text severity="secondary" />
+            <Button v-else-if="isAuthed" as="NuxtLink" to="/tiers" label="Upgrade to create" text severity="secondary" />
           </div>
         </div>
 
         <AppInlineAlert v-if="error" severity="danger">
-          {{ error }}
+          {{ error }} <Button label="Try again" text @click="loadMeta" />
         </AppInlineAlert>
 
-        <div v-if="metaLoading" class="flex justify-center py-8">
+        <div v-if="metaLoading && !mine.length && !inboxInvites.length" class="flex justify-center py-8">
           <AppLogoLoader />
         </div>
       </div>
@@ -51,21 +30,17 @@
         </div>
       </template>
 
-      <template v-else-if="!metaLoading">
+      <template v-else>
         <section
           v-if="inboxInvites.length > 0"
           class="border-b moh-border py-3"
           aria-labelledby="groups-invites-heading"
         >
-          <div class="moh-gutter-x mb-1 flex items-baseline justify-between gap-3">
-            <h2 id="groups-invites-heading" class="text-sm font-semibold uppercase tracking-wide moh-text-muted">
-              Invites
-            </h2>
-            <span class="text-xs moh-text-muted tabular-nums">
-              {{ inboxInvites.length }}
-            </span>
-          </div>
-          <ul class="moh-divide">
+          <button type="button" class="moh-focus moh-gutter-x flex min-h-11 w-full items-center justify-between gap-3 text-left" :aria-expanded="invitesExpanded" @click="invitesExpanded = !invitesExpanded">
+            <span id="groups-invites-heading" class="text-sm font-semibold">{{ inboxInvites.length }} group {{ inboxInvites.length === 1 ? 'invitation' : 'invitations' }}</span>
+            <span class="text-sm moh-text-muted">{{ invitesExpanded ? 'Hide' : 'Review' }}</span>
+          </button>
+          <ul v-show="invitesExpanded || !mine.length" class="moh-divide">
             <li v-for="inv in inboxInvites" :key="inv.id">
               <AppGroupInviteInboxRow
                 :invite="inv"
@@ -76,38 +51,14 @@
           </ul>
         </section>
 
-        <!-- Your groups — horizontal carousel -->
-        <section
-          v-if="mine.length > 0"
-          class="border-b moh-border py-3"
-          aria-labelledby="groups-mine-heading"
-        >
-          <div class="moh-gutter-x mb-3 flex items-baseline justify-between gap-3">
-            <h2 id="groups-mine-heading" class="text-sm font-semibold uppercase tracking-wide moh-text-muted">
-              Your groups
-            </h2>
-            <span class="text-xs moh-text-muted tabular-nums">
-              {{ mine.length }}
-            </span>
-          </div>
-          <AppHorizontalScroller
-            ref="carouselEl"
-            scroller-class="no-scrollbar snap-x snap-mandatory scroll-px-4 sm:scroll-px-6 px-4 sm:px-6 py-1.5"
-          >
-            <div class="flex gap-2">
-              <AppGroupCompactCard
-                v-for="g in mine"
-                :key="g.id"
-                :group="g"
-                dense
-              />
-            </div>
-          </AppHorizontalScroller>
+        <section v-if="mine.length" class="border-b moh-border p-3" aria-label="Your groups">
+          <div class="flex items-center justify-between px-3 pb-2"><h2 class="text-xs font-semibold uppercase moh-text-muted">Your groups</h2><Button :label="`View all ${mine.length}`" text size="small" @click="switcherOpen = true" /></div>
+          <div class="grid sm:grid-cols-2"><AppGroupsGroupRow v-for="group in mine.slice(0, 2)" :key="group.id" :group="group" :new-count="groupsUnread.byGroupId[group.id] ?? 0" /></div>
         </section>
 
         <!-- Explore — spotlight surface -->
         <section
-          v-if="spotlight.length > 0"
+          v-if="!mine.length && spotlight.length > 0"
           class="border-b moh-border py-3"
           aria-labelledby="groups-explore-heading"
         >
@@ -293,7 +244,7 @@
                       :alt="item.kind === 'video' ? 'Video' : 'Photo'"
                       class="absolute inset-0 h-full w-full object-cover moh-img-outline"
                       loading="lazy"
-                    />
+                    >
                     <div v-if="item.kind === 'video'" class="absolute inset-0 flex items-center justify-center">
                       <div class="rounded-full bg-black/50 p-2">
                         <Icon name="tabler:player-play-filled" class="text-white text-lg" aria-hidden="true" />
@@ -320,6 +271,8 @@
         </template>
       </template>
     </div>
+    <AppGroupsGroupSwitcherDialog v-model="switcherOpen" />
+    <AppGroupsGroupSwitcherDialog v-model="postPickerOpen" for-post />
   </AppPageContent>
 </template>
 
@@ -334,13 +287,13 @@ import AppGroupCompactCard from '~/components/app/groups/AppGroupCompactCard.vue
 
 definePageMeta({
   layout: 'app',
-  title: 'Your Groups Feed',
+  title: 'Groups',
   hideTopBar: true,
   alias: ['/groups/posts', '/groups/replies', '/groups/media'],
 })
 
 usePageSeo({
-  title: 'Your Groups Feed',
+  title: 'Groups',
     description: "Posts and media from every group you're in.",
   canonicalPath: '/groups',
   noindex: true,
@@ -352,6 +305,9 @@ const { user, isAuthed } = useAuth()
 const { groupsUnread, addGroupInviteCallback, removeGroupInviteCallback } = usePresence()
 const { clearLockScreen } = useNotifications()
 
+const switcherOpen = ref(false)
+const postPickerOpen = ref(false)
+const invitesExpanded = ref(false)
 const metaLoading = ref(true)
 const error = ref<string | null>(null)
 const mine = ref<CommunityGroupShell[]>([])
@@ -622,26 +578,8 @@ async function redirectIfLegacyMyTab(): Promise<boolean> {
 }
 
 function applyMyGroups(rows: readonly CommunityGroupShell[]) {
-  const unreadByGroup = groupsUnread.value.byGroupId
-  mine.value = [...rows].sort((a, b) => {
-    // Owners always first
-    const aOwner = a.viewerMembership?.role === 'owner'
-    const bOwner = b.viewerMembership?.role === 'owner'
-    if (aOwner !== bOwner) return aOwner ? -1 : 1
-
-    // Most unread activity first
-    const aUnread = unreadByGroup[a.id] ?? 0
-    const bUnread = unreadByGroup[b.id] ?? 0
-    if (aUnread !== bUnread) return bUnread - aUnread
-
-    // Most recently posted in first
-    const aLastPost = a.lastViewerPostAt ? new Date(a.lastViewerPostAt).getTime() : 0
-    const bLastPost = b.lastViewerPostAt ? new Date(b.lastViewerPostAt).getTime() : 0
-    if (aLastPost !== bLastPost) return bLastPost - aLastPost
-
-    // Fallback: newest group first
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  })
+  // Preserve the API's stable membership order as live activity counts change.
+  mine.value = [...rows]
 }
 
 async function loadMeta() {
@@ -659,20 +597,13 @@ async function loadMeta() {
     setGroupInviteBadgeCount(inboxInvites.value.length)
   } catch (e: unknown) {
     error.value = getApiErrorMessage(e) || 'Failed to load your groups.'
-    mine.value = []
-    spotlight.value = []
-    inboxInvites.value = []
+    // Keep the last successful content available while offline.
   } finally {
     metaLoading.value = false
   }
 }
 
-// Re-sort whenever unread badge counts change (new group activity arrives via socket)
-watch(
-  () => groupsUnread.value.byGroupId,
-  () => { if (mine.value.length) applyMyGroups(sharedMyGroups.value) },
-  { deep: true },
-)
+watch(sharedMyGroups, rows => applyMyGroups(rows))
 
 // Snap carousels back to first card on data changes
 type ScrollerHandle = { scrollToStart: () => void } | null

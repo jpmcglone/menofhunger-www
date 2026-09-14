@@ -2,7 +2,7 @@
   <div class="relative mb-1.5 flex items-center">
     <NuxtLink
       :to="`/g/${encodeURIComponent(group.slug)}`"
-      class="inline-flex max-w-full items-center gap-1.5 rounded-full border moh-border bg-black/[0.025] py-0.5 pl-0.5 pr-2 -ml-0.5 text-left shadow-sm shadow-black/[0.03] transition-colors hover:bg-black/[0.05] dark:bg-white/[0.045] dark:shadow-black/20 dark:hover:bg-white/[0.075]"
+      class="moh-focus inline-flex min-h-11 max-w-full items-center gap-2 py-1 text-left transition-colors hover:opacity-80"
       :aria-label="`Group: ${group.name}`"
       @click.stop
       @mouseenter="onFeedGroupEnter"
@@ -27,10 +27,7 @@
           {{ groupInitials }}
         </div>
       </div>
-      <span class="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-zinc-500" aria-hidden="true">
-        in
-      </span>
-      <span class="whitespace-nowrap text-xs font-semibold text-gray-700 dark:text-zinc-200">
+      <span class="truncate text-sm font-semibold moh-text">
         {{ group.name }}
       </span>
     </NuxtLink>

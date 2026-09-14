@@ -26,6 +26,9 @@
     "/s/this-space-does-not-exist",
     "/a/this-article-does-not-exist",
     "/admin/attention",
-    "/admin/activation"
+    "/admin/activation",
+    "/groups",
+    "/groups/explore",
+    "/g/this-group-does-not-exist"
   ]
 }

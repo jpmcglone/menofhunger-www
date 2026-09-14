@@ -24,7 +24,7 @@
         ]"
       >
         <slot name="close" />
-        <div v-if="!replyTo" class="flex min-w-0 items-center" :class="(!inlineAudience || checkinPrompt) && 'ml-auto'">
+        <div v-if="!replyTo" class="flex min-w-0 flex-wrap items-center gap-2" :class="(!inlineAudience || checkinPrompt) && 'ml-auto'">
           <AppComposerVisibilityPicker
             v-if="showVisibilityPicker"
             v-model="visibility"
@@ -35,7 +35,7 @@
             @select-chat="handoffToChat"
           />
           <span
-            v-else
+            v-else-if="!canChooseGroup || !effectiveGroupId"
             v-tooltip.bottom="scopeTagTooltip"
             class="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border moh-border px-3 cursor-default"
             :aria-label="`Post audience: ${scopeTagLabel}`"
@@ -45,6 +45,18 @@
               :group-name="showGroupScopeIcon ? scopeTagLabel : undefined"
             />
           </span>
+          <AppComposerGroupAudiencePicker
+            v-if="canChooseGroup"
+            :groups="myGroups"
+            :model-value="selectedGroupId"
+            :loading="myGroupsLoading"
+            :error="myGroupsError"
+            :shows-chat="showChatDestination"
+            @select-chat="handoffToChat"
+            @update:model-value="selectGroup"
+            @open="loadMyGroups"
+          />
+          <span v-if="effectiveGroupId" class="text-xs moh-text-muted">{{ selectedGroupReadLabel }}</span>
         </div>
 
         <!-- Right: scheduled time — shown when a time is confirmed (not applicable for check-ins) -->
@@ -275,15 +287,6 @@
                 persistent
                 @select="insertEmoji"
               />
-            <!-- Group audience picker: only when composing a top-level post outside a group wall -->
-            <AppComposerGroupAudiencePicker
-              v-if="mode === 'create' && !replyTo && !quotedPost && !communityGroupId && isAuthed && myGroups.length > 0"
-              :groups="myGroups"
-              :model-value="selectedGroupId"
-              @update:model-value="selectGroup"
-              @open="loadMyGroups"
-            />
-
             <!-- Schedule button: visible to verified+, premium-gated via CTA -->
             <div
               v-if="(isPremium || viewerIsVerified) && mode === 'create' && !replyTo && !quotedPost"
@@ -714,8 +717,13 @@ const { getUserStatus, setMyStatus, editMyStatus, clearMyStatus } = usePresence(
 // Group audience picker — lets viewer target one of their groups when composing from the main feed.
 // Only used when `props.communityGroupId` is not already set (group-wall context already pins it).
 const selectedGroupId = ref<string | null>(null)
-const { groups: myGroups, load: loadSharedMyGroups } = useMyGroups()
+const { groups: myGroups, loading: myGroupsLoading, error: myGroupsError, load: loadSharedMyGroups } = useMyGroups()
 const effectiveGroupId = computed(() => selectedGroupId.value ?? props.communityGroupId ?? null)
+const canChooseGroup = computed(() => mode.value === 'create' && !props.replyTo && !props.quotedPost && !props.communityGroupId && !props.lockedVisibility && !props.checkinPrompt && viewerIsVerified.value)
+const selectedGroupReadLabel = computed(() => {
+  const group = myGroups.value.find(group => group.id === effectiveGroupId.value)
+  return group?.joinPolicy === 'open' ? 'Verified members can read' : 'Visibility set by group'
+})
 
 async function loadMyGroups() {
   if (props.communityGroupId) return
@@ -1206,14 +1214,14 @@ watch(
 )
 
 const effectiveVisibility = computed(() =>
-  props.replyTo ? props.replyTo.visibility : (lockedVisibility.value ?? visibility.value),
+  effectiveGroupId.value || props.replyTo?.groupDisplayName ? 'verifiedOnly' : (props.replyTo?.visibility ?? lockedVisibility.value ?? visibility.value),
 )
 
 const replyGroupDisplayLabel = computed(() => (props.replyTo?.groupDisplayName ?? '').trim())
 const replyShowsGroupScope = computed(() => Boolean(replyGroupDisplayLabel.value))
 /** Group wall composer or reply inside a community group thread — shared chrome (pill, tint, button). */
 const useGroupScopeChrome = computed(
-  () => (props.groupComposer && !props.replyTo) || replyShowsGroupScope.value,
+  () => Boolean(effectiveGroupId.value || props.replyTo?.groupDisplayName || props.groupComposer) || replyShowsGroupScope.value,
 )
 
 const showChatDestination = computed(() => {
@@ -1225,7 +1233,7 @@ const showChatDestination = computed(() => {
 
 const showVisibilityPicker = computed(() => {
   if (props.replyTo) return false
-  if (props.hideVisibilityPicker) return false
+  if (props.hideVisibilityPicker || effectiveGroupId.value) return false
   if (lockedVisibility.value) return false
   return true
 })

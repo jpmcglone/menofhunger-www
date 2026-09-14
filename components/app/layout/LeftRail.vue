@@ -5,7 +5,7 @@
       'hidden md:block shrink-0 h-full border-r moh-border moh-texture overflow-hidden'
     ]"
   >
-    <!-- IMPORTANT: no `h-full` + no `overflow-hidden` here, or the rail can't actually scroll -->
+    <!-- Reserve the Post action and account footer; only navigation yields space to More. -->
     <AppLeftRailContent :compact="compact">
       <div
         ref="leftNavViewportRef"
@@ -243,36 +243,36 @@
             </Teleport>
           </div>
 
-          <div ref="leftNavPostRef" class="pt-2">
-            <Transition
-              enter-active-class="transition-opacity duration-150 ease-out"
-              enter-from-class="opacity-0"
-              enter-to-class="opacity-100"
-              leave-active-class="transition-opacity duration-150 ease-in"
-              leave-from-class="opacity-100"
-              leave-to-class="opacity-0"
-            >
-              <button
-                v-if="canOpenComposer && isComposerEntrypointRoute"
-                type="button"
-                aria-label="Post"
-                :class="[
-                  'moh-pressable group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full moh-focus',
-                  fabButtonClass,
-                  'mt-1',
-                ]"
-                :style="fabButtonStyle"
-                @click="openComposerForCurrentRoute()"
-              >
-                <span class="flex h-12 w-12 shrink-0 items-center justify-center">
-                  <Icon name="tabler:plus" size="26" class="opacity-95" aria-hidden="true" />
-                </span>
-                <span v-if="!compact" class="hidden xl:inline text-base font-semibold">Post</span>
-              </button>
-            </Transition>
-          </div>
 
         </nav>
+      </div>
+
+      <div class="shrink-0 py-3">
+        <Transition
+          enter-active-class="transition-opacity duration-150 ease-out"
+          enter-from-class="opacity-0"
+          enter-to-class="opacity-100"
+          leave-active-class="transition-opacity duration-150 ease-in"
+          leave-from-class="opacity-100"
+          leave-to-class="opacity-0"
+        >
+          <button
+            v-if="canOpenComposer && isComposerEntrypointRoute"
+            type="button"
+            aria-label="Post"
+            :class="[
+              'moh-pressable group flex h-12 items-center rounded-xl text-white hover:opacity-95 w-full moh-focus',
+              fabButtonClass,
+            ]"
+            :style="fabButtonStyle"
+            @click="openComposerForCurrentRoute()"
+          >
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center">
+              <Icon name="tabler:plus" size="26" class="opacity-95" aria-hidden="true" />
+            </span>
+            <span v-if="!compact" class="hidden xl:inline text-base font-semibold">Post</span>
+          </button>
+        </Transition>
       </div>
 
       <div class="shrink-0 border-t border-black/10 dark:border-white/10 pt-2">
@@ -386,7 +386,6 @@ const {
 } = useMenuPosition()
 const leftNavViewportRef = ref<HTMLElement | null>(null)
 const leftNavLogoRef = ref<HTMLElement | null>(null)
-const leftNavPostRef = ref<HTMLElement | null>(null)
 const leftNavCapacity = ref(99)
 const leftRailNavItems = computed(() => primaryNavItems.value.filter((item) => item.menuSection !== 'footer'))
 const leftVisibleNavItems = computed<AppNavItem[]>(() => {
@@ -429,9 +428,9 @@ function updateLeftNavCapacity() {
   const viewport = leftNavViewportRef.value
   if (!viewport) return
   const itemHeight = 52 // h-12 plus space-y-1 gap.
-  const logoHeight = leftNavLogoRef.value?.offsetHeight ?? 0
-  const postHeight = leftNavPostRef.value?.offsetHeight ?? 0
-  const available = Math.max(0, viewport.clientHeight - logoHeight - postHeight)
+  const logo = leftNavLogoRef.value
+  const logoHeight = logo ? logo.offsetHeight + Number.parseFloat(getComputedStyle(logo).marginBottom) : 0
+  const available = Math.max(0, viewport.clientHeight - logoHeight)
   leftNavCapacity.value = Math.max(1, Math.floor((available + 4) / itemHeight))
 }
 
@@ -442,7 +441,6 @@ onMounted(() => {
   leftNavResizeObserver = new ResizeObserver(() => updateLeftNavCapacity())
   if (leftNavViewportRef.value) leftNavResizeObserver.observe(leftNavViewportRef.value)
   if (leftNavLogoRef.value) leftNavResizeObserver.observe(leftNavLogoRef.value)
-  if (leftNavPostRef.value) leftNavResizeObserver.observe(leftNavPostRef.value)
   window.addEventListener('resize', updateLeftNavCapacity)
 })
 onBeforeUnmount(() => {

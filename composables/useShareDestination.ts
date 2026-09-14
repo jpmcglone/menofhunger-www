@@ -8,6 +8,7 @@ export type ShareDestination =
 const STORAGE_KEY = 'moh.shareDestination'
 
 export function useShareDestination() {
+  const destination = useState<ShareDestination>('share:destination', () => ({ kind: 'feed' }))
   function load(): ShareDestination {
     if (!import.meta.client) return { kind: 'feed' }
     try {
@@ -27,10 +28,11 @@ export function useShareDestination() {
     return { kind: 'feed' }
   }
 
-  function save(destination: ShareDestination) {
+  function save(destinationToSave: ShareDestination) {
     if (!import.meta.client) return
+    destination.value = destinationToSave
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(destination))
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(destinationToSave))
     } catch {
       // ignore quota / private mode
     }
@@ -48,5 +50,5 @@ export function useShareDestination() {
     save({ kind: 'chat' })
   }
 
-  return { load, save, rememberFeed, rememberGroup, rememberChat }
+  return { destination, load, save, rememberFeed, rememberGroup, rememberChat }
 }

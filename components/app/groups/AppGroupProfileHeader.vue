@@ -1,6 +1,31 @@
 <template>
+  <section v-if="isMember" class="moh-gutter-x border-b moh-border py-5">
+    <div class="flex items-center gap-3">
+      <AppGroupsGroupAvatar :name="shell.name" :src="avatarUrl" :size="40" />
+      <button type="button" class="moh-focus flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left" aria-haspopup="dialog" @click="switcherOpen = true"><h1 class="moh-h2 truncate">{{ shell.name }}</h1><Icon name="tabler:chevron-down" class="shrink-0 text-base moh-text-muted" /></button>
+      <Button aria-label="Group membership and actions" text severity="secondary" @click="aboutOpen = true"><template #icon><Icon name="tabler:dots" /></template></Button>
+    </div>
+    <p v-if="shell.description && !focused" class="mt-4 moh-meta">{{ shell.description }}</p>
+    <p v-if="!focused" class="mt-2 text-[13px] moh-text-muted"><NuxtLink :to="`/g/${encodeURIComponent(shell.slug)}/members`" class="moh-focus hover:underline">{{ shell.memberCount.toLocaleString() }} members</NuxtLink> · {{ shell.joinPolicy === 'open' ? 'Verified members can read' : 'Members only' }}</p>
+    <div v-if="!focused" class="mt-4 flex items-center gap-2"><Button label="Post to group" class="flex-1 !bg-[var(--moh-group)] !border-[var(--moh-group)] !text-white" @click="$emit('post')" /><Button label="About" severity="secondary" @click="aboutOpen = true" /><Button aria-label="Group notification preferences" text severity="secondary" @click="preferencesOpen = true"><template #icon><Icon name="tabler:bell" /></template></Button></div>
+    <NuxtLink v-if="isAdminViewer && pendingMemberCount" :to="`/g/${encodeURIComponent(shell.slug)}/pending`" class="moh-focus mt-3 inline-flex min-h-11 items-center text-sm">{{ pendingMemberCount }} pending join requests</NuxtLink>
+  </section>
+  <AppGroupsGroupSwitcherDialog v-model="switcherOpen" :current-group-id="shell.id" />
+  <AppGroupsGroupNotificationPreferences v-if="isMember" v-model="preferencesOpen" :group="shell" />
+  <Dialog v-model:visible="aboutOpen" modal header="About this group" :style="{ width: '680px', maxWidth: 'calc(100vw - 24px)' }">
+    <AppGroupsGroupAbout :shell="shell" @avatar="emitOpenAvatar($event)" @banner="emitOpenBanner($event)" />
+    <div class="mt-4 flex flex-wrap gap-2">
+      <Button v-if="isAdminViewer" label="Invite members" @click="$emit('invite')" />
+      <Button v-if="canEdit" label="Edit group" severity="secondary" @click="$emit('edit')" />
+      <NuxtLink v-if="isMember" :to="`/g/${encodeURIComponent(shell.slug)}/settings`" class="moh-focus inline-flex min-h-11 items-center px-3 text-sm">{{ isAdminViewer ? 'Manage group' : 'Group settings' }}</NuxtLink>
+      <Button label="Notification preferences" text @click="preferencesOpen = true" />
+      <Button label="Share group" text @click="shareGroup" />
+      <Button label="Copy invite link" text @click="copyGroupLink" />
+      <Button v-if="canLeave" label="Leave group" text severity="danger" :loading="leaveBusy" @click="onLeaveClick" />
+    </div>
+  </Dialog>
   <!-- Full-bleed group header (same shell pattern as profile: banner + overlapping avatar + max-w-3xl meta). -->
-  <div class="relative w-full">
+  <div v-if="!isMember" class="relative w-full">
     <div class="relative">
       <div class="group relative aspect-[3.25/1] w-full overflow-hidden bg-gray-200 dark:bg-zinc-900">
         <img
@@ -367,6 +392,7 @@ import { tinyTooltip } from '~/utils/tiny-tooltip'
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 
 const props = withDefaults(defineProps<{
+  focused?: boolean
   shell: CommunityGroupShell
   isMember: boolean
   isOwner?: boolean
@@ -411,13 +437,12 @@ const emit = defineEmits<{
       originRect?: { left: number; top: number; width: number; height: number }
     },
   ): void
-  (e: 'edit'): void
-  (e: 'invite'): void
-  (e: 'join'): void
-  (e: 'leave'): void
-  (e: 'cancel-request'): void
+  (e: 'post' | 'edit' | 'invite' | 'join' | 'leave' | 'cancel-request'): void
 }>()
 
+const switcherOpen = ref(false)
+const aboutOpen = ref(false)
+const preferencesOpen = ref(false)
 const avatarRoundClass = groupAvatarRoundClass()
 const avatarWrapperRef = ref<HTMLElement | null>(null)
 const { confirm } = useAppConfirm()

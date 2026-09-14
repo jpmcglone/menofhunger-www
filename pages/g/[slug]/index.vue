@@ -27,6 +27,8 @@
           :hide-avatar-during-banner="hideAvatarDuringBanner"
           :viewer-is-logged-in="isAuthed"
           :viewer-is-verified="isVerified"
+          :focused="focusedNewActivity"
+          @post="openGroupComposer"
           @join="doJoin"
           @leave="doLeave"
           @cancel-request="doCancelRequest"
@@ -112,29 +114,13 @@
           </div>
         </div>
 
-        <div v-if="isMember" class="border-b moh-border">
-          <AppPostComposer
-            :allowed-visibilities="['public']"
-            locked-visibility="public"
-            hide-visibility-picker
-            group-composer
-            :group-name="shell?.name"
-            :community-group-id="shell?.id ?? null"
-            disable-poll
-            :persist-key="shell ? `group-${shell.id}` : 'group-draft'"
-            :register-unsaved-guard="false"
-            placeholder="Post to this group…"
-            show-divider
-            @pending="onGroupComposerPending"
-          />
-        </div>
         <!--
           Open-group reader CTA: verified, signed-in non-members can read the
           feed but cannot post until they join. Keep the bar compact so the
           feed below still leads.
         -->
         <div
-          v-else-if="canReadFeed"
+          v-if="!isMember && canReadFeed"
           class="flex items-center justify-between gap-3 border-b moh-border px-4 py-3"
         >
           <p class="text-sm moh-text-muted">
@@ -163,6 +149,9 @@
         </div>
 
         <template v-if="canReadFeed">
+          <NuxtLink v-if="pinnedGroupPost && !focusedNewActivity" :to="`/p/${pinnedGroupPost.id}`" class="moh-focus moh-surface-hover moh-gutter-x flex min-h-14 items-center gap-3 border-b moh-border">
+            <Icon name="tabler:pin" class="shrink-0 moh-text-muted" /><span class="min-w-0"><span class="block text-xs moh-text-muted">Pinned in this group</span><span class="block truncate text-sm">{{ pinnedGroupPost.body || 'View pinned post' }}</span></span><Icon name="tabler:chevron-right" class="ml-auto shrink-0" />
+          </NuxtLink>
           <!-- Filter bar (sort only, no visibility) -->
           <div class="flex items-center justify-between px-3 py-1 border-b border-gray-200 dark:border-zinc-800">
             <NuxtLink
@@ -212,6 +201,15 @@
           </div>
           <div ref="groupFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
+        <div v-if="isMember" ref="newActivityAnchor" class="scroll-mt-20">
+          <div v-if="groupActivity?.newPostCount && !focusedNewActivity" class="moh-gutter-x flex min-h-[68px] items-center justify-between gap-3 bg-[var(--moh-surface-1)]">
+            <span class="text-sm font-semibold">{{ groupActivity.newPostCount }} new {{ groupActivity.newPostCount === 1 ? 'post' : 'posts' }}</span><Button label="View new" text severity="secondary" @click="viewNewActivity" />
+          </div>
+
+          <p v-if="groupActivity && !groupActivity.newPostCount" class="moh-gutter-x py-3 moh-meta">You’re up to date</p>
+          <div v-if="activityError" class="moh-gutter-x py-3" role="alert"><span class="moh-meta">{{ activityError }}</span><Button label="Try again" text @click="loadGroupActivity" /></div>
+        </div>
+
           <!-- ─── Posts tab (top-level only) ─────────────────────────────── -->
           <div v-if="tabActivated.posts" v-show="activeGroupTab === 'posts'" class="min-h-[75vh]">
             <AppInlineAlert v-if="postsFeedError" class="moh-gutter-x mt-3" severity="danger">
@@ -219,13 +217,15 @@
             </AppInlineAlert>
             <AppSubtleSectionLoader :loading="postsFeedLoading && !postsFeedPosts.length" min-height-class="min-h-[200px]">
               <div v-if="!postsFeedPosts.length && !postsFeedLoading" class="px-3 py-6 text-sm moh-text-muted sm:px-4">
-                No posts yet. Start the thread above.
+                No posts yet.
+                <Button v-if="isMember" label="Start a conversation" text @click="openGroupComposer" />
               </div>
               <div v-else class="relative mt-3">
                 <template v-for="item in postsFeedDisplayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
                   <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
+                  <p v-if="item.kind !== 'ad' && focusedNewActivity && item.post.id === firstNewPostId" ref="firstNewPostAnchor" class="moh-gutter-x py-3 text-xs font-semibold uppercase moh-text-muted">New since your last visit</p>
                   <AppFeedPostRow
-                    v-else
+                    v-if="item.kind !== 'ad'"
                     :post="item.post"
                     collapse-ancestors
                     :group-wall="shell && isOwner ? { groupId: shell.id, viewerIsOwner: true } : null"
@@ -314,7 +314,7 @@
                       :alt="item.kind === 'video' ? 'Video' : 'Photo'"
                       class="absolute inset-0 h-full w-full object-cover moh-img-outline"
                       loading="lazy"
-                    />
+                    >
                     <div v-if="item.kind === 'video'" class="absolute inset-0 flex items-center justify-center">
                       <div class="rounded-full bg-black/50 p-2">
                         <Icon name="tabler:player-play-filled" class="text-white text-lg" aria-hidden="true" />
@@ -356,14 +356,14 @@ import { useGroupMedia } from '~/composables/useGroupMedia'
 import type { GroupFeedCallback } from '~/composables/usePresence'
 import { applyCommunityGroupJoin, communityGroupJoinToast } from '~/utils/community-group-preview'
 import { getApiErrorMessage } from '~/utils/api-error'
-import { MOH_GROUP_COMPOSER_KEY } from '~/utils/injection-keys'
+import { MOH_GROUP_COMPOSER_KEY, MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 import { siteConfig } from '~/config/site'
 
 const route = useRoute()
 const { apiFetchData } = useApiClient()
 const { invalidate: invalidateMyGroups } = useMyGroups()
 const { isAuthed, isVerified, user: authUser } = useAuth()
-const { markReadBySubject, markGroupPostsSeen } = useNotifications()
+const { markReadBySubject } = useNotifications()
 const { setPendingGroupJoin, pendingSlug: pendingGroupSlug } = usePendingGroupJoin()
 const { push: pushToast } = useAppToast()
 
@@ -425,6 +425,8 @@ async function loadShell() {
 
 const { header: appHeader } = useAppHeader()
 
+const openComposer = inject(MOH_OPEN_COMPOSER_KEY, undefined)
+function openGroupComposer() { if (isMember.value) openComposer?.({ communityGroupId: shell.value!.id }) }
 const joinBusy = ref(false)
 const leaveBusy = ref(false)
 const cancelBusy = ref(false)
@@ -979,6 +981,8 @@ const groupFeedCb: GroupFeedCallback = {
     const viewerId = authUser.value?.id ?? null
     if (authorId && viewerId && authorId === viewerId) return
     prependLiveGroupPost(payload.post)
+    focusedNewActivity.value = false
+    void loadGroupActivity()
   },
 }
 
@@ -1014,17 +1018,56 @@ function stopGroupRealtime() {
 // Re-target the room when the group id resolves or the viewer's read access changes.
 watch([groupFeedEnabled, () => shell.value?.id], () => syncGroupRealtimeSubscription())
 
-// ─── Notification read-mark ───────────────────────────────────────────────────
-watch(
-  () => shell.value?.id ?? null,
-  (groupId) => {
-    if (!import.meta.client) return
-    if (!groupId) return
-    void markReadBySubject({ group_id: groupId })
-    void markGroupPostsSeen(groupId)
-  },
-  { immediate: true },
-)
+// Snapshot before acknowledging the visit; arrivals after this timestamp stay new.
+const groupActivity = ref<import('~/types/api').GroupActivity | null>(null)
+const activityError = ref<string | null>(null)
+const focusedNewActivity = ref(false)
+const newActivityAnchor = ref<HTMLElement | null>(null)
+const firstNewPostAnchor = ref<HTMLElement[]>([])
+const pinnedGroupPost = computed(() => postsFeedPosts.value.find(post => post.pinnedInGroupAt))
+const firstNewPostId = computed(() => postsFeedPosts.value.find(post => groupActivity.value?.newPostIds.includes(post.id))?.id)
+const acknowledgedActivity = new Set<string>()
+async function loadGroupActivity() {
+  const groupId = shell.value?.id
+  if (!groupId || !isMember.value) return
+  activityError.value = null
+  try {
+    const snapshot = await apiFetchData<import('~/types/api').GroupActivity>(`/groups/${encodeURIComponent(groupId)}/activity`)
+    if (shell.value?.id !== groupId) return
+    groupActivity.value = snapshot
+    if (!postsFeedLoading.value && !postsFeedError.value && postsFeedPosts.value.length) await acknowledgeGroupActivity(snapshot)
+  } catch { activityError.value = 'Couldn’t check new activity.' }
+}
+async function viewNewActivity() {
+  if (!groupActivity.value || focusedNewActivity.value) return
+  const snapshot = groupActivity.value
+  groupSort.value = 'new'
+  setGroupTab('posts')
+  await postsFeedRefresh()
+  if (postsFeedError.value || shell.value?.id !== snapshot.groupId) return
+  focusedNewActivity.value = true
+  await nextTick()
+  const anchor = firstNewPostAnchor.value[0] ?? newActivityAnchor.value
+  anchor?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  await acknowledgeGroupActivity(snapshot)
+}
+async function acknowledgeGroupActivity(snapshot: import('~/types/api').GroupActivity) {
+  if (acknowledgedActivity.has(snapshot.through)) return
+  acknowledgedActivity.add(snapshot.through)
+  try {
+    await apiFetchData(`/notifications/groups/${encodeURIComponent(snapshot.groupId)}/mark-delivered`, { method: 'POST', body: { through: snapshot.through } })
+  } catch { acknowledgedActivity.delete(snapshot.through); activityError.value = 'Couldn’t update your activity status. Try again.' }
+}
+watch([postsFeedLoading, () => postsFeedPosts.value.length], () => {
+  if (!postsFeedLoading.value && !postsFeedError.value && postsFeedPosts.value.length && groupActivity.value) void acknowledgeGroupActivity(groupActivity.value)
+})
+watch(() => shell.value?.id, () => {
+  groupActivity.value = null; focusedNewActivity.value = false
+  if (import.meta.client && isMember.value) {
+    void loadGroupActivity()
+    void markReadBySubject({ group_id: shell.value!.id })
+  }
+}, { immediate: true })
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(() => {

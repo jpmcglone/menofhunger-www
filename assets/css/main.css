@@ -205,11 +205,11 @@ html.dark .moh-vignette::after {
   --moh-status-rgb: 124, 58, 237;
   --moh-status-soft: rgba(124, 58, 237, 0.10);
 
-  /* Community groups (cyan / baby-blue — distinct from verified blue). */
-  --moh-group: #0ea5e9;
-  --moh-group-rgb: 14, 165, 233;
-  --moh-group-soft: rgba(14, 165, 233, 0.14);
-  --moh-group-ring: rgba(14, 165, 233, 0.35);
+  /* Group posting shares the verified audience accent. */
+  --moh-group: var(--moh-verified);
+  --moh-group-rgb: var(--moh-verified-rgb);
+  --moh-group-soft: var(--moh-verified-soft);
+  --moh-group-ring: var(--moh-verified-ring);
 
   /* Lodge accent (brass) — used sparingly for focus + subtle highlights */
   --moh-brass: #a37422;
@@ -271,10 +271,10 @@ html.dark {
   --moh-org-ring: rgba(185, 192, 204, 0.22);
   --moh-org-soft: rgba(185, 192, 204, 0.10);
 
-  --moh-group: #38bdf8;
-  --moh-group-rgb: 56, 189, 248;
-  --moh-group-soft: rgba(56, 189, 248, 0.14);
-  --moh-group-ring: rgba(56, 189, 248, 0.32);
+  --moh-group: var(--moh-verified);
+  --moh-group-rgb: var(--moh-verified-rgb);
+  --moh-group-soft: var(--moh-verified-soft);
+  --moh-group-ring: var(--moh-verified-ring);
 
   /* Media tile system — dark mode: transparent letterbox so the frame is
      "clear" and only the media shows. Radius set in :root. */
