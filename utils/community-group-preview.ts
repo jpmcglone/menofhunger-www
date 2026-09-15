@@ -68,14 +68,13 @@ export function applyCommunityGroupJoin<T extends JoinableGroup>(group: T, statu
   const pending = status === 'pending'
   const active = status === 'active'
   const alreadyActive = group.viewerMembership?.status === 'active'
-  const alreadyPending = group.viewerPendingApproval
   return {
     ...group,
     viewerMembership: active
       ? { status: 'active', role: group.viewerMembership?.role ?? 'member' }
       : null,
     viewerPendingApproval: pending,
-    memberCount: active && !alreadyActive && !alreadyPending
+    memberCount: active && !alreadyActive
       ? group.memberCount + 1
       : group.memberCount,
   }

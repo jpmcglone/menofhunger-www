@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import Results from '~/components/app/ExploreSearchResults.vue'
 import GroupCard from '~/components/app/groups/AppGroupPreviewCard.vue'
+import { applyCommunityGroupJoin } from '~/utils/community-group-preview'
 import type { CommunityGroupPreview, SearchUserResult } from '~/types/api'
 
 mockNuxtImport('useAuth', () => () => ({ isAuthed: ref(true), isVerifiedMember: ref(true) }))
@@ -66,4 +67,14 @@ describe('compact group discovery', () => {
       expect(wrapper.findAll('a').some(a => a.text() === 'View group')).toBe(true)
     } finally { wrapper.unmount() }
   })
+})
+
+
+it('counts an approved member once and preserves an existing owner role', () => {
+  const group = { memberCount: 4, viewerPendingApproval: true, viewerMembership: null }
+  const joined = applyCommunityGroupJoin(group, 'active')
+  expect(joined.memberCount).toBe(5)
+  expect(applyCommunityGroupJoin(joined, 'active').memberCount).toBe(5)
+  const owner = { ...joined, viewerMembership: { status: 'active' as const, role: 'owner' as const } }
+  expect(applyCommunityGroupJoin(owner, 'active').viewerMembership?.role).toBe('owner')
 })
