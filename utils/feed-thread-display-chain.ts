@@ -144,10 +144,20 @@ export function buildThreadDisplayChain<T extends ThreadSeenAwareItem>(
   return out
 }
 
-/** Screen-reader + inline label for a collapsed ancestor gap (one dot per hidden post). */
+/** Screen-reader + inline label for a collapsed ancestor gap. Always the true count. */
 export function hiddenThreadGapLabel(hiddenCount: number): string {
   const n = Math.max(1, Math.floor(hiddenCount))
   return n === 1 ? '1 reply' : `${n} replies`
+}
+
+/** Visual marks on the collapsed-replies rail. Cap at 5; overflow puts a plus in the center. */
+export const THREAD_GAP_RAIL_MAX_DOTS = 5
+export type ThreadGapRailMark = 'dot' | 'plus'
+
+export function threadGapRailMarks(hiddenCount: number): ThreadGapRailMark[] {
+  const n = Math.max(0, Math.floor(hiddenCount))
+  if (n <= THREAD_GAP_RAIL_MAX_DOTS) return Array.from({ length: n }, () => 'dot')
+  return ['dot', 'dot', 'plus', 'dot', 'dot']
 }
 
 /** Post rendered immediately below a gap in the display chain (gap tap target). */

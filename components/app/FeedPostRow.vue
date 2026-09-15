@@ -79,7 +79,7 @@
     @mouseleave="onMouseLeave"
   >
     <template v-for="(entry, displayIndex) in displayChain" :key="entry.kind === 'post' ? entry.item.id : entry.key">
-      <!-- Collapsed run of hidden ancestors: one dot per hidden post, inset between thread lines. -->
+      <!-- Collapsed run of hidden ancestors: up to 5 dots; center plus when more. -->
       <div
         v-if="entry.kind === 'gap'"
         class="relative moh-gutter-x moh-post-row flex cursor-pointer items-center gap-3 py-1 transition-colors moh-surface-hover"
@@ -99,13 +99,23 @@
           aria-hidden="true"
         />
         <div class="relative z-[2] flex w-10 shrink-0 flex-col items-center justify-center gap-[3px]" aria-hidden="true">
-          <span
-            v-for="n in entry.hiddenCount"
-            :key="n"
-            class="h-[3px] w-[3px] shrink-0 rounded-full"
-            :class="gapDotBgClass"
-            :style="gapDotStyle"
-          />
+          <template v-for="(mark, markIndex) in threadGapRailMarks(entry.hiddenCount)" :key="markIndex">
+            <span
+              v-if="mark === 'dot'"
+              class="h-[3px] w-[3px] shrink-0 rounded-full"
+              :class="gapDotBgClass"
+              :style="gapDotStyle"
+            />
+            <span
+              v-else
+              class="relative h-[5px] w-[5px] shrink-0"
+              :class="gapPlusColorClass"
+              :style="gapPlusStyle"
+            >
+              <span class="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-current" />
+              <span class="absolute top-1/2 left-0 h-px w-full -translate-y-1/2 bg-current" />
+            </span>
+          </template>
         </div>
         <p class="relative z-[2] flex items-center gap-2 text-xs font-medium">
           <AppAvatarFacepile
@@ -164,7 +174,7 @@
 <script setup lang="ts">
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import type { FeedThreadDisplayPost } from '~/utils/merge-feed-threads-for-display'
-import { buildThreadDisplayChain, hiddenThreadGapLabel, postAfterGapInDisplayChain } from '~/utils/feed-thread-display-chain'
+import { buildThreadDisplayChain, hiddenThreadGapLabel, postAfterGapInDisplayChain, threadGapRailMarks } from '~/utils/feed-thread-display-chain'
 import { replyAuthorsFromFeedPost, uniqueReplyAuthorsFromPosts } from '~/utils/thread-reply-authors'
 import { isPendingLocalId } from '~/composables/usePendingPostsManager'
 
@@ -301,6 +311,15 @@ const gapDotStyle = computed(() => {
 
 const gapDotBgClass = computed(() =>
   gapTintColor.value ? '' : 'bg-[var(--moh-thread-line)]',
+)
+
+const gapPlusStyle = computed(() => {
+  const color = gapTintColor.value
+  return color ? { color } : undefined
+})
+
+const gapPlusColorClass = computed(() =>
+  gapTintColor.value ? '' : 'text-[var(--moh-thread-line)]',
 )
 
 const gapLabelStyle = computed(() => {

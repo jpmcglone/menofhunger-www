@@ -5,7 +5,7 @@ import type { FeedPost } from '~/types/api'
 import { usePostsFeed } from '~/composables/usePostsFeed'
 import { useUserPosts } from '~/composables/useUserPosts'
 import { mergeFeedThreadsForDisplay } from '~/utils/merge-feed-threads-for-display'
-import { buildThreadDisplayChain, hiddenThreadGapLabel, postAfterGapInDisplayChain } from '~/utils/feed-thread-display-chain'
+import { buildThreadDisplayChain, hiddenThreadGapLabel, postAfterGapInDisplayChain, threadGapRailMarks } from '~/utils/feed-thread-display-chain'
 
 async function runInSetup<T>(fn: () => T): Promise<T> {
   let result: T | null = null
@@ -476,6 +476,17 @@ describe('hiddenThreadGapLabel', () => {
   it('pluralizes collapsed ancestor copy', () => {
     expect(hiddenThreadGapLabel(1)).toBe('1 reply')
     expect(hiddenThreadGapLabel(4)).toBe('4 replies')
+    expect(hiddenThreadGapLabel(26)).toBe('26 replies')
+  })
+})
+
+describe('threadGapRailMarks', () => {
+  it('uses one dot per reply up to 5, then a center plus', () => {
+    expect(threadGapRailMarks(0)).toEqual([])
+    expect(threadGapRailMarks(3)).toEqual(['dot', 'dot', 'dot'])
+    expect(threadGapRailMarks(5)).toEqual(['dot', 'dot', 'dot', 'dot', 'dot'])
+    expect(threadGapRailMarks(6)).toEqual(['dot', 'dot', 'plus', 'dot', 'dot'])
+    expect(threadGapRailMarks(26)).toEqual(['dot', 'dot', 'plus', 'dot', 'dot'])
   })
 })
 
