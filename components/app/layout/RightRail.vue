@@ -22,6 +22,14 @@
         showRadioChat ? 'h-full' : '',
       ]"
     >
+      <ClientOnly>
+        <AppExploreRail
+          v-if="route.path === '/explore' && !showRadioChat"
+          :topics="exploreRailContent.topics"
+          :categories="exploreRailContent.categories"
+          @interests="requestExploreInterests"
+        />
+      </ClientOnly>
       <Transition
         mode="out-in"
         enter-active-class="transition-[opacity,transform] duration-200 ease-out"
@@ -35,14 +43,14 @@
           <AppRadioLiveChatPanel class="flex-1 min-h-0" />
         </div>
 
-        <div v-else key="rightRailDefault">
+        <div v-else-if="route.path !== '/explore'" key="rightRailDefault">
           <AppRightRailContent v-if="hydrated && secondaryLoadsEnabled">
           <AppOperatorSwitchRailCard v-if="isPageAccount" class="mt-4 mb-4" />
 
           <!-- Daily quote: links to /daily/quote; dims when on /daily or /daily/quote -->
           <component
-            v-if="!isPageAccount"
             :is="isOnDailyQuoteRoute ? 'div' : NuxtLink"
+            v-if="!isPageAccount"
             :to="isOnDailyQuoteRoute ? undefined : '/daily/quote'"
             class="block transition-opacity duration-200"
             :class="isOnDailyQuoteRoute ? 'opacity-40' : 'hover:opacity-75'"
@@ -246,7 +254,7 @@ import { siteConfig } from '~/config/site'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { ClientOnly, NuxtLink } from '#components'
-import type { DailyContentToday, DailyQuote } from '~/types/api'
+import type { DailyQuote } from '~/types/api'
 
 const props = defineProps<{
   /** A modal overlay is open — freeze the rail's own scrolling. */
@@ -264,9 +272,9 @@ const { openShortcutsModal } = useKeyboardShortcuts()
 const currentYear = new Date().getUTCFullYear()
 
 const route = useRoute()
+const { content: exploreRailContent, requestInterests: requestExploreInterests } = useExploreRail()
 const { initialFeedResolved } = useHomeLoadState()
 const secondaryLoadsEnabled = computed(() => route.path !== '/home' || initialFeedResolved.value)
-const isOnDailyRoute = computed(() => route.path === '/daily' || route.path.startsWith('/daily/'))
 const isOnDailyQuoteRoute = computed(() => route.path === '/daily' || route.path === '/daily/quote')
 const isOnDailyWordRoute = computed(() => route.path === '/daily' || route.path === '/daily/word')
 

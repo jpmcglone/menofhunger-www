@@ -1,5 +1,18 @@
 <template>
-  <div class="relative overflow-hidden rounded-2xl moh-popover moh-card-matte">
+  <div v-if="compact" class="rounded-xl border moh-border moh-surface p-4 space-y-3">
+    <NuxtLink :to="groupPath" class="flex min-h-11 items-center gap-3 moh-focus" @click="onNavigate">
+      <AppGroupsGroupAvatar :name="preview.name" :src="preview.avatarImageUrl" :size="28" accented />
+      <span class="min-w-0 font-semibold moh-text text-[15px] break-words">{{ preview.name }}</span>
+    </NuxtLink>
+    <p v-if="preview.descriptionPreview" class="text-[15px] moh-text-muted line-clamp-2">{{ preview.descriptionPreview }}</p>
+    <div class="flex items-center gap-3">
+      <p class="min-w-0 flex-1 text-[13px] moh-text-muted">{{ preview.memberCount.toLocaleString() }} {{ preview.memberCount === 1 ? 'member' : 'members' }} · {{ preview.joinPolicy === 'approval' ? 'Approval required' : 'Open group' }}</p>
+      <Button v-if="showJoin && preview.viewerPendingApproval" label="Request pending" severity="secondary" rounded disabled />
+      <NuxtLink v-else-if="showJoin && preview.viewerMembership?.status === 'active'" :to="groupPath" class="inline-flex min-h-11 items-center rounded-full border moh-border px-4 text-sm font-semibold moh-focus" @click="onNavigate">View group</NuxtLink>
+      <Button v-else-if="showJoin" :label="isVerifiedMember ? (preview.joinPolicy === 'approval' ? 'Request to join' : 'Join group') : 'Get verified'" rounded :loading="joinBusy" :disabled="joinBusy" class="!bg-[var(--moh-verified)] !border-[var(--moh-verified)] !text-white min-h-11" @click="isVerifiedMember ? $emit('join') : navigateTo('/tiers')" />
+    </div>
+  </div>
+  <div v-else class="relative overflow-hidden rounded-2xl moh-popover moh-card-matte">
     <div class="relative">
       <div class="relative aspect-[3/1] w-full moh-surface">
         <img
@@ -109,6 +122,7 @@ const props = withDefaults(
   defineProps<{
     preview: CommunityGroupPreview
     showJoin?: boolean
+    compact?: boolean
     joinBusy?: boolean
   }>(),
   { showJoin: false },
@@ -118,6 +132,7 @@ defineEmits<{
   (e: 'join'): void
 }>()
 
+const { isVerifiedMember } = useAuth()
 const avatarRoundClass = groupAvatarRoundClass()
 
 const groupPath = computed(() => `/g/${encodeURIComponent(props.preview.slug)}`)

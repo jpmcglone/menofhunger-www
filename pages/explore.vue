@@ -1,17 +1,29 @@
 <template>
   <AppPageContent bottom="standard">
-  <div class="w-full">
+  <div class="w-full explore-page">
     <!-- Sticky search bar (replaces layout title bar) -->
     <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
-      <div class="px-4 py-3">
-        <AppSearchTypeahead
-          ref="searchInputRef"
-          v-model="searchQuery"
-          placeholder="Search…"
-          :pill="true"
-          @submit="flushDebounceAndSearch"
-        />
+      <div class="px-4 py-4 sm:px-6 sm:py-6 space-y-3">
+        <h1 class="text-[28px] leading-9 font-semibold moh-text">{{ isSearching || searchActive ? 'Search' : 'Explore' }}</h1>
+        <p v-if="!isSearching && !searchActive" class="text-[15px] moh-text-muted">Find your people. Find your next conversation.</p>
+        <div class="flex items-center gap-2">
+          <AppSearchTypeahead
+ref="searchInputRef" v-model="searchQuery" class="min-w-0 flex-1"
+            placeholder="Search people, groups, posts…" pill inline-recents
+            @focus="beginSearch" @submit="flushDebounceAndSearch" />
+          <Button v-if="isSearching || searchActive" label="Cancel" text severity="secondary" @click="cancelSearch" />
+        </div>
       </div>
+      <nav v-if="isSearching" aria-label="Search categories" class="flex overflow-x-auto no-scrollbar">
+        <NuxtLink
+v-for="tab in searchTabs" :key="tab.key"
+          :to="{ path: route.path, query: { ...route.query, tab: tab.key === 'all' ? undefined : tab.key } }"
+          :aria-current="searchTab === tab.key ? 'page' : undefined"
+          class="min-h-12 shrink-0 px-5 py-3 text-sm font-semibold border-b-[3px] moh-focus"
+          :class="searchTab === tab.key ? 'border-[var(--moh-marv)] text-[var(--moh-marv)]' : 'border-transparent moh-text-muted'">
+          {{ tab.label }}
+        </NuxtLink>
+      </nav>
     </div>
 
     <div class="pt-4 pb-0 sm:pb-4 space-y-4">
@@ -43,118 +55,23 @@
 
     <!-- Search results -->
       <template v-if="isSearching">
-        <div v-if="searchError" class="px-4">
-          <AppInlineAlert severity="danger">
-            {{ searchError }}
-          </AppInlineAlert>
-        </div>
-
-        <div
-          v-else-if="loading && interleaved.length === 0"
-          class="flex justify-center py-12"
-        >
-          <AppLogoLoader />
-        </div>
-
-        <!-- Results: list edge to edge (no margin) -->
-        <div v-else-if="interleaved.length > 0" class="space-y-0">
-          <p class="mb-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">
-            Searching for: <span class="font-semibold">{{ searchQueryTrimmed }}</span>
-          </p>
-          <div v-if="tagSuggestions.length > 0" class="mb-3 px-4">
-            <div class="flex flex-wrap items-center gap-1.5 rounded-xl border moh-border bg-gray-50/60 dark:bg-zinc-900/40 px-3 py-2">
-              <span class="text-xs moh-text-muted">Topics:</span>
-              <NuxtLink
-                v-for="t in tagSuggestions.slice(0, 5)"
-                :key="t.slug"
-                :to="`/topics/${encodeURIComponent(t.slug)}`"
-                class="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
-              >
-                {{ t.label }}
-                <span class="text-[10px] text-gray-400 dark:text-zinc-500 uppercase">{{ t.kind }}</span>
-              </NuxtLink>
-            </div>
-          </div>
-          <TransitionGroup name="moh-post" tag="div" class="space-y-0">
-            <template
-              v-for="item in interleaved"
-              :key="item.kind === 'user' ? `u-${item.user.id}` : item.kind === 'article' ? `a-${item.article.id}` : item.kind === 'group' ? `g-${item.group.id}` : `p-${item.post.id}`"
-            >
-              <AppUserRow
-                v-if="item.kind === 'user'"
-                :user="item.user"
-                :show-follow-button="true"
-              />
-              <AppGroupPreviewCard
-                v-else-if="item.kind === 'group'"
-                class="mx-4 mb-3"
-                :preview="shellToGroupPreview(item.group)"
-                :show-join="isAuthed"
-                :join-busy="joinExploreGroupId === item.group.id"
-                @join="joinExploreGroup(item.group)"
-              />
-              <AppArticleListCard
-                v-else-if="item.kind === 'article'"
-                :article="item.article"
-              />
-              <AppFeedPostRow
-                v-else
-                :post="item.post"
-                collapse-ancestors
-                @deleted="onSearchPostDeleted"
-                @edited="onSearchPostEdited"
-              />
-            </template>
-          </TransitionGroup>
-          <!-- Gated results upsell -->
-          <div
-            v-if="!loadingMore && !hasMore && gatedResultCount > 0 && !isAuthed"
-            class="mx-4 my-3 rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-3 text-center"
-          >
-            <p class="text-sm moh-text-muted">
-              <span class="font-semibold text-gray-800 dark:text-gray-200">{{ gatedResultCount }} more result{{ gatedResultCount === 1 ? '' : 's' }}</span>
-              for verified members.
-              <NuxtLink to="/tiers" class="ml-1 font-medium text-[var(--p-primary-color)] hover:underline underline-offset-2">Upgrade to see them →</NuxtLink>
-            </p>
-          </div>
-
-        <div v-if="loadingMore" class="flex justify-center py-6 px-4">
-            <AppLogoLoader />
-          </div>
-          <div v-else-if="hasMore" class="flex justify-center py-4 px-4">
-            <Button
-              label="Load more"
-              severity="secondary"
-              :loading="loadingMore"
-              :disabled="loadingMore"
-              @click="loadMore"
-            />
-          </div>
-        </div>
-
-        <div v-else-if="searchedOnce && !loading" class="px-4">
-          <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center">
-            <p class="text-sm moh-text-muted">
-              No people, groups, articles, or posts found for “{{ searchQueryTrimmed }}”.
-            </p>
-            <div
-              v-if="isCheckinQuery && canShowSearchCheckinHint"
-              class="mt-4 rounded-lg border moh-border bg-white/70 dark:bg-zinc-900/50 p-3 text-left"
-            >
-              <AppCheckinPromptContext :prompt="displayCheckinPromptText" compact />
-              <div class="mt-3 flex justify-end">
-                <Button
-                  :label="hasCheckedInToday ? 'See answers' : 'Answer'"
-                  size="small"
-                  rounded
-                  class="moh-btn-tone !border-[var(--moh-checkin)] !bg-[var(--moh-checkin)] !text-white"
-                  @click="hasCheckedInToday ? goToCheckinsFeed() : openCheckinComposer()"
-                />
-              </div>
-            </div>
-          </div>
+        <AppExploreSearchResults
+:users="users" :groups="searchGroups" :posts="posts" :articles="articles"
+          :category="searchTab" :query="searchQueryTrimmed" :loading="loading" :error="searchError"
+          :searched="searchedOnce" :has-more="hasMore" :loading-more="loadingMore"
+          :gated-count="gatedResultCount" :joining-id="joinExploreGroupId" :topics="tagSuggestions"
+          @category="selectSearchTab" @retry="fetchPage({ append: users.length + posts.length + articles.length + searchGroups.length > 0 })" @more="loadMore"
+          @clear="clearSearch" @join="joinExploreGroup" @deleted="onSearchPostDeleted" @edited="onSearchPostEdited" />
+        <div v-if="isCheckinQuery && canShowSearchCheckinHint" class="px-4 py-3">
+          <AppCheckinPromptContext :prompt="displayCheckinPromptText" compact />
+          <Button
+:label="hasCheckedInToday ? 'See answers' : 'Answer'" text
+            @click="hasCheckedInToday ? goToCheckinsFeed() : openCheckinComposer()" />
         </div>
       </template>
+      <AppExploreRecentSearches
+v-else-if="searchActive && !activeTopic && !activeCategory"
+        @submit="flushDebounceAndSearch" @browse="browseSearchCategory" />
 
       <!-- Topic mode (set by clicking a topic chip) -->
       <template v-else-if="activeTopic">
@@ -254,7 +171,7 @@
                 v-for="t in categoryTopicsUi"
                 :key="`ct-${t.value}`"
                 type="button"
-                class="h-9 px-3 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
+                class="min-h-11 px-4 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
                 @click="selectTopicInCategory(t.value)"
               >
                 {{ t.label }}
@@ -335,35 +252,6 @@
           </div>
         </div>
 
-        <section v-if="shouldRenderCheckinSection" class="space-y-3">
-          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
-            Daily check-in
-          </h2>
-          <AppFeedDailyCheckinCard
-            v-if="showExploreCheckinCard"
-            :prompt="displayCheckinPromptText"
-            :streak="displayCheckinStreak"
-            :has-checked-in-today="hasCheckedInToday"
-            :error="checkinError"
-            @check-in="openCheckinComposer"
-          />
-          <div v-else-if="checkinLoading" class="flex justify-center py-6">
-            <AppLogoLoader />
-          </div>
-        </section>
-
-        <!-- Verify-to-check-in CTA for authed-but-unverified users. Check-ins are
-             verified-only, so we drive verification instead of the live card.
-             Client-only (ClientOnly) so SSR stays empty and avoids hydration mismatch. -->
-        <ClientOnly>
-          <section v-if="didAttempt && isAuthed && !isPageAccount && !canAccessCheckins" class="space-y-3">
-            <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
-              Daily check-in
-            </h2>
-            <AppFeedDailyCheckinHero :prompt="verifyCtaPrompt" verify-cta />
-          </section>
-        </ClientOnly>
-
         <!-- Followed topics -->
         <section v-if="isAuthed && followedTopicsUi.length > 0" class="space-y-3">
           <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
@@ -375,7 +263,7 @@
                 v-for="t in followedTopicsUi"
                 :key="`ft-${t.value}`"
                 type="button"
-                class="h-9 px-3 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
+                class="min-h-11 px-4 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
                 @click="selectTopic(t.value)"
               >
                 {{ t.label }}
@@ -384,30 +272,11 @@
           </AppHorizontalScroller>
         </section>
 
-        <!-- Trending hashtags strip -->
-        <section v-if="trendingHashtags.length > 0" class="space-y-2.5">
-          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
-            Trending topics
-          </h2>
-          <AppHorizontalScroller scroller-class="no-scrollbar px-4">
-            <div class="flex gap-2 pb-2">
-              <NuxtLink
-                v-for="tag in trendingHashtags.slice(0, 12)"
-                :key="tag.value"
-                :to="`/explore?q=${encodeURIComponent('#' + tag.value)}`"
-                class="h-9 px-3 shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
-              >
-                <span class="text-[var(--p-primary-color)]">#</span>{{ tag.label }}
-              </NuxtLink>
-            </div>
-          </AppHorizontalScroller>
-        </section>
-
         <!-- Groups (featured + largest) -->
         <section v-if="discoverInitialLoading || exploreGroups.length > 0" class="space-y-3">
           <div class="px-4 flex items-center justify-between gap-3">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
-              Groups
+              Find your groups
             </h2>
             <NuxtLink
               v-if="isAuthed"
@@ -428,12 +297,55 @@
                 class="w-[min(100vw-2rem,22rem)] max-w-[22rem] shrink-0"
               >
                 <AppGroupPreviewCard
-                  :preview="shellToGroupPreview(g)"
+                  :preview="shellToGroupPreview(g)" compact
                   :show-join="isAuthed"
                   :join-busy="joinExploreGroupId === g.id"
                   @join="joinExploreGroup(g)"
                 />
               </div>
+            </div>
+          </AppHorizontalScroller>
+        </section>
+
+          <!-- People to follow -->
+          <section v-if="isAuthed && (discoverInitialLoading || recommendedUsers.length > 0)" class="space-y-3">
+            <div class="px-4 flex items-center justify-between gap-3">
+              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
+                People to follow
+              </h2>
+              <Button
+                label="Refresh"
+                text
+                severity="secondary"
+                :disabled="discoverLoading"
+                @click="refreshDiscover"
+              />
+            </div>
+
+            <div v-if="discoverInitialLoading && recommendedUsers.length === 0" class="flex justify-center py-6">
+              <AppLogoLoader />
+            </div>
+
+            <div v-else class="moh-divide">
+              <AppUserRow v-for="u in recommendedUsers" :key="u.id" :user="u" show-follow-button discovery />
+            </div>
+          </section>
+
+        <!-- Trending hashtags strip -->
+        <section v-if="trendingHashtags.length > 0" class="space-y-2.5">
+          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+            Trending topics
+          </h2>
+          <AppHorizontalScroller scroller-class="no-scrollbar px-4">
+            <div class="flex gap-2 pb-2">
+              <NuxtLink
+                v-for="tag in trendingHashtags.slice(0, 12)"
+                :key="tag.value"
+                :to="`/explore?q=${encodeURIComponent('#' + tag.value)}`"
+                class="min-h-11 px-4 shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
+              >
+                <span class="text-[var(--p-primary-color)]">#</span>{{ tag.label }}
+              </NuxtLink>
             </div>
           </AppHorizontalScroller>
         </section>
@@ -452,7 +364,7 @@
                       v-for="c in displayCategories"
                       :key="c.value"
                       type="button"
-                      class="h-9 px-3 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
+                      class="min-h-11 px-4 shrink-0 rounded-full border moh-border bg-white/60 dark:bg-zinc-900/40 text-sm text-gray-800 dark:text-gray-100 hover:bg-white dark:hover:bg-zinc-900 transition whitespace-nowrap"
                       @click="selectCategory(c.value)"
                     >
                       {{ c.label }}
@@ -486,7 +398,7 @@
         <section v-if="discoverInitialLoading || featuredPosts.length > 0" class="space-y-3">
           <div class="px-4 flex items-center justify-between gap-3">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
-              Featured
+              Conversations worth joining
             </h2>
             <Button
               label="Refresh"
@@ -515,7 +427,7 @@
         <section v-if="discoverInitialLoading || trendingArticles.length > 0" class="space-y-3">
           <div class="px-4 flex items-center justify-between gap-3">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
-              Trending articles
+              Worth a read
             </h2>
             <NuxtLink
               to="/articles?sort=trending"
@@ -537,6 +449,37 @@
             />
           </div>
         </section>
+
+        <section v-if="shouldRenderCheckinSection" class="space-y-3">
+          <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+            Daily check-in
+          </h2>
+          <ClientOnly>
+          <AppFeedDailyCheckinCard
+            v-if="showExploreCheckinCard"
+            :prompt="displayCheckinPromptText"
+            :streak="displayCheckinStreak"
+            :has-checked-in-today="hasCheckedInToday"
+            :error="checkinError"
+            @check-in="openCheckinComposer"
+          />
+          <div v-else-if="checkinLoading" class="flex justify-center py-6">
+            <AppLogoLoader />
+          </div>
+          </ClientOnly>
+        </section>
+
+        <!-- Verify-to-check-in CTA for authed-but-unverified users. Check-ins are
+             verified-only, so we drive verification instead of the live card.
+             Client-only (ClientOnly) so SSR stays empty and avoids hydration mismatch. -->
+        <ClientOnly>
+          <section v-if="didAttempt && isAuthed && !isPageAccount && !canAccessCheckins" class="space-y-3">
+            <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+              Daily check-in
+            </h2>
+            <AppFeedDailyCheckinHero :prompt="verifyCtaPrompt" verify-cta />
+          </section>
+        </ClientOnly>
 
         <!-- Online now -->
         <section v-if="onlineUsers.length > 0" class="space-y-3">
@@ -580,37 +523,6 @@
         </section>
 
         <template v-if="isAuthed">
-          <!-- People to follow -->
-          <section v-if="discoverInitialLoading || recommendedUsers.length > 0" class="space-y-3">
-            <div class="px-4 flex items-center justify-between gap-3">
-              <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-50">
-                People to follow
-              </h2>
-              <Button
-                label="Refresh"
-                text
-                severity="secondary"
-                :disabled="discoverLoading"
-                @click="refreshDiscover"
-              />
-            </div>
-
-            <div v-if="discoverInitialLoading && recommendedUsers.length === 0" class="flex justify-center py-6">
-              <AppLogoLoader />
-            </div>
-
-            <AppHorizontalScroller v-else-if="recommendedUsers.length > 0" scroller-class="no-scrollbar px-4">
-              <div class="flex gap-3 pb-2">
-                <AppUserMiniCard
-                  v-for="u in recommendedUsers"
-                  :key="u.id"
-                  :user="u"
-                  @followed="removeDiscoverUser(u.id)"
-                />
-              </div>
-            </AppHorizontalScroller>
-          </section>
-
           <!-- Trending from recommended -->
           <section v-if="discoverInitialLoading || trendingPosts.length > 0" class="space-y-3">
             <h2 class="px-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
@@ -784,7 +696,7 @@ const toast = useAppToast()
 const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
-const searchInputRef = ref<{ focus: () => void } | null>(null)
+const searchInputRef = ref<{ focus: () => void; blur: () => void } | null>(null)
 const hydrated = ref(false)
 
 function onGlobalKeyDown(e: KeyboardEvent) {
@@ -859,6 +771,28 @@ function getRouteQ(): string {
 const searchQuery = ref(getRouteQ())
 const searchQueryTrimmed = computed(() => searchQuery.value.trim())
 const isSearching = computed(() => searchQueryTrimmed.value.length >= 2)
+const searchActive = ref(false)
+const searchTabs = [{ key: 'all', label: 'All' }, { key: 'people', label: 'People' }, { key: 'groups', label: 'Groups' }, { key: 'posts', label: 'Posts' }, { key: 'articles', label: 'Articles' }]
+const searchTab = computed(() => searchTabs.some(t => t.key === route.query.tab) ? String(route.query.tab) : 'all')
+function selectSearchTab(tab: string) {
+  void router.replace({ query: { ...route.query, tab: tab === 'all' ? undefined : tab } })
+}
+function beginSearch() { searchActive.value = true }
+function clearSearch() { searchQuery.value = ''; clearSearchResults(); searchInputRef.value?.focus() }
+function cancelSearch() {
+  searchActive.value = false
+  searchQuery.value = ''
+  clearSearchResults()
+  searchInputRef.value?.blur()
+  void router.replace({ query: { ...route.query, q: undefined, tab: undefined } })
+}
+function browseSearchCategory(tab: string) {
+  if (tab === 'groups') void navigateTo('/groups/explore')
+  else if (tab === 'articles') void navigateTo('/articles')
+  else if (tab === 'people') void navigateTo('/who-to-follow')
+  else void navigateTo('/home/all')
+}
+
 
 const activeTopic = computed(() => normalizeQueryParam(route.query.topic))
 const activeCategory = computed(() => normalizeQueryParam(route.query.category))
@@ -1103,6 +1037,15 @@ const editInterestsInput = ref<string[]>([])
 const editInterestsSaving = ref(false)
 const editInterestsError = ref<string | null>(null)
 
+const { content: exploreRailContent, interestsRequest } = useExploreRail()
+watch([followedTopicsUi, displayCategories], () => {
+  exploreRailContent.value = {
+    topics: followedTopicsUi.value.length ? followedTopicsUi.value : displayCategories.value,
+    categories: !followedTopicsUi.value.length,
+  }
+}, { immediate: true })
+watch(interestsRequest, () => openEditInterests())
+
 function openEditInterests() {
   editInterestsInput.value = Array.isArray(authUser.value?.interests) ? [...authUser.value!.interests] : []
   editInterestsError.value = null
@@ -1171,6 +1114,10 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let isUpdatingRouteFromInput = false
 
 function clearSearchResults() {
+  searchFetchSeq++
+  loading.value = false
+  loadingMore.value = false
+  searchGroups.value = []
   users.value = []
   articles.value = []
   posts.value = []
@@ -1190,7 +1137,7 @@ function setRouteQueryQ(nextQ: string) {
 
   const nextQuery: Record<string, any> = { ...route.query }
   if (trimmed) nextQuery.q = trimmed
-  else delete nextQuery.q
+  else { delete nextQuery.q; delete nextQuery.tab }
 
   isUpdatingRouteFromInput = true
   Promise.resolve(router.replace({ path: route.path, query: nextQuery }))
@@ -1278,17 +1225,12 @@ let searchFetchSeq = 0
 
 
 const hasMore = computed(
-  () => nextUserCursor.value !== null || nextArticleCursor.value !== null || nextPostCursor.value !== null,
+  () => searchTab.value === 'groups' ? false
+    : searchTab.value === 'people' ? nextUserCursor.value !== null
+    : searchTab.value === 'posts' ? nextPostCursor.value !== null
+    : searchTab.value === 'articles' ? nextArticleCursor.value !== null
+    : nextUserCursor.value !== null || nextArticleCursor.value !== null || nextPostCursor.value !== null,
 )
-
-/** Users, groups, articles, then posts — matches /search?type=all ordering. */
-const interleaved = computed(() => {
-  const userItems = users.value.map((user) => ({ kind: 'user' as const, user }))
-  const groupItems = searchGroups.value.map((group) => ({ kind: 'group' as const, group }))
-  const articleItems = articles.value.map((article) => ({ kind: 'article' as const, article }))
-  const postItems = posts.value.map((post) => ({ kind: 'post' as const, post }))
-  return [...userItems, ...groupItems, ...articleItems, ...postItems]
-})
 
 function dedupeById<T extends { id?: string | null }>(list: T[]): T[] {
   const out: T[] = []
@@ -1378,9 +1320,11 @@ async function fetchPage(params: { append: boolean }) {
   if (q.length < 2) return
 
   const isAppend = params.append
+  const cursors = { users: nextUserCursor.value, articles: nextArticleCursor.value, posts: nextPostCursor.value }
   if (isAppend) {
     loadingMore.value = true
   } else {
+    users.value = []; articles.value = []; posts.value = []; searchGroups.value = []
     loading.value = true
   }
   searchError.value = null
@@ -1401,7 +1345,7 @@ async function fetchPage(params: { append: boolean }) {
       method: 'GET',
       query,
     })
-    if (seq !== searchFetchSeq) return
+    if (seq !== searchFetchSeq || q !== searchQueryTrimmed.value) return
 
     const data = res.data as SearchMixedResult
     const pagination = res.pagination as SearchMixedPagination | undefined
@@ -1411,9 +1355,9 @@ async function fetchPage(params: { append: boolean }) {
     const newGroups = data.groups ?? []
 
     if (isAppend) {
-      users.value = dedupeById([...users.value, ...newUsers])
-      articles.value = dedupeById([...articles.value, ...newArticles])
-      posts.value = dedupeById([...posts.value, ...newPosts])
+      if (cursors.users) users.value = dedupeById([...users.value, ...newUsers])
+      if (cursors.articles) articles.value = dedupeById([...articles.value, ...newArticles])
+      if (cursors.posts) posts.value = dedupeById([...posts.value, ...newPosts])
       searchGroups.value = dedupeById([...searchGroups.value, ...newGroups])
     } else {
       users.value = dedupeById(newUsers)
@@ -1424,11 +1368,11 @@ async function fetchPage(params: { append: boolean }) {
       gatedResultCount.value = data.gatedResultCount ?? 0
     }
 
-    nextUserCursor.value = pagination?.nextUserCursor ?? null
-    nextArticleCursor.value = pagination?.nextArticleCursor ?? null
-    nextPostCursor.value = pagination?.nextPostCursor ?? null
+    if (!isAppend || cursors.users) nextUserCursor.value = pagination?.nextUserCursor ?? null
+    if (!isAppend || cursors.articles) nextArticleCursor.value = pagination?.nextArticleCursor ?? null
+    if (!isAppend || cursors.posts) nextPostCursor.value = pagination?.nextPostCursor ?? null
   } catch (e: unknown) {
-    if (seq !== searchFetchSeq) return
+    if (seq !== searchFetchSeq || q !== searchQueryTrimmed.value) return
     searchError.value = getApiErrorMessage(e) || 'Search failed.'
     if (!isAppend) {
       users.value = []
@@ -1475,8 +1419,11 @@ watch(
 
 watch(searchQuery, () => {
   const trimmed = searchQueryTrimmed.value
-  const fromRoute = getRouteQ()
-  if (trimmed !== fromRoute) scheduleDebouncedSearch()
+  if (trimmed !== getRouteQ()) {
+    clearSearchResults()
+    loading.value = trimmed.length >= 2
+    scheduleDebouncedSearch()
+  }
 })
 
 // Topic feed (uses API endpoint specifically for topics)
@@ -1674,3 +1621,7 @@ watch(
   { immediate: true },
 )
 </script>
+
+<style scoped>
+.explore-page :deep(section > h2), .explore-page :deep(section > div > h2) { font-size: 20px; line-height: 28px; font-weight: 600; }
+</style>

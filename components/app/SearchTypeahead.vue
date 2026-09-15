@@ -8,6 +8,7 @@ const props = withDefaults(defineProps<{
   inputClass?: string
   /** If true, the input uses the rounded-full style (right rail). */
   pill?: boolean
+  inlineRecents?: boolean
 }>(), {
   modelValue: '',
   placeholder: 'Search…',
@@ -19,6 +20,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
   /** Fired when the user confirms a search (Enter or query row). Empty string = browse Explore. */
   submit: [query: string]
+  focus: []
 }>()
 
 const { isAuthed } = useAuth()
@@ -136,7 +138,7 @@ const showRecentsEmpty = computed(
 
 // Open when typing, when recents are present/loading, or for empty-state.
 const open = computed(
-  () => focused.value && (queryTrimmed.value.length > 0 || showRecents.value || showRecentsLoading.value || showRecentsEmpty.value),
+  () => focused.value && !(props.inlineRecents && queryTrimmed.value.length === 0) && (queryTrimmed.value.length > 0 || showRecents.value || showRecentsLoading.value || showRecentsEmpty.value),
 )
 
 const showPeopleSection = computed(
@@ -232,6 +234,8 @@ function submitSearch(q: string) {
 function applyRecent(r: RecentSearch) {
   if (r.user) {
     void useRouter().push(`/u/${encodeURIComponent(r.user.username ?? '')}`)
+  } else if (r.group) {
+    void useRouter().push(`/g/${encodeURIComponent(r.group.slug)}`)
   } else {
     emit('update:modelValue', r.query)
     emit('submit', r.query)
@@ -253,6 +257,7 @@ async function selectGroup(group: CommunityGroupShell) {
 
 // ── Focus / blur ─────────────────────────────────────────────────────────────
 function onFocus() {
+  emit('focus')
   if (blurTimer) {
     clearTimeout(blurTimer)
     blurTimer = null
@@ -314,6 +319,7 @@ onBeforeUnmount(() => {
 
 // ── Public API ───────────────────────────────────────────────────────────────
 defineExpose({
+  blur: closePanel,
   focus() {
     const el = getInputEl()
     if (el) el.focus()
@@ -324,7 +330,7 @@ defineExpose({
 <template>
   <div ref="wrapEl" class="relative w-full">
     <!-- Input -->
-    <IconField iconPosition="left" class="w-full">
+    <IconField icon-position="left" class="w-full">
       <InputIcon>
         <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
       </InputIcon>
@@ -417,7 +423,7 @@ defineExpose({
               </div>
               <!-- Group avatar or icon -->
               <div v-else-if="r.group" class="shrink-0 h-8 w-8 overflow-hidden bg-gray-100 dark:bg-zinc-800 flex items-center justify-center" :class="groupRoundClass">
-                <img v-if="r.group.avatarImageUrl" :src="r.group.avatarImageUrl" :alt="r.group.name" class="h-full w-full object-cover" />
+                <img v-if="r.group.avatarImageUrl" :src="r.group.avatarImageUrl" :alt="r.group.name" class="h-full w-full object-cover" >
                 <Icon v-else name="tabler:users-group" class="text-base moh-text-muted" aria-hidden="true" />
               </div>
               <!-- Clock icon for text queries -->
@@ -562,7 +568,7 @@ defineExpose({
               />
               <div class="relative z-[2] flex items-center gap-2.5 w-full min-w-0 pointer-events-none">
                 <div class="shrink-0 h-8 w-8 overflow-hidden bg-gray-100 dark:bg-zinc-800 flex items-center justify-center" :class="groupRoundClass">
-                  <img v-if="g.avatarImageUrl" :src="g.avatarImageUrl" :alt="g.name" class="h-full w-full object-cover" />
+                  <img v-if="g.avatarImageUrl" :src="g.avatarImageUrl" :alt="g.name" class="h-full w-full object-cover" >
                   <Icon v-else name="tabler:users-group" class="text-base moh-text-muted" aria-hidden="true" />
                 </div>
                 <div class="min-w-0 flex-1">

@@ -1,5 +1,5 @@
 <template>
-  <span class="inline-flex shrink-0 items-center justify-center overflow-hidden bg-[var(--moh-surface-2)] font-semibold moh-text" :class="groupAvatarRoundClass()" :style="{ width: `${size}px`, height: `${size}px`, fontSize: `${size * .34}px` }" aria-hidden="true">
+  <span class="inline-flex shrink-0 items-center justify-center overflow-hidden bg-[var(--moh-surface-2)] font-semibold moh-text" :class="[groupAvatarRoundClass(), accented ? '!bg-[color:var(--moh-verified)]/10 !text-[var(--moh-verified)] border border-[color:var(--moh-verified)]/30' : '']" :style="{ width: `${size}px`, height: `${size}px`, fontSize: `${size * .34}px` }" aria-hidden="true">
     <img v-if="src && !failed" :src="src" alt="" class="h-full w-full object-cover" loading="lazy" @error="failed = true">
     <span v-else>{{ initials }}</span>
   </span>
@@ -7,7 +7,7 @@
 
 <script setup lang="ts">
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
-const props = withDefaults(defineProps<{ name: string; src?: string | null; size?: number }>(), { size: 36, src: null })
+const props = withDefaults(defineProps<{ name: string; src?: string | null; size?: number; accented?: boolean }>(), { size: 36, src: null })
 const failed = ref(false)
 watch(() => props.src, () => { failed.value = false })
 const initials = computed(() => {

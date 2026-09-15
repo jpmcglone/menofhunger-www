@@ -1,5 +1,5 @@
 <template>
-  <div class="px-3 py-2.5 sm:px-4 sm:py-3 min-h-[44px] w-full hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors">
+  <div :class="discovery ? '!px-4 !py-4' : ''" class="px-3 py-2.5 sm:px-4 sm:py-3 min-h-[44px] w-full hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors">
     <div class="w-full flex items-center gap-3">
       <NuxtLink
         v-if="profilePath"
@@ -68,7 +68,7 @@
           :initial-relationship="user.relationship"
           :show-when-logged-out="props.allowLoggedOutFollowButton === true"
           size="small"
-          button-class="!text-xs !py-1.5 !px-3"
+          :button-class="discovery ? '!text-sm !min-h-11 !px-5' : '!text-xs !py-1.5 !px-3'"
         />
       </div>
     </div>
@@ -82,6 +82,7 @@ import { useUserOverlay } from '~/composables/useUserOverlay'
 type UserRowUser = FollowListUser & { isBot?: boolean }
 
 const props = defineProps<{
+  discovery?: boolean
   user: UserRowUser
   showFollowButton?: boolean
   /** When true, show follow button even while logged out (click routes to login). */

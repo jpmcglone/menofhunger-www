@@ -24,19 +24,20 @@ describe('Spotify previews', () => {
     expect(isSpotifyShareUrl('https://spotify.link.evil.test/abc')).toBe(false)
     expect(isSpotifyShareUrl('https://spotify.link')).toBe(false)
   })
-  it('keeps player taps inside the post and provides recovery and an external fallback', async () => {
+  it('keeps player taps inside the post and provides recovery without a duplicate Spotify handoff', async () => {
     const content = spotifyContent(`https://open.spotify.com/track/${id}`)!
     const wrapper = await mountSuspended(SpotifyEmbed, { props: { content } })
     const player = wrapper.get('iframe')
     expect(player.attributes('src')).toBe(content.embedUrl)
     expect(player.attributes('allow')).toContain('encrypted-media')
     expect(player.element.closest('a')).toBeNull()
+    expect(wrapper.find('a').exists()).toBe(false)
     const event = new MouseEvent('click', { bubbles: true })
     wrapper.element.dispatchEvent(event)
     expect(wrapper.emitted('click')).toBeUndefined()
     await player.trigger('error')
     expect(wrapper.find('iframe').exists()).toBe(false)
-    expect(wrapper.get('a').attributes('href')).toBe(content.url)
+    expect(wrapper.find('a').exists()).toBe(false)
     await wrapper.get('button').trigger('click')
     expect(wrapper.find('iframe').exists()).toBe(true)
     wrapper.unmount()
