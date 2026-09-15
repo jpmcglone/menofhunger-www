@@ -1,11 +1,12 @@
 <template>
   <div v-if="showAny" class="mt-3">
+    <AppSpotifyEmbed v-if="showLinkPreview && spotifyPreview" :content="spotifyPreview" />
     <!-- Video embeds (special cases) -->
     <!-- Portrait frames get an explicit px width (left-aligned); landscape fills the row.
          The frame width lives here, not on the inner box, so no percentage is resolved
          against a shrink-to-fit parent — that made portrait Rumble start tiny and grow. -->
     <div
-      v-if="youtubeEmbedUrl || isPreviewLinkRumble"
+      v-else-if="youtubeEmbedUrl || isPreviewLinkRumble"
       :style="videoFrameStyle"
     >
     <div
@@ -272,6 +273,7 @@ import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
 import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
 import { usePreviewFetchLimiter } from '~/composables/usePreviewFetchLimiter'
 import type { ArticleSharePreview, PostVideoEmbed } from '~/types/api'
+import { spotifyContent, isSpotifyShareUrl } from '~/utils/spotify-embed'
 import { splitTextByScriptureDisplay } from '~/utils/scripture-reference'
 
 // Stable public paths (not `~/assets` imports) so the URL is identical on
@@ -793,6 +795,9 @@ const mohInternalTitle = computed(() => {
   if (!segment) return 'Men of Hunger'
   return segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
 })
+
+const spotifyPreview = computed(() => spotifyContent(previewLink.value)
+  ?? (isSpotifyShareUrl(previewLink.value) ? spotifyContent(linkMeta.value?.url) : null))
 
 const xPostMeta = computed(() => {
   if (!previewLink.value || !isXPostUrl(previewLink.value)) return null
