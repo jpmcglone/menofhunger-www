@@ -17,7 +17,7 @@
       aria-hidden="true"
       disabled
       @change="guardedOnMediaFilesSelected"
-    />
+    >
 
     <!-- Reply-to snippet -->
     <Transition name="moh-fade">
@@ -38,7 +38,7 @@
           :src="replyTo.mediaThumbnailUrl"
           class="shrink-0 h-9 w-9 rounded-md object-cover"
           aria-hidden="true"
-        />
+        >
         <button
           type="button"
           aria-label="Cancel reply"
@@ -53,7 +53,7 @@
     <!-- Input row -->
     <div class="flex items-end gap-2">
       <!-- Left toolbar: photo + GIF buttons -->
-      <div class="flex shrink-0 items-center gap-0.5 pb-[5px]">
+      <div v-if="!voice.recording.value && !voice.starting.value && !pendingVoice" class="flex shrink-0 items-center gap-0.5 pb-[5px]">
         <!-- Add image/video button -->
         <button
           type="button"
@@ -99,7 +99,7 @@
       <div class="flex flex-1 flex-col gap-1.5">
         <!-- Media preview (when attached) — aligns with the text pill -->
         <Transition name="moh-fade">
-          <div v-if="composerMedia.length > 0" class="relative inline-block">
+          <div v-if="composerMedia.length > 0 && !pendingVoice" class="relative inline-block">
             <div class="relative">
               <!-- Video preview -->
               <video
@@ -117,7 +117,7 @@
                 class="h-32 max-w-[200px] rounded-xl border moh-border object-cover bg-black/5 dark:bg-white/5"
                 :alt="composerMedia[0]!.altText ?? ''"
                 loading="lazy"
-              />
+              >
 
               <!-- Upload progress bar (matches post composer treatment) -->
               <div
@@ -172,31 +172,21 @@
           </div>
         </Transition>
 
-        <div
-          v-if="voice.recording.value || pendingVoice"
-          class="flex items-center gap-2 rounded-full border moh-border px-3 py-2"
-          data-testid="chat-voice-recording"
-        >
-          <span class="inline-block h-2 w-2 rounded-full bg-red-500" :class="voice.recording.value ? 'animate-pulse' : ''" aria-hidden="true" />
-          <span class="text-sm tabular-nums">
-            {{ voice.recording.value ? 'Recording' : 'Voice note' }} {{ formatVoiceClock(voice.elapsed.value || pendingVoiceSeconds) }}
-          </span>
-          <div class="ml-auto flex items-center gap-2">
-            <button type="button" class="text-xs underline" @click="cancelVoice">Cancel</button>
-            <button
-              v-if="voice.recording.value"
-              type="button"
-              class="text-xs font-semibold"
-              @click="stopVoice"
-            >Stop</button>
-            <button
-              v-else
-              type="button"
-              class="text-xs font-semibold"
-              data-testid="chat-voice-send"
-              @click="sendVoice"
-            >Send</button>
+        <div v-if="voice.recording.value || voice.starting.value || pendingVoice" class="rounded-2xl border moh-border px-3 py-2" data-testid="chat-voice-recording">
+          <div v-if="voice.recording.value || voice.starting.value" class="flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
+            <span class="min-w-0 flex-1 text-sm tabular-nums">{{ voice.starting.value ? 'Allow microphone access…' : `Recording · ${formatVoiceClock(voice.elapsed.value)} / 2:00` }}</span>
+            <button type="button" class="min-h-11 px-2 text-sm" @click="cancelVoice">Discard</button>
+            <button v-if="voice.recording.value" type="button" class="min-h-11 px-3 text-sm font-semibold" @click="stopVoice">Stop</button>
           </div>
+          <template v-else>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm">Voice message · {{ formatVoiceClock(pendingVoiceSeconds) }}</span>
+              <button type="button" class="min-h-11 px-2 text-sm" :disabled="sendingVoice" @click="cancelVoice">Discard</button>
+              <button type="button" class="min-h-11 rounded-full bg-[var(--moh-text)] px-4 text-sm font-semibold text-[var(--moh-surface-0)] disabled:opacity-50" :disabled="sendingVoice || disabled" data-testid="chat-voice-send" @click="sendVoice">{{ sendingVoice ? 'Sending…' : 'Send' }}</button>
+            </div>
+            <audio v-if="voicePreviewUrl" ref="voicePreviewEl" :src="voicePreviewUrl" controls preload="metadata" class="h-10 w-full" aria-label="Preview voice message" />
+          </template>
         </div>
 
         <!-- Text pill (emoji inside on the left) -->
@@ -390,7 +380,21 @@ const showMic = computed(() =>
 )
 
 const voice = useVoiceRecorder()
-const pendingVoice = ref<{ file: File; durationSeconds: number } | null>(null)
+const pendingVoice = voice.draft
+const sendingVoice = ref(false)
+const voicePreviewUrl = ref<string | null>(null)
+const voicePreviewEl = ref<HTMLAudioElement | null>(null)
+watch(pendingVoice, (draft) => {
+  if (voicePreviewUrl.value) URL.revokeObjectURL(voicePreviewUrl.value)
+  voicePreviewUrl.value = draft ? URL.createObjectURL(draft.file) : null
+})
+function onVoiceVisibility() { if (document.hidden) { if (voice.starting.value) voice.cancel(); else if (voice.recording.value) void stopVoice() } }
+onMounted(() => document.addEventListener('visibilitychange', onVoiceVisibility))
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onVoiceVisibility)
+  voice.cancel()
+  if (voicePreviewUrl.value) URL.revokeObjectURL(voicePreviewUrl.value)
+})
 const pendingVoiceSeconds = computed(() => pendingVoice.value?.durationSeconds ?? 0)
 
 function formatVoiceClock(total: number) {
@@ -419,23 +423,30 @@ async function stopVoice() {
 }
 
 function cancelVoice() {
+  voicePreviewEl.value?.pause()
   voice.cancel()
   pendingVoice.value = null
 }
 
 async function sendVoice() {
-  let result = pendingVoice.value
-  if (voice.recording.value) result = await voice.stop()
-  if (!result) return
-  pendingVoice.value = null
-  enqueueAudio(result.file, result.durationSeconds)
-  const ok = await waitForUploads()
-  if (!ok) {
-    useAppToast().push({ title: 'Couldn’t upload the voice note.', tone: 'error' })
-    return
-  }
-  emit('send')
+  const result = pendingVoice.value
+  if (!result || sendingVoice.value || props.disabled) return
+  voicePreviewEl.value?.pause()
+  sendingVoice.value = true
+  try {
+    for (const media of [...composerMedia.value]) removeComposerMedia(media.localId)
+    enqueueAudio(result.file, result.durationSeconds)
+    const ok = await waitForUploads()
+    if (!ok) {
+      for (const media of [...composerMedia.value]) removeComposerMedia(media.localId)
+      useAppToast().push({ title: 'Couldn’t upload. Your recording is ready to retry.', tone: 'error' })
+      return
+    }
+    pendingVoice.value = null
+    emit('send')
+  } finally { sendingVoice.value = false }
 }
+
 const charsRemaining = computed(() => MAX_CHARS - (props.modelValue?.length ?? 0))
 const showCharCount = computed(() => charsRemaining.value <= 200)
 

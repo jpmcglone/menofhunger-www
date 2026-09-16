@@ -1,9 +1,10 @@
 <template>
-  <div>
+  <div style="padding-top: var(--moh-voice-player-height, 0px)">
     <!-- Keep SSR/client first paint stable: loading bar tint can update after hydration via CSS vars. -->
     <NuxtLoadingIndicator color="var(--p-primary-color)" :height="4" />
     <AppLayoutAuthBootOverlay />
     <AppAiConsentNotice />
+    <ClientOnly><AppVoicePlaybackHost /></ClientOnly>
     <NuxtLayout>
       <NuxtPage :key="`identity-${identityVersion}`" />
     </NuxtLayout>

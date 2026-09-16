@@ -116,6 +116,8 @@
           <ChatAudioMessage
             v-if="media.kind === 'audio'"
             :media="media"
+            :sender="messageItem.message.sender.name || messageItem.message.sender.username || undefined"
+            :href="`/chat?c=${messageItem.message.conversationId}`"
             :own="messageItem.message.sender.id === meId"
           />
           <button
@@ -170,7 +172,8 @@
           <!-- Timestamp overlay — only when media-only (no text body) -->
           <div
             v-if="!showTextBubble && shouldShowMessageMeta"
-            class="absolute bottom-1.5 right-2 inline-flex items-center gap-1 rounded-full bg-black/40 px-1.5 py-0.5 text-[10px] text-white whitespace-nowrap backdrop-blur-sm tabular-nums"
+            class="flex items-center gap-1 px-1.5 py-0.5 text-[10px] whitespace-nowrap tabular-nums"
+            :class="media.kind === 'audio' ? 'justify-end moh-text-muted pr-3 pb-2' : 'absolute bottom-1.5 right-2 rounded-full bg-black/40 text-white backdrop-blur-sm'"
           >
             <time :datetime="messageItem.message.createdAt" :title="formatMessageTimeFull(messageItem.message.createdAt)">
               {{ formatMessageTime(messageItem.message.createdAt) }}

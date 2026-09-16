@@ -1,3 +1,4 @@
+import { mediaFocus } from '~/utils/mediaFocus'
 import type { RadioListener, RadioLobbyCounts, RadioStation } from '~/types/api'
 import type { RadioCallback } from '~/composables/usePresence'
 import radioStationsFallback from '~/config/radio-stations.json'
@@ -202,9 +203,11 @@ export function useRadioPlayer() {
     error.value = null
     isBuffering.value = true
 
+    if (!mediaFocus.claim('radio', pause)) { error.value = 'Finish recording before playing.'; return }
     // Ensure socket is connected before joining room.
     presence.connect()
     await presence.whenSocketConnected(10_000)
+      if (mediaFocus.currentId !== 'radio') return
     ensureRadioCallback()
     presence.emitRadioJoin(station.id)
     // Send current mute state (so other listeners can see it immediately).
@@ -213,8 +216,10 @@ export function useRadioPlayer() {
     // Start playback (requires user gesture; caller should only invoke on click).
     a.src = url
     try {
+      if (mediaFocus.currentId !== 'radio') return
       await a.play()
     } catch (e) {
+      mediaFocus.release('radio')
       error.value = e instanceof Error ? e.message : 'Playback failed.'
       isPlaying.value = false
       isBuffering.value = false
@@ -224,6 +229,7 @@ export function useRadioPlayer() {
   }
 
   function pause() {
+    mediaFocus.release('radio')
     if (!import.meta.client) return
     const a = ensureAudio()
     if (!a) return
@@ -237,6 +243,7 @@ export function useRadioPlayer() {
   }
 
   function stop() {
+    mediaFocus.release('radio')
     if (!import.meta.client) return
     const a = ensureAudio()
     if (a) {

@@ -1,4 +1,5 @@
 import { ref, type Ref } from 'vue'
+import { mediaFocus } from '~/utils/mediaFocus'
 
 export const VOICE_NOTE_MAX_SECONDS = 120
 const WAV_SAMPLE_RATE = 16_000
@@ -55,7 +56,10 @@ export function downsampleToRate(input: Float32Array, fromRate: number, toRate: 
   return out
 }
 
+export type VoiceDraft = { file: File; durationSeconds: number }
 export type VoiceRecorder = {
+  draft: Ref<VoiceDraft | null>
+  starting: Ref<boolean>
   recording: Ref<boolean>
   elapsed: Ref<number>
   level: Ref<number>
@@ -65,6 +69,11 @@ export type VoiceRecorder = {
 }
 
 export function useVoiceRecorder(): VoiceRecorder {
+  const focusId = `recording:${crypto.randomUUID()}`
+  const draft = ref<VoiceDraft | null>(null)
+  const starting = ref(false)
+  let generation = 0
+  let stopPromise: Promise<VoiceDraft | null> | null = null
   const recording = ref(false)
   const elapsed = ref(0)
   const level = ref(0)
@@ -106,6 +115,7 @@ export function useVoiceRecorder(): VoiceRecorder {
     recording.value = false
     level.value = 0
     clearTimer()
+    mediaFocus.release(focusId)
   }
 
   function tick() {
@@ -121,8 +131,16 @@ export function useVoiceRecorder(): VoiceRecorder {
   }
 
   async function start() {
-    if (!import.meta.client || recording.value) return
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    if (!import.meta.client || recording.value || starting.value) return
+    if (!mediaFocus.claim(focusId, cancel, { exclusive: true })) throw new Error('Finish your call before recording.')
+    const attempt = ++generation
+    starting.value = true
+    draft.value = null
+    stopPromise = null
+    try {
+    const acquired = await navigator.mediaDevices.getUserMedia({ audio: true })
+    if (attempt !== generation) { acquired.getTracks().forEach(t => t.stop()); return }
+    stream = acquired
     mime = pickVoiceRecorderMime()
     startedAt = Date.now()
     elapsed.value = 0
@@ -150,6 +168,7 @@ export function useVoiceRecorder(): VoiceRecorder {
       }
     }
 
+    if (!mime && !ctx) throw new Error('Audio recording is unavailable in this browser.')
     if (mime) {
       chunks = []
       media = new MediaRecorder(stream, { mimeType: mime })
@@ -160,7 +179,8 @@ export function useVoiceRecorder(): VoiceRecorder {
         const durationSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000))
         const blob = new Blob(chunks, { type: mime ?? 'audio/mp4' })
         const file = new File([blob], `voice-${Date.now()}.m4a`, { type: mime ?? 'audio/mp4' })
-        stopResolve?.({ file, durationSeconds })
+        draft.value = { file, durationSeconds: Math.min(VOICE_NOTE_MAX_SECONDS, durationSeconds) }
+        stopResolve?.(draft.value)
         stopResolve = null
         teardownTracks()
       }
@@ -168,11 +188,17 @@ export function useVoiceRecorder(): VoiceRecorder {
     }
 
     timer = setInterval(tick, 100)
+    } catch (error) {
+      if (attempt === generation) cancel()
+      throw error
+    } finally { if (attempt === generation) starting.value = false }
   }
 
   function stop(): Promise<{ file: File; durationSeconds: number } | null> {
-    if (!recording.value) return Promise.resolve(null)
-    return new Promise((resolve) => {
+    if (stopPromise) return stopPromise
+    if (!recording.value) return Promise.resolve(draft.value)
+    clearTimer()
+    stopPromise = new Promise((resolve) => {
       if (media && media.state !== 'inactive') {
         stopResolve = resolve
         media.stop()
@@ -191,11 +217,17 @@ export function useVoiceRecorder(): VoiceRecorder {
       const blob = encodeWav(samples, WAV_SAMPLE_RATE)
       const file = new File([blob], `voice-${Date.now()}.wav`, { type: 'audio/wav' })
       teardownTracks()
-      resolve({ file, durationSeconds })
+      draft.value = { file, durationSeconds: Math.min(VOICE_NOTE_MAX_SECONDS, durationSeconds) }
+      resolve(draft.value)
     })
+    return stopPromise
   }
 
   function cancel() {
+    generation += 1
+    starting.value = false
+    draft.value = null
+    stopPromise = null
     stopResolve?.(null)
     stopResolve = null
     if (media && media.state !== 'inactive') {
@@ -210,5 +242,5 @@ export function useVoiceRecorder(): VoiceRecorder {
     elapsed.value = 0
   }
 
-  return { recording, elapsed, level, start, stop, cancel }
+  return { recording, starting, draft, elapsed, level, start, stop, cancel }
 }

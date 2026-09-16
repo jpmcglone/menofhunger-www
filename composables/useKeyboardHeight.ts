@@ -220,14 +220,21 @@ export function useKeyboardHeight() {
 export function useKeyboardPinnedFixedStyle() {
   const { keyboardHeight, virtualKeyboardHeight, viewportHeight, viewportOffsetTop } = useKeyboardHeight()
   const isKeyboardOpen = computed(() => keyboardHeight.value > 0)
-  const style = computed(() =>
-    keyboardPinnedFixedStyle({
+  const style = computed(() => {
+    const pinned = keyboardPinnedFixedStyle({
       viewportHeight: viewportHeight.value,
       viewportOffsetTop: viewportOffsetTop.value,
       virtualKeyboardHeight: virtualKeyboardHeight.value,
       keyboardOpen: isKeyboardOpen.value,
-    }),
-  )
+    })
+    // Reserve the same space in the app shell and full-screen composer/reply overlays.
+    return {
+      ...pinned,
+      top: `calc(${pinned.top ?? '0px'} + var(--moh-voice-player-height, 0px))`,
+      height: `calc(${pinned.height ?? '100dvh'} - var(--moh-voice-player-height, 0px))`,
+      bottom: 'auto',
+    }
+  })
   return {
     style,
     keyboardHeight,

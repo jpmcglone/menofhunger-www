@@ -1,3 +1,4 @@
+import { mediaFocus } from '~/utils/mediaFocus'
 import { shallowRef, type ShallowRef } from 'vue'
 import type {
   CallSession,
@@ -116,6 +117,9 @@ export function useCallSession() {
   const call = computed<CallSession | null>(() => state.value.call)
   const incoming = computed<WsCallsIncomingPayload | null>(() => state.value.incoming)
   const isEngaged = computed(() => phase.value === 'outgoing' || phase.value === 'joining' || phase.value === 'in_call' || phase.value === 'requesting_media')
+  watch(isEngaged, (engaged) => {
+    mediaFocus.setCallActive(engaged)
+  }, { immediate: true, flush: 'sync' })
   const remoteParticipants = computed(() => (call.value ? call.value.participants.filter((p) => p.userId !== meId.value) : []))
   const qualityBars = computed(() => qualityBarsFor(qualityTier.value))
 

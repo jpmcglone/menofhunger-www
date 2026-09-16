@@ -681,6 +681,7 @@ describe('hydration guardrails (structural)', () => {
     // Layout consumes the shared pin (not a one-off shell-only copy).
     expect(layout).toMatch(/useKeyboardPinnedFixedStyle/)
     expect(layout).toMatch(/style:\s*shellStyle/)
+    expect(composable).toContain('--moh-voice-player-height')
     // Must stay SSR-stable: unmeasured (height 0) falls back to plain inset.
     expect(composable).toMatch(/inset:\s*'0'/)
     // A panned viewport must be corrected on its own, even if keyboard detection is empty.

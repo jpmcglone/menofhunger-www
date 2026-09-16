@@ -142,7 +142,7 @@
           <AppPostRowReplyingTo v-if="showReplyingTo" :post="postView" />
 
           <!-- Marv "Catch me up" trigger — sits just left of the more-menu button. -->
-          <div v-if="showCatchUpButton" class="absolute right-8 -top-2.5 z-30 pointer-events-auto">
+          <div v-if="showCatchUpButton" class="absolute right-11 -top-2.5 z-30 pointer-events-auto">
             <button
               v-tooltip.bottom="tinyTooltip(catchUpResultReady ? 'Catch me up — summary ready' : 'Catch me up — M.A.R.V summarizes this thread')"
               type="button"
@@ -150,7 +150,7 @@
               aria-label="Catch me up with M.A.R.V"
               @click.stop="onCatchMeUp"
             >
-              <AppIconGlyph name="catchup" :size="18" :selected="catchUpResultReady" :class="catchUpResultReady ? 'text-[var(--moh-marv)]' : 'moh-text'" />
+              <AppMarvMark :size="24" />
             </button>
           </div>
 

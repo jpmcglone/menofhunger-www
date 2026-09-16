@@ -136,6 +136,7 @@ function loadYouTubeAPIOnce(): Promise<void> {
 </template>
 
 <script setup lang="ts">
+import { mediaFocus } from '~/utils/mediaFocus'
 import type { Space, WatchPartyState } from '~/types/api'
 import { isIosWebKit } from '~/utils/ios-webkit'
 import {
@@ -300,6 +301,7 @@ function scheduleViewerGestureCheck() {
  * Play during the tap (even if the host is paused), then snap to room state.
  */
 function unlockViewerPlayback() {
+  if (!mediaFocus.claim('video:watch-party', () => { ignoreNextStateChange = true; ytPlayer?.pauseVideo?.() })) return
   if (!ytPlayer) return
   prepareWatchPartyIframe()
   muteViewerForAutoplay()
@@ -508,6 +510,16 @@ function createPlayer(videoId: string, startSeconds = 0) {
       onStateChange: (event: any) => {
         const YTState = (window as any).YT?.PlayerState
         const st = event.data
+        if (st === YTState?.PLAYING) {
+          if (!mediaFocus.claim('video:watch-party', () => {
+            ignoreNextStateChange = true
+            ytPlayer?.pauseVideo?.()
+          }, { automatic: isFollowingPlayback.value })) {
+            ignoreNextStateChange = true
+            ytPlayer?.pauseVideo?.()
+            return
+          }
+        }
 
         // Apply any stashed state when the new video finishes loading (CUED = 5,
         // BUFFERING = 3). This handles the video-swap case where applyState returned
@@ -987,6 +999,7 @@ onActivated(() => {
 })
 
 onBeforeUnmount(() => {
+  mediaFocus.release('video:watch-party')
   document.removeEventListener('visibilitychange', onPageBecameVisible)
   window.removeEventListener('pageshow', onPageBecameVisible)
   stopOwnerSyncTimer()

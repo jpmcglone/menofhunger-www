@@ -266,6 +266,7 @@
 </template>
 
 <script setup lang="ts">
+import { mediaFocus } from '~/utils/mediaFocus'
 import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, youtubeVolumeCommand, postYouTubeIframeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata, peekLinkMetadata } from '~/utils/link-metadata'
@@ -670,6 +671,7 @@ function onVideoIframeLoad() {
 }
 
 function onTapUnmuteEmbed() {
+  if (!mediaFocus.claim(`video:embed:${postId.value}`, () => { activePostId.value = null })) return
   reportPlayerAudio({ muted: false, volume01: appWideVolume.value })
   applyEmbedAudio()
 }

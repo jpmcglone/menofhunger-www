@@ -16,6 +16,7 @@
       <video
         v-if="interactive && items[0]?.url"
         ref="singleVideoEl"
+        data-media-autoplay
         :src="singleVideoSrc"
         :poster="posterFor(items[0])"
         :preload="singleVideoPreload"
@@ -329,6 +330,7 @@ function onSingleVideoVolumeChange() {
 function onTapUnmute() {
   const el = singleVideoEl.value
   if (!el) return
+  if (el.paused) el.dataset.mediaExplicit = 'true'
   el.muted = false
   singleVideoMuted.value = false
   reportPlayerAudio({ muted: false, volume01: el.volume })

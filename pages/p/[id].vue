@@ -139,13 +139,14 @@
           class="flex items-center justify-between gap-3 border-b moh-border px-4 py-2"
         >
           <button
+            v-tooltip.bottom="'Catch me up'"
             type="button"
-            class="inline-flex items-center gap-2 rounded-full border moh-border bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20"
+            class="inline-flex h-11 w-11 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+            aria-label="Catch me up"
             @click="onCatchMeUpPill"
           >
             <!-- Same mark as the post-row trigger: one feature should not have two glyphs. -->
-            <AppMarvMark :size="13" tone="inherit" />
-            Catch me up — {{ commentCountDisplay }} {{ commentCountDisplay === 1 ? 'reply' : 'replies' }}
+            <AppMarvMark :size="24" />
           </button>
           <button
             type="button"

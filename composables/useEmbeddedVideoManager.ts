@@ -1,3 +1,4 @@
+import { mediaFocus } from '~/utils/mediaFocus'
 import { clampMediaVolume } from '~/utils/link-utils'
 
 const APPLYING_SHARED_AUDIO = '__mohApplyingSharedVideoAudio'
@@ -93,7 +94,23 @@ export function useEmbeddedVideoManager() {
   const LAYOUT_RETRY_MS = 50
   const LAYOUT_RETRY_MAX = 8
 
+  if (import.meta.client) {
+    const unsubscribe = mediaFocus.subscribe((id) => {
+      if (id && !id.startsWith('video:')) activePostId.value = null
+    })
+    onScopeDispose(unsubscribe)
+    watch(activePostId, (id, previous) => {
+      if (previous) mediaFocus.release(`video:embed:${previous}`)
+      if (!id || registry?.get(id) instanceof HTMLVideoElement) return
+      if (!mediaFocus.claim(`video:embed:${id}`, () => { activePostId.value = null }, { automatic: true })) activePostId.value = null
+    }, { flush: 'sync' })
+  }
+
   function computeActiveFromViewport() {
+    if (mediaFocus.currentId && !mediaFocus.currentId.startsWith('video:')) {
+      activePostId.value = null
+      return
+    }
     if (import.meta.server) return
     if (!registry) return
 

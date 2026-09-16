@@ -1,3 +1,4 @@
+import { mediaFocus } from '~/utils/mediaFocus'
 import type { Space } from '~/types/api'
 
 /** Opacity for the visualizer when used as a background (radio bar, space cards). Use via :style="{ opacity }". */
@@ -202,10 +203,12 @@ export function useSpaceAudio() {
     const url = String(streamUrl ?? '').trim()
     if (!url) return
 
+    if (!mediaFocus.claim('space-audio', pause)) { error.value = 'Finish recording before playing.'; return }
     const sid = String(opts.spaceId ?? selectedSpaceId.value ?? '').trim()
     if (sid) {
       presence.connect()
       await presence.whenSocketConnected(10_000)
+      if (mediaFocus.currentId !== 'space-audio') return
       presence.emitSpacesJoin(sid)
       presence.emitSpacesMute(isMuted.value)
     }
@@ -216,8 +219,10 @@ export function useSpaceAudio() {
 
     a.src = url
     try {
+      if (mediaFocus.currentId !== 'space-audio') return
       await a.play()
     } catch (e) {
+      mediaFocus.release('space-audio')
       error.value = e instanceof Error ? e.message : 'Playback failed.'
       isPlaying.value = false
       isBuffering.value = false
@@ -231,6 +236,7 @@ export function useSpaceAudio() {
   }
 
   function pause() {
+    mediaFocus.release('space-audio')
     if (!import.meta.client) return
     const a = ensureAudio()
     if (!a) return
@@ -243,6 +249,7 @@ export function useSpaceAudio() {
   }
 
   function stop({ silent = false }: { silent?: boolean } = {}) {
+    mediaFocus.release('space-audio')
     if (!import.meta.client) return
     const a = ensureAudio()
     if (a) {
