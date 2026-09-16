@@ -26,6 +26,7 @@ export type Tier = {
   priceNote?: string
   badge?: string
   who: string
+  highlights: string[]
   can: TierItem[]
   cannot: TierItem[]
   why: string[]

@@ -1,6 +1,7 @@
 <template>
   <!-- Single root so fallthrough attrs (e.g. class from parents) can merge; Giphy dialog is a sibling inside. -->
   <div>
+  <AppAiConsentHost />
   <!-- Composer -->
   <div
     :class="[

@@ -1,182 +1,61 @@
 <template>
   <AppPageContent top="standard" bottom="standard">
-  <section class="mx-auto w-full max-w-2xl px-4">
-    <header class="space-y-4">
-      <p class="text-sm font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-        {{ roadmapIntro.label }}
-        <span class="ml-2 font-normal normal-case tracking-normal">
-          — as of {{ roadmapAsOfDate }}
-          <template v-if="roadmapOriginalAsOfDate">
-            <span class="text-gray-400 dark:text-gray-500"> (originally {{ roadmapOriginalAsOfDate }})</span>
-          </template>
-        </span>
-      </p>
-      <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-3xl">
-        {{ roadmapIntro.title }}
-      </h1>
-      <p class="text-base leading-relaxed text-gray-600 dark:text-gray-300">
-        {{ roadmapIntro.description }}
-      </p>
-    </header>
-
-    <div class="mt-10 space-y-12">
-      <article
-        v-for="phase in roadmapPhases"
-        :key="phase.id"
-        class="relative"
-        :id="phase.id"
-      >
-        <div
-          class="absolute left-0 top-0 h-full w-px bg-gradient-to-b via-gray-300 dark:via-zinc-600 to-transparent"
-          :class="phase.isHighlight ? 'from-[var(--moh-premium)]' : 'from-gray-400 dark:from-zinc-500'"
-          aria-hidden="true"
-        />
-        <div class="pl-6">
-          <div class="flex flex-wrap items-baseline gap-2">
-            <time
-              :datetime="phase.datetime"
-              class="text-lg font-semibold"
-              :class="phase.isHighlight ? 'text-[var(--moh-premium)]' : 'text-gray-700 dark:text-gray-300'"
-            >
-              {{ phase.date }}
-            </time>
-            <span
-              class="rounded-full px-2.5 py-0.5 text-xs font-medium"
-              :class="phase.isHighlight ? 'bg-[var(--moh-premium)]/10 font-semibold text-[var(--moh-premium)]' : 'border border-gray-300 bg-gray-50 text-gray-600 dark:border-zinc-600 dark:bg-zinc-900/50 dark:text-gray-400'"
-            >
-              {{ phase.badge }}
-            </span>
-          </div>
-          <h2 class="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-50">
-            {{ phase.title }}
-          </h2>
-          <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
-            {{ phase.description }}
-          </p>
-
-          <div class="mt-4 space-y-4">
+    <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 647:8 (desktop), 650:20544 (mobile) -->
+    <section class="mx-auto w-full max-w-[900px] space-y-8 px-5 sm:px-6">
+      <header class="space-y-3">
+        <p class="text-xs font-semibold uppercase leading-4 moh-text-muted">{{ roadmapIntro.label }} · {{ roadmapAsOfDate }}</p>
+        <h1 class="text-[28px] font-semibold leading-9">{{ roadmapIntro.title }}</h1>
+        <p class="text-[15px] leading-[22px] moh-text-muted">{{ roadmapIntro.description }}</p>
+        <nav aria-label="Roadmap sections" class="moh-meta flex flex-wrap gap-x-5 gap-y-2">
+          <a :href="`#${currentPhase.id}`" class="hover:underline">Current work</a>
+          <a href="#milestone-history" class="hover:underline">Milestone history</a>
+          <a href="#backlog" class="hover:underline">Backlog</a>
+        </nav>
+      </header>
+      <section :id="currentPhase.id" class="scroll-mt-24 space-y-6" aria-labelledby="current-work-title">
+        <div class="space-y-2">
+          <h2 id="current-work-title" class="text-xl font-semibold leading-7">Current work</h2>
+          <p class="moh-meta">{{ currentPhase.title }} · <time :datetime="currentPhase.datetime">{{ currentPhase.date }}</time></p>
+          <p class="moh-meta">{{ currentPhase.description }}</p>
+        </div>
+        <div v-for="chunk in activeChunks" :key="chunk.title">
+          <h3 class="text-xs font-semibold leading-4 moh-text-muted">{{ chunk.title }}</h3>
+          <RoadmapItems :items="chunk.items" />
+        </div>
+        <AppDisclosure v-for="chunk in completedChunks" :key="chunk.title">
+          <template #title>{{ chunk.title }} <span class="font-normal moh-text-muted">· {{ chunk.items.length }} additions</span></template>
+          <RoadmapItems :items="chunk.items" />
+        </AppDisclosure>
+      </section>
+      <section id="milestone-history" class="scroll-mt-24" aria-labelledby="milestone-history-title">
+        <h2 id="milestone-history-title" class="text-xl font-semibold leading-7">Milestone history</h2>
+        <p class="moh-meta mt-2 mb-2">Historical targets<template v-if="roadmapOriginalAsOfDate"> · First published {{ roadmapOriginalAsOfDate }}</template></p>
+        <AppDisclosure v-for="phase in historicalPhases" :id="phase.id" :key="phase.id" :open="expandedPhase === phase.id" class="scroll-mt-24">
+          <template #title><time :datetime="phase.datetime">{{ phase.date }}</time><span class="moh-meta mt-1 block font-normal">{{ phase.title }}</span></template>
+          <div class="space-y-6 pb-6">
+            <p class="moh-meta">{{ phase.badge }} · {{ phase.description }}</p>
             <div v-for="chunk in phase.chunks" :key="chunk.title">
-              <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                {{ chunk.title }}
-              </h3>
-              <ul class="mt-2 space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                <li
-                  v-for="(item, i) in chunk.items"
-                  :key="i"
-                  class="flex gap-3"
-                >
-                  <span
-                    class="mt-0.5 h-1 w-1 shrink-0 rounded-full"
-                    :class="item.done
-                      ? 'bg-emerald-500'
-                      : item.inProgress
-                        ? 'bg-amber-500'
-                        : (phase.isHighlight ? 'bg-[var(--moh-premium)]' : 'border-2 border-gray-400 bg-transparent dark:border-zinc-500')"
-                    aria-hidden="true"
-                  />
-                  <span
-                    class="flex-1"
-                    :class="item.done ? 'line-through text-gray-500 dark:text-gray-500' : ''"
-                    v-html="formatItem(item)"
-                  />
-                  <span
-                    v-if="item.inProgress"
-                    class="inline-flex shrink-0 self-start items-center rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-amber-600 dark:border-amber-400/30 dark:text-amber-400"
-                  >
-                    In progress
-                  </span>
-                  <span
-                    v-else-if="item.done"
-                    class="inline-flex shrink-0 self-start items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-emerald-600 dark:border-emerald-400/30 dark:text-emerald-300"
-                  >
-                    Done
-                  </span>
-                </li>
-              </ul>
+              <h3 class="text-xs font-semibold leading-4 moh-text-muted">{{ chunk.title }}</h3>
+              <RoadmapItems :items="chunk.items" />
             </div>
           </div>
-        </div>
-      </article>
-
-      <article class="relative">
-        <div
-          class="absolute left-0 top-0 h-full w-px bg-gradient-to-b from-gray-300 via-gray-200 dark:from-zinc-600 dark:via-zinc-700 to-transparent"
-          aria-hidden="true"
-        />
-        <div class="pl-6">
-          <div class="flex flex-wrap items-baseline gap-2">
-            <span class="text-lg font-semibold text-gray-500 dark:text-gray-400">
-              {{ roadmapBacklog.title }}
-            </span>
-            <span class="rounded-full border border-gray-200 bg-gray-50/80 px-2.5 py-0.5 text-xs font-medium text-gray-500 dark:border-zinc-700 dark:bg-zinc-900/30 dark:text-gray-500">
-              {{ roadmapBacklog.badge }}
-            </span>
-          </div>
-          <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
-            {{ roadmapBacklog.description }}
-          </p>
-
-          <div class="mt-4 space-y-4">
-            <div v-for="chunk in roadmapBacklog.chunks" :key="chunk.title">
-              <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                {{ chunk.title }}
-              </h3>
-              <ul class="mt-2 space-y-2 text-sm text-gray-700 dark:text-gray-300">
-                <li
-                  v-for="(item, i) in chunk.items"
-                  :key="i"
-                  class="flex gap-3"
-                >
-                  <span
-                    class="mt-0.5 h-1 w-1 shrink-0 rounded-full"
-                    :class="item.done ? 'bg-emerald-500' : item.inProgress ? 'bg-amber-500' : 'border border-gray-300 bg-transparent dark:border-zinc-600'"
-                    aria-hidden="true"
-                  />
-                  <span
-                    class="flex-1"
-                    :class="item.done ? 'line-through text-gray-500 dark:text-gray-500' : ''"
-                    v-html="formatItem(item)"
-                  />
-                  <span
-                    v-if="item.inProgress"
-                    class="inline-flex shrink-0 self-start items-center rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-amber-600 dark:border-amber-400/30 dark:text-amber-400"
-                  >
-                    In progress
-                  </span>
-                  <span
-                    v-else-if="item.done"
-                    class="inline-flex shrink-0 self-start items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold leading-none text-emerald-600 dark:border-emerald-400/30 dark:text-emerald-300"
-                  >
-                    Done
-                  </span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </article>
-    </div>
-
-    <footer class="mt-14 border-t border-gray-200 pt-6 dark:border-zinc-800">
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        {{ roadmapFooterDisclaimer }}
-      </p>
-      <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        <NuxtLink to="/about" class="font-medium text-gray-700 hover:underline dark:text-gray-300">
-          About
-        </NuxtLink>
-        <NuxtLink to="/tiers" class="font-medium text-gray-700 hover:underline dark:text-gray-300">
-          Tiers
-        </NuxtLink>
-        <NuxtLink to="/feedback" class="font-medium text-gray-700 hover:underline dark:text-gray-300">
-          Feedback
-        </NuxtLink>
-        <NuxtLink to="/status" class="font-medium text-gray-700 hover:underline dark:text-gray-300">
-          Status
-        </NuxtLink>
-      </div>
-    </footer>
-  </section>
+        </AppDisclosure>
+      </section>
+      <section id="backlog" class="scroll-mt-24" aria-labelledby="backlog-title">
+        <h2 id="backlog-title" class="text-xl font-semibold leading-7">{{ roadmapBacklog.title }}</h2>
+        <p class="moh-meta mt-2">{{ roadmapBacklog.badge }} · {{ roadmapBacklog.description }}</p>
+        <AppDisclosure v-for="chunk in roadmapBacklog.chunks" :key="chunk.title">
+          <template #title>{{ chunk.title }} <span class="font-normal moh-text-muted">· {{ chunk.items.length }} items</span></template>
+          <RoadmapItems :items="chunk.items" />
+        </AppDisclosure>
+      </section>
+      <footer class="space-y-4">
+        <p class="moh-meta">{{ roadmapFooterDisclaimer }}</p>
+        <nav aria-label="More about Men of Hunger" class="moh-meta flex flex-wrap gap-x-5 gap-y-2">
+          <NuxtLink v-for="link in [{ to: '/about', label: 'About' }, { to: '/tiers', label: 'Membership' }, { to: '/feedback', label: 'Feedback' }, { to: '/status', label: 'Status' }]" :key="link.to" :to="link.to" class="hover:underline">{{ link.label }}</NuxtLink>
+        </nav>
+      </footer>
+    </section>
   </AppPageContent>
 </template>
 
@@ -190,7 +69,6 @@ import {
   roadmapBacklog,
   roadmapFooterDisclaimer,
   roadmapMetaDescription,
-  getRoadmapSeoDescription,
   getRoadmapJsonLd
 } from '~/config/roadmap.data'
 
@@ -220,16 +98,13 @@ useHead({
   ]
 })
 
-/** Turn **bold** in item text into <strong> for display. HTML-escape first to prevent XSS. */
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-function formatItem(item: { text: string }): string {
-  return escapeHtml(item.text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-}
+const route = useRoute()
+const currentPhase = roadmapPhases.find(phase => phase.isHighlight) ?? roadmapPhases[0]!
+const historicalPhases = roadmapPhases.filter(phase => phase !== currentPhase)
+const activeChunks = currentPhase.chunks.filter(chunk => chunk.items.some(item => !item.done))
+const completedChunks = currentPhase.chunks.filter(chunk => chunk.items.every(item => item.done))
+const expandedPhase = ref('')
+// Hashes are not available to SSR. Open the target only after hydration.
+onMounted(() => { expandedPhase.value = route.hash.slice(1) })
+watch(() => route.hash, hash => { expandedPhase.value = hash.slice(1) })
 </script>

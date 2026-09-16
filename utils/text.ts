@@ -20,13 +20,16 @@ export function gatedPostBodyPreview(body: string, minWords = 10, previewChars =
   return `${text.slice(0, previewChars)}…`
 }
 
-/**
- * Short count for post engagement: 1–999 as-is, 1000+ as "1k", "1.1k" (one decimal when fractional).
- */
+/** Compact counts keep post action slots stable, including million/billion values. */
 export function formatShortCount(n: number): string {
   if (!Number.isFinite(n) || n < 0) return '0'
-  if (n < 1000) return String(Math.round(n))
-  const k = n / 1000
-  return k % 1 === 0 ? `${k}k` : `${k.toFixed(1)}k`
+  if (n < 1000) return String(Math.floor(n))
+  for (const [scale, suffix] of [[1e12, 't'], [1e9, 'b'], [1e6, 'm'], [1e3, 'k']] as const) {
+    if (n < scale) continue
+    const value = n / scale
+    if (value >= 1000) return '999t'
+    // Truncate instead of rounding 999.9k into the wider 1000k.
+    return `${value < 10 ? Math.floor(value * 10) / 10 : Math.floor(value)}${suffix}`
+  }
+  return '0'
 }
-

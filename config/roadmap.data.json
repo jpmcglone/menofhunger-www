@@ -1,12 +1,100 @@
 {
-  "asOfDate": "Aug. 4, 2026",
+  "asOfDate": "Sept. 16, 2026",
   "originalAsOfDate": "Feb. 3, 2026",
   "intro": {
     "label": "Product roadmap",
     "title": "Where we're headed",
-    "description": "The web platform is live: verification, posting, groups, chat, spaces, radio, articles, coins, check-ins, and the full discovery surface. The native iOS app covers feed, groups, explore, notifications, profile, and bookmarks, with chat, articles, coins, and crew still opening on the web. What's left is safety depth, account data controls, and the remaining native screens."
+    "description": "What is implemented today, what still needs work, and what comes later. Chat, calls, article reading, check-ins, and fitness now work on both web and iOS alongside the core feed. Done means implemented in the current app; it does not mean App Store approval or availability on every platform. The original milestone dates below are historical targets."
   },
   "phases": [
+    {
+      "id": "september-2026",
+      "date": "September 16, 2026",
+      "datetime": "2026-09-16",
+      "badge": "Current app and next steps",
+      "title": "Close the gaps between the app and the promise",
+      "description": "The current build has grown beyond the original milestones. These additions and release gaps are now tracked explicitly.",
+      "isHighlight": true,
+      "chunks": [
+        {
+          "title": "Implemented in the current app",
+          "items": [
+            {
+              "text": "**Voice and video calls** — Web and iOS calling in eligible chats, up to 4 participants, with native incoming-call integration, reactions, and missed-call handling.",
+              "done": true
+            },
+            {
+              "text": "**Fitness and Apple Health** — Verified personal accounts can track workouts, steps, activity, weight, VO2 max, and goals. Apple Health connects through iOS; synced progress is available on web. Data is private unless you deliberately share a post.",
+              "done": true
+            },
+            {
+              "text": "**Premium recovery summaries** — Sleep and HRV summaries are available to Premium members when their connected Health data includes those readings.",
+              "done": true
+            },
+            {
+              "text": "**Video avatars and richer media** — Premium video avatars, media cropping, supported external embeds, and an iOS Share Extension for bringing content into posts or chats.",
+              "done": true
+            },
+            {
+              "text": "**Marv privacy and personal tools** — Explicit AI consent, personal context controls, memory management, and catch-up tools. Marv can use public content and permitted context from the thread or group where he participates. Usage is limited by a separate Marv credit allowance.",
+              "done": true
+            },
+            {
+              "text": "**Account switching and managed Pages** — Account switching is implemented on web and iOS. Admin-managed Pages and operators exist; Pages do not receive person-only fitness, check-in, or Crew access.",
+              "done": true
+            },
+            {
+              "text": "**Spaces scheduling** — Schedule a Space and let members subscribe to reminders on the web. This does not yet provide a general event / RSVP system.",
+              "done": true
+            },
+            {
+              "text": "**Publishing and operations** — Newsletter editing, scheduling, audience targeting, unsubscribe controls, and admin job/media tools are implemented.",
+              "done": true
+            },
+            {
+              "text": "**Scripture previews** — Recognized scripture references open verse previews on web and iOS; tap-any-word dictionary lookup is still separate planned work.",
+              "done": true
+            }
+          ]
+        },
+        {
+          "title": "Release and limited rollout",
+          "items": [
+            {
+              "text": "**iOS release validation** — Complete manual iPhone/iPad TestFlight checks, purchase and restore scenarios, review-account access, and App Store resubmission. Native implementation is not App Store approval.",
+              "inProgress": true
+            },
+            {
+              "text": "**Strava rollout** — OAuth, sync, disconnect, and UI are implemented behind an account feature flag. Complete provider/rollout validation before advertising general availability.",
+              "inProgress": true
+            }
+          ]
+        },
+        {
+          "title": "Next product gaps",
+          "items": [
+            {
+              "text": "**Ranking policy** — Align ranking and membership claims. Boost and profile-pin weights vary by tier, and people recommendations give Premium+ extra weight. Decide and enforce the intended policy before claiming paid-tier neutrality."
+            },
+            {
+              "text": "**Steward benefits** — Deliver the planned forum, founder updates/calls, and support workflow before presenting them as active Premium+ perks. Premium+ already includes Premium, supporter styling, and an additional people-recommendation weight."
+            },
+            {
+              "text": "**Account control** — Add data export, per-device session revocation, and a verified phone-number change/recovery flow."
+            },
+            {
+              "text": "**Safety follow-through** — Add user muting across feeds, report outcome/status visibility, and chat read-receipt preferences."
+            },
+            {
+              "text": "**Writing continuity** — Make saved composer drafts discoverable and resumable, then finish continuous post autosave and cross-device recovery. Native article writing is also still planned."
+            },
+            {
+              "text": "**API observability** — Add API error tracking and actionable alerts alongside existing web/iOS monitoring."
+            }
+          ]
+        }
+      ]
+    },
     {
       "id": "march-2026",
       "date": "March 1, 2026",
@@ -14,7 +102,7 @@
       "badge": "Phase 1 — Trust-first Beta",
       "title": "Early Beta: join, verify, and participate safely",
       "description": "Make it easy to join and read, verify for trust, and gate participation by tier. Ship account states, reporting, and paid membership with enforced entitlements.",
-      "isHighlight": true,
+      "isHighlight": false,
       "chunks": [
         {
           "title": "Trust & access (essential)",
@@ -24,11 +112,11 @@
               "done": true
             },
             {
-              "text": "**Identity verification (provider-agnostic)** — We submit verification requests to an external provider, trust the response, and store a simple status lifecycle (**pending → verified → revoked**) with timestamps and reason codes.",
+              "text": "**Identity verification** — Request verification, follow its status, and receive an administrator’s approval or rejection. Admins can revoke verification. An automated external identity-provider flow is not implemented.",
               "done": true
             },
             {
-              "text": "**Premium requires verified** — You can't subscribe to (or keep) premium unless you're verified. This is enforced in upgrade flow and in premium-only actions (member areas, media, etc.).",
+              "text": "**Premium requires verification** — Verify before starting a web or App Store purchase. Paid entitlements are withheld when verification is lost; Apple subscription management remains with Apple.",
               "done": true
             }
           ]
@@ -37,7 +125,7 @@
           "title": "Tier access (v1)",
           "items": [
             {
-              "text": "**Unverified read-only (plus private notes)** — Read public posts and longform, follow, bookmark, and manage profile basics; can create **Only me** private notes/drafts; no public posting, replies, or reactions.",
+              "text": "**Unverified read-only (plus private notes)** — Read public posts and longform, follow, bookmark, and manage profile basics; create Only Me private notes. Public posting, replies, and reactions require verification.",
               "done": true
             },
             {
@@ -45,11 +133,11 @@
               "done": true
             },
             {
-              "text": "**Premium baseline access** — Full posting and replies, member-only areas; **post video** (images/GIFs available to all verified); **DM any verified member** (verified can only DM mutuals); create groups; Premium is baseline (verified may be slightly suppressed); paid tiers are neutral (no boosted reach).",
+              "text": "**Premium access** — Longer posts, Premium-only content, video, chats with verified non-mutuals, open or private group creation, and scheduled posts. Audience restrictions and moderation still apply.",
               "done": true
             },
             {
-              "text": "**Spaces (v1) for verified+** — Join spaces, see who is present, and use live chat + shared audio while you build.",
+              "text": "**Spaces on web** — Host or join rooms with presence, live chat, radio playback, and synchronized YouTube watch parties. A native iOS Spaces experience remains planned.",
               "done": true
             }
           ]
@@ -58,7 +146,7 @@
           "title": "Premium membership (launch)",
           "items": [
             {
-              "text": "**Stripe subscriptions** — Premium ($25/mo) and Premium+ ($75/mo) billing with verification gating; entitlements are enforced in the upgrade flow and settings. Premium+ is a supporter tier with no special power.",
+              "text": "**Stripe subscriptions** — Premium ($25/mo) and Premium+ ($75/mo) billing with verification gating; entitlements are enforced in the upgrade flow and settings. Steward services beyond current Premium+ benefits remain planned.",
               "done": true
             }
           ]
@@ -87,7 +175,7 @@
               "done": true
             },
             {
-              "text": "**Invite a friend / referrals** — Shareable invite code and referral link; track your recruits in Settings → Billing. When a recruit verifies and his subscription goes active, you get a free month. He gets one too, as long as you're a paying subscriber yourself.",
+              "text": "**Invites and referral rewards** — Share invite links and codes, track recruits, and earn qualifying subscription credits. Eligibility and reward status are shown in web Billing.",
               "done": true
             },
             {
@@ -147,11 +235,11 @@
               "done": true
             },
             {
-              "text": "**Reliability** — Rate limits and clear \"try again later\" when needed; we test sign up → onboard → post → upgrade so the core flow works.",
+              "text": "**Reliability foundations** — Rate limits, user-facing errors, local contract checks, and purchase failure tests are implemented. Device testing and release validation remain ongoing.",
               "done": true
             },
             {
-              "text": "**Sentry** — Error tracking live on the web app; API-side integration not yet started.",
+              "text": "**Error monitoring** — Web and iOS have Sentry integrations. API error tracking still needs integration and end-to-end alert verification.",
               "inProgress": true
             },
             {
@@ -204,14 +292,14 @@
               "done": true
             },
             {
-              "text": "**Drafts + autosave (posts)** — Save drafts automatically and resume across devices so you don't lose work. Articles autosave continuously; an unfinished post is saved when you navigate away, but continuous post autosave and a drafts list are still to come.",
+              "text": "**Post drafts and autosave** — Web offers a save-on-leave prompt, but saved composer drafts are not listed in Only Me and still need a retrieval/resume screen. Continuous autosave and cross-device recovery remain incomplete. Article autosave is implemented.",
               "inProgress": true
             },
             {
               "text": "**Admin-only restore** — Restore soft-deleted posts (admin-only for now)."
             },
             {
-              "text": "**No ads, no pay-to-win** — There are no ads anywhere on the platform for anyone, and paid tiers stay neutral (no boosted reach).",
+              "text": "**No advertising placements** — The app has no paid ad placements. Feed and people recommendations currently use membership weights; ranking policy is tracked in the current priorities.",
               "done": true
             },
             {
@@ -239,7 +327,7 @@
               "done": true
             },
             {
-              "text": "**Marv AI** — @marv is a wise, brief AI helper; mention him in any thread or chat with him directly (Premium only).",
+              "text": "**Marv AI** — Premium members can use Marv in supported threads and chats within their Marv credit allowance. AI consent, optional personal context, and memory controls are implemented; private context stays subject to its permissions.",
               "done": true
             }
           ]
@@ -299,7 +387,7 @@
           "title": "Live & real-time",
           "items": [
             {
-              "text": "**Radio / listening rooms** — Broadcast a live audio stream or station; listeners can join, chat live, and react in real-time.",
+              "text": "**Radio in Spaces** — Listen to supported audio streams with room chat and reactions on the web. The old /radio route redirects to Spaces; a separate native radio screen is not implemented.",
               "done": true
             },
             {
@@ -320,7 +408,7 @@
               "done": true
             },
             {
-              "text": "**Admin media review queue** — Review flagged or uploaded media before it goes live.",
+              "text": "**Admin media review** — Review uploaded media, inspect content ownership, and remove eligible orphaned media. This is an admin review tool, not a claim that every upload is approved before publication.",
               "done": true
             }
           ]
@@ -351,7 +439,7 @@
               "text": "Dialogues (v1) — Start and participate in structured dialogues (premium required)."
             },
             {
-              "text": "Chat — Real chats: list conversations, send and receive, mark read; only you and the other person see the thread.",
+              "text": "**Chat** — Direct and group conversations on web and iOS, with message requests, photos, voice notes, Premium video messages, replies, reactions, search, read receipts, and per-conversation notification muting. Chat is access-controlled; this is not a claim of end-to-end message encryption.",
               "done": true
             }
           ]
@@ -369,7 +457,7 @@
           "title": "Real-time engagement",
           "items": [
             {
-              "text": "**Live thread updates** — Real-time updates under posts (new replies, edits, deletes/restores) so conversations feel active without refresh.",
+              "text": "**Live thread updates** — New replies, edits, deletes, and engagement changes update without a page refresh. Admin restoration of deleted posts remains planned.",
               "done": true
             }
           ]
@@ -378,7 +466,7 @@
           "title": "Safety & control",
           "items": [
             {
-              "text": "Block user — Block so they can't see your posts, chat you, or appear in your feed; manage your block list in settings.",
+              "text": "**Block user** — Block interactions and remove blocked accounts from your signed-in experience; manage the block list in Settings. Public content can still be seen while signed out.",
               "done": true
             },
             {
@@ -390,14 +478,14 @@
           "title": "Account & data",
           "items": [
             {
-              "text": "**Delete account** — Permanent self-service account deletion in Settings; anonymizes personal data, cancels any active subscription, and revokes all sessions across devices.",
+              "text": "**Delete account** — Request deletion inside web or iOS Settings, with immediate sign-out, a recovery window, and deletion-status tracking. The deletion worker removes personal content and fitness data and cancels Stripe billing; Apple subscriptions must be managed separately through Apple.",
               "done": true
             },
             {
               "text": "Download my data — Export your posts, profile, and bookmarks so you own your data."
             },
             {
-              "text": "Active sessions / devices — See where you're logged in and revoke individual sessions. Signing out everywhere already works; the per-device list is what's missing.",
+              "text": "**Active sessions / devices** — Sign out everywhere is implemented. A device/session list with individual revocation remains to be built.",
               "inProgress": true
             }
           ]
@@ -419,7 +507,7 @@
       "datetime": "2026-06-01",
       "badge": "Phase 4 — Native iOS",
       "title": "Native iOS app",
-      "description": "A native iOS app on the same API. Feed, groups, explore, notifications, profile, and bookmarks are fully native today. Chat, articles, coins, crew, and spaces still open in the authenticated web while we build them natively — that handoff is deliberate, not a gap we forgot.",
+      "description": "The current iOS app implements feed, groups, chat, calls, article reading, fitness, check-in day feeds, and account controls on the shared API. Article writing, coins, Crews, and Spaces still use web surfaces. TestFlight validation and App Store approval remain separate release milestones.",
       "isHighlight": false,
       "chunks": [
         {
@@ -495,31 +583,36 @@
               "done": true
             },
             {
-              "text": "**Daily check-ins** — Check in and track your streak from the home feed. The day feed and leaderboard still open on the web.",
-              "inProgress": true
+              "text": "**Daily check-ins** — Native check-in composer, streaks, and day feeds. Leaderboards still open on the web.",
+              "done": true
             }
           ]
         },
         {
-          "title": "Still handed off to the web",
+          "title": "Native additions and remaining web handoffs",
           "items": [
             {
-              "text": "**Chat / DMs** — Conversation list and messages. Opens the authenticated web today."
+              "text": "**Chat / DMs** — Native inbox and conversation screens, direct and group chats, requests, media, reactions, read indicators, search, and notification muting.",
+              "done": true
             },
             {
-              "text": "**Articles** — Reading longform natively. Opens the authenticated web today."
+              "text": "**Article reading** — Native article discovery, reading, boosts, reactions, and comments. Writing and editing still open on the website.",
+              "done": true
             },
             {
-              "text": "**Coins** — Balance, streak earnings, and transfers. Opens the authenticated web today."
+              "text": "**Native coins screens** — Balance, earnings, transfers, and receipts currently use the website. Native wallet and transfer screens remain planned."
             },
             {
-              "text": "**Crew / Founding Circles** — Opens the authenticated web today."
+              "text": "**Native Crews** — Crew walls, membership, and management currently use the website. Native screens remain planned."
             },
             {
-              "text": "**Spaces** — Live audio rooms. Opens the authenticated web today."
+              "text": "**Native Spaces** — Rooms, shared radio, watch parties, and room chat currently use the website. Native playback and participation remain planned."
             },
             {
-              "text": "**Radio** — No iOS path yet; listening rooms are web-only."
+              "text": "**Native article writing** — Reading is native; drafting, rich-text editing, and publishing still require the website."
+            },
+            {
+              "text": "**Native leaderboards** — Check-in day feeds are native; check-in rankings still open on the website."
             }
           ]
         }
@@ -529,7 +622,7 @@
   "backlog": {
     "badge": "Not scheduled",
     "title": "Later / backlog",
-    "description": "Features we want but haven't slotted into a milestone yet.",
+    "description": "Ideas and unfinished benefits without committed dates. Existing foundations are called out so they are not mistaken for missing features.",
     "chunks": [
       {
         "title": "Account & auth",
@@ -541,10 +634,14 @@
             "text": "Email as second factor or account recovery."
           },
           {
-            "text": "\"Remember me\" / longer sessions; list connected devices with revoke."
+            "text": "**Session controls** — Existing sessions persist across launches and sign out everywhere works. Individual device/session management is tracked in Account & data.",
+            "done": true
           },
           {
-            "text": "Read receipts (for chat) — off by default, toggleable if/when we add it."
+            "text": "**Read receipt privacy controls** — Read indicators already work in web and iOS chat. A member-controlled receipt toggle has not been implemented."
+          },
+          {
+            "text": "**Automated identity-provider verification** — The current flow is admin-reviewed. Provider onboarding and an automated approval/revocation lifecycle remain future work."
           }
         ]
       },
@@ -571,7 +668,7 @@
             "text": "Deeper topics — follow topics, trending topics, and topic moderation (spam/abuse resistance)."
           },
           {
-            "text": "Share to Twitter/X or other apps — Copy link and the native share sheet work today; direct per-network share targets are still to come.",
+            "text": "**Sharing** — Copy links, web/native share sheets, and the iOS Share Extension are implemented. Dedicated per-network share shortcuts remain optional follow-up work.",
             "inProgress": true
           }
         ]
@@ -580,7 +677,8 @@
         "title": "Notifications",
         "items": [
           {
-              "text": "More email — per-event emails (e.g. \"Email me when someone replies\"), daily digests, and better deliverability tooling (suppression, bounces)."
+            "text": "**Email delivery depth** — Digests, notification emails, newsletters, audience selection, scheduling, and unsubscribe controls are implemented. Bounce/suppression webhooks and deeper delivery diagnostics remain incomplete.",
+            "inProgress": true
           }
         ]
       },
@@ -599,7 +697,7 @@
         "title": "Monetization",
         "items": [
           {
-            "text": "**Coin spending** — Give coins a purpose beyond transfers: boost a post for visibility, unlock cosmetics, tip article authors, or redeem for other in-app perks."
+            "text": "**Coin uses beyond transfers** — Consider cosmetics or other non-ranking perks. Coins cannot currently be redeemed for features or paid reach; direct coin transfers already work."
           },
           {
             "text": "**Coins leaderboard** — Top coin holders and top earners this week so the economy has visible social proof."
@@ -613,13 +711,13 @@
         "title": "Pricing & plans",
         "items": [
           {
-            "text": "**Quarterly plan ($65)** — 3 months upfront to improve cashflow and commitment."
+            "text": "**Quarterly billing** — A quarterly subscription option is not implemented. The earlier $65 proposal remains unconfirmed."
           },
           {
-            "text": "**Annual plan ($250)** — Save vs monthly; reduces churn and accelerates capital."
+            "text": "**Annual billing** — An annual subscription option is not implemented. The earlier $250 proposal remains unconfirmed."
           },
           {
-            "text": "**Founding member (limited lifetime VIP)** — Higher early price for lifetime access; limited availability."
+            "text": "**Founding member plan** — A limited lifetime offer is an idea, not an available purchase or committed price."
           }
         ]
       },
@@ -653,13 +751,13 @@
             "text": "Priority support, faster moderation review (same outcomes), and priority account recovery."
           },
           {
-            "text": "Experience upgrades — no ads anywhere while logged in, better feed defaults, advanced mute / filter controls."
+            "text": "**Steward experience upgrades** — Additional feed defaults and advanced mute / filter controls remain planned. Ad-free use already applies to everyone."
           },
           {
-            "text": "Higher limits — media size/quality, drafts, and extended edit windows."
+            "text": "**Steward limits and longform tools** — Higher media limits, more drafts, extended editing, and additional reading/writing tools remain planned; current limits are shared with Premium."
           },
           {
-            "text": "Community tools — one private group, higher member caps, and event / RSVP tools."
+            "text": "**Steward community tools** — Higher group caps and broader event / RSVP tools remain planned. Premium can already create private groups; Spaces already support scheduling and reminders."
           }
         ]
       },
@@ -670,7 +768,7 @@
             "text": "**Purchasable customizations** — Themes, profile accents, or other app/profile customizations you can buy to personalize your experience."
           },
           {
-            "text": "**Profile badges** — Milestone badges and achievements (streaks, contribution, supporter) shown on your profile.",
+            "text": "**Profile identity and streaks** — Verification, paid membership styling, Premium+ glow, and streak indicators are implemented. A broader contribution and achievement badge system remains planned.",
             "done": true
           },
           {
@@ -678,6 +776,9 @@
           },
           {
             "text": "Tip or support a creator — One-time payment to another member (optional)."
+          },
+          {
+            "text": "**Achievement badges** — Contribution and milestone awards beyond current identity and streak indicators."
           }
         ]
       },
@@ -696,6 +797,6 @@
       }
     ]
   },
-  "footerDisclaimer": "Dates are targets, not promises. We'll update this page as we lock in or shift milestones.",
-  "metaDescription": "See what we're building and when. Men of Hunger product roadmap — trust, tiers, real conversation, community features, and native iOS."
+  "footerDisclaimer": "Original milestone dates are historical targets, not new delivery promises. Done means implemented in the current app; platform limits and limited rollouts are called out. Planned benefits are not included as available features. Remaining work has no committed release date.",
+  "metaDescription": "Men of Hunger roadmap, updated September 16, 2026: current web and iOS features, App Store readiness, privacy controls, native gaps, and planned membership benefits."
 }

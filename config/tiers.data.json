@@ -2,10 +2,10 @@
   "intro": {
     "label": "Membership",
     "tagline": "A trusted community for men who want real conversation, not more noise.",
-    "title": "Unverified, Verified, Premium, and Premium+ — how the tiers work.",
-    "description": "Unverified: read and take private notes. Verified: real and free — post (up to 500 chars), react, post images and GIFs, create polls, publish 1 article per day, use bookmark folders, send coins, and start DMs with mutuals. Premium: full access — 1000-char posts, unlimited articles (including premium-only), post video, DM any member, create groups, and more. Premium+: steward and support."
+    "title": "Find the membership that fits.",
+    "description": "Read and keep private notes for free. Get verified for free to post, join conversations, and track your fitness. Premium adds longer posts, video, private groups, Marv, and recovery insights. Premium+ includes Premium and helps support the community. Verification is required before either paid subscription."
   },
-  "metaDescription": "Men of Hunger tiers: Unverified (read-only), Verified (identity-verified, free), Premium ($25/mo — full access), Premium+ ($75/mo — steward). Real conversation, no noise.",
+  "metaDescription": "Compare Men of Hunger memberships: free reading, free verified participation and fitness, Premium at $25/month, and Premium+ at $75/month. Planned benefits are labeled.",
   "tiers": [
     {
       "id": "unverified",
@@ -14,58 +14,46 @@
       "price": {
         "label": "Free"
       },
-      "who": "Curious men. Lurkers. Readers. Zero trust assumed.",
+      "who": "Men who want to look around before getting verified.",
       "can": [
         {
-          "text": "Read public posts and longform"
+          "text": "Read public posts, profiles, and articles"
         },
         {
-          "text": "Follow accounts"
+          "text": "Follow accounts and bookmark posts"
         },
         {
-          "text": "Save / bookmark posts"
+          "text": "Keep Only Me notes private"
         },
         {
-          "text": "Create private notes (Only me posts / drafts)"
-        },
-        {
-          "text": "Manage profile basics (name, bio, avatar)"
-        },
-        {
-          "text": "See public metrics (boosts, replies count)"
+          "text": "Set up your name, bio, and profile photo"
         }
       ],
       "cannot": [
         {
-          "text": "Post publicly"
+          "text": "Publish public posts, reply, boost, or vote in polls"
         },
         {
-          "text": "Reply"
+          "text": "Start chats or calls, join groups or Crews, or participate in Spaces"
         },
         {
-          "text": "React meaningfully"
+          "text": "Read verified-only or Premium-only content"
         },
         {
-          "text": "Join men-only areas"
+          "text": "Use bookmark collections or Fitness before verification"
         },
         {
-          "text": "DM anyone"
-        },
-        {
-          "text": "Create groups"
-        },
-        {
-          "text": "Participate in dialogues"
-        },
-        {
-          "text": "Bookmark folders / collections (Verified required)"
+          "text": "Buy Premium or Premium+ before verification"
         }
       ],
       "why": [
-        "Keeps the funnel wide",
-        "Preserves public visibility",
-        "Allows observation without contamination",
-        "This tier produces attention, not culture."
+        "Explore the community before joining the conversation.",
+        "Verification keeps participation accountable."
+      ],
+      "highlights": [
+        "Read public posts and articles",
+        "Follow, bookmark, and keep private notes",
+        "Explore before getting verified"
       ]
     },
     {
@@ -75,98 +63,77 @@
       "price": {
         "label": "Free"
       },
-      "who": "Real men who've proven identity but haven't committed financially.",
+      "who": "Men ready to participate with a verified identity. No subscription required.",
       "can": [
         {
           "text": "Everything Unverified can do"
         },
         {
-          "text": "React (boosts / acknowledgments)"
+          "text": "Post and reply in public and verified-only conversations, up to 500 characters; boost, repost, quote, and vote in polls"
         },
         {
-          "text": "Post in public threads (within rate limits; may be lower than Premium)"
+          "text": "Attach images and GIFs, create polls, and edit posts up to 3 times within 30 minutes"
         },
         {
-          "text": "Reply in public threads (no dialogues)"
+          "text": "Organize bookmarks into collections"
         },
         {
-          "text": "Post images and GIFs (video is Premium)"
+          "text": "Start direct or group chats with mutual followers; respond to incoming conversations, send photos and voice notes, and use reactions and read receipts"
         },
         {
-          "text": "Create polls"
+          "text": "Make voice and video calls in eligible chats, with up to 4 participants"
         },
         {
-          "text": "Use bookmark folders / collections"
+          "text": "Join open groups, request access to private groups, and join a Crew by invitation"
         },
         {
-          "text": "Send coins to other verified members"
+          "text": "Host or join Spaces on the web, with live chat, shared radio, and synchronized YouTube watch parties"
         },
         {
-          "text": "Start DMs with mutuals (people who follow you back); reply to anyone"
+          "text": "Check in, build a streak, earn coins, and send coins to other verified members"
         },
         {
-          "text": "Voice & video calls in DMs — peer-to-peer encrypted, up to 4 people"
+          "text": "Publish 1 article per day on the web, with public or verified-only visibility; read articles and comments natively on iOS"
         },
         {
-          "text": "Up to 500 characters per post or comment"
+          "text": "Track fitness, workouts, steps, weight, and goals; connect Apple Health through the iOS app"
         },
         {
-          "text": "Edit a post up to 3 times within 30 minutes"
+          "text": "Keep fitness data private and choose whether to share an activity or progress post, and with whom"
         },
         {
-          "text": "Access men-only read areas"
-        },
-        {
-          "text": "Join Spaces and live chat"
-        },
-        {
-          "text": "Host your own Space — invite others in for live audio and chat"
-        },
-        {
-          "text": "Watch parties — sync a YouTube video and chat live with others in a Space"
-        },
-        {
-          "text": "Radio / listening rooms — listen to live audio streams"
-        },
-        {
-          "text": "Join Crews / Founding Circles (invite-only small communities)"
-        },
-        {
-          "text": "Join and fully participate in groups"
-        },
-        {
-          "text": "Earn coins and check in daily for streaks"
-        },
-        {
-          "text": "Publish 1 article per day (public or verified-only)"
+          "text": "Invite friends and track referral rewards on the web"
         }
       ],
       "cannot": [
         {
-          "text": "Post video (Premium only)"
+          "text": "Publish video posts, video messages, or a video avatar"
         },
         {
-          "text": "Start DMs with non-mutuals (Premium only)"
+          "text": "Start a new chat with a non-mutual member"
         },
         {
-          "text": "Start dialogues"
+          "text": "Create groups, schedule posts, or publish Premium-only content"
         },
         {
-          "text": "Create groups"
+          "text": "Use Marv or Premium sleep and HRV summaries"
         },
         {
-          "text": "Access subscriber-only areas"
+          "text": "Use Dialogues or other benefits labeled Planned before they launch"
         }
       ],
       "why": [
-        "Establishes real-human baseline",
-        "Improves tone vs anonymous internet",
-        "Creates a clear upgrade moment",
-        "This tier proves who you are, not that you're invested."
+        "Full community participation starts with identity, not a payment.",
+        "Daily check-ins, conversations, and basic fitness remain available for free."
       ],
       "cta": {
-        "label": "Verify"
-      }
+        "label": "Get verified"
+      },
+      "highlights": [
+        "500-character posts, images, and polls",
+        "Chats, calls, and community check-ins",
+        "Fitness and Apple Health on iOS"
+      ]
     },
     {
       "id": "premium",
@@ -176,101 +143,75 @@
         "amount": "$25",
         "interval": "/ month"
       },
-      "who": "Men who want real conversation and accountability — committed to the platform, not just a feed.",
+      "who": "Verified men who want more ways to create, connect, and track their progress.",
       "can": [
         {
-          "text": "Everything Verified can do (Spaces, Watch parties, Radio, Crews, check-ins, and more)"
+          "text": "Everything Verified can do"
         },
         {
-          "text": "Talk to Marv — your wise, brief AI helper (mention @marv in threads or chat with him directly)"
+          "text": "Write posts and replies up to 1000 characters and publish Premium-only content"
         },
         {
-          "text": "Unlimited posting (within rate limits)"
+          "text": "Publish articles without the free daily publishing cap; article writing and editing are on the web"
         },
         {
-          "text": "Full replies everywhere allowed"
+          "text": "Start chats with any verified member, subject to blocks and message requests"
         },
         {
-          "text": "Access men-only + subscriber-only areas"
+          "text": "Upload video posts and video messages, and set a video avatar"
         },
         {
-          "text": "DM any verified member"
+          "text": "Create open or private groups, manage invitations, and approve join requests"
         },
         {
-          "text": "Post video (images and GIFs available to all verified)"
+          "text": "Schedule posts and manage your publishing queue on web and iOS"
         },
         {
-          "text": "Up to 1000 characters per post or comment"
+          "text": "Use Marv in supported threads and chats, plus personal catch-up tools with your permission; usage draws from your Marv credit allowance"
         },
         {
-          "text": "Create polls"
+          "text": "See sleep and HRV summaries alongside your fitness activity when connected data is available"
         },
         {
-          "text": "Unlimited articles, including premium-only articles"
+          "text": "Invite friends and track eligible subscription rewards in Billing"
         },
         {
-          "text": "Create groups"
-        },
-        {
-          "text": "Use bookmark folders / collections"
-        },
-        {
-          "text": "Invite friends — when your recruit pays his first month of Premium, you both get a free month"
-        },
-        {
-          "text": "Compete in check-ins + leaderboard consistency loops"
-        },
-        {
-          "text": "Earn coins from daily streaks with escalating multipliers (1x–4x)"
-        },
-        {
-          "text": "Send coins to other verified members"
-        },
-        {
-          "text": "Schedule posts to publish later"
-        },
-        {
-          "text": "Tightly moderated quality — no noise, no pay-to-win"
-        },
-        {
-          "text": "Monthly structured conversations and accountability systems",
+          "text": "Structured Dialogues",
           "comingSoon": true
         },
         {
-          "text": "Small group cohorts, workshops & live calls",
+          "text": "Monthly facilitated conversations and accountability programs",
           "comingSoon": true
         },
         {
-          "text": "Start and participate in Dialogues",
+          "text": "Small group cohorts, workshops, and organized live calls",
           "comingSoon": true
         }
       ],
       "cannot": [
         {
-          "text": "Override moderation"
+          "text": "Bypass verification, blocks, audience restrictions, or moderation"
         },
         {
-          "text": "Influence ranking"
+          "text": "Buy guaranteed reach or a paid advertising placement"
         },
         {
-          "text": "Bypass rules"
-        },
-        {
-          "text": "Control product direction"
-        },
-        {
-          "text": "Access steward-only spaces"
+          "text": "Use planned Steward-only services before they launch"
         }
       ],
       "why": [
-        "This is the economic engine",
-        "This is where culture and conversations live",
-        "This is where trust compounds",
-        "If you can speak here, you've paid the price to care."
+        "Subscriptions fund the product and its operation.",
+        "Pay for additional tools and access; the community rules still apply."
       ],
       "cta": {
         "label": "Get Premium"
-      }
+      },
+      "priceNote": "Monthly web price. The App Store shows its local price before purchase.",
+      "highlights": [
+        "1,000-character posts and video",
+        "Private groups and scheduled posts",
+        "Marv and recovery summaries"
+      ]
     },
     {
       "id": "premiumPlus",
@@ -280,110 +221,71 @@
         "amount": "$75",
         "interval": "/ month"
       },
-      "badge": "Best perks",
-      "who": "Patrons, builders, long-term supporters. Not elites.",
+      "badge": "Supporter",
+      "who": "Verified members who want to support the community at a higher level.",
       "can": [
         {
-          "text": "Everything Premium can do"
+          "text": "Everything Premium can do today"
         },
         {
-          "text": "Premium+ avatar glow"
+          "text": "Premium+ avatar glow and supporter identity"
         },
         {
-          "text": "Access to Stewards-only forum",
+          "text": "Extra weight in people recommendations under the current ranking rules; placement and reach are not guaranteed"
+        },
+        {
+          "text": "Stewards-only forum, quarterly Steward calls, and monthly written founder updates",
           "comingSoon": true
         },
         {
-          "text": "Quarterly Steward Call (strategy, philosophy, Q&A)",
+          "text": "Early access to selected new features and betas",
           "comingSoon": true
         },
         {
-          "text": "Monthly written founder update",
+          "text": "Additional feed defaults and advanced mute / filter controls",
           "comingSoon": true
         },
         {
-          "text": "Early access to new features / betas",
+          "text": "Additional longform reading and writing tools",
           "comingSoon": true
         },
         {
-          "text": "Better feed defaults (verified + subscribed first)",
+          "text": "Higher media limits, more saved drafts, and an extended edit window",
           "comingSoon": true
         },
         {
-          "text": "Advanced mute / filter controls",
+          "text": "Priority support, moderation review, and account recovery — with the same rules and outcomes",
           "comingSoon": true
         },
         {
-          "text": "Better longform reading & writing tools",
-          "comingSoon": true
-        },
-        {
-          "text": "Higher media limits (size / quality)",
-          "comingSoon": true
-        },
-        {
-          "text": "Extended edit window",
-          "comingSoon": true
-        },
-        {
-          "text": "More saved drafts",
-          "comingSoon": true
-        },
-        {
-          "text": "Priority support inbox",
-          "comingSoon": true
-        },
-        {
-          "text": "Faster moderation review on reports (not different outcomes)",
-          "comingSoon": true
-        },
-        {
-          "text": "Priority account recovery",
-          "comingSoon": true
-        },
-        {
-          "text": "Ability to create one private group",
-          "comingSoon": true
-        },
-        {
-          "text": "Higher group member caps",
-          "comingSoon": true
-        },
-        {
-          "text": "Event / RSVP tools (later phase)",
+          "text": "Higher group member caps and event / RSVP tools",
           "comingSoon": true
         }
       ],
       "cannot": [
         {
-          "text": "No boosted reach"
+          "text": "Use benefits labeled Planned before they launch"
         },
         {
-          "text": "No special ranking"
+          "text": "Buy guaranteed reach or a paid advertising placement"
         },
         {
-          "text": "No moderation immunity"
-        },
-        {
-          "text": "No veto power"
-        },
-        {
-          "text": "No control over others"
-        },
-        {
-          "text": "No influence over who gets heard"
+          "text": "Override moderation, other members’ privacy, or product decisions"
         }
       ],
       "why": [
-        "Funds moderation, legal, and hiring",
-        "Creates aligned patrons, not power users",
-        "Keeps control with the founder",
-        "Premium+ supports the house. Premium lives in the house."
+        "Support the continued operation and development of Men of Hunger.",
+        "Premium+ includes Premium, supporter styling, and the recommendation weight described above. The additional Steward services are still planned."
       ],
       "cta": {
         "label": "Get Premium+"
-      }
+      },
+      "highlights": [
+        "Everything included in Premium",
+        "Supporter identity and avatar glow",
+        "Extra people-recommendation weight"
+      ]
     }
   ],
-  "footerNote": "Verification is free and required to post publicly. Premium and Premium+ are paid subscriptions — pricing and billing in Settings."
+  "footerNote": "Verification is free and required before purchasing Premium or Premium+. Web subscriptions are managed in Billing; Apple subscriptions are managed through Apple. Planned benefits are not available yet. Membership does not buy guaranteed reach; current feed and people recommendations use membership weights. Marv has a separate credit allowance. Feature access can differ between web and iOS."
 }

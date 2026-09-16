@@ -193,8 +193,8 @@ export function routeHeaderDefaultsFor(path: string): RouteHeaderDefaults {
   }
   if (path === '/feedback') return { icon: 'tabler:send', description: 'Help us improve.' }
   if (path === '/only-me') return { icon: undefined, description: 'Private posts that only you can see. These never appear in feeds.' }
-  if (path === '/roadmap') return { icon: 'tabler:map', description: 'What we’re building and when.' }
-  if (path === '/tiers') return { icon: 'tabler:tags', description: 'Unverified, Verified, and Premium — what you get with each tier.' }
+  if (path === '/roadmap') return { icon: 'tabler:map', description: 'What’s available and what’s next.' }
+  if (path === '/tiers') return { icon: 'tabler:tags', description: 'Current membership benefits and what’s planned.' }
   if (path === '/coins') return { icon: 'tabler:coin', description: 'Your coin balance, transfers, and activity.' }
   if (path === '/daily') return { icon: 'tabler:sun', description: "Today's quote and word of the day." }
   if (path === '/daily/quote') return { icon: 'tabler:quote', description: "Today's featured scripture or quote." }

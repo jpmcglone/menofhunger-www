@@ -41,6 +41,7 @@
                   <Icon name="tabler:x" class="text-[18px]" aria-hidden="true" />
                 </button>
               </header>
+              <AppAiConsentHost />
 
               <div class="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 py-5 sm:px-6">
                 <AppMarvSourcePost v-if="post && !result" :post="post" />
@@ -266,7 +267,7 @@
                       :checked="includeImages"
                       :disabled="loading || peeking"
                       @change="toggleIncludeImages"
-                    />
+                    >
                     <span class="text-[13px] text-gray-600 dark:text-gray-300">Include images</span>
                   </label>
                   <span class="text-[11px] text-gray-400 dark:text-gray-500">
@@ -293,7 +294,7 @@
                   </span>
                   <template v-if="result.stale">
                     <AppActionButton label="Done" kind="secondary" @click="hide" />
-                    <AppActionButton :label="updateLabel" :loading="loading" @click="regenerate"  marv />
+                    <AppActionButton :label="updateLabel" :loading="loading" marv  @click="regenerate" />
                   </template>
                   <template v-else>
 
@@ -303,7 +304,7 @@
                 <template v-else-if="errorMessage">
                   <!-- Error state: offer a retry + close -->
                   <AppActionButton label="Cancel" kind="secondary" @click="hide" />
-                  <AppActionButton label="Try again" :loading="loading" @click="run()"  marv />
+                  <AppActionButton label="Try again" :loading="loading" marv  @click="run()" />
                 </template>
                 <template v-else-if="peeking">
                   <!-- Checking cache: just a cancel -->
@@ -316,8 +317,8 @@
                     :label="loading ? 'Summarizing…' : 'Catch me up'"
                     :loading="loading"
 
-                    @click="run()"
-                   marv />
+                    marv
+                   @click="run()" />
                 </template>
               </footer>
             </section>

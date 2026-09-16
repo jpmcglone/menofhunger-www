@@ -25,8 +25,8 @@
   </div>
 
   <div
-    v-else-if="!isDeletedPost && !isOnlyMe"
-    class="mt-2 flex flex-wrap items-center justify-between sm:justify-start gap-1 moh-text-muted"
+    v-if="!isDeletedPost && !isOnlyMe"
+    class="moh-post-actions mt-2 flex items-center justify-between sm:justify-start moh-text-muted"
   >
     <!-- Reply -->
     <div class="inline-flex items-center">
@@ -65,22 +65,17 @@
         <AppIconGlyph name="repost" :selected="isReposted" :size="19" :style="{ color: repostActiveColor }" />
       </button>
       <button
-        v-if="repostCount > 0"
         type="button"
+        :disabled="repostCount === 0"
+        :aria-hidden="repostCount === 0 ? true : undefined"
+        :tabindex="repostCount === 0 ? -1 : undefined"
+        :class="repostCount > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'"
         class="ml-0 inline-flex min-h-11 min-w-11 items-center select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter hover:underline underline-offset-2"
         :aria-label="`${repostCount} repost${repostCount === 1 ? '' : 's'} — view who reposted`"
         @click.stop="$emit('openReposters')"
       >
         <AppAnimatedCount :value="repostCount" :format="formatCountOrBlank" />
       </button>
-      <span
-        v-else
-        class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter opacity-0"
-        aria-hidden="true"
-      >
-        0
-      </span>
-
       <AppPostRowRepostMenu
         ref="repostMenuRef"
         :is-reposted="isReposted"
@@ -102,7 +97,7 @@
         <AppIconGlyph name="boost" :selected="isBoosted" :size="20" :style="{ color: boostActiveColor }" />
       </button>
       <span
-        class="ml-0 inline-block sm:min-w-[1.5rem] select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
+        class="ml-0 inline-block select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
         :class="boostCount > 0 ? 'opacity-100' : 'opacity-0'"
         aria-hidden="true"
       >
@@ -127,7 +122,7 @@
         @bookmark-state-changed="$emit('bookmarkStateChanged', $event)"
       />
       <span
-        class="inline-block sm:min-w-[1.5rem] select-none text-left sm:text-right text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
+        class="inline-block select-none text-left sm:text-right text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
         :class="bookmarkCountValue > 0 ? 'opacity-100' : 'opacity-0'"
         aria-hidden="true"
       >
@@ -257,6 +252,18 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.moh-post-actions { container-type: inline-size; gap: 0; }
+.moh-post-actions > div { flex-shrink: 0; }
+/* Wide and narrow slots are independent of the current value. */
+.moh-count-gutter { width: 44px; min-width: 44px; max-width: 44px; flex: 0 0 44px; overflow: hidden; white-space: nowrap; }
+@container (max-width: 399px) {
+  .moh-post-actions > div:not(:last-child) :deep(button.moh-tap) { min-width: 24px; width: 24px; }
+  .moh-count-gutter { width: 32px; min-width: 32px; max-width: 32px; flex-basis: 32px; }
+}
+@container (max-width: 279px) {
+  .moh-post-actions > div:not(:last-child) :deep(button.moh-tap) { min-width: 20px; width: 20px; }
+  .moh-count-gutter { width: 24px; min-width: 24px; max-width: 24px; flex-basis: 24px; font-size: 10px; }
+}
 /* Count gutters (replies/boost/repost/bookmark): always render the digit so
    AppAnimatedCount's slide animation runs on the 0↔1 transitions too. The
    opacity fade is timed to match the digit slide (~240ms) so the number
