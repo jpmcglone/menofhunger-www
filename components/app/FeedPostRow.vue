@@ -102,18 +102,18 @@
           <template v-for="(mark, markIndex) in threadGapRailMarks(entry.hiddenCount)" :key="markIndex">
             <span
               v-if="mark === 'dot'"
-              class="h-[3px] w-[3px] shrink-0 rounded-full"
+              class="h-[3px] w-[3px] shrink-0 rounded-full opacity-75"
               :class="gapDotBgClass"
               :style="gapDotStyle"
             />
             <span
               v-else
-              class="relative h-[5px] w-[5px] shrink-0"
+              class="relative h-[7px] w-[7px] shrink-0"
               :class="gapPlusColorClass"
               :style="gapPlusStyle"
             >
-              <span class="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-current" />
-              <span class="absolute top-1/2 left-0 h-px w-full -translate-y-1/2 bg-current" />
+              <span class="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-current" />
+              <span class="absolute top-1/2 left-0 h-[2px] w-full -translate-y-1/2 bg-current" />
             </span>
           </template>
         </div>
@@ -272,10 +272,6 @@ function collapsedRepliesLabelFor(n: number, omitSortQualifier = false) {
   return `View ${n} more${qualifier ? ` ${qualifier}` : ''} ${noun}`
 }
 
-// Back-compat with older render/hot-reload output: some clients may still reference
-// `collapsedRepliesLabel` during HMR. Keep it defined to avoid runtime warnings.
-const collapsedRepliesLabel = computed(() => collapsedRepliesLabelFor(collapsedSiblingRepliesCount.value))
-
 /** Root post visibility (primary post in the thread) for tier-based styling. */
 const rootVisibility = computed(() => chain.value[0]?.visibility)
 
@@ -319,7 +315,7 @@ const gapPlusStyle = computed(() => {
 })
 
 const gapPlusColorClass = computed(() =>
-  gapTintColor.value ? '' : 'text-[var(--moh-thread-line)]',
+  gapTintColor.value ? '' : 'text-gray-500 dark:text-zinc-400',
 )
 
 const gapLabelStyle = computed(() => {
