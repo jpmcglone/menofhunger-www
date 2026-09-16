@@ -51,14 +51,22 @@
       v-model:visible="confirmVisible"
       modal
       header="Delete account"
-      :style="{ width: '400px' }"
+      :style="{ width: 'min(440px, calc(100vw - 32px))' }"
       :closable="!deleting"
       @hide="onDialogHide"
     >
       <div class="space-y-4">
         <p class="text-sm moh-text leading-relaxed">
           This will hide your profile, sign you out everywhere, and schedule permanent
-          anonymization for 30 days from now. You can cancel by logging back in before then.
+          deletion of your personal content and fitness data for 30 days from now. You can cancel by logging back in before then. Save the private status link shown after signing out to check completion.
+        </p>
+
+        <div v-if="!billing || billing.appleExpiresAt || billing.source === 'apple'" class="space-y-2 text-sm moh-text-muted">
+          <p>Apple subscription billing continues after account deletion. Cancel in Apple's subscription settings to stop future charges. You can still delete your account now.</p>
+          <a href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center underline">Manage Apple subscription</a>
+        </div>
+        <p v-if="billing?.source === 'stripe' || billing?.subscriptionStatus === 'active' || billing?.subscriptionStatus === 'trialing'" class="text-sm moh-text-muted">
+          Your web subscription will be cancelled when deletion completes. To stop renewals sooner, use <NuxtLink to="/settings/billing" class="underline">Billing settings</NuxtLink>.
         </p>
 
         <div class="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-3 text-xs leading-relaxed text-red-800 dark:text-red-300">
@@ -124,13 +132,22 @@
 </template>
 
 <script setup lang="ts">
+import type { BillingMe } from '~/types/api'
 import { useDeleteAccount } from '~/composables/settings/useDeleteAccount'
 
 const { deleting, error: deleteError, deleteAccount } = useDeleteAccount()
 const { logoutEverywhere } = useAuth()
 const { confirm } = useAppConfirm()
 
+const billing = ref<BillingMe | null>(null)
+const { apiFetchData } = useApiClient()
 const confirmVisible = ref(false)
+watch(confirmVisible, async visible => {
+  if (visible) {
+    try { billing.value = await apiFetchData<BillingMe>('/billing/me') }
+    catch { billing.value = null }
+  }
+})
 useOverlayDismiss(confirmVisible, () => (confirmVisible.value = false))
 const deleteConfirm = ref('')
 const reason = ref('')

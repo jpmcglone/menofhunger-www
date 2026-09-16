@@ -74,7 +74,7 @@ describe('login first-run surfaces', () => {
     expect(login).toMatch(/account_deleted/)
     expect(login).toMatch(/function showAccountNotice/)
     expect(login).toMatch(/This account was banned/)
-    expect(login).toMatch(/Your account has been deleted/)
+    expect(login).toMatch(/use your private receipt to check its status/)
   })
 
   it('auto-submits a 6-digit OTP without a second Continue button', () => {

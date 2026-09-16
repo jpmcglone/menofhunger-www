@@ -17,6 +17,13 @@
       </p>
     </div>
 
+    <section class="space-y-2">
+      <h3 class="text-sm font-semibold moh-text">Personal requests to OpenAI</h3>
+      <p class="text-sm moh-text-muted">{{ marvMe?.aiConsentGranted ? 'Allowed. MARV can use your requests, selected images, and relevant profile and conversation context.' : 'Off. Your permission is required before using MARV.' }} Private fitness records stay excluded. Public content and permitted conversation context remain available to MARV.</p>
+      <Button :label="marvMe?.aiConsentGranted ? 'Turn off personal requests' : 'Review permission'" severity="secondary" :loading="consentBusy" :disabled="!hasFetched" @click="changeConsent" />
+      <p v-if="consentError" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ consentError }}</p>
+    </section>
+
     <!-- Non-premium CTA -->
     <div
       v-if="hasFetched && !isPremium"
@@ -170,6 +177,8 @@ import type { MarvinContextCardDto, MarvinSourceDto, MarvinUsageEventDto } from 
 import { onActivated, onMounted } from 'vue'
 
 const {
+  me: marvMe,
+  fetchMe,
   enabled,
   isPremium,
   credits,
@@ -182,6 +191,19 @@ const {
 } = useMarv()
 
 const { apiFetch } = useApiClient()
+const consent = useAiConsent()
+const consentBusy = ref(false)
+const consentError = ref('')
+async function changeConsent() {
+  consentBusy.value = true
+  consentError.value = ''
+  try {
+    if (marvMe.value?.aiConsentGranted) await apiFetch('/marvin/me/preferences', { method: 'PATCH', body: { aiConsent: false } })
+    else await consent.request()
+    await fetchMe({ forceRefresh: true })
+  } catch { consentError.value = 'Your choice could not be saved. Please try again.' }
+  finally { consentBusy.value = false }
+}
 
 const displayName = computed(() => marvDisplayName.value || 'M.A.R.V')
 const usage = ref<MarvinUsageEventDto[]>([])

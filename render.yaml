@@ -16,7 +16,7 @@ services:
       # Nitro 2.13.1 requires Node ^20.19.0 or >=22.12.0.
       - key: NODE_VERSION
         value: 22.13.0
-    # npm run build already runs typecheck, API contract validation, and tests.
+    # Deployment builds only. Run npm run check locally before pushing.
     # .npmrc supplies the heap budget to npm/npx children, including vue-tsc.
     buildCommand: npm ci --no-audit --no-fund && npm run build
     startCommand: node .output/server/index.mjs

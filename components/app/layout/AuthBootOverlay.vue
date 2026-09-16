@@ -1,8 +1,8 @@
 <template>
   <ClientOnly>
     <div
-      v-if="!didAttempt"
-      class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-4 moh-bg moh-texture"
+      v-if="!didAttempt && route.meta.layout === 'app'"
+      class="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-4 moh-bg"
       role="status"
       aria-live="polite"
       aria-label="Loading your account"
@@ -23,4 +23,5 @@
 import { siteConfig } from '~/config/site'
 
 const { didAttempt } = useAuth()
+const route = useRoute()
 </script>

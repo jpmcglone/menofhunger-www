@@ -212,8 +212,8 @@
             </template>
           </div>
         </div>
+          <div v-if="isSelf && !isAdminOverride" class="flex flex-wrap items-center justify-end gap-2">
           <AppActionButton
-            v-if="isSelf && !isAdminOverride"
             label="Edit profile"
             kind="secondary"
             :class="showEditProfileNudge ? ['moh-edit-profile-nudge', editProfileNudgeToneClass] : ''"
@@ -224,6 +224,8 @@
             Edit profile
             </template>
           </AppActionButton>
+          <Button as="NuxtLink" to="/settings" label="Settings" severity="secondary" rounded class="min-h-11" />
+          </div>
       </div>
       <div v-if="!isSelf" class="profile-visitor-actions flex flex-wrap items-center gap-2 mt-4">
           <AppActionButton

@@ -14,8 +14,8 @@
 
           <div class="mt-3 px-3 sm:px-4">
             <InputText
-              v-model="sectionQuery"
               id="settings-search"
+              v-model="sectionQuery"
               name="q"
               aria-label="Search settings"
               class="w-full h-11 !rounded-full"
@@ -37,7 +37,10 @@
                   :size="20"
                   class="shrink-0 text-[var(--moh-text-muted)]"
                 />
-                <div class="min-w-0 flex-1 font-semibold truncate text-gray-900 dark:text-gray-50">{{ s.label }}</div>
+                <div class="min-w-0 flex-1 text-gray-900 dark:text-gray-50">
+                  <div class="font-semibold">{{ s.label }}</div>
+                  <div v-if="s.key === 'fitness'" class="moh-meta mt-1">Apple Health · HealthKit</div>
+                </div>
                 <Icon name="tabler:chevron-right" class="text-gray-400" aria-hidden="true" />
               </div>
             </NuxtLink>
@@ -217,7 +220,7 @@ onMounted(() => {
 
 const allowedSections = computed<SettingsSection[]>(() =>
   isPageAccount.value
-    ? ['account', 'notifications', 'privacy', 'marv']
+    ? ['account', 'notifications', 'privacy', 'marv', 'fitness']
     : ['account', 'verification', 'notifications', 'privacy', 'billing', 'marv', 'fitness'],
 )
 
@@ -251,7 +254,7 @@ const rawRouteParam = typeof route.params.section === 'string' ? route.params.se
 if (rawRouteParam && rawRouteParam in sectionAlias) {
   await navigateTo(`/settings/${sectionAlias[rawRouteParam]}`, { replace: true })
 }
-if (isPageAccount.value && (rawRouteParam === 'billing' || rawRouteParam === 'fitness' || rawRouteParam === 'verification')) {
+if (isPageAccount.value && (rawRouteParam === 'billing' || rawRouteParam === 'verification')) {
   await navigateTo('/settings/account', { replace: true })
 }
 
@@ -310,9 +313,9 @@ const sections = computed(() => {
     },
     {
       key: 'fitness' as const,
-      label: 'Fitness',
+      label: 'Fitness & Apple Health',
       icon: 'fitness' as const,
-      description: 'Track weight, connect Apple Health, and more.',
+      description: 'Apple Health · HealthKit, fitness connections, and units.',
     },
   ]
   return all.filter((s) => allowedSections.value.includes(s.key))
@@ -336,7 +339,7 @@ const composedBlocks = computed<ReadonlyArray<SettingsBlock>>(() => {
   if (!s) return []
   const blocks = sectionToBlocks[s]
   if (!isPageAccount.value) return blocks
-  return blocks.filter((block) => block !== 'verification' && block !== 'danger' && block !== 'billing' && block !== 'fitness')
+  return blocks.filter((block) => block !== 'verification' && block !== 'danger' && block !== 'billing')
 })
 
 function showsBlock(block: SettingsBlock): boolean {

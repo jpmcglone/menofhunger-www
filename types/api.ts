@@ -3096,6 +3096,7 @@ export type MarvinCostsDto = {
 
 /** `GET /marvin/me` response body. Used by chat page + settings + composer mode pill. */
 export type MarvinMeDto = {
+  aiConsentGranted: boolean
   enabled: boolean
   isPremium: boolean
   preferredMode: MarvinModeDto
@@ -3113,6 +3114,7 @@ export type MarvinMeDto = {
 
 /** Body for `PATCH /marvin/me/preferences`. */
 export type MarvinUpdatePreferencesBodyDto = {
+  aiConsent?: boolean
   preferredMode?: MarvinModeDto
 }
 

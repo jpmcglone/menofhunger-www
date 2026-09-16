@@ -174,37 +174,6 @@
                 </div>
 
                 <div class="space-y-2">
-                  <label class="text-sm font-medium" :class="showCommunityError ? 'text-red-500 dark:text-red-400' : 'moh-text'">
-                    Community<span v-if="!menConfirmLocked" class="ml-0.5" :class="showCommunityError ? 'text-red-500' : 'moh-text-muted'">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    class="flex w-full items-start gap-3 rounded-xl border p-3 text-left"
-                    :class="showCommunityError ? 'border-red-500 dark:border-red-400' : 'moh-border'"
-                    :disabled="submitting || menConfirmLocked"
-                    @click="toggleMenOnlyConfirmed"
-                  >
-                    <Checkbox
-                      :modelValue="menOnlyConfirmed"
-                      binary
-                      inputId="moh-men-only"
-                      :disabled="submitting || menConfirmLocked"
-                      @click.stop
-                      @update:modelValue="(v) => (menOnlyConfirmed = Boolean(v))"
-                    />
-                    <div class="text-sm moh-text leading-snug">
-                      {{ VOICE.onboarding.menConfirm }}
-                      <div class="mt-1 text-xs moh-text-muted">
-                        You can browse right away. Posting and messaging require verification first.
-                      </div>
-                    </div>
-                  </button>
-                  <p v-if="showCommunityError" class="text-xs text-red-500 dark:text-red-400">
-                    Confirm you’re joining as a man.
-                  </p>
-                </div>
-
-                <div class="space-y-2">
                   <label class="text-sm font-medium moh-text">
                     Email <span class="moh-text-muted font-normal">(optional)</span>
                   </label>
@@ -270,6 +239,37 @@
                   />
                   <p v-if="showHeardAboutOtherError" class="text-xs text-red-500 dark:text-red-400">
                     Tell us how you found us.
+                  </p>
+                </div>
+
+                <div class="space-y-2">
+                  <label class="text-sm font-medium" :class="showCommunityError ? 'text-red-500 dark:text-red-400' : 'moh-text'">
+                    Community<span v-if="!menConfirmLocked" class="ml-0.5" :class="showCommunityError ? 'text-red-500' : 'moh-text-muted'">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    class="flex w-full items-start gap-3 rounded-xl border p-3 text-left"
+                    :class="showCommunityError ? 'border-red-500 dark:border-red-400' : 'moh-border'"
+                    :disabled="submitting || menConfirmLocked"
+                    @click="toggleMenOnlyConfirmed"
+                  >
+                    <Checkbox
+                      :model-value="menOnlyConfirmed"
+                      binary
+                      input-id="moh-men-only"
+                      :disabled="submitting || menConfirmLocked"
+                      @click.stop
+                      @update:model-value="(v) => (menOnlyConfirmed = Boolean(v))"
+                    />
+                    <div class="text-sm moh-text leading-snug">
+                      {{ VOICE.onboarding.menConfirm }}
+                      <div class="mt-1 text-xs moh-text-muted">
+                        You can browse right away. Posting and messaging require verification first.
+                      </div>
+                    </div>
+                  </button>
+                  <p v-if="showCommunityError" class="text-xs text-red-500 dark:text-red-400">
+                    Confirm you’re joining as a man.
                   </p>
                 </div>
               </div>
@@ -409,7 +409,7 @@ const birthdatePretty = computed(() => {
   const raw = (user.value?.birthdate ?? '').slice(0, 10)
   if (!raw) return '—'
   return formatDateOnly(`${raw}T00:00:00.000Z`, {
-    dateOptions: { year: 'numeric', month: 'long', day: 'numeric' },
+    dateOptions: { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' },
     fallback: raw,
   })
 })

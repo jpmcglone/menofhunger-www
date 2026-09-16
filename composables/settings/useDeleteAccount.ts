@@ -1,9 +1,11 @@
+import { usePresence } from '~/composables/usePresence'
+import { usePushNotifications } from '~/composables/usePushNotifications'
 import { clearAuthClientState } from '~/composables/auth/authState'
-import { clearMohCacheAll } from '~/composables/useApiClient'
+import { clearMohCacheAll, useApiClient } from '~/composables/useApiClient'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 export function useDeleteAccount() {
-  const { apiFetch } = useApiClient()
+  const { apiFetchData } = useApiClient()
   const { emitLogout } = usePresence()
   const { onLogout } = usePushNotifications()
 
@@ -15,14 +17,17 @@ export function useDeleteAccount() {
     deleting.value = true
     error.value = null
     try {
-      await onLogout().catch(() => undefined)
-      await apiFetch<{ success: true }>('/auth/account/delete', {
+      const result = await apiFetchData<{ success: boolean; deletionScheduledAt: string; deletionStatusToken: string }>('/auth/account/delete', {
         method: 'POST',
         body: {
           reason: params.reason || null,
           details: params.details || null,
         },
       })
+      if (!result.success || !result.deletionScheduledAt || !result.deletionStatusToken) {
+        throw new Error('We could not confirm your deletion request. Please try again.')
+      }
+      await onLogout().catch(() => undefined)
 
       // Best-effort: notify presence before nuking local state.
       try { emitLogout() } catch { /* no-op */ }
@@ -30,7 +35,7 @@ export function useDeleteAccount() {
       clearMohCacheAll()
       clearAuthClientState({ resetViewerCaches: true })
 
-      await navigateTo('/login?deleted=1', { replace: true })
+      await navigateTo(`/deletion-status#${encodeURIComponent(result.deletionStatusToken)}`, { replace: true })
     } catch (e) {
       error.value = getApiErrorMessage(e) || 'Something went wrong. Please try again.'
     } finally {

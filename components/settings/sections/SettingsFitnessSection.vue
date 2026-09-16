@@ -1,17 +1,63 @@
 <template>
   <div class="space-y-6">
-    <div class="space-y-1">
-      <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-50">
-        <AppIconGlyph name="fitness" :size="20" class="text-[var(--moh-text-muted)]" />
-        Fitness
+    <section class="space-y-4" aria-labelledby="healthkit-title">
+      <h2 id="healthkit-title" class="moh-h2">Apple Health · HealthKit</h2>
+      <p class="moh-body moh-text-muted">
+        Men of Hunger uses HealthKit to read the Apple Health data you choose to share:
+        workouts and routes, activity and steps, heart health, body measurements, sleep, and recovery.
+      </p>
+      <p class="moh-body moh-text-muted">
+        When you connect, this data syncs to your Men of Hunger account to show your fitness progress.
+        Your fitness data is only visible to you unless you choose to share an activity or progress update.
+        You choose the audience for each post. Men of Hunger does not write to Apple Health.
+      </p>
+      <p class="moh-meta">You control access in the Health app. Connecting is optional.</p>
+    </section>
+
+    <AppPersonAccountSwitchPrompt v-if="isPageAccount" feature="Fitness" />
+    <div v-else-if="!canAccessFitness" class="space-y-3">
+      <p class="moh-body moh-text-muted">Get verified to connect Apple Health and track your fitness.</p>
+      <div class="flex flex-wrap gap-2">
+        <Button as="NuxtLink" to="/settings/verification" label="Verify account" rounded />
       </div>
-      <div class="text-sm text-gray-600 dark:text-gray-300">
-        Connect fitness apps to track activity, weight, and progress.
+    </div>
+    <p v-else-if="loading" role="status" class="moh-meta">Checking connection…</p>
+    <div v-else-if="loadError" role="alert" class="space-y-2">
+      <p class="moh-body moh-text-muted">{{ loadError }}</p>
+      <Button label="Try again" severity="secondary" @click="loadPage" />
+    </div>
+
+    <!-- Native connection status; browser never requests HealthKit access. -->
+    <div v-if="canAccessFitness && !loading && !loadError" class="border-b moh-border pb-5 space-y-3 text-sm">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <Icon name="simple-icons:apple" class="text-gray-700 dark:text-gray-200 text-lg" />
+          <span class="font-medium">Apple Health connection</span>
+        </div>
+        <div v-if="appleHealthConnection" class="flex items-center gap-2">
+          <span class="text-xs text-green-600 dark:text-green-400">Connected via iOS</span>
+          <button
+            class="text-xs text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
+            :disabled="disconnectingAppleHealth"
+            @click="disconnectAppleHealth"
+          >
+            Disconnect
+          </button>
+        </div>
+        <span v-else class="text-xs text-gray-400">iOS app only</span>
+      </div>
+      <p v-if="!appleHealthConnection" class="text-xs text-gray-500 dark:text-gray-400">
+        Open Men of Hunger on your iPhone or iPad, then tap your avatar → Settings → Fitness &amp; Apple Health. Apple Health cannot be connected in a browser.
+      </p>
+      <div v-else class="text-xs text-gray-500 dark:text-gray-400">
+        <div v-if="appleHealthConnection.lastSyncAt">
+          Last synced: {{ formatRelative(appleHealthConnection.lastSyncAt) }}
+        </div>
       </div>
     </div>
 
     <!-- Units preference -->
-    <div class="rounded-xl border moh-border moh-surface p-4 space-y-3 text-sm">
+    <div v-if="canAccessFitness && !loading && !loadError" class="border-b moh-border pb-5 space-y-3 text-sm">
       <div class="font-medium">Units</div>
       <div class="flex items-center gap-3">
         <label class="flex items-center gap-2 cursor-pointer">
@@ -19,9 +65,9 @@
             type="radio"
             value="us"
             :checked="units === 'us'"
-            @change="setUnits('us')"
             class="accent-orange-500"
-          />
+            @change="setUnits('us')"
+          >
           <span>US (lbs, miles)</span>
         </label>
         <label class="flex items-center gap-2 cursor-pointer">
@@ -29,16 +75,16 @@
             type="radio"
             value="metric"
             :checked="units === 'metric'"
-            @change="setUnits('metric')"
             class="accent-orange-500"
-          />
+            @change="setUnits('metric')"
+          >
           <span>Metric (kg, km)</span>
         </label>
       </div>
     </div>
 
     <!-- Strava connection -->
-    <div class="rounded-xl border moh-border moh-surface p-4 space-y-3 text-sm" :class="!stravaEnabled ? 'opacity-60' : ''">
+    <div v-if="canAccessFitness && !loading && !loadError" class="space-y-3 text-sm" :class="!stravaEnabled ? 'opacity-60' : ''">
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <span class="text-[11px] font-black uppercase tracking-wide" style="color: #FC4C02">Strava</span>
@@ -96,39 +142,18 @@
       </template>
     </div>
 
-    <!-- Apple Health (iOS only) -->
-    <div class="rounded-xl border moh-border moh-surface p-4 space-y-3 text-sm">
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <Icon name="simple-icons:apple" class="text-gray-700 dark:text-gray-200 text-lg" />
-          <span class="font-medium">Apple Health</span>
-        </div>
-        <div v-if="appleHealthConnection" class="flex items-center gap-2">
-          <span class="text-xs text-green-600 dark:text-green-400">Connected via iOS</span>
-          <button
-            class="text-xs text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
-            :disabled="disconnectingAppleHealth"
-            @click="disconnectAppleHealth"
-          >
-            Disconnect
-          </button>
-        </div>
-        <span v-else class="text-xs text-gray-400">iOS app only</span>
-      </div>
-      <p v-if="!appleHealthConnection" class="text-xs text-gray-500 dark:text-gray-400">
-        Open the Men of Hunger iOS app to connect Apple Health.
-      </p>
-      <div v-else class="text-xs text-gray-500 dark:text-gray-400">
-        <div v-if="appleHealthConnection.lastSyncAt">
-          Last synced: {{ formatRelative(appleHealthConnection.lastSyncAt) }}
-        </div>
-      </div>
-    </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
 import type { FitnessConnection } from '~/types/api'
+
+// Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=608-192
+const { isVerified, isPageAccount } = useAuth()
+const canAccessFitness = computed(() => isVerified.value && !isPageAccount.value)
+const loading = ref(true)
+const loadError = ref('')
 
 const { apiFetchData } = useApiClient()
 const toast = useAppToast()
@@ -147,6 +172,12 @@ const stravaConnection = computed(() => connections.value.find((c) => c.provider
 const appleHealthConnection = computed(() => connections.value.find((c) => c.provider === 'apple_health') ?? null)
 
 async function loadPage() {
+  if (!canAccessFitness.value) {
+    loading.value = false
+    return
+  }
+  loading.value = true
+  loadError.value = ''
   try {
     const data = await apiFetchData<{ connections: FitnessConnection[]; units: 'us' | 'metric'; stravaEnabled: boolean }>('/fitness/me')
     connections.value = data.connections
@@ -156,11 +187,14 @@ async function loadPage() {
     const remaining = manualSyncRemainingSeconds(strava?.lastManualSyncAt ?? null)
     if (remaining > 0) startCooldown(remaining)
   } catch {
-    // non-fatal
+    loadError.value = "Couldn't load fitness settings."
+  } finally {
+    loading.value = false
   }
 }
 
 onMounted(loadPage)
+watch(canAccessFitness, loadPage)
 
 function formatRelative(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime()
@@ -273,7 +307,7 @@ onBeforeUnmount(() => {
 // Handle Strava OAuth callback redirect.
 const route = useRoute()
 onMounted(async () => {
-  if (route.query.strava_callback !== '1' || !route.query.code) return
+  if (!canAccessFitness.value || route.query.strava_callback !== '1' || !route.query.code) return
   connecting.value = true
   try {
     const code = String(route.query.code)

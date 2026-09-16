@@ -145,11 +145,28 @@ export function useSettingsBilling() {
     checkoutSuccessModal.value = true
   }
 
+  let billingPollTimer: ReturnType<typeof setTimeout> | null = null
+  let billingDisposed = false
   onMounted(() => {
     if (!import.meta.client) return
     if (route.query.checkout !== 'success') return
 
     const sessionId = typeof route.query.session_id === 'string' ? route.query.session_id.trim() : null
+
+    // Fallback polling path for sessions that don't carry a session_id (e.g. inline upgrade).
+    const pollForPremium = async (attempts = 0) => {
+      if (billingDisposed) return
+      await refreshBilling()
+      if (billingDisposed) return
+      if (billingMe.value?.premium || billingMe.value?.premiumPlus) {
+        await me()
+        showSuccessModal()
+      } else if (attempts < 5) {
+        billingPollTimer = setTimeout(() => pollForPremium(attempts + 1), 2000)
+        return
+      }
+      stripCheckoutQuery()
+    }
 
     if (sessionId) {
       // Fast path: sync from Stripe directly — no polling, works without webhooks.
@@ -165,6 +182,9 @@ export function useSettingsBilling() {
             // force-refresh its own state automatically.
             await me()
             showSuccessModal()
+          } else {
+            void pollForPremium()
+            return
           }
         } catch {
           // Sync failed — fall through to polling so the UI isn't stuck.
@@ -177,18 +197,6 @@ export function useSettingsBilling() {
       return
     }
 
-    // Fallback polling path for sessions that don't carry a session_id (e.g. inline upgrade).
-    const pollForPremium = async (attempts = 0) => {
-      await refreshBilling()
-      if (billingMe.value?.premium || billingMe.value?.premiumPlus) {
-        await me()
-        showSuccessModal()
-      } else if (attempts < 5) {
-        setTimeout(() => pollForPremium(attempts + 1), 2000)
-        return
-      }
-      stripCheckoutQuery()
-    }
     void pollForPremium()
   })
 
@@ -283,6 +291,8 @@ export function useSettingsBilling() {
   )
 
   onBeforeUnmount(() => {
+    billingDisposed = true
+    if (billingPollTimer) clearTimeout(billingPollTimer)
     if (referralCodeSavedTimer) {
       clearTimeout(referralCodeSavedTimer)
       referralCodeSavedTimer = null

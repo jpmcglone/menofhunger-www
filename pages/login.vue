@@ -25,7 +25,7 @@
 
       <template v-if="showDeletedNotice">
         <AppInlineAlert severity="success">
-          Your account has been deleted. Thanks for being part of Men of Hunger.
+          Your account is unavailable. If you requested deletion, use your private receipt to check its status.
         </AppInlineAlert>
         <Button
           label="Dismiss"

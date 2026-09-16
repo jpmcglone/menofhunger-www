@@ -1,6 +1,6 @@
 <template>
   <AppModal
-    v-if="open"
+    v-if="open && !cropOpen"
     v-model="open"
     title="Your profile"
     max-width-class="max-w-sm"
@@ -12,9 +12,10 @@
       <label class="relative cursor-pointer">
         <input
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp"
+          aria-label="Choose profile photo"
           class="sr-only"
-          :disabled="saving"
+          :disabled="saving || cropOpen"
           @change="onPick"
         >
         <AppAvatarCircle
@@ -54,12 +55,20 @@
         label="Done"
         class="w-full !bg-black !text-white !border-black dark:!bg-white dark:!text-black dark:!border-white"
         rounded
-        :disabled="saving"
+        :disabled="saving || cropOpen"
         :loading="saving"
         @click="save"
       />
     </template>
   </AppModal>
+  <AppProfileEditAvatarCropDialog
+    v-model="cropOpen"
+    :file="cropFile"
+    :disabled="saving"
+    :is-organization="user?.isOrganization"
+    @cancel="clearCrop"
+    @cropped="onCropped"
+  />
 </template>
 
 <script setup lang="ts">
@@ -79,6 +88,8 @@ const open = computed({
 const displayName = ref('')
 const previewUrl = ref<string | null>(null)
 const pendingFile = ref<File | null>(null)
+const cropOpen = ref(false)
+const cropFile = ref<File | null>(null)
 const saving = ref(false)
 const error = ref<string | null>(null)
 
@@ -95,8 +106,10 @@ const avatarUser = computed(() => {
 watch(
   () => step.value,
   (next) => {
+    clearCrop()
     if (next !== 'profile') return
     displayName.value = user.value?.name ?? ''
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
     previewUrl.value = null
     pendingFile.value = null
     error.value = null
@@ -108,13 +121,34 @@ function onPick(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
-  if (!file) return
+  if (!file || saving.value) return
+  error.value = null
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    error.value = 'Unsupported image type. Please upload a JPG, PNG, or WebP.'
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    error.value = 'Avatar is too large (max 5MB).'
+    return
+  }
+  cropFile.value = file
+  cropOpen.value = true
+}
+
+function clearCrop() {
+  cropOpen.value = false
+  cropFile.value = null
+}
+
+function onCropped(file: File) {
   pendingFile.value = file
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   previewUrl.value = URL.createObjectURL(file)
+  clearCrop()
 }
 
 async function save() {
+  if (saving.value || cropOpen.value) return
   saving.value = true
   error.value = null
   try {
@@ -138,6 +172,7 @@ async function save() {
         body: { key: init.key },
       })
       if (committed?.user) patchUser(committed.user)
+      pendingFile.value = null
     }
 
     const trimmed = displayName.value.trim()

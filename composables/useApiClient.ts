@@ -1,5 +1,5 @@
 import type { ApiEnvelope } from '~/types/api'
-import { bumpAuthGeneration, clearAuthClientState } from '~/composables/auth/authState'
+import { bumpAuthGeneration, clearAuthClientState, getAuthGeneration } from '~/composables/auth/authState'
 import { joinUrl } from '~/utils/url'
 import { isAdminPath, isArticlePermalinkPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isSpacePermalinkPath, isUserProfilePath } from '~/config/routes'
 
@@ -120,6 +120,7 @@ function mergeHeaders(a?: HeadersInit, b?: HeadersInit): HeadersInit | undefined
 
 export function useApiClient() {
   const config = useRuntimeConfig()
+  const consent = useAiConsent()
   // IMPORTANT: On the client, only `public` + `app` runtime config keys are accessible.
   // Accessing server-only keys on the client triggers a Nuxt warning.
   const serverApiBaseUrl = import.meta.server ? String(config.apiBaseUrl || '').trim() : ''
@@ -218,10 +219,16 @@ export function useApiClient() {
     unauthorized: 'redirect' | 'ignore' = 'redirect',
   ): Promise<ApiEnvelope<T>> {
     let attempt = 0
+    let requestedConsent = false
+    const authGeneration = getAuthGeneration()
     while (true) {
       try {
         return await $fetch<ApiEnvelope<T>>(url, fetchOptions)
       } catch (e) {
+        if (getErrorReason(e) === 'ai_consent_required' && !requestedConsent && import.meta.client) {
+          requestedConsent = true
+          if (await consent.request() && authGeneration === getAuthGeneration()) continue
+        }
         if (getErrorStatus(e) === 401 && unauthorized !== 'ignore') {
           const reason = getErrorReason(e)
           handleUnauthorizedClientSide({ banned: reason === 'account_banned' })

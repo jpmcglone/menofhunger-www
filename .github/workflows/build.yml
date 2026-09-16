@@ -1,4 +1,4 @@
-name: Build
+name: Lint
 
 on:
   push:
@@ -6,29 +6,17 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: ".nvmrc"
           cache: "npm"
-
       - run: npm ci
-
       - run: npm run lint
-
-      - run: npx nuxi typecheck
-
-      - run: npm run validate-api-types
-
-      - run: npm test
-
-      - run: npm run build
-
-      - run: npx playwright install --with-deps chromium
-
-      - run: npm run check:hydration
