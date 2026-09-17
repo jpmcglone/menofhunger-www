@@ -152,7 +152,9 @@ describe('weekly activity presentation', () => {
     try {
       await flushPromises()
       const entry = wrapper.get('button[aria-haspopup="dialog"]')
-      expect(entry.text()).toContain('4 posts · 12 participants')
+      expect(entry.text()).toContain('Last 7 days')
+      expect(entry.attributes('aria-label')).toContain('4 posts')
+      expect(entry.attributes('aria-label')).toContain('12 participants')
       expect(entry.attributes('aria-expanded')).toBeUndefined()
       expect(document.querySelector('[role="dialog"]')).toBeNull()
       await entry.trigger('click')
@@ -165,7 +167,6 @@ describe('weekly activity presentation', () => {
       expect(dialog.textContent).toContain('1,284')
       expect(dialog.textContent).toContain('3,842')
       expect(dialog.textContent).toContain('Lifetime totals on these posts')
-      expect(dialog.textContent).toContain('Unique people who replied, boosted or reposted.')
       expect(dialog.textContent).toContain('Active again')
       expect(dialog.textContent).toContain('Keep going')
       expect(dialog.textContent).toContain('Share recap')
@@ -177,7 +178,7 @@ describe('weekly activity presentation', () => {
       ;(dialog.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click()
       await flushPromises()
       expect(wrapper.text()).not.toContain('Conversation 1')
-      expect(wrapper.get('button[aria-haspopup="dialog"]').text()).toContain('Your week')
+      expect(wrapper.get('button[aria-haspopup="dialog"]').text()).toContain('Last 7 days')
     } finally { wrapper.unmount() }
   })
 

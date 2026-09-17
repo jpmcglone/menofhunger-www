@@ -1,14 +1,22 @@
 <template>
   <section v-if="postId || data?.posts.length || error || open" class="border-b moh-border" :class="!postId && 'border-t'">
     <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 155:21 -->
-    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-[88px] w-full items-center gap-3 py-3 text-left" aria-haspopup="dialog" @click="open = true">
-      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] moh-surface-2 moh-text-muted">
-        <AppIconGlyph name="analytics" :size="20" />
+    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-14 w-full items-center gap-3 py-2.5 text-left" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
+      <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] moh-surface-2 moh-text-muted">
+        <AppIconGlyph name="analytics" :size="18" />
       </span>
       <span class="min-w-0 flex-1">
-        <span class="block text-sm font-semibold">Your week</span>
-        <span class="mt-1 block text-xs moh-text-muted tabular-nums">{{ weeklySummary }}</span>
-        <span v-if="!error && data?.reach?.scope === 'lifetime'" class="mt-1 block text-xs moh-text-muted tabular-nums">{{ formatShortCount(data.reach.people) }} reached · {{ formatShortCount(data.reach.impressions) }} impressions total</span>
+        <span class="block text-sm font-semibold">Last 7 days</span>
+        <span v-if="error" class="mt-0.5 block text-xs moh-text-muted">Activity unavailable</span>
+        <span v-else-if="data" class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs moh-text-muted tabular-nums" aria-hidden="true">
+          <span class="inline-flex items-center gap-1"><AppIconGlyph name="write" :size="14" />{{ formatShortCount(data.postCount) }}</span>
+          <span class="inline-flex items-center gap-1"><AppIconGlyph name="members" :size="14" />{{ formatShortCount(data.participantCount) }}</span>
+          <template v-if="data.reach?.scope === 'lifetime'">
+            <span class="inline-flex items-center gap-1"><AppIconGlyph name="profile" :size="14" />{{ formatShortCount(data.reach.people) }}</span>
+            <span class="inline-flex items-center gap-1"><AppIconGlyph name="visibility" :size="14" />{{ formatShortCount(data.reach.impressions) }}</span>
+          </template>
+        </span>
+        <span v-else class="mt-0.5 block text-xs moh-text-muted">Conversation activity</span>
       </span>
       <span class="shrink-0 text-xs font-semibold moh-text-muted">View</span>
     </button>
@@ -16,14 +24,14 @@
       <Icon name="tabler:chart-bar" class="text-lg moh-text-muted" aria-hidden="true" />
       <span class="flex-1 text-sm font-medium">Post activity</span>
       <span v-if="data" class="flex items-center gap-3 text-xs moh-text-muted tabular-nums">
-        <span :aria-label="`${data.participantCount} participants`"><Icon name="tabler:users" aria-hidden="true" /> {{ data.participantCount }}</span>
+        <span class="inline-flex items-center gap-1" :aria-label="`${data.participantCount} participants`"><AppIconGlyph name="members" :size="14" /> {{ data.participantCount }}</span>
       </span>
       <Icon :name="open ? 'tabler:chevron-up' : 'tabler:chevron-down'" class="text-sm moh-text-muted" aria-hidden="true" />
     </button>
     <component
       :is="postId ? 'div' : Dialog"
       v-if="open || !postId"
-      v-bind="postId ? {} : { visible: open, modal: true, header: 'Your week', draggable: false, dismissableMask: true, closeOnEscape: false, style: { width: 'min(35rem, calc(100vw - 2rem))', maxHeight: '90dvh' } }"
+      v-bind="postId ? {} : { visible: open, modal: true, header: 'Last 7 days', draggable: false, dismissableMask: true, closeOnEscape: false, style: { width: 'min(35rem, calc(100vw - 2rem))', maxHeight: '90dvh' } }"
       :class="postId ? 'moh-gutter-x pb-4' : undefined"
       @update:visible="open = $event"
     >
@@ -31,8 +39,8 @@
         <p v-if="error" class="text-sm moh-text-muted">{{ error }} <button type="button" class="underline" @click="load">Retry</button></p>
         <div v-else-if="!data" class="h-24 animate-pulse rounded-lg moh-surface-2" aria-label="Loading activity" />
         <template v-else>
-          <p class="mb-4 text-xs moh-text-muted">{{ postId ? 'Last 30 days' : 'Last 7 days' }} · UTC</p>
-          <AppConversationInsightsSummary :data="data" :weekly="!postId" class="mb-4" />
+          <p v-if="postId" class="mb-3 text-xs moh-text-muted">Last 30 days</p>
+          <AppConversationInsightsSummary :data="data" :weekly="!postId" class="mb-3" />
           <AppConversationChart :days="data.timeline" />
           <p v-if="!postId && !data.posts.length" class="mt-4 text-sm moh-text-muted">No conversation activity in the last 7 days.</p>
           <h3 v-else-if="!postId" class="mt-5 text-sm font-semibold">Conversations</h3>
@@ -75,11 +83,19 @@ const { apiFetchData } = useApiClient()
 const route = useRoute()
 const open = ref(Boolean(props.postId && route.query.insights === '1'))
 const data = ref<ConversationInsights | null>(null)
-const weeklySummary = computed(() => {
-  if (error.value) return 'Activity unavailable'
-  if (!data.value) return 'Last 7 days'
-  const { postCount, participantCount } = data.value
-  return `${postCount} ${postCount === 1 ? 'post' : 'posts'} · ${participantCount} ${participantCount === 1 ? 'participant' : 'participants'}`
+const entryLabel = computed(() => {
+  if (error.value) return 'Last 7 days. Activity unavailable'
+  const recap = data.value
+  if (!recap) return 'Last 7 days'
+  const parts = [
+    `${recap.postCount} ${recap.postCount === 1 ? 'post' : 'posts'}`,
+    `${recap.participantCount} ${recap.participantCount === 1 ? 'participant' : 'participants'}`,
+  ]
+  if (recap.reach?.scope === 'lifetime') {
+    parts.push(`${recap.reach.people} reached`)
+    parts.push(`${recap.reach.impressions} impressions`)
+  }
+  return `Last 7 days. ${parts.join(', ')}`
 })
 useOverlayDismiss(computed(() => !props.postId && open.value), () => { open.value = false })
 const error = ref('')
@@ -116,7 +132,7 @@ async function share() {
   if (!data.value) return
   const recap = data.value
   const reach = recap.reach?.scope === 'lifetime' ? ` Lifetime totals across ${recap.posts.length} recap posts: ${recap.reach.people} people reached, ${recap.reach.impressions} impressions.` : ''
-  const text = `My week on Men of Hunger: ${recap.postCount} posts, ${recap.participantCount} participants (replies, boosts and reposts).${reach}`
+  const text = `My last 7 days on Men of Hunger: ${recap.postCount} posts, ${recap.participantCount} participants (replies, boosts and reposts).${reach}`
   try {
     if (navigator.share) await navigator.share({ text })
     else { await navigator.clipboard.writeText(text); copied.value = true }

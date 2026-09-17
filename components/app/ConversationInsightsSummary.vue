@@ -1,35 +1,54 @@
 <template>
-  <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 694:600 -->
-  <div class="space-y-3">
-    <dl class="grid grid-cols-2 gap-4">
+  <div class="space-y-2">
+    <dl class="grid grid-cols-2 gap-x-3 gap-y-3">
       <div v-if="weekly" class="min-w-0">
-        <dd class="text-[28px] leading-9 font-semibold tabular-nums tracking-tight break-words">{{ number(data.postCount) }}</dd>
-        <dt class="mt-1 text-xs moh-text-muted">Posts published</dt>
+        <dt class="sr-only">Posts</dt>
+        <dd class="flex items-center gap-1.5">
+          <AppIconGlyph name="write" :size="16" class="moh-text-muted" />
+          <span class="text-xl font-semibold tabular-nums tracking-tight">{{ number(data.postCount) }}</span>
+        </dd>
+        <p class="mt-0.5 text-[11px] moh-text-muted">Posts</p>
       </div>
       <div class="min-w-0">
-        <dd class="text-[28px] leading-9 font-semibold tabular-nums tracking-tight break-words">{{ number(data.participantCount) }}</dd>
-        <dt class="mt-1 text-xs moh-text-muted">Participants<span v-if="data.newParticipantCount"> · {{ number(data.newParticipantCount) }} new</span></dt>
+        <dt class="sr-only">{{ participantLabel }}</dt>
+        <dd class="flex items-center gap-1.5">
+          <AppIconGlyph name="members" :size="16" class="moh-text-muted" />
+          <span class="text-xl font-semibold tabular-nums tracking-tight">{{ number(data.participantCount) }}</span>
+        </dd>
+        <p class="mt-0.5 text-[11px] moh-text-muted">
+          Participants<span v-if="data.newParticipantCount"> · {{ number(data.newParticipantCount) }} new</span>
+        </p>
       </div>
+      <template v-if="data.reach?.scope === 'lifetime'">
+        <div class="min-w-0">
+          <dt class="sr-only">People reached</dt>
+          <dd class="flex items-center gap-1.5">
+            <AppIconGlyph name="profile" :size="16" class="moh-text-muted" />
+            <span class="text-xl font-semibold tabular-nums tracking-tight">{{ number(data.reach.people) }}</span>
+          </dd>
+          <p class="mt-0.5 text-[11px] moh-text-muted">Reached</p>
+        </div>
+        <div class="min-w-0">
+          <dt class="sr-only">Impressions</dt>
+          <dd class="flex items-center gap-1.5">
+            <AppIconGlyph name="visibility" :size="16" class="moh-text-muted" />
+            <span class="text-xl font-semibold tabular-nums tracking-tight">{{ number(data.reach.impressions) }}</span>
+          </dd>
+          <p class="mt-0.5 text-[11px] moh-text-muted">Impressions</p>
+        </div>
+      </template>
     </dl>
-    <p class="text-xs moh-text-muted">Unique people who replied, boosted or reposted.</p>
-    <template v-if="data.reach?.scope === 'lifetime'">
-      <h3 class="pt-1 text-xs font-semibold moh-text-muted">TOTAL REACH · {{ data.posts.length }} {{ data.posts.length === 1 ? 'RECAP POST' : 'RECAP POSTS' }}</h3>
-      <dl class="grid grid-cols-2 gap-4">
-        <div class="min-w-0">
-          <dd class="text-[28px] leading-9 font-semibold tabular-nums tracking-tight break-words">{{ number(data.reach.people) }}</dd>
-          <dt class="mt-1 text-xs moh-text-muted">People reached</dt>
-        </div>
-        <div class="min-w-0">
-          <dd class="text-[28px] leading-9 font-semibold tabular-nums tracking-tight break-words">{{ number(data.reach.impressions) }}</dd>
-          <dt class="mt-1 text-xs moh-text-muted">Impressions</dt>
-        </div>
-      </dl>
-      <p class="text-xs moh-text-muted">Lifetime totals on these posts. People counted once; guest reach is estimated by browser.</p>
-    </template>
+    <p v-if="data.reach?.scope === 'lifetime'" class="text-[11px] moh-text-muted">
+      Lifetime totals on these posts. People counted once; guest reach is estimated.
+    </p>
   </div>
 </template>
 <script setup lang="ts">
 import type { ConversationInsights } from '~/types/api'
-defineProps<{ data: ConversationInsights; weekly: boolean }>()
+const props = defineProps<{ data: ConversationInsights; weekly: boolean }>()
 const number = (value: number) => value.toLocaleString('en-US')
+const participantLabel = computed(() => {
+  const n = props.data.newParticipantCount
+  return n ? `Participants, ${n} new` : 'Participants'
+})
 </script>
