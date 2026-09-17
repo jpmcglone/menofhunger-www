@@ -156,10 +156,14 @@
               <AppUserAvatar v-if="user" :user="user" size-class="h-7 w-7" />
             </div>
             <div class="flex-1 min-w-0">
+              <div class="mb-2 text-xs moh-text-muted" role="status">
+                <p class="font-semibold">Replying to @{{ comment.author.username || comment.author.name }}</p>
+                <p class="mt-1 line-clamp-2">{{ comment.body }}</p>
+              </div>
               <AppArticleCommentTextarea
                 ref="replyTextareaEl"
                 v-model="replyBody"
-                :placeholder="`Replying to @${comment.author.username || comment.author.name}…`"
+                placeholder="Write a reply…"
                 :maxlength="commentMaxLength"
                 :priority-users="replyPriorityUsers(comment)"
                 @submit="submitReply(replyingToId)"

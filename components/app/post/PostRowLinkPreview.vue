@@ -288,6 +288,8 @@ const props = defineProps<{
   hasMedia: boolean
   rowInView: boolean
   activateVideoOnMount?: boolean
+  /** Drafts share the exact card layout without participating in feed autoplay. */
+  previewOnly?: boolean
   /** When provided, used immediately as the article preview — no fetch needed. */
   preloadedArticle?: ArticleSharePreview | null
   /** When provided, used immediately as the embedded post preview — no fetch needed. */
@@ -555,7 +557,7 @@ const videoBoxEl = ref<HTMLElement | null>(null)
 const videoIframeEl = ref<HTMLIFrameElement | null>(null)
 const videoIframeLoaded = ref(false)
 const desiredVideoSrc = computed(() => {
-  if (!rowInView.value) return null
+  if (!rowInView.value || props.previewOnly) return null
   if (!hasEmbeddedVideo.value) return null
   if (activePostId.value !== postId.value) return null
   if (previewLink.value && youtubeEmbedUrl.value) {
@@ -713,7 +715,7 @@ onBeforeUnmount(() => {
 watchEffect((onCleanup) => {
   if (!import.meta.client) return
   if (!rowInView.value) return
-  if (!hasEmbeddedVideo.value) return
+  if (!hasEmbeddedVideo.value || props.previewOnly) return
   const el = videoBoxEl.value
   if (!el) return
 
@@ -726,7 +728,7 @@ watchEffect((onCleanup) => {
 
 function activateEmbeddedVideo() {
   if (!import.meta.client) return
-  if (!hasEmbeddedVideo.value) return
+  if (!hasEmbeddedVideo.value || props.previewOnly) return
   activateEmbeddedVideoById(postId.value)
 }
 

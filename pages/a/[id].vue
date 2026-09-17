@@ -276,46 +276,12 @@
 
         <!-- Author bio section. Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=448-143 -->
         <div class="mt-6 rounded-2xl border moh-border moh-surface-2 p-5" @click.stop>
-          <p class="mb-4 text-[11px] font-semibold uppercase tracking-widest moh-text-soft">About the author</p>
-
-          <div class="flex gap-3">
-            <NuxtLink
-              :to="`/u/${article.author.username}`"
-              class="flex-shrink-0"
-              @mouseenter="(e) => authorEnter(e)"
-              @mousemove="(e) => authorMove(e)"
-              @mouseleave="authorLeave"
-            >
-              <AppUserAvatar :user="article.author" size="lg" />
-            </NuxtLink>
-            <div class="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-              <div class="min-w-0">
-                <NuxtLink
-                  :to="`/u/${article.author.username}`"
-                  class="block min-w-0"
-                  @mouseenter="(e) => authorEnter(e)"
-                  @mousemove="(e) => authorMove(e)"
-                  @mouseleave="authorLeave"
-                >
-                  <AppUserIdentityLine
-                    :user="article.author"
-                    name-class="text-base"
-                    handle-class="text-xs"
-                    badge-size="md"
-                  />
-                </NuxtLink>
-                <p v-if="authorBio" class="mt-1 text-sm moh-text-muted line-clamp-4">
-                  {{ authorBio }}
-                </p>
-              </div>
-              <div
-                v-if="canTip || (!viewerIsAuthor && article.author.id && article.author.username)"
-                class="flex shrink-0 items-center gap-2"
-              >
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <p class="text-[11px] font-semibold uppercase tracking-widest moh-text-soft">About the author</p>
                 <div v-if="canTip" class="relative">
                   <button
                     type="button"
-                    class="moh-tap inline-flex h-8 items-center gap-1 rounded-full border border-[var(--moh-brass)] px-2.5 text-[11px] font-medium text-[var(--moh-brass)] transition-colors hover:bg-[var(--moh-surface-hover)]"
+                    class="moh-tap inline-flex min-h-11 items-center gap-1 rounded-full border border-[var(--moh-brass)] px-2.5 text-[11px] font-medium text-[var(--moh-brass)] transition-colors hover:bg-[var(--moh-surface-hover)]"
                     aria-label="Send coins to author"
                     @click.stop="tipOpen = !tipOpen"
                   >
@@ -326,7 +292,7 @@
                   <Transition name="tip-pop">
                     <div
                       v-if="tipOpen"
-                      class="absolute top-full left-0 z-50 mt-2 w-52 space-y-2.5 rounded-2xl border moh-border moh-surface p-3 shadow-xl sm:left-auto sm:right-0"
+                      class="absolute top-full right-0 z-50 mt-2 w-52 space-y-2.5 rounded-2xl border moh-border moh-surface p-3 shadow-xl"
                     >
                       <div class="text-center text-xs font-semibold moh-text">Send coins to {{ article?.author?.name || article?.author?.username }}</div>
                       <div class="grid grid-cols-4 gap-1.5">
@@ -366,6 +332,43 @@
                     </div>
                   </Transition>
                 </div>
+          </div>
+
+          <div class="flex gap-3">
+            <NuxtLink
+              :to="`/u/${article.author.username}`"
+              class="flex-shrink-0"
+              @mouseenter="(e) => authorEnter(e)"
+              @mousemove="(e) => authorMove(e)"
+              @mouseleave="authorLeave"
+            >
+              <AppUserAvatar :user="article.author" size="lg" />
+            </NuxtLink>
+            <div class="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+              <div class="min-w-0">
+                <NuxtLink
+                  :to="`/u/${article.author.username}`"
+                  class="block min-w-0"
+                  @mouseenter="(e) => authorEnter(e)"
+                  @mousemove="(e) => authorMove(e)"
+                  @mouseleave="authorLeave"
+                >
+                  <AppUserIdentityLine
+                    :user="article.author"
+                    name-class="text-base"
+                    handle-class="text-xs"
+                    badge-size="md"
+                  />
+                </NuxtLink>
+                <p v-if="authorBio" class="mt-1 text-sm moh-text-muted line-clamp-4">
+                  {{ authorBio }}
+                </p>
+              </div>
+              <div
+                v-if="!viewerIsAuthor && article.author.id && article.author.username"
+                class="flex shrink-0 items-center gap-2"
+              >
+
                 <template v-if="!viewerIsAuthor && article.author.id && article.author.username">
                   <AppFollowButton
                     v-if="isAuthed"

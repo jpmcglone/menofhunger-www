@@ -172,8 +172,9 @@
           </div>
 
           <AppComposerLinkPreview
-            v-if="!composerMedia.length && !quotedPost && !poll"
+            v-if="!quotedPost && !poll"
             :text="draft"
+            :has-media="composerMedia.length > 0"
             class="mt-3"
           />
 

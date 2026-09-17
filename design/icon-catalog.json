@@ -533,7 +533,8 @@
     "ios": "clock.arrow.circlepath",
     "iosSelected": "clock.arrow.circlepath",
     "selectedTreatment": "bold",
-    "iosSelectedTreatment": "bold"
+    "iosSelectedTreatment": "bold",
+    "figma": "https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=36-2219"
   },
   "gif": {
     "web": "gif",

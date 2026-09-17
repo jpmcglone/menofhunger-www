@@ -27,7 +27,7 @@
             >
               <!-- Header -->
               <header class="shrink-0 flex items-center gap-3 px-5 py-4">
-                <AppIconGlyph name="catchup" :size="26" />
+                <AppIconGlyph name="catchup" :size="26" :selected="!!result" />
                 <div class="min-w-0 flex-1">
                   <h2 class="moh-h3 leading-tight">Catch me up</h2>
                   <p class="mt-1 flex items-center gap-1 text-xs moh-text-muted"><AppMarvMark :size="12" />Your thread summary, by MARV</p>

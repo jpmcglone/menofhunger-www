@@ -4,7 +4,7 @@
     <!-- Sticky search bar (replaces layout title bar) -->
     <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
       <div class="px-4 py-4 sm:px-6 sm:py-6 space-y-3">
-        <h1 class="text-[28px] leading-9 font-semibold moh-text">{{ isSearching || searchActive ? 'Search' : 'Explore' }}</h1>
+        <h1 class="text-[28px] leading-9 font-semibold moh-text">Explore</h1>
         <p v-if="!isSearching && !searchActive" class="text-[15px] moh-text-muted">Find your people. Find your next conversation.</p>
         <div class="flex items-center gap-2">
           <AppSearchTypeahead
@@ -71,7 +71,7 @@ v-for="tab in searchTabs" :key="tab.key"
       </template>
       <AppExploreRecentSearches
 v-else-if="searchActive && !activeTopic && !activeCategory"
-        @submit="flushDebounceAndSearch" @browse="browseSearchCategory" />
+        @submit="flushDebounceAndSearch" />
 
       <!-- Topic mode (set by clicking a topic chip) -->
       <template v-else-if="activeTopic">
@@ -786,12 +786,7 @@ function cancelSearch() {
   searchInputRef.value?.blur()
   void router.replace({ query: { ...route.query, q: undefined, tab: undefined } })
 }
-function browseSearchCategory(tab: string) {
-  if (tab === 'groups') void navigateTo('/groups/explore')
-  else if (tab === 'articles') void navigateTo('/articles')
-  else if (tab === 'people') void navigateTo('/who-to-follow')
-  else void navigateTo('/home/all')
-}
+
 
 
 const activeTopic = computed(() => normalizeQueryParam(route.query.topic))

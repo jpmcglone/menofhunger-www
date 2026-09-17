@@ -150,7 +150,7 @@
               aria-label="Catch me up with M.A.R.V"
               @click.stop="onCatchMeUp"
             >
-              <AppMarvMark :size="24" />
+              <AppIconGlyph name="catchup" :size="24" :selected="catchUpResultReady" />
             </button>
           </div>
 

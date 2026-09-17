@@ -21,16 +21,11 @@ v-if="recent.user || recent.group" :to="recent.user ? `/u/${encodeURIComponent(r
         <button type="button" class="min-h-11 px-3 text-sm font-semibold moh-focus" :aria-label="`Remove ${recent.query} from recent searches`" @click="remove(recent.id)">Remove</button>
       </div>
     </div>
-    <h2 class="text-xl font-semibold moh-text mt-6 mb-3">Browse by category</h2>
-    <div class="grid gap-3">
-      <button
-v-for="category in ['People', 'Groups', 'Posts', 'Articles']" :key="category" type="button"
-        class="min-h-11 rounded-full border moh-border px-4 text-sm font-semibold moh-focus" @click="$emit('browse', category.toLowerCase())">{{ category }}</button>
-    </div>
+
   </div>
 </template>
 <script setup lang="ts">
-defineEmits<{ submit: [query: string]; browse: [category: string] }>()
+defineEmits<{ submit: [query: string] }>()
 const { recents, loading, load, remove, clearAll } = useRecentSearches()
 onMounted(load)
 </script>
