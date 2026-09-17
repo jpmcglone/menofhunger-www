@@ -52,3 +52,21 @@ refresh, full-list expansion and share text. Check sheet scrolling at large Dyna
 Live calls may coexist with ordinary media. Starting another voice message, video, radio or
 Space source replaces current app media. Recording still reserves microphone capture and
 cannot start during a call. Physical-device call routing and background controls need a manual pass.
+
+## Compact participant entry refinement
+
+Updated the existing [weekly entry masters](https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=155-21)
+before implementation. Home context: [dark phone](https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=711-877),
+[light phone](https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=711-1049),
+[narrow phone](https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=711-1495).
+
+The entry is now a 62pt minimum, two-line row: analytics icon and Last 7 days title,
++N participants at the trailing edge, and a secondary line of posts/reach/impressions.
+Larger text/narrow widths wrap. The entire row remains the button. The + also appears
+in the weekly detail; explanatory and accessibility copy makes clear that participants
+are other people and exclude the viewer. It is not a growth/delta statistic. Post-level
+activity counts and the API calculations are unchanged.
+
+Changed web files pass ESLint; all 7 focused conversation tests pass. Actual components
+were inspected in an isolated synthetic preview at 320/390/768 widths in light/dark,
+including the real detail dialog. Swift changes pass strict lint/format and simulator build.
