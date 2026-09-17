@@ -1,13 +1,14 @@
 <template>
   <section v-if="postId || data?.posts.length || error || open" class="border-b moh-border" :class="!postId && 'border-t'">
     <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 155:21 -->
-    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-[72px] w-full items-center gap-3 py-3 text-left" aria-haspopup="dialog" @click="open = true">
+    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-[88px] w-full items-center gap-3 py-3 text-left" aria-haspopup="dialog" @click="open = true">
       <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] moh-surface-2 moh-text-muted">
         <AppIconGlyph name="analytics" :size="20" />
       </span>
       <span class="min-w-0 flex-1">
         <span class="block text-sm font-semibold">Your week</span>
         <span class="mt-1 block text-xs moh-text-muted tabular-nums">{{ weeklySummary }}</span>
+        <span v-if="!error && data?.reach?.scope === 'lifetime'" class="mt-1 block text-xs moh-text-muted tabular-nums">{{ formatShortCount(data.reach.people) }} reached · {{ formatShortCount(data.reach.impressions) }} impressions total</span>
       </span>
       <span class="shrink-0 text-xs font-semibold moh-text-muted">View</span>
     </button>
@@ -30,13 +31,8 @@
         <p v-if="error" class="text-sm moh-text-muted">{{ error }} <button type="button" class="underline" @click="load">Retry</button></p>
         <div v-else-if="!data" class="h-24 animate-pulse rounded-lg moh-surface-2" aria-label="Loading activity" />
         <template v-else>
-          <p v-if="!postId" class="mb-4 text-xs moh-text-muted">Last 7 days · {{ data.postCount }} {{ data.postCount === 1 ? 'post' : 'posts' }}</p>
-          <div class="mb-4 flex items-baseline gap-2">
-            <span class="text-3xl font-semibold tabular-nums tracking-tight">{{ data.participantCount }}</span>
-            <span class="text-sm moh-text-muted">{{ data.participantCount === 1 ? 'participant' : 'participants' }}</span>
-            <span v-if="data.newParticipantCount" class="ml-auto rounded-full bg-sky-500/10 px-2 py-1 text-xs text-sky-600 dark:text-sky-400">{{ data.newParticipantCount }} new</span>
-          </div>
-          <p v-if="postId" class="mb-2 text-[11px] moh-text-muted">Last 30 days</p>
+          <p class="mb-4 text-xs moh-text-muted">{{ postId ? 'Last 30 days' : 'Last 7 days' }} · UTC</p>
+          <AppConversationInsightsSummary :data="data" :weekly="!postId" class="mb-4" />
           <AppConversationChart :days="data.timeline" />
           <p v-if="!postId && !data.posts.length" class="mt-4 text-sm moh-text-muted">No conversation activity in the last 7 days.</p>
           <h3 v-else-if="!postId" class="mt-5 text-sm font-semibold">Conversations</h3>
@@ -60,8 +56,8 @@
               </NuxtLink>
             </article>
           </div>
-          <button v-if="!postId && data.posts.length > 3" type="button" class="mt-3 min-h-11 text-xs moh-text-muted underline" @click="showAll = !showAll">{{ showAll ? 'Show less' : `All ${data.posts.length} posts` }}</button>
-          <button v-if="!postId && data.postCount > 0" type="button" class="mt-4 flex min-h-11 items-center gap-2 text-sm font-medium moh-text-muted" @click="share"><Icon name="tabler:share" aria-hidden="true" />{{ copied ? 'Copied' : 'Share recap' }}</button>
+          <button v-if="!postId && data.posts.length > 3" type="button" class="mt-3 min-h-11 text-xs moh-text-muted underline" @click="showAll = !showAll">{{ showAll ? 'Show less' : `All ${data.posts.length} recap posts` }}</button>
+          <button v-if="!postId && data.posts.length > 0" type="button" class="mt-4 flex min-h-11 items-center gap-2 text-sm font-medium moh-text-muted" @click="share"><Icon name="tabler:share" aria-hidden="true" />{{ copied ? 'Copied' : 'Share recap' }}</button>
         </template>
       </div>
     </component>
@@ -69,6 +65,7 @@
 </template>
 <script setup lang="ts">
 import Dialog from 'primevue/dialog'
+import { formatShortCount } from '~/utils/text'
 import type { ConversationInsights } from '~/types/api'
 import type { PostsCallback } from '~/composables/usePresence'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
@@ -117,7 +114,9 @@ async function load() {
 }
 async function share() {
   if (!data.value) return
-  const text = `My week on Men of Hunger: ${data.value.postCount} posts, ${data.value.participantCount} conversation participants.`
+  const recap = data.value
+  const reach = recap.reach?.scope === 'lifetime' ? ` Lifetime totals across ${recap.posts.length} recap posts: ${recap.reach.people} people reached, ${recap.reach.impressions} impressions.` : ''
+  const text = `My week on Men of Hunger: ${recap.postCount} posts, ${recap.participantCount} participants (replies, boosts and reposts).${reach}`
   try {
     if (navigator.share) await navigator.share({ text })
     else { await navigator.clipboard.writeText(text); copied.value = true }
@@ -136,7 +135,10 @@ function includesPost(id: string) {
 }
 const callback: PostsCallback = {
   onLiveUpdated: payload => {
-    if (includesPost(payload.postId) && ['commentCount', 'repostCount', 'deletedAt', 'body'].some(key => key in payload.patch)) refreshSoon()
+    if (includesPost(payload.postId) && ['commentCount', 'repostCount', 'viewerCount', 'totalViewCount', 'deletedAt', 'body'].some(key => key in payload.patch)) refreshSoon()
+  },
+  onInteraction: payload => {
+    if (includesPost(payload.postId) && (payload.kind === 'boost' || payload.kind === 'repost')) refreshSoon()
   },
   onCommentAdded: payload => {
     if (includesPost(payload.parentPostId)) refreshSoon()

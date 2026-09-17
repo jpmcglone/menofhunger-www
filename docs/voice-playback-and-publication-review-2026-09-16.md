@@ -15,7 +15,8 @@ MARV's existing mark; its 24-point icon sits in a 44-point target.
   where the browser supports it. Background web playback remains subject to browser/OS policy.
 - Explicit playback replaces the current media owner. Feed autoplay yields to voice messages,
   including paused messages, so scrolling cannot unexpectedly take away Resume.
-- Calls take priority over recording and playback. Recording cancels competing playback.
+- Live calls can coexist with media playback. Voice, video, radio and Space playback replace one another.
+  Recording cancels competing playback; calls reserve microphone capture and cancel an active recording.
 - Recording is previewed before sending. The 120-second cap finishes into a draft; it never sends.
 - Canceling a pending microphone permission request prevents a later permission grant from
   starting a hidden recording. Leaving the composer cancels and releases its recording resources.
@@ -53,7 +54,8 @@ count and waiting/failed depths. No workers means the queue is not being consume
 2. Record to two minutes; verify a playable preview appears. Leave while permission is pending.
 3. Play a received message, navigate to Feed, pause/resume/seek/stop from the persistent player.
 4. Lock an iPhone and use lock-screen controls. Unplug headphones and confirm playback pauses.
-5. Play another voice message, video, radio/Space stream, and start a call: verify no overlapping audio.
+5. Play another voice message, video or radio/Space stream: verify the new media replaces the old.
+   During a live call, verify media can play and switch without ending or muting the call.
 6. Scroll past autoplay videos during voice playback: voice keeps its focus.
 7. Simulate upload failure, retry, and confirm one delivered message; switch accounts during playback.
 8. Follow an operated page with Posts enabled, publish through its regular scheduled/delegated path,

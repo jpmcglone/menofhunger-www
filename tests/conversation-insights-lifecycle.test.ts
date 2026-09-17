@@ -78,6 +78,14 @@ describe('conversation recap refresh queue', () => {
       expect(recapSpies.fetch).toHaveBeenCalledTimes(2)
       await vi.advanceTimersByTimeAsync(5000)
       expect(recapSpies.fetch).toHaveBeenCalledTimes(2)
+      callback.onInteraction({ postId: 'unrelated', kind: 'boost' })
+      callback.onInteraction({ postId: 'post', kind: 'bookmark' })
+      await vi.advanceTimersByTimeAsync(1500)
+      expect(recapSpies.fetch).toHaveBeenCalledTimes(2)
+      callback.onInteraction({ postId: 'post', kind: 'boost' })
+      callback.onInteraction({ postId: 'post', kind: 'repost' })
+      await vi.advanceTimersByTimeAsync(1500)
+      expect(recapSpies.fetch).toHaveBeenCalledTimes(3)
     } finally { wrapper.unmount(); vi.useRealTimers() }
   })
 
@@ -94,7 +102,7 @@ describe('conversation recap refresh queue', () => {
       callback.onFeedNewPost({ post: { author: { id: 'viewer' } } })
       await vi.advanceTimersByTimeAsync(3000)
       expect(recapSpies.fetch).toHaveBeenCalledTimes(1)
-      callback.onLiveUpdated({ postId: 'post', patch: { commentCount: 2 } })
+      callback.onLiveUpdated({ postId: 'post', patch: { totalViewCount: 30, viewerCount: 10 } })
       await vi.advanceTimersByTimeAsync(1500)
       expect(recapSpies.fetch).toHaveBeenCalledTimes(2)
     } finally { wrapper.unmount(); vi.useRealTimers() }
@@ -121,7 +129,8 @@ describe('conversation recap refresh queue', () => {
 
 const weeklyData = {
   postCount: 4, participantCount: 12, newParticipantCount: 3,
-  timeline: [{ date: '2026-09-06', replies: 2, reposts: 1, coins: 1, branches: 1 }],
+  reach: { people: 1284, impressions: 3842, scope: 'lifetime' },
+  timeline: [{ date: '2026-09-06', replies: 2, reposts: 1, boosts: 32, coins: 1, branches: 1 }],
   posts: Array.from({ length: 4 }, (_, index) => ({
     id: `post-${index}`, body: `Conversation ${index + 1}`, renewed: index === 2,
     participantCount: 1, participants: [{ id: 'member', name: 'James', username: 'james' }],
@@ -153,11 +162,15 @@ describe('weekly activity presentation', () => {
       expect(wrapper.element.contains(dialog)).toBe(false)
       expect(dialog.textContent).toContain('Last 7 days')
       expect(dialog.textContent).toContain('3 new')
+      expect(dialog.textContent).toContain('1,284')
+      expect(dialog.textContent).toContain('3,842')
+      expect(dialog.textContent).toContain('Lifetime totals on these posts')
+      expect(dialog.textContent).toContain('Unique people who replied, boosted or reposted.')
       expect(dialog.textContent).toContain('Active again')
       expect(dialog.textContent).toContain('Keep going')
       expect(dialog.textContent).toContain('Share recap')
       expect(dialog.textContent).not.toContain('Conversation 4')
-      const allPosts = Array.from(dialog.querySelectorAll('button')).find(button => button.textContent === 'All 4 posts')!
+      const allPosts = Array.from(dialog.querySelectorAll('button')).find(button => button.textContent === 'All 4 recap posts')!
       allPosts.click()
       await nextTick()
       expect(dialog.textContent).toContain('Conversation 4')
