@@ -9,15 +9,21 @@
     @click.stop
   >
     <div v-if="showImage" class="relative overflow-hidden rounded-xl border moh-border">
-      <div class="relative aspect-video w-full overflow-hidden moh-surface" aria-hidden="true">
+      <div
+        class="relative w-full overflow-hidden moh-surface"
+        :class="isPortraitImage ? 'aspect-[4/5]' : 'aspect-video'"
+        aria-hidden="true"
+      >
         <img
           :src="imageUrl!"
           alt=""
           class="h-full w-full object-cover"
+          :class="isPortraitImage ? 'object-top' : 'object-center'"
           loading="lazy"
           decoding="async"
           referrerpolicy="no-referrer"
-          @error="imageFailed = true"
+          @load="onImageLoad"
+          @error="onImageError"
         >
       </div>
       <div
@@ -60,17 +66,28 @@
         </button>
       </div>
     </div>
-    <div class="mt-2 truncate text-[13px] moh-text-muted">
-      {{ sourceLabel }}
+    <div class="mt-2 flex flex-col gap-2">
+      <p
+        v-if="dek"
+        class="line-clamp-2 text-[13px] leading-[1.4] moh-text-muted text-pretty"
+      >
+        {{ dek }}
+      </p>
+      <div class="truncate text-[13px] moh-text-muted">
+        {{ sourceLabel }}
+      </div>
     </div>
   </component>
 </template>
 
 <script setup lang="ts">
+import { isPortraitPreviewImage, previewDescription } from '~/utils/link-utils'
+
 const props = defineProps<{
   href?: string | null
   title: string
   sourceLabel: string
+  description?: string | null
   imageUrl?: string | null
   previewOnly?: boolean
   dismissible?: boolean
@@ -79,15 +96,28 @@ const props = defineProps<{
 defineEmits<{ dismiss: [] }>()
 
 const imageFailed = ref(false)
+const isPortraitImage = ref(false)
 watch(() => props.imageUrl, () => {
   imageFailed.value = false
+  isPortraitImage.value = false
 })
 
 const showImage = computed(() => Boolean((props.imageUrl ?? '').trim()) && !imageFailed.value)
+const dek = computed(() => previewDescription(props.description, props.title))
 const linkHref = computed(() => {
   if (props.previewOnly || props.dismissible) return undefined
   const href = (props.href ?? '').trim()
   return href || undefined
 })
 const rootTag = computed(() => (linkHref.value ? 'a' : 'div'))
+
+function onImageLoad(event: Event) {
+  const img = event.target as HTMLImageElement | null
+  isPortraitImage.value = isPortraitPreviewImage(img?.naturalWidth ?? 0, img?.naturalHeight ?? 0)
+}
+
+function onImageError() {
+  imageFailed.value = true
+  isPortraitImage.value = false
+}
 </script>

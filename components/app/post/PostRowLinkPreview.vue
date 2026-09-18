@@ -151,6 +151,7 @@
       :href="previewLink"
       :title="genericPreviewTitle"
       :source-label="previewSourceLine"
+      :description="linkMeta?.description"
       :image-url="linkMeta?.imageUrl"
       :preview-only="previewOnly"
       :dismissible="dismissible"

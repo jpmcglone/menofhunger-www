@@ -12,6 +12,8 @@ import {
   matchLinksInText,
   extractLinksFromText,
   previewSourceLabel,
+  previewDescription,
+  isPortraitPreviewImage,
 } from '~/utils/link-utils'
 
 describe('space link extractors', () => {
@@ -73,5 +75,29 @@ describe('previewSourceLabel', () => {
 
   it('falls back when the URL cannot be parsed', () => {
     expect(previewSourceLabel('not a url')).toBe('From link')
+  })
+})
+
+describe('previewDescription', () => {
+  it('hides empty copy and titles that just repeat', () => {
+    expect(previewDescription(null, 'John McGlone')).toBeNull()
+    expect(previewDescription('   ', 'John McGlone')).toBeNull()
+    expect(previewDescription('John McGlone', 'john mcglone')).toBeNull()
+  })
+
+  it('keeps a distinct Open Graph dek', () => {
+    expect(previewDescription(
+      'Husband, father, and the man behind Men of Hunger.',
+      'John McGlone',
+    )).toBe('Husband, father, and the man behind Men of Hunger.')
+  })
+})
+
+describe('isPortraitPreviewImage', () => {
+  it('treats square and tall images as portrait', () => {
+    expect(isPortraitPreviewImage(1200, 675)).toBe(false)
+    expect(isPortraitPreviewImage(640, 640)).toBe(true)
+    expect(isPortraitPreviewImage(800, 1200)).toBe(true)
+    expect(isPortraitPreviewImage(0, 1200)).toBe(false)
   })
 })

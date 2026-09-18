@@ -57,6 +57,23 @@ export function previewSourceLabel(url: string): string {
   return host ? `From ${host}` : 'From link'
 }
 
+/** Hide the dek when Open Graph sent nothing, or when it just repeats the title. */
+export function previewDescription(
+  description: string | null | undefined,
+  title: string | null | undefined,
+): string | null {
+  const dek = (description ?? '').trim()
+  if (!dek) return null
+  const heading = (title ?? '').trim()
+  if (heading && dek.localeCompare(heading, undefined, { sensitivity: 'accent' }) === 0) return null
+  return dek
+}
+
+/** Square and taller images use the 4:5 top crop; wider images stay 16:9. */
+export function isPortraitPreviewImage(width: number, height: number): boolean {
+  return width > 0 && height >= width
+}
+
 /**
  * Returns true if the URL belongs to the MoH domain (production or current dev host).
  * Used by link-preview components to render a branded internal card instead of a generic one.
