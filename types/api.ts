@@ -1702,6 +1702,11 @@ export type MessageConversation = {
   createdAt: string
   updatedAt: string
   lastMessageAt: string | null
+  /**
+   * Last visible message. `body` is the inbox preview: the caption when present,
+   * otherwise Voice message / Photo / GIF / Video. Null when the conversation
+   * has no messages — clients show "No chats yet." only in that case.
+   */
   lastMessage: { id: string; body: string; createdAt: string; senderId: string } | null
   participants: MessageParticipant[]
   viewerStatus: MessageParticipantStatus

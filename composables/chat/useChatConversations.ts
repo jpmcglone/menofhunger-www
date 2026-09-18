@@ -1,5 +1,6 @@
 import { computed, ref, shallowRef, triggerRef, type ComputedRef, type Ref } from 'vue'
 import type { Message, MessageConversation } from '~/types/api'
+import { chatMessagePreview, conversationPreviewText } from '~/utils/chat-message-preview'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 import type { AuthUser } from '~/composables/useAuth'
 
@@ -231,7 +232,12 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
         ...existing,
         lastMessageAt: message.createdAt,
         updatedAt: message.createdAt,
-        lastMessage: { id: message.id, body: message.body, createdAt: message.createdAt, senderId: message.sender.id },
+        lastMessage: {
+          id: message.id,
+          body: chatMessagePreview(message),
+          createdAt: message.createdAt,
+          senderId: message.sender.id,
+        },
         unreadCount: nextUnreadCount,
       }
       if (isUnreadIncoming) updated.unreadTone = incomingTier
@@ -289,7 +295,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   }
 
   function getConversationPreview(conversation: MessageConversation) {
-    return conversation.lastMessage?.body || 'No chats yet.'
+    return conversationPreviewText(conversation)
   }
 
   function getConversationLastMessageTier(conversation: MessageConversationWithTone): MessageTone {
@@ -330,7 +336,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
       if (m.deletedForAll) continue
       return {
         id: m.id,
-        body: m.body,
+        body: chatMessagePreview(m),
         createdAt: m.createdAt,
         senderId: m.sender.id,
       }
@@ -398,8 +404,8 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   const marvConversationId = computed(() => marvConversation.value?.id ?? null)
   const marvUnreadCount = computed(() => marvConversation.value?.unreadCount ?? 0)
   const marvLastMessagePreview = computed<string | null>(() => {
-    const body = marvConversation.value?.lastMessage?.body ?? null
-    return body ? body.trim() || null : null
+    const body = marvConversation.value?.lastMessage?.body?.trim() ?? ''
+    return body || null
   })
   const isSelectedConversationMarv = computed(() => {
     const marvId = marv.marvUserId.value
