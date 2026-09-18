@@ -7,7 +7,7 @@ import LinkPreview from '../components/app/composer/LinkPreview.vue'
 
 mockComponent('AppPostRowLinkPreview', () => ({
   name: 'PublishedPreviewStub',
-  props: { body: String, postId: String, hasMedia: Boolean, rowInView: Boolean, previewOnly: Boolean },
+  props: { body: String, postId: String, hasMedia: Boolean, rowInView: Boolean, previewOnly: Boolean, dismissible: Boolean },
   template: '<div data-testid="published-preview">{{ body }}</div>',
 }))
 
@@ -59,10 +59,10 @@ describe('composer uses the published preview renderer', () => {
     const text = 'https://menofhunger.com/p/abc https://youtu.be/jNQXAC9IVRw John 3:16'
     const wrapper = render(text)
     await vi.advanceTimersByTimeAsync(350)
-    expect(wrapper.find('[inert]').exists()).toBe(true)
     const preview = wrapper.findComponent({ name: 'PublishedPreviewStub' })
     expect(preview.props('body')).toBe(text)
     expect(preview.props('previewOnly')).toBe(true)
+    expect(preview.props('dismissible')).toBe(true)
     expect(preview.props('rowInView')).toBe(true)
   })
 

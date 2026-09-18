@@ -1,5 +1,5 @@
 <template>
-  <div v-if="showAny" class="mt-3">
+  <div v-if="showAny" class="mt-3" :inert="previewInteractionLocked || undefined">
     <AppSpotifyEmbed v-if="showLinkPreview && spotifyPreview" :content="spotifyPreview" />
     <!-- Video embeds (special cases) -->
     <!-- Portrait frames get an explicit px width (left-aligned); landscape fills the row.
@@ -146,42 +146,16 @@
       :href="previewLink"
     />
 
-    <!-- Generic link preview (last link only, external sites) -->
-    <a
-      v-else-if="showLinkPreview"
-      :href="previewLink || undefined"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="group block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover moh-focus"
-      aria-label="Open link"
-      @click.stop
-    >
-      <div class="relative flex gap-3 p-3">
-        <!-- Slight brightness wash behind content -->
-        <div class="pointer-events-none absolute inset-0 bg-white/10" aria-hidden="true" />
-        <div
-          v-if="linkMeta?.imageUrl"
-          class="relative z-10 h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-900"
-          aria-hidden="true"
-        >
-          <img :src="linkMeta.imageUrl" class="h-full w-full object-cover" alt="" loading="lazy" >
-        </div>
-        <div class="relative z-10 min-w-0 flex-1">
-          <div class="text-sm font-semibold moh-text truncate">
-            {{ linkMeta?.title || previewLinkHost || 'Link' }}
-          </div>
-          <div v-if="linkMeta?.description" class="mt-0.5 text-xs moh-text-muted line-clamp-3">
-            {{ linkMeta.description }}
-          </div>
-          <div class="mt-1 text-[11px] moh-text-muted truncate">
-            {{ previewLinkDisplay }}
-          </div>
-        </div>
-        <div class="relative z-10 shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true">
-          <Icon name="tabler:external-link" class="text-[12px]" aria-hidden="true" />
-        </div>
-      </div>
-    </a>
+    <AppWebsitePreviewCard
+      v-else-if="showGenericWebsitePreview && previewLink"
+      :href="previewLink"
+      :title="genericPreviewTitle"
+      :source-label="previewSourceLine"
+      :image-url="linkMeta?.imageUrl"
+      :preview-only="previewOnly"
+      :dismissible="dismissible"
+      @dismiss="dismissGenericPreview"
+    />
 
     <!-- Scripture preview card: lowest priority, only when slot is otherwise empty and
          exactly one scripture reference is present in the post body. -->
@@ -267,7 +241,7 @@
 
 <script setup lang="ts">
 import { mediaFocus } from '~/utils/mediaFocus'
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, youtubeVolumeCommand, postYouTubeIframeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, youtubeVolumeCommand, postYouTubeIframeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlHostname, previewSourceLabel, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata, peekLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -290,6 +264,8 @@ const props = defineProps<{
   activateVideoOnMount?: boolean
   /** Drafts share the exact card layout without participating in feed autoplay. */
   previewOnly?: boolean
+  /** Composer-only: show a dismiss control on generic website cards. */
+  dismissible?: boolean
   /** When provided, used immediately as the article preview — no fetch needed. */
   preloadedArticle?: ArticleSharePreview | null
   /** When provided, used immediately as the embedded post preview — no fetch needed. */
@@ -447,7 +423,22 @@ const previewLink = computed(() => {
 
 const showLinkPreview = computed(() => Boolean(previewLink.value && !hasMedia.value))
 const previewLinkHost = computed(() => (previewLink.value ? safeUrlHostname(previewLink.value) : null))
-const previewLinkDisplay = computed(() => (previewLink.value ? safeUrlDisplay(previewLink.value) : ''))
+const previewSourceLine = computed(() => (previewLink.value ? previewSourceLabel(previewLink.value) : 'From link'))
+const dismissedPreviewUrl = ref<string | null>(null)
+watch(previewLink, (url) => {
+  if (url !== dismissedPreviewUrl.value) dismissedPreviewUrl.value = null
+})
+function dismissGenericPreview() {
+  dismissedPreviewUrl.value = previewLink.value
+}
+const genericPreviewSuppressed = computed(() =>
+  Boolean(props.dismissible && dismissedPreviewUrl.value && dismissedPreviewUrl.value === previewLink.value),
+)
+const genericPreviewTitle = computed(() => {
+  const title = (linkMeta.value?.title ?? '').trim()
+  if (title) return title
+  return (previewLinkHost.value ?? '').replace(/^www\./i, '') || 'Link'
+})
 
 const youtubeVideoInfo = computed(() => (previewLink.value ? parseYouTubeUrl(previewLink.value) : null))
 const youtubeEmbedUrl = computed(() => (previewLink.value ? getYouTubeEmbedUrl(previewLink.value) : null))
@@ -813,6 +804,21 @@ const substackMeta = computed(() => {
   return linkMeta.value ?? null
 })
 
+const isCustomWebsitePreview = computed(() => Boolean(
+  spotifyPreview.value
+  || youtubeEmbedUrl.value
+  || isPreviewLinkRumble.value
+  || (isMohInternalLink.value && mohInternalPath.value)
+  || xPostMeta.value
+  || (substackMeta.value && substackMeta.value.title),
+))
+const showGenericWebsitePreview = computed(() =>
+  Boolean(showLinkPreview.value && !isCustomWebsitePreview.value && !genericPreviewSuppressed.value),
+)
+const previewInteractionLocked = computed(() =>
+  Boolean(props.previewOnly && !(props.dismissible && showGenericWebsitePreview.value)),
+)
+
 // Embedded MOH post: always show block so SSR can fetch and render the preview before first paint.
 // Space/article/user preview: show skeleton while loading, resolved card when ready (both require rowInView).
 // External link preview: only show when row is in view (avoid metadata fetch for off-screen rows).
@@ -834,7 +840,7 @@ const showAny = computed(() =>
     (embeddedArticleId.value && !preloadedArticle.value && rowInView.value) ||
     (hasEmbeddedSpace.value && rowInView.value) ||
     (embeddedUsername.value && rowInView.value) ||
-    (showLinkPreview.value && rowInView.value) ||
+    (showLinkPreview.value && rowInView.value && !genericPreviewSuppressed.value) ||
     (singleScriptureRef.value && rowInView.value),
   )
 )

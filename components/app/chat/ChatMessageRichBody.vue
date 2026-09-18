@@ -55,8 +55,8 @@
       @click.stop
     >
       <div class="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-current/10" aria-hidden="true">
-        <img :src="logoLight" class="h-full w-full object-cover dark:hidden" alt="" loading="lazy" />
-        <img :src="logoDark" class="h-full w-full object-cover hidden dark:block" alt="" loading="lazy" />
+        <img :src="logoLight" class="h-full w-full object-cover dark:hidden" alt="" loading="lazy">
+        <img :src="logoDark" class="h-full w-full object-cover hidden dark:block" alt="" loading="lazy">
       </div>
       <div class="min-w-0 flex-1">
         <div class="line-clamp-2 break-words text-[12px] font-semibold leading-4">
@@ -83,40 +83,14 @@
       class="mt-2"
     />
 
-    <!-- Generic external link preview -->
-    <a
-      v-else-if="everVisible && showLinkPreview"
-      :href="previewLink || undefined"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="group mt-2 block w-full max-w-full overflow-hidden rounded-lg border border-current/20 bg-black/5 transition-colors hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-      aria-label="Open link"
-      @click.stop
-    >
-      <div class="flex min-w-0 max-w-full gap-2.5 p-2">
-        <div
-          v-if="linkMeta?.imageUrl"
-          class="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-black/10 dark:bg-white/10"
-          aria-hidden="true"
-        >
-          <img :src="linkMeta.imageUrl" class="h-full w-full object-cover" alt="" loading="lazy">
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="line-clamp-2 break-words text-[12px] font-semibold leading-4">
-            {{ linkMeta?.title || previewLinkHost || 'Link' }}
-          </div>
-          <div v-if="linkMeta?.description" class="line-clamp-2 break-words text-[11px] opacity-80">
-            {{ linkMeta.description }}
-          </div>
-          <div class="break-all text-[10px] opacity-70">
-            {{ previewLinkDisplay }}
-          </div>
-        </div>
-        <div class="shrink-0 opacity-60" aria-hidden="true">
-          <Icon name="tabler:external-link" class="text-[11px]" aria-hidden="true" />
-        </div>
-      </div>
-    </a>
+    <AppWebsitePreviewCard
+      v-else-if="everVisible && showLinkPreview && previewLink"
+      class="mt-2"
+      :href="previewLink"
+      :title="genericPreviewTitle"
+      :source-label="previewSourceLine"
+      :image-url="linkMeta?.imageUrl"
+    />
 
     <!-- Post embed — same component as posts, viewport-gated via enabled prop -->
     <div v-if="everVisible && embeddedPostId" @click.stop>
@@ -172,7 +146,7 @@ const _linkify = new LinkifyIt()
 
 <script setup lang="ts">
 import { useElementVisibility } from '@vueuse/core'
-import { extractLinksFromText, safeUrlDisplay, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, parseMediaPreviewUrl } from '~/utils/link-utils'
+import { extractLinksFromText, safeUrlHostname, previewSourceLabel, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, parseMediaPreviewUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import { stableListKey } from '~/utils/stable-list-key'
@@ -378,7 +352,12 @@ const showLinkPreview = computed(() =>
   Boolean(previewLink.value && !hasEmbeddedSpace.value && !embeddedPostId.value && !embeddedArticleId.value && !embeddedUsername.value),
 )
 const previewLinkHost = computed(() => (previewLink.value ? safeUrlHostname(previewLink.value) : null))
-const previewLinkDisplay = computed(() => (previewLink.value ? safeUrlDisplay(previewLink.value) : ''))
+const previewSourceLine = computed(() => (previewLink.value ? previewSourceLabel(previewLink.value) : 'From link'))
+const genericPreviewTitle = computed(() => {
+  const title = (linkMeta.value?.title ?? '').trim()
+  if (title) return title
+  return (previewLinkHost.value ?? '').replace(/^www\./i, '') || 'Link'
+})
 const isMohInternalLink = computed(() => Boolean(previewLink.value && isMohUrl(previewLink.value)))
 const mohInternalPath = computed(() => (previewLink.value ? mohUrlPath(previewLink.value) : null))
 const mediaPreviewHref = computed(() => {

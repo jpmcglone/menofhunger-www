@@ -51,6 +51,12 @@ export function safeUrlDisplay(url: string): string {
   }
 }
 
+/** OG website cards show the registrable host, not the path: "From cbsnews.com". */
+export function previewSourceLabel(url: string): string {
+  const host = (safeUrlHostname(url) ?? '').replace(/^www\./i, '')
+  return host ? `From ${host}` : 'From link'
+}
+
 /**
  * Returns true if the URL belongs to the MoH domain (production or current dev host).
  * Used by link-preview components to render a branded internal card instead of a generic one.

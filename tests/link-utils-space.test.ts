@@ -11,6 +11,7 @@ import {
   isMohSpaceLink,
   matchLinksInText,
   extractLinksFromText,
+  previewSourceLabel,
 } from '~/utils/link-utils'
 
 describe('space link extractors', () => {
@@ -59,5 +60,18 @@ describe('matchLinksInText', () => {
   it('keeps extractLinksFromText as the href list', () => {
     const body = 'see https://example.com and also example.org/x'
     expect(extractLinksFromText(body)).toEqual(matchLinksInText(body).map((m) => m.href))
+  })
+})
+
+describe('previewSourceLabel', () => {
+  it('uses the host without www or path', () => {
+    expect(previewSourceLabel('https://www.cbsnews.com/us/')).toBe('From cbsnews.com')
+    expect(previewSourceLabel('https://theatlantic.com/ideas/attention-is-the-work/')).toBe(
+      'From theatlantic.com',
+    )
+  })
+
+  it('falls back when the URL cannot be parsed', () => {
+    expect(previewSourceLabel('not a url')).toBe('From link')
   })
 })

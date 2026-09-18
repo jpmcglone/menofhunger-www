@@ -1,7 +1,7 @@
 <template>
   <AppPostRowLinkPreview
     v-if="settledText" :key="settledText" :post-id="previewId" :body="settledText"
-    :has-media="Boolean(hasMedia)" :row-in-view="true" preview-only inert
+    :has-media="Boolean(hasMedia)" :row-in-view="true" preview-only dismissible
     class="text-left" aria-label="Post link preview" data-testid="composer-link-preview"
   />
 </template>
