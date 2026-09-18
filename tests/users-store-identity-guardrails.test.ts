@@ -46,15 +46,14 @@ describe('applyIdentitySwap guardrail (structural)', () => {
     expect(src).toMatch(/viewer-crew-membership/)
   })
 
-  it('reloads immediately on account switch instead of swapping chrome first', () => {
+  it('swaps identity in place on account switch instead of reloading the document', () => {
     const src = readFromRepo('composables/useAuth.ts')
     const block =
       src.match(/async function switchAccount[\s\S]*?(?=\n {2}const isAuthed)/)?.[0] ?? ''
     expect(block).toBeTruthy()
-    expect(block).toMatch(/reloadAsSwitchedIdentity/)
-    expect(block).not.toMatch(/applyIdentitySwap/)
-    expect(src).toMatch(/window\.location\.reload\(\)/)
-    expect(src).toMatch(/window\.location\.replace/)
+    expect(block).toMatch(/applyIdentitySwap\(next/)
+    expect(block).not.toMatch(/reloadAsSwitchedIdentity/)
+    expect(block).toMatch(/window\.location\.reload\(\)/)
   })
 
   it('bumps a reactive identity version so KeepAlive pages remount after a swap', () => {

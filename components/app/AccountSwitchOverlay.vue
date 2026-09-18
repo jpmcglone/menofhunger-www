@@ -31,9 +31,9 @@ watchEffect(() => {
   if (dialog.value && !dialog.value.open) dialog.value.showModal()
 }, { flush: 'post' })
 
-watch(() => transition.value?.destination, (destination, _previous, onCleanup) => {
+watch(transition, (current, _previous, onCleanup) => {
   showRecovery.value = false
-  if (!destination) return
+  if (!current) return
   const timer = setTimeout(() => { showRecovery.value = true }, 8_000)
   onCleanup(() => clearTimeout(timer))
 })

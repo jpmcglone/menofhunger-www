@@ -3,6 +3,7 @@ import { useUsersStore } from '~/composables/useUsersStore'
 import { bumpAuthGeneration, bumpIdentityVersion, clearAuthClientState, getAuthGeneration } from '~/composables/auth/authState'
 import { clearMohCacheAll } from '~/composables/useApiClient'
 import type { AccountKind, AccountSwitch, Impersonation, SwitchableAccount } from '~/types/api'
+import { isSafeRedirect } from '~/utils/url'
 
 export type AuthUser = {
   id: string
@@ -181,7 +182,8 @@ export function useAuth() {
     try {
       const result = await apiFetch<AuthUser | null>('/auth/me', { method: 'GET' })
       // If auth state was reset while this request was in flight (logout/401), ignore.
-      if (gen !== getAuthGeneration() || switchingId.value) return null
+      // Account switch keeps switchingId set so applyIdentitySwap can still apply this payload.
+      if (gen !== getAuthGeneration()) return null
       apiUnreachable.value = false
       user.value = result.data
       return result.data
@@ -341,35 +343,21 @@ export function useAuth() {
     return null
   }
 
-  async function leavePersonOnlyRouteIfNeeded(next: AuthUser | null) {
+  async function leavePersonOnlyRouteIfNeeded(next: AuthUser | null, then?: string) {
     if (!import.meta.client) return
-    if (next?.accountKind !== 'page') return
-    const nextPath = personOnlyLandingPath(useRoute().path)
-    if (nextPath) await navigateTo(nextPath, { replace: true })
-  }
-
-  /** Cookie is already rotated — load as the new identity instead of swapping chrome first. */
-  function reloadAsSwitchedIdentity(next: AuthUser | null, then?: string) {
-    if (!import.meta.client) return
-    const dest = typeof then === 'string' && then.startsWith('/') && !then.startsWith('//') ? then : null
-    const destPath = (dest ? dest.split(/[?#]/)[0] : window.location.pathname) || '/'
-    const landing =
-      next?.accountKind === 'page' ? personOnlyLandingPath(destPath) : null
-    if (accountSwitchTransition.value) {
-      accountSwitchTransition.value = {
-        ...accountSwitchTransition.value,
-        destination: landing || dest || window.location.href,
-      }
-    }
-    if (landing) window.location.replace(landing)
-    else if (dest) window.location.replace(dest)
-    else window.location.reload()
+    const dest = isSafeRedirect(then) ? then : null
+    const path = ((dest ?? useRoute().path).split(/[?#]/)[0]) || '/'
+    const landing = next?.accountKind === 'page' ? personOnlyLandingPath(path) : null
+    const target = landing || dest
+    if (!target) return
+    const route = useRoute()
+    if (target === route.fullPath || target === route.path) return
+    await navigateTo(target, { replace: true })
   }
 
   /**
    * Swap client state over to a different identity after the server has already
-   * rotated the `moh_session` cookie. Used by impersonation. Account switch
-   * reloads instead so the new chrome and page appear together.
+   * rotated the `moh_session` cookie. Used by impersonation and account switch.
    *
    * This is a full identity change: caches, content rooms, badge counts, KeepAlive
    * pages, and the socket handshake all rebuild for `nextUser`. `emitLogout()` is
@@ -378,7 +366,7 @@ export function useAuth() {
    * Throws `'identity_not_swapped'` if the server confirmed a different user than `nextUser`
    * — this means the session cookie was not updated (browser SameSite / CORS edge-case).
    */
-  async function applyIdentitySwap(nextUser: AuthUser | null) {
+  async function applyIdentitySwap(nextUser: AuthUser | null, opts?: { then?: string }) {
     const expectedId = nextUser?.id ?? null
 
     bumpAuthGeneration()
@@ -405,14 +393,14 @@ export function useAuth() {
       throw new Error('identity_not_swapped')
     }
 
-    await leavePersonOnlyRouteIfNeeded(user.value)
+    await leavePersonOnlyRouteIfNeeded(user.value, opts?.then)
     // Bust KeepAlive so the current page remounts and fetches as the new identity.
     bumpIdentityVersion()
 
     // Tear down any mid-swap reconnect (user-id watch) and handshake as this user.
     disconnect()
     connect()
-    await useBadgeHydration().refresh({ force: true }).catch(() => undefined)
+    void useBadgeHydration().refresh({ force: true }).catch(() => undefined)
     if (import.meta.client) {
       void usePushNotifications().ensureSubscribedWhenGranted()
     }
@@ -471,7 +459,7 @@ export function useAuth() {
 
   async function switchAccount(userId: string, opts?: { then?: string; label?: string }) {
     if (switchingId.value || userId === user.value?.id) return null
-    accountSwitchTransition.value = { userId, label: opts?.label || 'your account', destination: null }
+    accountSwitchTransition.value = { userId, label: opts?.label || 'your account' }
     // Responses from the old session must not overwrite or sign out the new one.
     bumpAuthGeneration()
     clientMePromise = null
@@ -487,21 +475,22 @@ export function useAuth() {
         next = result?.user ?? null
       } catch (error) {
         const status = getErrorStatus(error)
-        if (status === null || status >= 500) {
-          // The cookie may have rotated before the response was interrupted.
-          // Read the session directly; me() deliberately retains old UI on errors.
-          next = await apiFetchData<AuthUser | null>('/auth/me', {
-            method: 'GET', mohDedupe: false, mohRetry: false,
-            mohUnauthorized: 'ignore', timeout: 5_000,
-          }).catch(() => null)
+        if (status !== null && status < 500) throw error
+        // The cookie may have rotated before the response was interrupted.
+        next = await apiFetchData<AuthUser | null>('/auth/me', {
+          method: 'GET', mohDedupe: false, mohRetry: false,
+          mohUnauthorized: 'ignore', timeout: 5_000,
+        }).catch(() => null)
+        if (!next) {
+          if (import.meta.client) window.location.reload()
+          return null
         }
-        if (next?.id !== userId) throw error
+        if (next.id !== userId) throw error
       }
       if (next?.id !== userId) throw new Error('Could not confirm the account switch. Please try again.')
-      clearMohCacheAll()
-      reloadAsSwitchedIdentity(next, opts?.then)
-      // Navigation is asynchronous. Keep the lock and feedback until unload.
-      return next
+      await applyIdentitySwap(next, { then: opts?.then })
+      accountSwitchTransition.value = null
+      return user.value
     } catch (error) {
       bumpAuthGeneration()
       accountSwitchTransition.value = null

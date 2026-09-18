@@ -39,7 +39,7 @@ describe('unauthorized responses during account switching', () => {
   })
 
   it('does not sign out for background requests made during session rotation', async () => {
-    state.transition.value = { userId: 'page', label: 'News', destination: null }
+    state.transition.value = { userId: 'page', label: 'News' }
     vi.stubGlobal('$fetch', vi.fn().mockRejectedValue({ status: 401 }))
     await expect(client.apiFetch('/test', { mohDedupe: false })).rejects.toEqual({ status: 401 })
     expect(auth.clear).not.toHaveBeenCalled()
