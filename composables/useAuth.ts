@@ -457,9 +457,25 @@ export function useAuth() {
     return await apiFetchData<SwitchableAccount[]>('/auth/accounts', { method: 'GET' })
   }
 
-  async function switchAccount(userId: string, opts?: { then?: string; label?: string }) {
+  async function switchAccount(userId: string, opts?: {
+    then?: string
+    label?: string
+    name?: string | null
+    username?: string | null
+    avatarUrl?: string | null
+    avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
+    isOrganization?: boolean
+  }) {
     if (switchingId.value || userId === user.value?.id) return null
-    accountSwitchTransition.value = { userId, label: opts?.label || 'your account' }
+    accountSwitchTransition.value = {
+      userId,
+      label: opts?.label || 'your account',
+      name: opts?.name,
+      username: opts?.username,
+      avatarUrl: opts?.avatarUrl,
+      avatarVideo: opts?.avatarVideo,
+      isOrganization: opts?.isOrganization,
+    }
     // Responses from the old session must not overwrite or sign out the new one.
     bumpAuthGeneration()
     clientMePromise = null

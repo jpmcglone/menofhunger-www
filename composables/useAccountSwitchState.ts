@@ -1,6 +1,13 @@
-type AccountSwitchTransition = {
+import type { AvatarVideoDto } from '~/types/api-contracts.gen'
+
+export type AccountSwitchTransition = {
   userId: string
   label: string
+  name?: string | null
+  username?: string | null
+  avatarUrl?: string | null
+  avatarVideo?: AvatarVideoDto | null
+  isOrganization?: boolean
 }
 
 /** Shared by every switch entry point, the loading surface, and the API client. */

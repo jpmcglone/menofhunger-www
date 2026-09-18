@@ -73,7 +73,15 @@ export function useAccountSwitcher() {
     if (!target || target.isCurrent || switchingId.value) return
 
     try {
-      await switchAccount(userId, { ...opts, label: target.name || target.username || 'your account' })
+      await switchAccount(userId, {
+        ...opts,
+        label: target.name || target.username || 'your account',
+        name: target.name,
+        username: target.username,
+        avatarUrl: target.avatarUrl,
+        avatarVideo: target.avatarVideo,
+        isOrganization: target.isOrganization,
+      })
     } catch (e) {
       toast.push({
         title: getSafeUserErrorMessage(e, 'Could not switch accounts.'),

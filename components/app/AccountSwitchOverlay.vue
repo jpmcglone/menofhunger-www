@@ -9,10 +9,20 @@
       @cancel.prevent
     >
       <div class="flex h-full flex-col items-center justify-center gap-4">
-        <AppIconGlyph name="refresh" :size="24" class="moh-text-muted motion-safe:animate-spin" aria-hidden="true" />
+        <AppAvatarCircle
+          :src="transition.avatarUrl"
+          :avatar-video="transition.avatarVideo"
+          :name="transition.name || transition.label"
+          :username="transition.username"
+          size-class="h-28 w-28"
+          :round-class="avatarRoundClass(transition.isOrganization === true)"
+          :is-organization="transition.isOrganization === true"
+          :show-presence="false"
+        />
         <p role="status" aria-live="polite" class="text-center text-sm moh-text-muted">
           Switching to {{ transition.label }}…
         </p>
+        <AppIconGlyph name="refresh" :size="24" class="moh-text-muted motion-safe:animate-spin" aria-hidden="true" />
         <Button v-if="showRecovery" label="Reload page" severity="secondary" rounded @click="resumeNavigation" />
       </div>
     </dialog>
@@ -21,6 +31,8 @@
 
 <script setup lang="ts">
 // Figma: YnuRSJB7p90n9jEY4mb4RN / 735:87 (native light/dark modes).
+import { avatarRoundClass } from '~/utils/avatar-rounding'
+
 const { transition, resumeNavigation } = useAccountSwitchState()
 const dialog = ref<HTMLDialogElement | null>(null)
 const showRecovery = ref(false)

@@ -18,7 +18,17 @@ describe('account switch feedback', () => {
       state.transition.value = null
       return () => h(AccountSwitchOverlay)
     } }), {
-      global: { stubs: { ClientOnly: { template: '<div><slot /></div>' }, AppIconGlyph: true } },
+      global: {
+        stubs: {
+          ClientOnly: { template: '<div><slot /></div>' },
+          AppIconGlyph: true,
+          AppAvatarCircle: {
+            props: ['sizeClass'],
+            template: '<div :class="sizeClass" />',
+          },
+          Button: { props: ['label'], template: '<button>{{ label }}</button>' },
+        },
+      },
     })
     expect(view.find('dialog').exists()).toBe(false)
     vi.useFakeTimers()
@@ -26,6 +36,7 @@ describe('account switch feedback', () => {
     await nextTick()
     expect(show).toHaveBeenCalledTimes(1)
     expect(view.get('[role="status"]').text()).toBe('Switching to News…')
+    expect(view.find('.h-28.w-28').exists()).toBe(true)
     const cancel = new Event('cancel', { cancelable: true })
     view.get('dialog').element.dispatchEvent(cancel)
     expect(cancel.defaultPrevented).toBe(true)

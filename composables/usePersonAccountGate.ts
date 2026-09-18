@@ -49,7 +49,15 @@ export function usePersonAccountGate() {
       return
     }
     try {
-      await switchAccount(operatorUserId, { then, label: operatorLabel.value })
+      await switchAccount(operatorUserId, {
+        then,
+        label: operatorLabel.value,
+        name: operatorUser.value?.name,
+        username: operatorUser.value?.username,
+        avatarUrl: operatorUser.value?.avatarUrl,
+        avatarVideo: operatorUser.value?.avatarVideo,
+        isOrganization: false,
+      })
     } catch (e) {
       toast.push({
         title: getSafeUserErrorMessage(e, 'Could not switch accounts.'),

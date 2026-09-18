@@ -65,7 +65,7 @@ describe('account switch handoff', () => {
     const request = deferred<{ user: typeof page }>()
     api.data.mockReturnValue(request.promise)
     const switching = auth.switchAccount('page', { label: 'News' })
-    expect(state.transition.value).toEqual({ userId: 'page', label: 'News' })
+    expect(state.transition.value).toEqual(expect.objectContaining({ userId: 'page', label: 'News' }))
     expect(auth.user.value?.id).toBe('person')
     await auth.switchAccount('another-page')
     expect(api.data).toHaveBeenCalledTimes(1)
