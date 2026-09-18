@@ -45,12 +45,7 @@ export function usePersonAccountGate() {
       await switchTo(operatorUserId, { then })
       return
     }
-    switchingId.value = operatorUserId
-    try {
-      await switchAccount(operatorUserId, { then })
-    } finally {
-      switchingId.value = null
-    }
+    await switchAccount(operatorUserId, { then, label: operatorLabel.value })
   }
 
   return {

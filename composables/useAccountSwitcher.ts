@@ -2,6 +2,7 @@ import type { SwitchableAccount, WsAccountsBadgeUpdatedPayload } from '~/types/a
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 import { mergeSwitchableAccountBadges } from '~/utils/switchable-account-badges'
 import type { AccountsCallback } from '~/composables/presence/types'
+import { getAuthGeneration } from '~/composables/auth/authState'
 
 let refreshInFlight: Promise<void> | null = null
 
@@ -12,7 +13,7 @@ export function useAccountSwitcher() {
   const accounts = useState<SwitchableAccount[]>('switchable-accounts', () => [])
   const pendingBadges = useState<Record<string, number>>('switchable-accounts-pending-badges', () => ({}))
   const loading = useState<boolean>('switchable-accounts-loading', () => false)
-  const switchingId = useState<string | null>('switchable-accounts-switching', () => null)
+  const { switchingId } = useAccountSwitchState()
   const listening = useState<boolean>('switchable-accounts-listening', () => false)
 
   const canSwitch = computed(
@@ -26,6 +27,7 @@ export function useAccountSwitcher() {
   )
 
   async function refresh() {
+    if (switchingId.value) return
     if (refreshInFlight) return refreshInFlight
     refreshInFlight = (async () => {
       if (isImpersonating.value || !isAuthed.value) {
@@ -34,12 +36,14 @@ export function useAccountSwitcher() {
         return
       }
       loading.value = true
+      const generation = getAuthGeneration()
       try {
         const fetched = await listSwitchableAccounts()
+        if (generation !== getAuthGeneration() || switchingId.value) return
         accounts.value = mergeSwitchableAccountBadges(fetched, pendingBadges.value)
         pendingBadges.value = {}
       } catch {
-        accounts.value = []
+        // Keep known accounts available for retry after a transient failure.
       } finally {
         loading.value = false
       }
@@ -64,30 +68,17 @@ export function useAccountSwitcher() {
     void refresh()
   }
 
-  function markCurrent(userId: string) {
-    accounts.value = accounts.value.map((account) => ({
-      ...account,
-      isCurrent: account.id === userId,
-    }))
-  }
-
   async function switchTo(userId: string, opts?: { then?: string }) {
     const target = accounts.value.find((a) => a.id === userId)
     if (!target || target.isCurrent || switchingId.value) return
 
-    const previous = accounts.value
-    switchingId.value = userId
-    markCurrent(userId)
     try {
-      await switchAccount(userId, opts)
+      await switchAccount(userId, { ...opts, label: target.name || target.username || 'your account' })
     } catch (e) {
-      accounts.value = previous
       toast.push({
         title: getSafeUserErrorMessage(e, 'Could not switch accounts.'),
         tone: 'error',
       })
-    } finally {
-      switchingId.value = null
     }
   }
 

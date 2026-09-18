@@ -121,6 +121,7 @@ function mergeHeaders(a?: HeadersInit, b?: HeadersInit): HeadersInit | undefined
 export function useApiClient() {
   const config = useRuntimeConfig()
   const consent = useAiConsent()
+  const { switchingId } = useAccountSwitchState()
   // IMPORTANT: On the client, only `public` + `app` runtime config keys are accessible.
   // Accessing server-only keys on the client triggers a Nuxt warning.
   const serverApiBaseUrl = import.meta.server ? String(config.apiBaseUrl || '').trim() : ''
@@ -229,7 +230,8 @@ export function useApiClient() {
           requestedConsent = true
           if (await consent.request() && authGeneration === getAuthGeneration()) continue
         }
-        if (getErrorStatus(e) === 401 && unauthorized !== 'ignore') {
+        if (getErrorStatus(e) === 401 && unauthorized !== 'ignore'
+          && authGeneration === getAuthGeneration() && !switchingId.value) {
           const reason = getErrorReason(e)
           handleUnauthorizedClientSide({ banned: reason === 'account_banned' })
         }
@@ -379,4 +381,3 @@ export function useApiClient() {
 
   return { apiBaseUrl, apiUrl, apiFetch, apiFetchData }
 }
-

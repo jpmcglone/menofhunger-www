@@ -90,6 +90,7 @@ export function useAuth() {
   const usersStore = useUsersStore()
 
   const user = useState<AuthUser | null>('auth-user', () => null)
+  const { transition: accountSwitchTransition, switchingId } = useAccountSwitchState()
   const didAttempt = useState<boolean>('auth-did-attempt', () => false)
   const initDone = useState<boolean>('auth-init-done', () => false)
   // True when the last /auth/me failed due to a network/server error (not a 401).
@@ -180,7 +181,7 @@ export function useAuth() {
     try {
       const result = await apiFetch<AuthUser | null>('/auth/me', { method: 'GET' })
       // If auth state was reset while this request was in flight (logout/401), ignore.
-      if (gen !== getAuthGeneration()) return null
+      if (gen !== getAuthGeneration() || switchingId.value) return null
       apiUnreachable.value = false
       user.value = result.data
       return result.data
@@ -194,7 +195,7 @@ export function useAuth() {
       // Keep an existing authenticated user on transient/non-auth failures (mobile
       // background/wake network flaps are common). A 401 is handled by api client
       // unauthorized flow, which clears auth state explicitly.
-      if (gen === getAuthGeneration()) {
+      if (gen === getAuthGeneration() && !switchingId.value) {
         const status = getErrorStatus(e)
         if (status === 401) {
           user.value = null
@@ -350,10 +351,16 @@ export function useAuth() {
   /** Cookie is already rotated — load as the new identity instead of swapping chrome first. */
   function reloadAsSwitchedIdentity(next: AuthUser | null, then?: string) {
     if (!import.meta.client) return
-    const dest = typeof then === 'string' && then.startsWith('/') ? then : null
+    const dest = typeof then === 'string' && then.startsWith('/') && !then.startsWith('//') ? then : null
     const destPath = (dest ? dest.split(/[?#]/)[0] : window.location.pathname) || '/'
     const landing =
       next?.accountKind === 'page' ? personOnlyLandingPath(destPath) : null
+    if (accountSwitchTransition.value) {
+      accountSwitchTransition.value = {
+        ...accountSwitchTransition.value,
+        destination: landing || dest || window.location.href,
+      }
+    }
     if (landing) window.location.replace(landing)
     else if (dest) window.location.replace(dest)
     else window.location.reload()
@@ -462,13 +469,44 @@ export function useAuth() {
     return await apiFetchData<SwitchableAccount[]>('/auth/accounts', { method: 'GET' })
   }
 
-  async function switchAccount(userId: string, opts?: { then?: string }) {
-    const result = await apiFetchData<{ user: AuthUser }>('/auth/switch', {
-      method: 'POST',
-      body: { userId },
-    })
-    reloadAsSwitchedIdentity(result?.user ?? null, opts?.then)
-    return result?.user ?? null
+  async function switchAccount(userId: string, opts?: { then?: string; label?: string }) {
+    if (switchingId.value || userId === user.value?.id) return null
+    accountSwitchTransition.value = { userId, label: opts?.label || 'your account', destination: null }
+    // Responses from the old session must not overwrite or sign out the new one.
+    bumpAuthGeneration()
+    clientMePromise = null
+    try {
+      let next: AuthUser | null = null
+      try {
+        const result = await apiFetchData<{ user: AuthUser }>('/auth/switch', {
+          method: 'POST',
+          body: { userId },
+          retry: 0,
+          mohUnauthorized: 'ignore',
+        })
+        next = result?.user ?? null
+      } catch (error) {
+        const status = getErrorStatus(error)
+        if (status === null || status >= 500) {
+          // The cookie may have rotated before the response was interrupted.
+          // Read the session directly; me() deliberately retains old UI on errors.
+          next = await apiFetchData<AuthUser | null>('/auth/me', {
+            method: 'GET', mohDedupe: false, mohRetry: false,
+            mohUnauthorized: 'ignore', timeout: 5_000,
+          }).catch(() => null)
+        }
+        if (next?.id !== userId) throw error
+      }
+      if (next?.id !== userId) throw new Error('Could not confirm the account switch. Please try again.')
+      clearMohCacheAll()
+      reloadAsSwitchedIdentity(next, opts?.then)
+      // Navigation is asynchronous. Keep the lock and feedback until unload.
+      return next
+    } catch (error) {
+      bumpAuthGeneration()
+      accountSwitchTransition.value = null
+      throw error
+    }
   }
 
   const isAuthed = computed(() => Boolean(user.value?.id))
@@ -488,4 +526,3 @@ export function useAuth() {
 
   return { user, didAttempt, patchUser, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, isPageAccount, canAccessCheckins, apiUnreachable, impersonation, isImpersonating, startImpersonation, stopImpersonation, listSwitchableAccounts, switchAccount }
 }
-
