@@ -19,6 +19,7 @@ const DEFAULT_RADIO_STATIONS: RadioStation[] = Array.isArray(radioStationsFallba
 
 let audioEl: HTMLAudioElement | null = null
 let audioEventsBound = false
+let playbackGeneration = 0
 
 function ensureAudio(): HTMLAudioElement | null {
   if (!import.meta.client) return null
@@ -131,6 +132,7 @@ export function useRadioPlayer() {
     audioEventsBound = true
 
     const onPlay = () => {
+      if (mediaFocus.currentId !== 'radio') { a.pause(); return }
       isPlaying.value = true
       isBuffering.value = false
       error.value = null
@@ -146,6 +148,8 @@ export function useRadioPlayer() {
       isBuffering.value = false
     }
     const onError = () => {
+      playbackGeneration += 1
+      mediaFocus.release('radio')
       isPlaying.value = false
       isBuffering.value = false
       error.value = 'Could not play this station.'
@@ -156,6 +160,7 @@ export function useRadioPlayer() {
     a.addEventListener('waiting', onWaiting)
     a.addEventListener('playing', onPlaying)
     a.addEventListener('error', onError)
+    a.addEventListener('ended', () => { playbackGeneration += 1; isPlaying.value = false; isBuffering.value = false; mediaFocus.release('radio') })
   }
 
   function syncAudioVolume() {
@@ -203,11 +208,12 @@ export function useRadioPlayer() {
     error.value = null
     isBuffering.value = true
 
+    const attempt = ++playbackGeneration
     if (!mediaFocus.claim('radio', pause)) { error.value = 'Finish recording before playing.'; return }
     // Ensure socket is connected before joining room.
     presence.connect()
     await presence.whenSocketConnected(10_000)
-      if (mediaFocus.currentId !== 'radio') return
+      if (attempt !== playbackGeneration || mediaFocus.currentId !== 'radio') return
     ensureRadioCallback()
     presence.emitRadioJoin(station.id)
     // Send current mute state (so other listeners can see it immediately).
@@ -216,9 +222,10 @@ export function useRadioPlayer() {
     // Start playback (requires user gesture; caller should only invoke on click).
     a.src = url
     try {
-      if (mediaFocus.currentId !== 'radio') return
+      if (attempt !== playbackGeneration || mediaFocus.currentId !== 'radio') return
       await a.play()
     } catch (e) {
+      if (attempt !== playbackGeneration) return
       mediaFocus.release('radio')
       error.value = e instanceof Error ? e.message : 'Playback failed.'
       isPlaying.value = false
@@ -229,7 +236,7 @@ export function useRadioPlayer() {
   }
 
   function pause() {
-    mediaFocus.release('radio')
+    playbackGeneration += 1
     if (!import.meta.client) return
     const a = ensureAudio()
     if (!a) return
@@ -243,6 +250,7 @@ export function useRadioPlayer() {
   }
 
   function stop() {
+    playbackGeneration += 1
     mediaFocus.release('radio')
     if (!import.meta.client) return
     const a = ensureAudio()
@@ -282,7 +290,7 @@ export function useRadioPlayer() {
     () => user.value?.id ?? null,
     (uid) => {
       if (uid) return
-      pause()
+      stop()
       stationId.value = null
       listeners.value = []
       const cb = radioCbRef.value

@@ -38,12 +38,20 @@ describe('shared voice player', () => {
     expect(player.currentId.value).toBeNull()
     expect(FakeAudio.latest.src).toBe('')
   })
-  it('video handoff stops the audio and dismisses its controls', () => {
+  it('video handoff pauses audio and retains its position without a focus lock', () => {
     player.toggle('one', '/one.m4a')
+    player.seek('one', 18)
     mediaFocus.claim('video:one', vi.fn())
     expect(FakeAudio.latest.paused).toBe(true)
-    expect(player.currentId.value).toBeNull()
+    expect(player.currentId.value).toBe('one')
+    expect(player.currentTime.value).toBe(18)
     expect(mediaFocus.currentId).toBe('video:one')
+  })
+  it('releases completed audio without clearing its resumable selection', () => {
+    player.toggle('one', '/one.m4a')
+    FakeAudio.latest.dispatchEvent(new Event('ended'))
+    expect(mediaFocus.currentId).toBeNull()
+    expect(player.currentId.value).toBe('one')
   })
   it('a rejected play is retryable and cannot overwrite a newer selection', async () => {
     player.toggle('one', '/one.m4a')
@@ -51,6 +59,7 @@ describe('shared voice player', () => {
     FakeAudio.latest.play.mockRejectedValueOnce(new Error('offline'))
     await player.play()
     expect(player.error.value).toContain('retry')
+    expect(mediaFocus.currentId).toBeNull()
     await player.play()
     expect(player.error.value).toBeNull()
     expect(player.playing.value).toBe(true)

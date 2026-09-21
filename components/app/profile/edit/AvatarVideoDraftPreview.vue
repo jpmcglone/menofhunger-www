@@ -1,7 +1,7 @@
 <template>
   <span class="absolute inset-0 overflow-hidden" aria-hidden="true">
     <video
-      ref="video" :src="source" :style="cropStyle" class="absolute max-w-none" muted playsinline
+      ref="video" data-media-decorative :src="source" :style="cropStyle" class="absolute max-w-none" muted playsinline
       @loadedmetadata="start" @timeupdate="loop" @ended="start" />
   </span>
 </template>

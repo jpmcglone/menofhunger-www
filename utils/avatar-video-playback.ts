@@ -100,6 +100,7 @@ export function subscribeAvatarVideo(asset: AvatarVideoDto, canvas: HTMLCanvasEl
   let entry = entries.get(asset.id)
   if (!entry) {
     const video = document.createElement('video')
+    video.dataset.mediaDecorative = 'true'
     video.muted = true; video.defaultMuted = true; video.playsInline = true; video.loop = true
     video.setAttribute('aria-hidden', 'true')
     video.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;'

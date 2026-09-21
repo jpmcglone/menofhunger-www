@@ -60,7 +60,7 @@
             >
               <div
                 v-if="!hideTopBar"
-                ref="titleBarEl"
+                ref="titleBarEl" data-media-occluder
                 class="sticky top-0 z-50 shrink-0 moh-frosted"
               >
                 <!-- Admin impersonation sits above everything: it changes who "you" are. -->

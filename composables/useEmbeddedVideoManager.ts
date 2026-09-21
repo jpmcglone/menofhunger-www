@@ -1,487 +1,209 @@
+import { ref, type Ref } from 'vue'
 import { mediaFocus } from '~/utils/mediaFocus'
-import { clampMediaVolume } from '~/utils/link-utils'
+import { VideoAutoplayCoordinator, type MediaPlayerAdapter, type PlaybackState, type VideoSound } from '~/utils/media/video-autoplay'
+import { measureVideo } from '~/utils/media/viewport'
 
-const APPLYING_SHARED_AUDIO = '__mohApplyingSharedVideoAudio'
+const runtimes = new WeakMap<object, ReturnType<typeof createRuntime>>()
 
-function applyingSharedAudioCount(): number {
-  if (import.meta.server) return 0
-  const g = globalThis as unknown as Record<string, number>
-  return g[APPLYING_SHARED_AUDIO] ?? 0
-}
-
-function withApplyingSharedAudio(fn: () => void) {
-  if (import.meta.server) {
-    fn()
-    return
+function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volume: Ref<number>) {
+  const coordinator = new VideoAutoplayCoordinator(mediaFocus)
+  const managed = new WeakSet<HTMLMediaElement>()
+  const registrations = new Map<string, () => void>()
+  const elements = new Map<string, HTMLElement>()
+  const states = new Map<string, Ref<PlaybackState>>()
+  const fallbackPlayers = new Map<HTMLMediaElement, { id: string; cleanup: () => void }>()
+  let mounted = false
+  let counter = 0
+  let pipOwner: string | null = null
+  let resize: ResizeObserver | null = null
+  coordinator.onChange = (id, sound) => {
+    activeId.value = id
+    soundOn.value = !sound.muted
+    volume.value = sound.volume
   }
-  const g = globalThis as unknown as Record<string, number>
-  g[APPLYING_SHARED_AUDIO] = applyingSharedAudioCount() + 1
-  try {
-    fn()
-  } finally {
-    queueMicrotask(() => {
-      g[APPLYING_SHARED_AUDIO] = Math.max(0, applyingSharedAudioCount() - 1)
+  const schedule = coordinator.schedule
+  const visibility = () => {
+    coordinator.setHidden(document.visibilityState === 'hidden')
+    if (document.visibilityState === 'hidden') mediaFocus.suspendForeground(pipOwner)
+  }
+  const onPlay = (event: Event) => {
+    const el = event.target
+    if (!(el instanceof HTMLMediaElement) || managed.has(el) || el.dataset.mediaManaged != null || el.srcObject || el.dataset.mediaDecorative != null) return
+    let item = fallbackPlayers.get(el)
+    if (el instanceof HTMLVideoElement) {
+      if (!item) {
+        const id = `interactive:${++counter}`
+        item = { id, cleanup: registerVideo(id, el, el, false) }
+        fallbackPlayers.set(el, item)
+      }
+      coordinator.play(item.id)
+      return
+    }
+    if (!item) {
+      const id = `${el instanceof HTMLVideoElement ? 'video' : 'audio'}:local:${++counter}`
+      const end = () => mediaFocus.release(id)
+      const pause = () => { if (el instanceof HTMLVideoElement && document.pictureInPictureElement !== el) end() }
+      const pip = () => { pipOwner = id }
+      const leave = () => { if (pipOwner === id) pipOwner = null }
+      el.addEventListener('ended', end)
+      el.addEventListener('error', end)
+      el.addEventListener('pause', pause)
+      el.addEventListener('enterpictureinpicture', pip)
+      el.addEventListener('leavepictureinpicture', leave)
+      item = { id, cleanup: () => {
+        el.pause(); end()
+        el.removeEventListener('ended', end); el.removeEventListener('error', end); el.removeEventListener('pause', pause)
+        el.removeEventListener('enterpictureinpicture', pip); el.removeEventListener('leavepictureinpicture', leave)
+      } }
+      fallbackPlayers.set(el, item)
+    }
+    const explicit = el.dataset.mediaExplicit === 'true'
+    delete el.dataset.mediaExplicit
+    if (!mediaFocus.claim(item.id, () => {
+      el.pause()
+      if (document.pictureInPictureElement === el) void document.exitPictureInPicture().catch(() => {})
+    }, { automatic: !explicit && el.autoplay && el.muted, background: el instanceof HTMLAudioElement })) el.pause()
+  }
+  let mutations: MutationObserver | null = null
+  function mount() {
+    if (mounted) return
+    mounted = true
+    resize = new ResizeObserver(schedule)
+    resize.observe(document.documentElement)
+    for (const el of elements.values()) resize.observe(el)
+    window.addEventListener('scroll', schedule, true)
+    window.addEventListener('resize', schedule)
+    document.addEventListener('visibilitychange', visibility)
+    document.addEventListener('play', onPlay, true)
+    window.visualViewport?.addEventListener('resize', schedule)
+    mutations = new MutationObserver(() => {
+      for (const [el, entry] of fallbackPlayers) if (!el.isConnected) { entry.cleanup(); fallbackPlayers.delete(el) }
+      schedule()
     })
+    mutations.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['inert', 'aria-hidden', 'hidden', 'style', 'class'] })
+    visibility()
   }
+  function register(id: string, el: HTMLElement, adapter: MediaPlayerAdapter, onState?: (state: PlaybackState) => void, autoplay = true) {
+    registrations.get(id)?.()
+    const cleanup = coordinator.register(id, { adapter, measure: () => measureVideo(el), onState, autoplay })
+    elements.set(id, el)
+    resize?.observe(el)
+    let disposed = false
+    const dispose = () => {
+      if (disposed) return
+      disposed = true
+      resize?.unobserve(el)
+      cleanup()
+      if (registrations.get(id) === dispose) { registrations.delete(id); elements.delete(id) }
+    }
+    registrations.set(id, dispose)
+    return dispose
+  }
+  function registerVideo(id: string, el: HTMLVideoElement, container: HTMLElement = el, autoplay = true) {
+    const state = states.get(id) ?? ref<PlaybackState>('idle')
+    states.set(id, state)
+    managed.add(el)
+    let expected: VideoSound = { muted: el.muted, volume: el.volume }
+    let requested = false
+    let userGesture = 0
+    let programmaticPause = false
+    let signal: AbortSignal | null = null
+    const audio = (sound: VideoSound) => {
+      expected = { ...sound }
+      el.volume = sound.volume
+      el.muted = sound.muted
+    }
+    const adapter: MediaPlayerAdapter = {
+      async play(request) {
+        requested = true
+        signal = request.signal
+        audio(request)
+        try { await el.play() } catch (error) {
+          if (request.signal.aborted) return
+          if (request.muted || !(error instanceof DOMException) || error.name !== 'NotAllowedError') throw error
+          audio({ ...request, muted: true })
+          await el.play()
+        }
+        if (request.signal.aborted && signal === request.signal) el.pause()
+      },
+      pause() {
+        requested = false
+        programmaticPause = !el.paused
+        el.pause()
+        if (document.pictureInPictureElement === el) void document.exitPictureInPicture().catch(() => {})
+      },
+      setAudio: audio,
+    }
+    const dispose = register(id, container, adapter, next => { state.value = next }, autoplay)
+    const gesture = () => { userGesture = Date.now() }
+    const play = () => {
+      if (!requested && Date.now() - userGesture < 1500) coordinator.play(id)
+      else coordinator.report(id, 'playing')
+    }
+    const pause = () => {
+      if (programmaticPause) { programmaticPause = false; return }
+      if (!requested || el.ended) return
+      requested = false
+      coordinator.report(id, 'paused', true)
+    }
+    const ended = () => coordinator.report(id, 'ended')
+    const failed = () => coordinator.report(id, 'failed')
+    const waiting = () => { if (requested) coordinator.report(id, 'buffering') }
+    const changeAudio = () => {
+      if (el.muted === expected.muted && Math.abs(el.volume - expected.volume) < 0.005) return
+      expected = { muted: el.muted, volume: el.volume }
+      coordinator.setAudio(expected)
+    }
+    const pin = () => { pipOwner = `video:feed:${id}`; coordinator.pin(id, true, true) }
+    const unpin = () => { pipOwner = null; coordinator.pin(id, false) }
+    const fullscreen = () => coordinator.pin(id, document.fullscreenElement === el || document.fullscreenElement === container)
+    const listeners: [string, EventListener][] = [['pointerdown', gesture], ['keydown', gesture], ['play', play], ['pause', pause], ['ended', ended], ['error', failed], ['waiting', waiting], ['volumechange', changeAudio], ['enterpictureinpicture', pin], ['leavepictureinpicture', unpin], ['webkitbeginfullscreen', () => coordinator.pin(id, true)], ['webkitendfullscreen', () => coordinator.pin(id, false)]]
+    for (const [name, listener] of listeners) el.addEventListener(name, listener)
+    document.addEventListener('fullscreenchange', fullscreen)
+    return () => {
+      for (const [name, listener] of listeners) el.removeEventListener(name, listener)
+      document.removeEventListener('fullscreenchange', fullscreen)
+      managed.delete(el)
+      states.delete(id)
+      dispose()
+    }
+  }
+  function dispose() {
+    coordinator.dispose()
+    resize?.disconnect(); mutations?.disconnect()
+    for (const item of fallbackPlayers.values()) item.cleanup()
+    fallbackPlayers.clear()
+    window.removeEventListener('scroll', schedule, true); window.removeEventListener('resize', schedule)
+    document.removeEventListener('visibilitychange', visibility); document.removeEventListener('play', onPlay, true)
+    window.visualViewport?.removeEventListener('resize', schedule)
+    mounted = false
+  }
+  return { coordinator, mount, dispose, register, registerVideo, states, managed, schedule }
 }
 
 export function useEmbeddedVideoManager() {
-  // Global (per-app) active embedded video. Only one at a time.
-  const activePostId = useState<string | null>('moh.active-embedded-video-post-id', () => null)
-  // When a video enters Picture-in-Picture, we pin "active" to that post id.
-  const pipPostId = useState<string | null>('moh.pip-video-post-id', () => null)
-
-  /** When user unmutes a video (via tap), we set true so other players sync to unmuted. Mute sets false. Never set unmuted programmatically (Safari requires user gesture). */
-  const appWideSoundOn = useState<boolean>('moh.app-video-sound-on', () => false)
-  /** Shared loudness 0–1. Default is full volume; mute is a separate flag. */
-  const appWideVolume = useState<number>('moh.app-video-volume', () => 1)
-
-  // NOTE: We intentionally keep DOM elements out of `useState()` (SSR-safe).
-  // This registry is client-only.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const registry = (() => {
-    if (import.meta.server) return null
-    // Module-level singleton (preserved across composable calls).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const g = globalThis as any
-    if (!g.__mohEmbeddedVideoRegistry) g.__mohEmbeddedVideoRegistry = new Map<string, HTMLElement>()
-    return g.__mohEmbeddedVideoRegistry as Map<string, HTMLElement>
-  })()
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const runtime = (() => {
-    if (import.meta.server) return null
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const g = globalThis as any
-    if (!g.__mohEmbeddedVideoRuntime) {
-      g.__mohEmbeddedVideoRuntime = {
-        listening: false,
-        rafPending: false,
-        lastSwitchMs: 0,
-        pendingId: null as string | null,
-        pendingSinceMs: 0,
-        followUpTimer: null as number | null,
-        layoutRetries: 0,
-        resizeObs: null as ResizeObserver | null,
-      }
-    }
-    const existing = g.__mohEmbeddedVideoRuntime as {
-      listening: boolean
-      rafPending: boolean
-      lastSwitchMs: number
-      pendingId: string | null
-      pendingSinceMs: number
-      followUpTimer?: number | null
-      layoutRetries?: number
-      resizeObs?: ResizeObserver | null
-    }
-    if (existing.followUpTimer === undefined) existing.followUpTimer = null
-    if (existing.layoutRetries === undefined) existing.layoutRetries = 0
-    if (existing.resizeObs === undefined) existing.resizeObs = null
-    return existing as {
-      listening: boolean
-      rafPending: boolean
-      lastSwitchMs: number
-      pendingId: string | null
-      pendingSinceMs: number
-      followUpTimer: number | null
-      layoutRetries: number
-      resizeObs: ResizeObserver | null
-    }
-  })()
-
-  const FIRST_PICK_DELAY_MS = 140
-  const LAYOUT_RETRY_MS = 50
-  const LAYOUT_RETRY_MAX = 8
-
-  if (import.meta.client) {
-    const unsubscribe = mediaFocus.subscribe((id) => {
-      if (id && !id.startsWith('video:')) activePostId.value = null
-    })
-    onScopeDispose(unsubscribe)
-    watch(activePostId, (id, previous) => {
-      if (previous) mediaFocus.release(`video:embed:${previous}`)
-      if (!id || registry?.get(id) instanceof HTMLVideoElement) return
-      if (!mediaFocus.claim(`video:embed:${id}`, () => { activePostId.value = null }, { automatic: true })) activePostId.value = null
-    }, { flush: 'sync' })
+  const app = useNuxtApp()
+  const activeId = useState<string | null>('moh.active-video-instance', () => null)
+  const appWideSoundOn = useState('moh.app-video-sound-on', () => false)
+  const appWideVolume = useState('moh.app-video-volume', () => 1)
+  let runtime = import.meta.client ? runtimes.get(app) : undefined
+  if (import.meta.client && !runtime) {
+    runtime = createRuntime(activeId, appWideSoundOn, appWideVolume)
+    runtimes.set(app, runtime)
   }
-
-  function computeActiveFromViewport() {
-    if (mediaFocus.currentId && !mediaFocus.currentId.startsWith('video:')) {
-      activePostId.value = null
-      return
-    }
-    if (import.meta.server) return
-    if (!registry) return
-
-    // While PiP is active, never auto-switch based on scroll/viewport.
-    if (pipPostId.value) {
-      if (activePostId.value !== pipPostId.value) activePostId.value = pipPostId.value
-      if (runtime) {
-        runtime.pendingId = null
-        runtime.pendingSinceMs = 0
-      }
-      return
-    }
-
-    const vh = window.innerHeight || 0
-    const centerY = vh / 2
-    const minVisiblePx = 60
-
-    const measure = (el: HTMLElement) => {
-      const r = el.getBoundingClientRect()
-      if (!r || r.height <= 0) return null
-      const visiblePx = Math.min(r.bottom, vh) - Math.max(r.top, 0)
-      if (visiblePx < minVisiblePx) return null
-      const cy = r.top + r.height / 2
-      const dist = Math.abs(cy - centerY)
-      return { dist, visiblePx }
-    }
-
-    let bestId: string | null = null
-    let bestDist = Number.POSITIVE_INFINITY
-
-    for (const [id, el] of registry.entries()) {
-      if (!el || !el.isConnected) {
-        registry.delete(id)
-        continue
-      }
-
-      const m = measure(el)
-      if (!m) continue
-      const dist = m.dist
-      if (dist < bestDist) {
-        bestDist = dist
-        bestId = id
-      }
-    }
-
-    const currentId = activePostId.value
-    const nowMs = Date.now()
-
-    // If no candidate is visible, clear quickly.
-    if (!bestId) {
-      activePostId.value = null
-      if (runtime) {
-        runtime.pendingId = null
-        runtime.pendingSinceMs = 0
-        // First paint / content-visibility can leave boxes with height 0.
-        // Retry a few times so mount does not wait for a user scroll.
-        if (registry.size > 0 && !currentId && runtime.layoutRetries < LAYOUT_RETRY_MAX) {
-          runtime.layoutRetries += 1
-          scheduleFollowUpCompute(LAYOUT_RETRY_MS)
-        }
-      }
-      return
-    }
-
-    if (runtime) runtime.layoutRetries = 0
-
-    // If nothing is active yet, pick the best.
-    if (!currentId) {
-      // Small delay helps avoid flicker on first enter while scrolling fast.
-      if (runtime) {
-        if (runtime.pendingId !== bestId) {
-          runtime.pendingId = bestId
-          runtime.pendingSinceMs = nowMs
-          scheduleFollowUpCompute(FIRST_PICK_DELAY_MS)
-          return
-        }
-        if (nowMs - runtime.pendingSinceMs < FIRST_PICK_DELAY_MS) {
-          scheduleFollowUpCompute(FIRST_PICK_DELAY_MS - (nowMs - runtime.pendingSinceMs))
-          return
-        }
-        runtime.pendingId = null
-        runtime.pendingSinceMs = 0
-        runtime.lastSwitchMs = nowMs
-      }
-      activePostId.value = bestId
-      return
-    }
-
-    // If active is still "good enough", keep it to prevent flicker while scrolling.
-    // This creates a deadband: the new candidate must be meaningfully closer to center.
-    const currentEl = registry.get(currentId) ?? null
-    const currentM = currentEl ? measure(currentEl) : null
-    if (!currentM) {
-      // Active is no longer sufficiently visible: switch immediately.
-      activePostId.value = bestId
-      if (runtime) {
-        runtime.lastSwitchMs = nowMs
-        runtime.pendingId = null
-        runtime.pendingSinceMs = 0
-      }
-      return
-    }
-
-    if (bestId === currentId) {
-      if (runtime) {
-        runtime.pendingId = null
-        runtime.pendingSinceMs = 0
-      }
-      return
-    }
-
-    // Rate-limit rapid switching unless the current becomes invalid (handled above).
-    const minSwitchIntervalMs = 250
-    if (runtime && nowMs - runtime.lastSwitchMs < minSwitchIntervalMs) return
-
-    const deadbandPx = 120
-    if (currentM.dist <= bestDist + deadbandPx) return
-
-    // Debounce the actual switch slightly so we don't flicker while scrolling.
-    if (runtime) {
-      if (runtime.pendingId !== bestId) {
-        runtime.pendingId = bestId
-        runtime.pendingSinceMs = nowMs
-        scheduleFollowUpCompute(FIRST_PICK_DELAY_MS)
-        return
-      }
-      if (nowMs - runtime.pendingSinceMs < FIRST_PICK_DELAY_MS) {
-        scheduleFollowUpCompute(FIRST_PICK_DELAY_MS - (nowMs - runtime.pendingSinceMs))
-        return
-      }
-      runtime.pendingId = null
-      runtime.pendingSinceMs = 0
-      runtime.lastSwitchMs = nowMs
-    }
-    activePostId.value = bestId
-  }
-
-  function scheduleCompute() {
-    if (import.meta.server) return
-    if (!runtime) return
-    if (runtime.rafPending) return
-    runtime.rafPending = true
-    window.requestAnimationFrame(() => {
-      runtime.rafPending = false
-      computeActiveFromViewport()
-    })
-  }
-
-  // content-visibility / first paint often settles one frame after mount.
-  function scheduleComputeAfterLayout() {
-    scheduleCompute()
-    if (import.meta.server) return
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        scheduleCompute()
-      })
-    })
-  }
-
-  function ensureResizeObserver() {
-    if (import.meta.server) return
-    if (!runtime) return
-    if (runtime.resizeObs) return
-    runtime.resizeObs = new ResizeObserver(() => {
-      scheduleCompute()
-    })
-  }
-
-  function scheduleFollowUpCompute(delayMs: number) {
-    if (import.meta.server) return
-    if (!runtime) return
-    if (runtime.followUpTimer != null) return
-    runtime.followUpTimer = window.setTimeout(() => {
-      runtime.followUpTimer = null
-      scheduleCompute()
-    }, Math.max(0, delayMs))
-  }
-
-  function clearFollowUpCompute() {
-    if (!runtime || runtime.followUpTimer == null) return
-    window.clearTimeout(runtime.followUpTimer)
-    runtime.followUpTimer = null
-  }
-
-  function ensureListeners() {
-    if (import.meta.server) return
-    if (!runtime) return
-    if (runtime.listening) return
-    runtime.listening = true
-
-    // Capture-phase `scroll` catches non-bubbling scroll events from nested scrollers.
-    window.addEventListener('scroll', scheduleCompute, true)
-    window.addEventListener('resize', scheduleCompute, true)
-  }
-
-  function removeListeners() {
-    if (import.meta.server) return
-    if (!runtime) return
-    if (!runtime.listening) return
-    runtime.listening = false
-    window.removeEventListener('scroll', scheduleCompute, true)
-    window.removeEventListener('resize', scheduleCompute, true)
-    clearFollowUpCompute()
-    runtime.layoutRetries = 0
-    runtime.resizeObs?.disconnect()
-    runtime.resizeObs = null
-  }
-
-  function register(postId: string, el: HTMLElement) {
-    const id = (postId ?? '').trim()
-    if (!id) return
-    if (import.meta.server) return
-    if (!registry) return
-    if (!el) return
-    ensureListeners()
-    ensureResizeObserver()
-    const prev = registry.get(id)
-    if (prev && prev !== el) runtime?.resizeObs?.unobserve(prev)
-    registry.set(id, el)
-    runtime?.resizeObs?.observe(el)
-
-    // Track PiP state (best-effort). Only available on HTMLVideoElement.
-    if (el instanceof HTMLVideoElement) {
-      const onEnter = () => {
-        pipPostId.value = id
-        activePostId.value = id
-        if (runtime) {
-          runtime.pendingId = null
-          runtime.pendingSinceMs = 0
-          runtime.lastSwitchMs = Date.now()
-        }
-      }
-      const onLeave = () => {
-        if (pipPostId.value === id) pipPostId.value = null
-        scheduleCompute()
-      }
-      // Avoid duplicate listeners on the same element (Map can re-set same element).
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const anyEl = el as any
-      if (!anyEl.__mohPipListenersAttached) {
-        anyEl.__mohPipListenersAttached = true
-        anyEl.__mohPipOnEnter = onEnter
-        anyEl.__mohPipOnLeave = onLeave
-        el.addEventListener('enterpictureinpicture', onEnter)
-        el.addEventListener('leavepictureinpicture', onLeave)
-      }
-    }
-
-    // This frame, the next paint, and the first-pick debounce — do not wait for scroll.
-    scheduleComputeAfterLayout()
-    scheduleFollowUpCompute(FIRST_PICK_DELAY_MS)
-  }
-
-  function unregister(postId: string) {
-    const id = (postId ?? '').trim()
-    if (!id) return
-    if (import.meta.server) return
-    if (!registry) return
-    const el = registry.get(id)
-    if (el) runtime?.resizeObs?.unobserve(el)
-    if (el instanceof HTMLVideoElement) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const anyEl = el as any
-      if (anyEl.__mohPipListenersAttached) {
-        if (typeof anyEl.__mohPipOnEnter === 'function') {
-          el.removeEventListener('enterpictureinpicture', anyEl.__mohPipOnEnter)
-        }
-        if (typeof anyEl.__mohPipOnLeave === 'function') {
-          el.removeEventListener('leavepictureinpicture', anyEl.__mohPipOnLeave)
-        }
-        anyEl.__mohPipListenersAttached = false
-        anyEl.__mohPipOnEnter = null
-        anyEl.__mohPipOnLeave = null
-      }
-    }
-    registry.delete(id)
-    if (pipPostId.value === id) pipPostId.value = null
-    if (registry.size === 0) {
-      removeListeners()
-      if (runtime) {
-        runtime.pendingId = null
-        runtime.pendingSinceMs = 0
-        runtime.layoutRetries = 0
-      }
-      clearFollowUpCompute()
-      activePostId.value = null
-    } else {
-      scheduleCompute()
-    }
-  }
-
-  // Explicit activation (e.g. user clicked an embed that isn't currently "center-most").
-  function activate(postId: string) {
-    const id = (postId ?? '').trim()
-    if (!id) return
-    if (import.meta.server) return
-    ensureListeners()
-    // User tap must steal radio/voice. The activePostId watcher claims with
-    // `automatic: true`, which cannot interrupt a paused voice note or radio.
-    if (!(registry?.get(id) instanceof HTMLVideoElement)) {
-      if (!mediaFocus.claim(`video:embed:${id}`, () => { activePostId.value = null })) return
-    }
-
-    // If PiP is active, a user-initiated play on another video should swap PiP to that video.
-    if (pipPostId.value && pipPostId.value !== id) {
-      const el = registry?.get(id) ?? null
-      if (import.meta.client && el instanceof HTMLVideoElement) {
-        // Best-effort: exit current PiP then request PiP on the new element.
-        // (Some browsers may automatically swap without explicit exit.)
-        void (async () => {
-          try {
-            if (document.pictureInPictureElement) {
-              await document.exitPictureInPicture()
-            }
-          } catch {
-            // ignore
-          }
-          try {
-            await el.requestPictureInPicture()
-          } catch {
-            // ignore
-          }
-        })()
-      }
-    }
-
-    activePostId.value = id
-    if (runtime) {
-      runtime.pendingId = null
-      runtime.pendingSinceMs = 0
-      runtime.lastSwitchMs = Date.now()
-    }
-  }
-
-  function stopAll() {
-    activePostId.value = null
-    pipPostId.value = null
-  }
-
-  function reportPlayerAudio(update: { volume01?: number; muted?: boolean }) {
-    if (applyingSharedAudioCount() > 0) return
-    if (typeof update.volume01 === 'number') {
-      const next = clampMediaVolume(update.volume01)
-      if (Math.abs(next - appWideVolume.value) >= 0.015) appWideVolume.value = next
-    }
-    if (typeof update.muted === 'boolean') {
-      const soundOn = !update.muted
-      if (appWideSoundOn.value !== soundOn) appWideSoundOn.value = soundOn
-    }
-  }
-
-  function applySharedAudioToVideo(el: HTMLVideoElement) {
-    withApplyingSharedAudio(() => {
-      const next = clampMediaVolume(appWideVolume.value)
-      if (Math.abs(el.volume - next) >= 0.005) el.volume = next
-      const muted = !appWideSoundOn.value
-      if (el.muted !== muted) el.muted = muted
-    })
-  }
-
   return {
-    activePostId,
-    pipPostId,
-    appWideSoundOn,
-    appWideVolume,
-    reportPlayerAudio,
-    applySharedAudioToVideo,
-    register,
-    unregister,
-    activate,
-    stopAll,
+    activeId, appWideSoundOn, appWideVolume,
+    register: (id: string, el: HTMLElement, adapter: MediaPlayerAdapter, state?: (s: PlaybackState) => void) => runtime?.register(id, el, adapter, state) ?? (() => {}),
+    registerVideo: (id: string, el: HTMLVideoElement, container?: HTMLElement) => runtime?.registerVideo(id, el, container) ?? (() => {}),
+    activate: (id: string) => runtime?.coordinator.play(id),
+    report: (id: string, state: PlaybackState, user = false) => runtime?.coordinator.report(id, state, user),
+    pin: (id: string, pinned: boolean) => runtime?.coordinator.pin(id, pinned),
+    stopAll: () => runtime?.coordinator.stopAll(),
+    reset: () => runtime?.coordinator.reset(),
+    schedule: () => runtime?.schedule(),
+    reportPlayerAudio: (update: { muted?: boolean; volume01?: number }) => runtime?.coordinator.setAudio({ muted: update.muted, volume: update.volume01 }),
+    applySharedAudioToVideo: (el: HTMLVideoElement) => { el.volume = appWideVolume.value; el.muted = !appWideSoundOn.value },
+    mount: () => runtime?.mount(),
+    dispose: () => { runtime?.dispose(); runtimes.delete(app) },
   }
 }
-

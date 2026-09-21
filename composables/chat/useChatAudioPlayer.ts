@@ -13,11 +13,12 @@ const rate = ref(1)
 const title = ref('Voice message')
 const href = ref<string | null>(null)
 let source = ''
+let sessionInstalled = false
 
 function session() { return typeof navigator !== 'undefined' ? navigator.mediaSession : undefined }
 function updateSession() {
   const ms = session()
-  if (!ms || !currentId.value) return
+  if (!ms || !currentId.value || mediaFocus.currentId !== 'voice') return
   ms.playbackState = playing.value ? 'playing' : 'paused'
   if (duration.value > 0 && Number.isFinite(duration.value)) {
     try { ms.setPositionState?.({ duration: duration.value, playbackRate: rate.value, position: Math.min(duration.value, Math.max(0, currentTime.value)) }) } catch { /* Older browsers lack position state. */ }
@@ -36,6 +37,11 @@ function stop() {
   href.value = null
   source = ''
   mediaFocus.release('voice')
+  clearSession()
+}
+function clearSession() {
+  if (!sessionInstalled) return
+  sessionInstalled = false
   const ms = session()
   if (ms) {
     ms.metadata = null
@@ -46,6 +52,9 @@ function stop() {
     }
   }
 }
+function interrupt() { pause(); clearSession() }
+function finish() { generation += 1; clearSession(); mediaFocus.release('voice') }
+
 function pause() { generation += 1; shared?.pause(); playing.value = false; loading.value = false; updateSession() }
 function seek(id: string, seconds: number) {
   if (!shared || currentId.value !== id || !Number.isFinite(seconds)) return
@@ -55,7 +64,8 @@ function seek(id: string, seconds: number) {
 }
 function installSession() {
   const ms = session()
-  if (!ms) return
+  if (!ms || mediaFocus.currentId !== 'voice') return
+  sessionInstalled = true
   if (typeof MediaMetadata !== 'undefined') ms.metadata = new MediaMetadata({ title: title.value, artist: 'Men of Hunger' })
   const handlers: Partial<Record<MediaSessionAction, MediaSessionActionHandler>> = {
     play: () => void play(), pause, stop,
@@ -80,16 +90,16 @@ function ensure(): HTMLAudioElement {
   }
   el.addEventListener('timeupdate', sync)
   el.addEventListener('loadedmetadata', sync)
-  el.addEventListener('playing', () => { if (currentId.value) { playing.value = true; loading.value = false; error.value = null; sync() } })
+  el.addEventListener('playing', () => { if (mediaFocus.currentId !== 'voice') { el.pause(); return }; if (currentId.value) { playing.value = true; loading.value = false; error.value = null; sync() } })
   el.addEventListener('waiting', () => { if (currentId.value && !el.paused) loading.value = true })
   el.addEventListener('pause', () => { playing.value = false; loading.value = false; sync() })
-  el.addEventListener('ended', () => { playing.value = false; loading.value = false; sync() })
-  el.addEventListener('error', () => { if (currentId.value) { error.value = 'Couldn’t play. Tap to retry.'; loading.value = false; playing.value = false } })
+  el.addEventListener('ended', () => { playing.value = false; loading.value = false; sync(); finish() })
+  el.addEventListener('error', () => { if (currentId.value) { error.value = 'Couldn’t play. Tap to retry.'; loading.value = false; playing.value = false; finish() } })
   return el
 }
 async function play() {
   if (!currentId.value) return
-  if (!mediaFocus.claim('voice', stop)) { error.value = 'Finish recording before playing.'; return }
+  if (!mediaFocus.claim('voice', interrupt)) { error.value = 'Finish recording before playing.'; return }
   const el = ensure()
   const attempt = ++generation
   if (error.value) { el.src = source; el.load() }
@@ -99,14 +109,14 @@ async function play() {
   loading.value = true
   installSession()
   try { await el.play() } catch {
-    if (attempt === generation) { loading.value = false; playing.value = false; error.value = 'Couldn’t play. Tap to retry.' }
+    if (attempt === generation) { loading.value = false; playing.value = false; error.value = 'Couldn’t play. Tap to retry.'; finish() }
   }
 }
 export function useChatAudioPlayer() {
   function toggle(id: string, src: string, details: { title?: string; href?: string; duration?: number } = {}) {
     if (typeof window === 'undefined') return
     if (currentId.value === id) { if (playing.value || loading.value) pause(); else void play(); return }
-    if (!mediaFocus.claim('voice', stop)) return
+    if (!mediaFocus.claim('voice', interrupt)) return
     const el = ensure()
     el.pause()
     generation += 1

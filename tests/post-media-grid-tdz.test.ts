@@ -1,18 +1,21 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
+import PostMediaGrid from '~/components/app/PostMediaGrid.vue'
+import type { PostMedia } from '~/types/api'
 
-describe('PostMediaGrid setup order', () => {
-  it('declares items before the watchEffect that reads it', () => {
-    const src = readFileSync(
-      resolve(process.cwd(), 'components/app/PostMediaGrid.vue'),
-      'utf8',
-    )
-    const itemsDecl = src.indexOf('const items = computed(')
-    const watchEffectDecl = src.indexOf('watchEffect((onCleanup) => {')
-    expect(itemsDecl).toBeGreaterThan(-1)
-    expect(watchEffectDecl).toBeGreaterThan(-1)
-    expect(itemsDecl).toBeLessThan(watchEffectDecl)
-    expect(src.indexOf('const items = computed(', itemsDecl + 1)).toBe(-1)
+const video: PostMedia = {
+  id: 'video', kind: 'video', source: 'upload', url: '/fixture.mp4', mp4Url: null,
+  thumbnailUrl: null, width: 640, height: 360, durationSeconds: 10, alt: null, deletedAt: null,
+}
+
+describe('PostMediaGrid initialization (MENOFHUNGER-WWW-1T)', () => {
+  it('mounts a video and responds to attachment replacement without a setup-order error', async () => {
+    const wrapper = await mountSuspended(PostMediaGrid, { props: { media: [video], postId: 'post' } })
+    expect(wrapper.get('video').attributes('src')).toBe('/fixture.mp4')
+    await wrapper.setProps({ media: [] })
+    expect(wrapper.find('video').exists()).toBe(false)
+    await wrapper.setProps({ media: [{ ...video, url: '/replacement.mp4' }] })
+    expect(wrapper.get('video').attributes('src')).toBe('/replacement.mp4')
+    wrapper.unmount()
   })
 })

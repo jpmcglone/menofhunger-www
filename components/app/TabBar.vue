@@ -1,5 +1,6 @@
 <template>
   <nav
+    data-media-occluder
     class="border-t moh-border moh-surface-1 moh-texture"
     style="min-height: calc(var(--moh-tabbar-height, 4.5rem) + var(--moh-safe-bottom, 0px)); padding-bottom: var(--moh-safe-bottom, 0px);"
     aria-label="Primary"

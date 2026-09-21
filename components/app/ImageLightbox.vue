@@ -66,7 +66,7 @@
             controls
             controlsList="nodownload"
             playsinline
-            autoplay
+            data-media-managed
             :muted="lightboxVideoMuted"
             @click.stop
             @contextmenu.prevent
@@ -153,7 +153,9 @@ const props = defineProps<{
   onTransitionEnd: (e: TransitionEvent) => void
 }>()
 
-const { appWideSoundOn, appWideVolume, reportPlayerAudio, applySharedAudioToVideo } = useEmbeddedVideoManager()
+const mediaManager = useEmbeddedVideoManager()
+const mediaID = `lightbox:${useId()}`
+const { appWideSoundOn, appWideVolume, reportPlayerAudio, applySharedAudioToVideo } = mediaManager
 const lightboxVideoEl = ref<HTMLVideoElement | null>(null)
 /** Lightbox video always starts muted; unmute only on user tap (Safari). */
 const lightboxVideoMuted = ref(true)
@@ -429,9 +431,12 @@ watch(
   },
 )
 
-watch(lightboxVideoEl, (el) => {
-  if (el) applySharedAudioToVideo(el)
-})
+watch([lightboxVideoEl, () => props.src], ([el], _old, cleanup) => {
+  if (!el) return
+  cleanup(mediaManager.registerVideo(mediaID, el))
+  mediaManager.activate(mediaID)
+  mediaManager.pin(mediaID, true)
+}, { flush: 'post' })
 
 watch([appWideSoundOn, appWideVolume], () => {
   const el = lightboxVideoEl.value
@@ -444,7 +449,7 @@ function onLightboxVideoVolumeChange(e: Event) {
   const el = e.target as HTMLVideoElement
   if (el) {
     lightboxVideoMuted.value = el.muted
-    reportPlayerAudio({ volume01: el.volume, muted: el.muted })
+    // The registered adapter distinguishes provider changes from a muted autoplay fallback.
   }
 }
 

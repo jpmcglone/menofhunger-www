@@ -12,6 +12,7 @@ const AUDIO_VOLUME_KEY = 'moh.space.audio.volume.v1'
 
 let audioEl: HTMLAudioElement | null = null
 let audioEventsBound = false
+let playbackGeneration = 0
 
 let audioCtx: AudioContext | null = null
 let analyserNode: AnalyserNode | null = null
@@ -139,6 +140,7 @@ export function useSpaceAudio() {
     audioEventsBound = true
 
     const onPlay = () => {
+      if (mediaFocus.currentId !== 'space-audio') { a.pause(); return }
       resumeSpaceAudioContext()
       isPlaying.value = true
       isBuffering.value = false
@@ -156,6 +158,8 @@ export function useSpaceAudio() {
       isBuffering.value = false
     }
     const onError = () => {
+      playbackGeneration += 1
+      mediaFocus.release('space-audio')
       isPlaying.value = false
       isBuffering.value = false
       error.value = 'Could not play this stream.'
@@ -166,6 +170,7 @@ export function useSpaceAudio() {
     a.addEventListener('waiting', onWaiting)
     a.addEventListener('playing', onPlaying)
     a.addEventListener('error', onError)
+    a.addEventListener('ended', () => { playbackGeneration += 1; isPlaying.value = false; isBuffering.value = false; mediaFocus.release('space-audio') })
   }
 
   function syncAudioVolume() {
@@ -203,12 +208,13 @@ export function useSpaceAudio() {
     const url = String(streamUrl ?? '').trim()
     if (!url) return
 
+    const attempt = ++playbackGeneration
     if (!mediaFocus.claim('space-audio', pause)) { error.value = 'Finish recording before playing.'; return }
     const sid = String(opts.spaceId ?? selectedSpaceId.value ?? '').trim()
     if (sid) {
       presence.connect()
       await presence.whenSocketConnected(10_000)
-      if (mediaFocus.currentId !== 'space-audio') return
+      if (attempt !== playbackGeneration || mediaFocus.currentId !== 'space-audio') return
       presence.emitSpacesJoin(sid)
       presence.emitSpacesMute(isMuted.value)
     }
@@ -219,9 +225,10 @@ export function useSpaceAudio() {
 
     a.src = url
     try {
-      if (mediaFocus.currentId !== 'space-audio') return
+      if (attempt !== playbackGeneration || mediaFocus.currentId !== 'space-audio') return
       await a.play()
     } catch (e) {
+      if (attempt !== playbackGeneration) return
       mediaFocus.release('space-audio')
       error.value = e instanceof Error ? e.message : 'Playback failed.'
       isPlaying.value = false
@@ -236,7 +243,7 @@ export function useSpaceAudio() {
   }
 
   function pause() {
-    mediaFocus.release('space-audio')
+    playbackGeneration += 1
     if (!import.meta.client) return
     const a = ensureAudio()
     if (!a) return
@@ -249,6 +256,7 @@ export function useSpaceAudio() {
   }
 
   function stop({ silent = false }: { silent?: boolean } = {}) {
+    playbackGeneration += 1
     mediaFocus.release('space-audio')
     if (!import.meta.client) return
     const a = ensureAudio()

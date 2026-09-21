@@ -16,7 +16,7 @@
       <video
         v-if="interactive && items[0]?.url"
         ref="singleVideoEl"
-        data-media-autoplay
+        data-media-managed
         :src="singleVideoSrc"
         :poster="posterFor(items[0])"
         :preload="singleVideoPreload"
@@ -28,9 +28,8 @@
         muted
         loop
         aria-label="Video"
+        @volumechange="singleVideoMuted = ($event.target as HTMLVideoElement).muted"
         @contextmenu.prevent
-        @play="onSingleVideoPlay"
-        @volumechange="onSingleVideoVolumeChange"
       />
       <AppImg
         v-else-if="items[0]?.url"
@@ -272,7 +271,8 @@ const props = withDefaults(
 
 const viewer = useImageLightbox()
 const videoManager = useEmbeddedVideoManager()
-const { activePostId, appWideSoundOn, appWideVolume, reportPlayerAudio, applySharedAudioToVideo } = videoManager
+const { activeId, reportPlayerAudio } = videoManager
+const videoInstanceId = `upload:${useId()}`
 
 // Declared before any watch/computed that reads it — a later `const items`
 // left watchEffect in the TDZ (`Cannot access 'items' before initialization`)
@@ -282,7 +282,7 @@ const items = computed(() => (props.media ?? []).filter((m) => Boolean(m?.url) |
 const singleVideoContainerRef = ref<HTMLElement | null>(null)
 const singleVideoEl = ref<HTMLVideoElement | null>(null)
 const singleVideoMuted = ref(true)
-const singleVideoActive = computed(() => Boolean(props.postId && activePostId.value === props.postId))
+const singleVideoActive = computed(() => activeId.value === videoInstanceId)
 /** Set when row is in view so the inline player is ready to play. */
 const singleVideoSrc = computed(() =>
   props.rowInView !== false && items.value[0]?.kind === 'video' && items.value[0]?.url
@@ -315,26 +315,14 @@ function formatDuration(seconds: number): string {
   return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `0:${s.toString().padStart(2, '0')}`
 }
 
-function onSingleVideoPlay() {
-  if (props.postId) videoManager.activate(props.postId)
-}
-
-function onSingleVideoVolumeChange() {
-  const el = singleVideoEl.value
-  if (!el) return
-  singleVideoMuted.value = el.muted
-  reportPlayerAudio({ volume01: el.volume, muted: el.muted })
-}
-
 /** Unmute in response to user tap (required on Safari). */
 function onTapUnmute() {
   const el = singleVideoEl.value
   if (!el) return
-  if (el.paused) el.dataset.mediaExplicit = 'true'
+  videoManager.activate(videoInstanceId)
   el.muted = false
   singleVideoMuted.value = false
   reportPlayerAudio({ muted: false, volume01: el.volume })
-  el.play().catch(() => {})
 }
 
 function onTapMute() {
@@ -356,43 +344,11 @@ function toLightboxItems(): LightboxMediaItem[] {
   }))
 }
 
-watchEffect((onCleanup) => {
-  if (!import.meta.client) return
-  if (!props.interactive || !props.postId) return
-  if (items.value.length !== 1 || items.value[0]?.kind !== 'video') return
-  const el = (singleVideoEl.value ?? singleVideoContainerRef.value) as HTMLElement | null
-  if (!el) return
-  videoManager.register(props.postId, el)
-  onCleanup(() => {
-    if (props.postId) videoManager.unregister(props.postId)
-  })
-})
-
-watch(
-  [singleVideoActive, singleVideoEl],
-  ([active, el]) => {
-    if (!el) return
-    applySharedAudioToVideo(el)
-    singleVideoMuted.value = el.muted
-    if (active) {
-      el.play().catch(() => {
-        // Safari blocked unmuted autoplay — fall back to muted.
-        el.muted = true
-        singleVideoMuted.value = true
-        el.play().catch(() => {})
-      })
-    } else {
-      el.pause()
-    }
-  },
-)
-
-watch([appWideSoundOn, appWideVolume], () => {
-  const el = singleVideoEl.value
-  if (!el) return
-  applySharedAudioToVideo(el)
-  singleVideoMuted.value = el.muted
-})
+watch([singleVideoEl, () => props.interactive, () => items.value[0]?.url], ([el, interactive], _old, onCleanup) => {
+  if (!import.meta.client || !interactive || !el || items.value.length !== 1) return
+  onCleanup(videoManager.registerVideo(videoInstanceId, el, singleVideoContainerRef.value ?? el))
+}, { flush: 'post' })
+watch(() => videoManager.appWideSoundOn.value, on => { singleVideoMuted.value = !on })
 
 const mediaFrameStyle = { borderRadius: 'var(--moh-media-radius)' }
 /** Seam color behind `gap-px` — matches post-row `moh-border`. */
@@ -530,14 +486,6 @@ function itemClass(idx: number): string {
   // 3-up: left tile spans both rows; right tiles stack.
   if (n === 3 && idx === 0) return 'row-span-2'
   return ''
-}
-
-function imgClass(idx: number): string {
-  const n = items.value.length
-  if (n === 2) return 'object-cover'
-  if (n === 3) return 'object-cover'
-  if (n === 4) return 'object-cover'
-  return 'object-cover'
 }
 
 function openAt(e: MouseEvent, idx: number) {

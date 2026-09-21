@@ -57,7 +57,7 @@ export function useImageLightbox() {
     return k === 'avatar' ? avatarBorderRadius.value : '0px'
   }
 
-  function calcTargetRect(aspect: number, k: LightboxKind) {
+  function calcTargetRect(aspect: number, _k: LightboxKind) {
     const pad = 16 // px
     const vw = window.innerWidth
     const vh = window.innerHeight
@@ -292,9 +292,7 @@ export function useImageLightbox() {
     mediaItems.value = list
     mediaPostId.value = opts?.postId ?? null
     index.value = i
-    const { activate, stopAll } = useEmbeddedVideoManager()
-    if (list[i]?.kind === 'video' && opts?.postId) activate(opts.postId)
-    else stopAll()
+    useEmbeddedVideoManager().stopAll()
     await openFromEvent(e, url, label, 'media', opts)
   }
 
@@ -319,9 +317,7 @@ export function useImageLightbox() {
 
     const list = mediaItems.value
     const nextItem = list[i]
-    const { activate, stopAll } = useEmbeddedVideoManager()
-    if (nextItem?.kind === 'video' && mediaPostId.value) activate(mediaPostId.value)
-    else stopAll()
+    useEmbeddedVideoManager().stopAll()
 
     index.value = i
     const url = xs[i] ?? null

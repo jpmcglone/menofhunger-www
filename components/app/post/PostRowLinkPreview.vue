@@ -15,85 +15,18 @@
     >
       <!-- YouTube: 16:9 landscape or 9:16 portrait for Shorts.
            Rumble: encoded file size from the API (fallback 854x480). -->
-      <div
-        ref="videoBoxEl"
-        class="relative w-full"
-        :style="videoBoxStyle"
-        role="button"
-        tabindex="0"
-        :aria-label="youtubeOEmbed?.title ? `Play ${youtubeOEmbed.title}` : 'Play video'"
-        @click.stop="activateEmbeddedVideo"
-        @keydown.enter.prevent="activateEmbeddedVideo"
-        @keydown.space.prevent="activateEmbeddedVideo"
-      >
-        <iframe
-          v-if="desiredVideoSrc"
-          :key="embedPlayerKey"
-          ref="videoIframeEl"
-          :src="desiredVideoSrc"
-          class="relative z-10 h-full w-full"
-          :class="videoIframeLoaded ? '' : 'pointer-events-none'"
-          :title="youtubeOEmbed?.title ? youtubeOEmbed.title : 'Embedded video'"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowfullscreen
-          @load="onVideoIframeLoad"
-        />
-        <img
-          v-if="youtubePosterSrc || rumblePosterUrl"
-          :src="youtubePosterSrc || rumblePosterUrl || ''"
-          class="absolute inset-0 z-20 h-full w-full object-cover transition-opacity duration-250"
-          :class="desiredVideoSrc && videoIframeLoaded ? 'opacity-0 pointer-events-none' : 'opacity-90'"
-          alt=""
-          loading="lazy"
-          aria-hidden="true"
-          @error="onPosterError"
-        >
-        <button
-          v-if="videoIsPlayable && videoIframeLoaded && !appWideSoundOn"
-          type="button"
-          class="absolute right-2 top-2 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
-          aria-label="Tap for sound"
-          @click.stop="onTapUnmuteEmbed"
-        >
-          <Icon name="tabler:volume-off" class="text-base" aria-hidden="true" />
-        </button>
-        <button
-          v-else-if="videoIsPlayable && videoIframeLoaded && appWideSoundOn"
-          type="button"
-          class="absolute right-2 top-2 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
-          aria-label="Mute"
-          @click.stop="onTapMuteEmbed"
-        >
-          <Icon name="tabler:volume" class="text-base" aria-hidden="true" />
-        </button>
-        <!-- Play overlay — hidden once the iframe has actually painted -->
-        <div
-          v-if="!(videoIsPlayable && videoIframeLoaded)"
-          class="absolute inset-0 z-[25] flex flex-col justify-between pointer-events-none"
-          aria-hidden="true"
-        >
-          <!-- Title / channel strip at the bottom (YouTube only) -->
-          <div
-            v-if="youtubeOEmbed"
-            class="mt-auto px-3 pb-3 pt-8 bg-gradient-to-t from-black/70 to-transparent"
-          >
-            <div class="text-sm font-semibold text-white line-clamp-2 leading-snug">
-              {{ youtubeOEmbed.title }}
-            </div>
-            <div class="mt-0.5 text-xs text-white/70">
-              {{ youtubeOEmbed.authorName }}
-            </div>
-          </div>
-          <!-- Play button (centred). Explicit square size so CSS-mode Tabler icons
-               stay a circle; padding-only wrappers collapse to the triangle. -->
-          <div class="absolute inset-0 flex items-center justify-center">
-            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black/60">
-              <Icon name="tabler:player-play-filled" class="h-5 w-5 translate-x-px text-white" aria-hidden="true" />
-            </div>
-          </div>
-        </div>
-      </div>
+      <AppEmbeddedVideoPlayer
+        v-if="!previewOnly"
+        :youtube-url="youtubeEmbedUrl ? previewLink : null"
+        :rumble-url="rumbleEmbedUrl"
+        :poster="youtubePosterSrc || rumblePosterUrl"
+        :title="youtubeOEmbed?.title"
+        :author="youtubeOEmbed?.authorName"
+        :frame-style="videoBoxStyle"
+        @poster-error="onPosterError"
+      />
+      <img v-else-if="youtubePosterSrc || rumblePosterUrl" :src="youtubePosterSrc || rumblePosterUrl || ''" :style="videoBoxStyle" class="w-full object-cover" alt="Video preview">
+
     </div>
     <div v-if="isPreviewLinkRumble && previewLink" class="mt-2 flex justify-end">
       <a
@@ -243,12 +176,10 @@
 </template>
 
 <script setup lang="ts">
-import { mediaFocus } from '~/utils/mediaFocus'
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, youtubePlayCommand, youtubeVolumeCommand, postYouTubeIframeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlHostname, previewSourceLabel, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlHostname, previewSourceLabel, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata, peekLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
-import { useEmbeddedVideoManager } from '~/composables/useEmbeddedVideoManager'
 import { usePreviewFetchLimiter } from '~/composables/usePreviewFetchLimiter'
 import type { ArticleSharePreview, PostVideoEmbed } from '~/types/api'
 import { spotifyContent, isSpotifyShareUrl } from '~/utils/spotify-embed'
@@ -277,7 +208,6 @@ const props = defineProps<{
   videoEmbed?: PostVideoEmbed | null
 }>()
 
-const postId = computed(() => props.postId)
 const body = computed(() => (props.body ?? '').toString())
 const hasMedia = computed(() => Boolean(props.hasMedia))
 const rowInView = computed(() => Boolean(props.rowInView))
@@ -542,197 +472,6 @@ watch(
   },
   { immediate: true },
 )
-
-const { activePostId, register: registerEmbeddedVideo, unregister: unregisterEmbeddedVideo, activate: activateEmbeddedVideoById, appWideSoundOn, appWideVolume, reportPlayerAudio } =
-  useEmbeddedVideoManager()
-const hasEmbeddedVideo = computed(() => Boolean(youtubeEmbedUrl.value || isPreviewLinkRumble.value))
-const videoIsPlayable = computed(() => hasEmbeddedVideo.value && rowInView.value && activePostId.value === postId.value)
-const videoBoxEl = ref<HTMLElement | null>(null)
-const videoIframeEl = ref<HTMLIFrameElement | null>(null)
-const videoIframeLoaded = ref(false)
-const desiredVideoSrc = computed(() => {
-  if (!rowInView.value || props.previewOnly) return null
-  if (!hasEmbeddedVideo.value) return null
-  if (activePostId.value !== postId.value) return null
-  if (previewLink.value && youtubeEmbedUrl.value) {
-    return getYouTubeEmbedUrl(previewLink.value, {
-      autoplay: true,
-      muted: true,
-      origin: import.meta.client ? window.location.origin : undefined,
-    })
-  }
-  if (isPreviewLinkRumble.value && rumbleEmbedUrl.value) {
-    // Always muted autoplay in the URL. Mute/unmute is postMessage-only —
-    // changing `autoplay=2` ↔ `1` reloads the embed and kills playback.
-    return withRumbleAutoplay(rumbleEmbedUrl.value, {
-      autoplay: true,
-      muted: true,
-    })
-  }
-  return null
-})
-
-/** Stable across mute so Vue does not remount the iframe. */
-const embedPlayerKey = computed(() => {
-  const ytId = youtubeVideoInfo.value?.id
-  if (ytId) return `yt:${ytId}`
-  const rumbleSrc = rumbleEmbedUrl.value
-  if (rumbleSrc) {
-    try {
-      const u = new URL(rumbleSrc)
-      return `rumble:${u.origin}${u.pathname}`
-    } catch {
-      return `rumble:${rumbleSrc}`
-    }
-  }
-  return desiredVideoSrc.value ?? 'embed'
-})
-
-const YOUTUBE_MUTE_SYNC_MS = [0, 150, 400, 900, 1800]
-let iframeLoadRaf: number | null = null
-const youtubeMuteSyncTimers: number[] = []
-/** Ignore iframe echo until we have pushed the shared mute+volume at least once. */
-let embedAudioReady = false
-
-function clearYoutubeMuteSync() {
-  for (const id of youtubeMuteSyncTimers) window.clearTimeout(id)
-  youtubeMuteSyncTimers.length = 0
-}
-
-function applyEmbedMute(muted: boolean) {
-  if (!import.meta.client) return
-  const win = videoIframeEl.value?.contentWindow
-  if (!win) return
-  if (isPreviewLinkRumble.value) {
-    postRumbleIframeCommand(win, muted)
-    return
-  }
-  postYouTubeIframeCommand(win, youtubeMuteCommand(muted))
-}
-
-function applyEmbedVolume(volume01: number) {
-  if (!import.meta.client) return
-  const win = videoIframeEl.value?.contentWindow
-  if (!win) return
-  if (isPreviewLinkRumble.value) {
-    postRumbleIframeVolume(win, volume01)
-    return
-  }
-  postYouTubeIframeCommand(win, youtubeVolumeCommand(volume01))
-}
-
-function applyEmbedPlay() {
-  if (!import.meta.client) return
-  const win = videoIframeEl.value?.contentWindow
-  if (!win || isPreviewLinkRumble.value) return
-  postYouTubeIframeCommand(win, youtubePlayCommand())
-}
-
-function applyEmbedAudio() {
-  applyEmbedMute(!appWideSoundOn.value)
-  applyEmbedVolume(appWideVolume.value)
-  embedAudioReady = true
-}
-
-function syncYoutubeMuteFromAppPref() {
-  applyEmbedAudio()
-}
-
-function scheduleYoutubeMuteSync() {
-  clearYoutubeMuteSync()
-  if (!import.meta.client) return
-  for (const delay of YOUTUBE_MUTE_SYNC_MS) {
-    youtubeMuteSyncTimers.push(window.setTimeout(() => {
-      if (!desiredVideoSrc.value || !videoIframeLoaded.value) return
-      syncYoutubeMuteFromAppPref()
-      applyEmbedPlay()
-    }, delay))
-  }
-}
-
-function onEmbedPlayerMessage(e: MessageEvent) {
-  if (!import.meta.client) return
-  if (!embedAudioReady) return
-  if (e.source !== videoIframeEl.value?.contentWindow) return
-  const parsed = parseEmbedPlayerAudio(e.data)
-  if (!parsed) return
-  reportPlayerAudio(parsed)
-}
-
-function onVideoIframeLoad() {
-  if (!import.meta.client) return
-  if (!desiredVideoSrc.value) return
-  if (iframeLoadRaf != null) cancelAnimationFrame(iframeLoadRaf)
-  // Wait a beat so the iframe has a chance to paint before we fade the poster out.
-  iframeLoadRaf = requestAnimationFrame(() => {
-    iframeLoadRaf = requestAnimationFrame(() => {
-      iframeLoadRaf = null
-      if (!desiredVideoSrc.value) return
-      videoIframeLoaded.value = true
-      scheduleYoutubeMuteSync()
-    })
-  })
-}
-
-function onTapUnmuteEmbed() {
-  if (!mediaFocus.claim(`video:embed:${postId.value}`, () => { activePostId.value = null })) return
-  reportPlayerAudio({ muted: false, volume01: appWideVolume.value })
-  applyEmbedAudio()
-}
-
-function onTapMuteEmbed() {
-  reportPlayerAudio({ muted: true, volume01: appWideVolume.value })
-  applyEmbedAudio()
-}
-
-watch([appWideSoundOn, appWideVolume], () => {
-  if (!videoIsPlayable.value || !videoIframeLoaded.value) return
-  applyEmbedAudio()
-})
-
-watch(
-  desiredVideoSrc,
-  () => {
-    // Activation/deactivation should show poster immediately.
-    videoIframeLoaded.value = false
-    embedAudioReady = false
-    clearYoutubeMuteSync()
-  },
-  { immediate: true },
-)
-
-onMounted(() => {
-  if (!import.meta.client) return
-  window.addEventListener('message', onEmbedPlayerMessage)
-})
-
-onBeforeUnmount(() => {
-  if (!import.meta.client) return
-  window.removeEventListener('message', onEmbedPlayerMessage)
-  if (iframeLoadRaf != null) cancelAnimationFrame(iframeLoadRaf)
-  iframeLoadRaf = null
-  clearYoutubeMuteSync()
-})
-
-watchEffect((onCleanup) => {
-  if (!import.meta.client) return
-  if (!rowInView.value) return
-  if (!hasEmbeddedVideo.value || props.previewOnly) return
-  const el = videoBoxEl.value
-  if (!el) return
-
-  registerEmbeddedVideo(postId.value, el)
-  if (props.activateVideoOnMount) {
-    activateEmbeddedVideoById(postId.value)
-  }
-  onCleanup(() => unregisterEmbeddedVideo(postId.value))
-})
-
-function activateEmbeddedVideo() {
-  if (!import.meta.client) return
-  if (!hasEmbeddedVideo.value || props.previewOnly) return
-  activateEmbeddedVideoById(postId.value)
-}
 
 const linkMeta = ref<LinkMetadata | null>(null)
 watch(

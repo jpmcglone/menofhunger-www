@@ -1,52 +1,6 @@
-<!-- Module-level singleton: ensures only one <script> tag is appended and the
-     onYouTubeIframeAPIReady callback is never clobbered by a second instance. -->
-<script lang="ts">
-let _ytApiPromise: Promise<void> | null = null
-const YT_IFRAME_API_SRC = 'https://www.youtube.com/iframe_api'
-
-function hasOfficialYoutubeIframeApiScript(): boolean {
-  if (typeof document === 'undefined') return false
-  return Boolean(document.querySelector(`script[src="${YT_IFRAME_API_SRC}"]`))
-}
-
-function hasUsableYoutubeApiGlobal(): boolean {
-  const YT = (window as any).YT
-  return Boolean(YT?.Player && YT?.PlayerState)
-}
-
-function loadYouTubeAPIOnce(): Promise<void> {
-  // Only trust an existing YT global when the official iframe_api script is
-  // actually present. Browser extensions can inject partial/incompatible
-  // youtube.js globals that satisfy YT.Player but break at runtime.
-  if (hasUsableYoutubeApiGlobal() && hasOfficialYoutubeIframeApiScript()) return Promise.resolve()
-
-  if (hasUsableYoutubeApiGlobal() && !hasOfficialYoutubeIframeApiScript()) {
-    try {
-      delete (window as any).YT
-    } catch {
-      ;(window as any).YT = undefined
-    }
-  }
-
-  if (_ytApiPromise) return _ytApiPromise
-  _ytApiPromise = new Promise((resolve) => {
-    const prev = (window as any).onYouTubeIframeAPIReady
-    ;(window as any).onYouTubeIframeAPIReady = () => {
-      prev?.()
-      resolve()
-    }
-    if (!hasOfficialYoutubeIframeApiScript()) {
-      const tag = document.createElement('script')
-      tag.src = YT_IFRAME_API_SRC
-      document.head.appendChild(tag)
-    }
-  })
-  return _ytApiPromise
-}
-</script>
-
 <template>
   <div class="relative w-full h-full rounded-lg overflow-hidden bg-black">
+    <button v-if="locallySuspended" type="button" class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 text-white" @click="unlockViewerPlayback">Resume watch party</button>
     <div ref="playerContainerRef" class="absolute inset-0" />
     <div
       v-if="!playerReady"
@@ -136,6 +90,7 @@ function loadYouTubeAPIOnce(): Promise<void> {
 </template>
 
 <script setup lang="ts">
+import { loadYouTubeAPI } from '~/utils/media/youtube'
 import { mediaFocus } from '~/utils/mediaFocus'
 import type { Space, WatchPartyState } from '~/types/api'
 import { isIosWebKit } from '~/utils/ios-webkit'
@@ -178,6 +133,9 @@ const playerReady = ref(false)
 const playerError = ref<string | null>(null)
 
 let ytPlayer: any = null
+const locallySuspended = ref(false)
+const sharedVideo = useEmbeddedVideoManager()
+function interruptWatchParty() { locallySuspended.value = true; ignoreNextStateChange = true; ytPlayer?.pauseVideo?.() }
 let ignoreNextStateChange = false
 let ownerSyncTimer: ReturnType<typeof setInterval> | null = null
 /** Snapshot of last owner emit — atMs is the wall-clock time of the last emit (NOT updated on non-emit ticks). */
@@ -209,14 +167,16 @@ const isReplacedOwner = ref(false)
 const isFollowingPlayback = computed(() => !isOwner.value || isReplacedOwner.value)
 
 // Local (per-viewer/per-tab) volume only — never synced to others.
-const viewerVolume = ref(100)
+const viewerVolume = ref(sharedVideo.appWideSoundOn.value ? sharedVideo.appWideVolume.value * 100 : 0)
 const lastNonZeroVolume = ref(100)
 /** Followers start muted so playVideo() can beat the autoplay gate. */
-const viewerHasUnlockedAudio = ref(false)
+const viewerHasUnlockedAudio = ref(sharedVideo.appWideSoundOn.value)
 /** True after a tap (or a successful non-iOS play) so later host play/pause/seek/rate can apply. */
 const viewerPlaybackUnlocked = ref(false)
 /** Show the join overlay until iOS WebKit is unlocked, or desktop autoplay is blocked. */
 const viewerNeedsGesture = ref(false)
+let soundTimer: ReturnType<typeof setInterval> | null = null
+let soundEchoUntil = 0
 let viewerGestureTimer: ReturnType<typeof setTimeout> | null = null
 /** Play during the unlock tap, then pause if the host is paused — iOS needs that play(). */
 let pendingUnlockPause = false
@@ -235,6 +195,13 @@ let ownerSyncChipDelayTimer: ReturnType<typeof setTimeout> | null = null
  */
 let pendingApply: WatchPartyState | null = null
 
+watch([sharedVideo.appWideSoundOn, sharedVideo.appWideVolume], ([soundOn, volume]) => {
+  soundEchoUntil = Date.now() + 600
+  viewerHasUnlockedAudio.value = soundOn
+  viewerVolume.value = soundOn ? volume * 100 : 0
+  ytPlayer?.setVolume?.(volume * 100)
+  if (soundOn) ytPlayer?.unMute?.(); else ytPlayer?.mute?.()
+})
 function syncLocalVolumeFromPlayer() {
   if (!ytPlayer) return
   const vol = Math.max(0, Math.min(100, Number(ytPlayer.getVolume?.() ?? 100)))
@@ -245,6 +212,7 @@ function syncLocalVolumeFromPlayer() {
 function onVolumeInput() {
   if (!ytPlayer) return
   const vol = Math.max(0, Math.min(100, Number(viewerVolume.value) || 0))
+  sharedVideo.reportPlayerAudio({ muted: vol <= 1, volume01: vol / 100 })
   viewerVolume.value = vol
   ytPlayer.setVolume?.(vol)
   if (vol > 1) {
@@ -274,6 +242,7 @@ function isYtPlaying(): boolean {
 }
 
 function playAlongHost() {
+  if (locallySuspended.value) return
   if (!ytPlayer) return
   if (isYtPlaying()) return
   muteViewerForAutoplay()
@@ -301,7 +270,8 @@ function scheduleViewerGestureCheck() {
  * Play during the tap (even if the host is paused), then snap to room state.
  */
 function unlockViewerPlayback() {
-  if (!mediaFocus.claim('video:watch-party', () => { ignoreNextStateChange = true; ytPlayer?.pauseVideo?.() })) return
+  if (!mediaFocus.claim('video:watch-party', interruptWatchParty)) return
+  locallySuspended.value = false
   if (!ytPlayer) return
   prepareWatchPartyIframe()
   muteViewerForAutoplay()
@@ -324,6 +294,7 @@ function unlockViewerPlayback() {
 }
 
 function recoverFollowerPlayback() {
+  if (locallySuspended.value) return
   if (!isFollowingPlayback.value || !ytPlayer || !playerReady.value) return
   const state = watchPartyState.value
   if (!state) return
@@ -359,6 +330,7 @@ function prepareWatchPartyIframe() {
 function toggleMute() {
   if (!ytPlayer) return
   if (viewerVolume.value <= 1) {
+    sharedVideo.reportPlayerAudio({ muted: false, volume01: Math.max(0.01, lastNonZeroVolume.value / 100) })
     const restored = Math.max(1, Math.min(100, Number(lastNonZeroVolume.value) || 35))
     viewerVolume.value = restored
     viewerHasUnlockedAudio.value = true
@@ -370,12 +342,14 @@ function toggleMute() {
     return
   }
   if (viewerVolume.value > 1) lastNonZeroVolume.value = viewerVolume.value
+  sharedVideo.reportPlayerAudio({ muted: true })
   viewerVolume.value = 0
   ytPlayer.setVolume?.(0)
   ytPlayer.mute?.()
 }
 
 function applyOwnerRestoreState(state: WatchPartyState) {
+  if (locallySuspended.value) { pendingApply = state; return }
   if (!ytPlayer) return
   const raw = Math.max(0, Number(driftAdjustedTime(state)) || 0)
   // If the saved position is at or past the video's end (video finished before
@@ -447,7 +421,7 @@ function createPlayer(videoId: string, startSeconds = 0) {
       origin: window.location.origin,
       autoplay: 0,
       // Viewers start muted so a later playVideo() from socket state is allowed.
-      mute: isFollowingPlayback.value ? 1 : 0,
+      mute: sharedVideo.appWideSoundOn.value ? 0 : 1,
       // Owner uses native YouTube controls; viewers get locked playback with
       // custom local-volume-only controls.
       controls: isOwner.value ? 1 : 0,
@@ -464,6 +438,8 @@ function createPlayer(videoId: string, startSeconds = 0) {
     },
     events: {
       onReady: () => {
+        ytPlayer.setVolume?.(sharedVideo.appWideVolume.value * 100)
+        if (sharedVideo.appWideSoundOn.value) ytPlayer.unMute?.(); else ytPlayer.mute?.()
         prepareWatchPartyIframe()
         const iframe = playerContainerRef.value?.querySelector('iframe')
         wpLog('yt:onReady:dom', {
@@ -512,10 +488,8 @@ function createPlayer(videoId: string, startSeconds = 0) {
         const YTState = (window as any).YT?.PlayerState
         const st = event.data
         if (st === YTState?.PLAYING) {
-          if (!mediaFocus.claim('video:watch-party', () => {
-            ignoreNextStateChange = true
-            ytPlayer?.pauseVideo?.()
-          }, { automatic: isFollowingPlayback.value })) {
+          if (locallySuspended.value || !mediaFocus.claim('video:watch-party', interruptWatchParty, { automatic: true })) {
+            locallySuspended.value = true
             ignoreNextStateChange = true
             ytPlayer?.pauseVideo?.()
             return
@@ -579,7 +553,7 @@ function createPlayer(videoId: string, startSeconds = 0) {
 
 /** Align this tab to the room clock before it starts driving. Do not emit local time. */
 function snapOwnerToRoomState() {
-  if (!ytPlayer || !playerReady.value) return
+  if (!ytPlayer || !playerReady.value || locallySuspended.value) return
   const state = watchPartyState.value
   if (!state) return
   const adjusted = driftAdjustedTime(state)
@@ -615,6 +589,7 @@ function takeControl() {
 }
 
 function emitCurrentState() {
+  if (locallySuspended.value) return
   if (!ytPlayer || !props.space?.id) return
   if (isReplacedOwner.value) return
   const videoUrl = props.space.watchPartyUrl ?? ''
@@ -648,7 +623,7 @@ function startOwnerSyncTimer() {
   if (!isOwner.value) return
   if (ownerSyncTimer) clearInterval(ownerSyncTimer)
   ownerSyncTimer = setInterval(() => {
-    if (!ytPlayer || !playerReady.value) return
+    if (!ytPlayer || !playerReady.value || locallySuspended.value) return
     // Don't emit while waiting for the initial restore — we don't want to
     // overwrite the server's saved position with the player's 0:00 start position.
     if (pendingOwnerRestore.value) return
@@ -697,6 +672,7 @@ function stopOwnerSyncTimer() {
 }
 
 function applyState(state: WatchPartyState) {
+  if (locallySuspended.value) { pendingApply = state; return }
   if (!ytPlayer) return
   // The active primary owner tab drives the room; it must not seek itself.
   // Replaced owner tabs should follow the room exactly like viewers.
@@ -941,6 +917,14 @@ const replacedCb = {
 }
 
 onMounted(async () => {
+  soundTimer = setInterval(() => {
+    if (!playerReady.value || !ytPlayer || mediaFocus.currentId !== 'video:watch-party' || Date.now() < soundEchoUntil) return
+    const muted = Boolean(ytPlayer.isMuted?.())
+    const volume = Number(ytPlayer.getVolume?.() ?? 100) / 100
+    if (muted !== !sharedVideo.appWideSoundOn.value || !muted && Math.abs(volume - sharedVideo.appWideVolume.value) > 0.015) {
+      sharedVideo.reportPlayerAudio({ muted, volume01: muted ? undefined : volume })
+    }
+  }, 500)
   const videoId = extractVideoId(props.space.watchPartyUrl ?? '')
   if (!videoId) {
     wpLog('mount:skip-invalid-video-url', { watchPartyUrl: props.space.watchPartyUrl ?? null })
@@ -972,7 +956,7 @@ onMounted(async () => {
     wpLog('mount:skip-request-room-not-ready', { spaceId: props.space.id })
   }
 
-  await loadYouTubeAPIOnce()
+  await loadYouTubeAPI()
 
   // Use whatever state has arrived by now so the player can start buffering
   // from the correct position rather than flashing 0:00 first.
@@ -1000,6 +984,7 @@ onActivated(() => {
 })
 
 onBeforeUnmount(() => {
+  if (soundTimer) clearInterval(soundTimer)
   mediaFocus.release('video:watch-party')
   document.removeEventListener('visibilitychange', onPageBecameVisible)
   window.removeEventListener('pageshow', onPageBecameVisible)

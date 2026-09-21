@@ -9,3 +9,5 @@ export const browserTracingIntegration = vi.fn(() => ({ name: 'BrowserTracing' }
 export const replayIntegration = vi.fn(() => ({ name: 'Replay' }))
 export const diagnoseSdkConnectivity = vi.fn(async () => 'sentry-reachable')
 export const startSpan = vi.fn((_options: unknown, callback: () => unknown) => callback())
+
+export const addBreadcrumb = vi.fn()

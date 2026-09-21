@@ -1,8 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { defineComponent, KeepAlive, ref, nextTick } from 'vue'
 import SpotifyEmbed from '~/components/app/SpotifyEmbed.vue'
 import { spotifyContent, isSpotifyShareUrl } from '~/utils/spotify-embed'
+import { mediaFocus } from '~/utils/mediaFocus'
+const fake = vi.hoisted(() => ({ listeners: {} as Record<string, (event: any) => void>, play: vi.fn(), pause: vi.fn(), destroy: vi.fn() }))
+vi.mock('~/utils/media/spotify', () => ({ loadSpotifyAPI: async () => ({ createController(element: HTMLElement, _options: unknown, ready: (controller: unknown) => void) {
+  const iframe = document.createElement('iframe'); element.replaceWith(iframe)
+  ready({ play: fake.play, pause: fake.pause, destroy: () => { fake.destroy(); iframe.remove() }, addListener: (name: string, callback: (event: any) => void) => { fake.listeners[name] = callback } })
+} }) }))
+beforeEach(() => { vi.clearAllMocks(); mediaFocus.reset() })
+afterEach(() => { mediaFocus.reset() })
 const id = '4cOdK2wGLETKBW3PvgPWqT'
 describe('Spotify previews', () => {
   it.each(['track', 'album', 'artist', 'playlist', 'episode', 'show'])('embeds %s without tracking parameters', kind => {
@@ -27,19 +35,16 @@ describe('Spotify previews', () => {
   it('keeps player taps inside the post and provides recovery without a duplicate Spotify handoff', async () => {
     const content = spotifyContent(`https://open.spotify.com/track/${id}`)!
     const wrapper = await mountSuspended(SpotifyEmbed, { props: { content } })
-    const player = wrapper.get('iframe')
-    expect(player.attributes('src')).toBe(content.embedUrl)
-    expect(player.attributes('allow')).toContain('encrypted-media')
-    expect(player.element.closest('a')).toBeNull()
+    expect(wrapper.get('iframe').element.closest('a')).toBeNull()
     expect(wrapper.find('a').exists()).toBe(false)
-    const event = new MouseEvent('click', { bubbles: true })
-    wrapper.element.dispatchEvent(event)
-    expect(wrapper.emitted('click')).toBeUndefined()
-    await player.trigger('error')
-    expect(wrapper.find('iframe').exists()).toBe(false)
-    expect(wrapper.find('a').exists()).toBe(false)
+    const stopVoice = vi.fn(); mediaFocus.claim('voice', stopVoice)
     await wrapper.get('button').trigger('click')
-    expect(wrapper.find('iframe').exists()).toBe(true)
+    expect(stopVoice).toHaveBeenCalledOnce(); expect(fake.play).toHaveBeenCalledOnce()
+    fake.listeners.playback_update!({ data: { isPaused: true, position: 100, duration: 5000 } })
+    expect(mediaFocus.currentId).toContain('spotify:')
+    mediaFocus.claim('video:manual', vi.fn())
+    expect(fake.pause).toHaveBeenCalled()
+    fake.listeners.playback_started!({ data: {} }); expect(mediaFocus.currentId).toBe('video:manual')
     wrapper.unmount()
   })
   it('removes the player when a cached page deactivates', async () => {

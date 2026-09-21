@@ -1,13 +1,6 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { init } from '@sentry/nuxt'
 import '../sentry.client.config'
-
-const media = readFileSync(
-  resolve(process.cwd(), 'components/app/PostMediaGrid.vue'),
-  'utf8',
-)
 
 describe('Sentry client ignore list', () => {
   it('initializes browser integrations during Nuxt startup', () => {
@@ -29,11 +22,3 @@ describe('Sentry client ignore list', () => {
   })
 })
 
-describe('PostMediaGrid TDZ (MENOFHUNGER-WWW-1T)', () => {
-  it('declares items before the video watchEffect that reads it', () => {
-    const itemsAt = media.indexOf('const items = computed')
-    const watchAt = media.indexOf('watchEffect((onCleanup)')
-    expect(itemsAt).toBeGreaterThan(-1)
-    expect(watchAt).toBeGreaterThan(itemsAt)
-  })
-})
