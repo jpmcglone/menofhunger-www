@@ -10,6 +10,10 @@ One `MediaFocus` and one viewport runtime own playback inside each browser tab. 
 - Explicit video selection pauses audio without discarding its position. Fullscreen/PiP ownership survives scrolling. Ordinary videos pause in the background.
 - Every rendered instance has its own identity. Teardown and delayed provider readiness cannot claim or release another instance’s ownership.
 
+## Regressions fixed
+
+Audio releasing focus now schedules viewport selection immediately, so a visible video resumes without another scroll. Upload/embed handoffs clear the outgoing owner before selecting the next adapter, and stale readiness or play callbacks cannot reclaim ownership. The real fixed app shell reports zero-height body/document rectangles; those rectangles no longer incorrectly clip every video out of the usable viewport.
+
 ## Integration points
 
 Web: `utils/mediaFocus.ts`, `utils/media/video-autoplay.ts`, `composables/useEmbeddedVideoManager.ts`, and `components/app/VoicePlaybackHost.vue`. Uploaded video, embedded video, lightboxes, voice messages, Spotify, radio, Space audio, watch parties, and interactive native previews use the same ownership policy. Scroll/resize/layout and ownership changes trigger selection. Multi-attachment grids remain tap-to-play.
@@ -29,9 +33,16 @@ Ownership diagnostics contain media kind/provider and state only, without messag
 
 Behavioral tests cover selection, audio priority/release, upload/embed transitions, delayed registration/readiness, shared sound, manual pause/reentry, instance teardown, route/screen scopes, background behavior, and pinned ownership. Rumble bridge tests execute its document script against a fake API and exercise message validation, command ordering, cancellation, and publisher preservation. PostMediaGrid’s previous source-order assertion is now a real mounting/update regression test.
 
-Real provider checks have demonstrated YouTube muted playback and audio-release recovery without scrolling, and Rumble muted playback with advancing time in desktop Chrome. Focused tests also ran on a physical iPhone: **34 tests in 5 suites passed** before the user asked to stop further device testing. That device run predates the final Rumble startup and fullscreen lifecycle refinements.
+Real provider checks demonstrated YouTube muted playback, Rumble muted playback on an existing direct post URL, upload → Rumble → YouTube → upload handoffs, Spotify takeover and explicit video return, and autoplay recovery after audio releases focus without scrolling. Mixed-media checks used desktop Chrome and the in-app Chromium browser. Desktop Safari also autoplayed both Rumble and an uploaded video muted on fresh, existing direct post pages; the provider/native playback clocks advanced without pressing Play. The real post check caught a zero-height document-body edge case in the fixed app shell; the viewport calculation and regression test now cover it. Focused tests also ran on a physical iPhone: **34 tests in 5 suites passed** before the user asked to stop further device testing. That device run predates the final Rumble startup and fullscreen lifecycle refinements.
 
-Final build/test results and remaining manual coverage are recorded below when validation finishes.
+Validation results:
+
+- Full web suite: **1,373 passed, 1 pre-existing failure** in `tests/anchored-menus.test.ts:26` (`ChatMarvChatStrip` no longer contains the expected Teleport). Neither that component nor the test was changed by this work; the assertion also fails against their HEAD contents.
+- After the final viewport fix: **24 focused tests passed** (viewport, coordinator, Rumble bridge).
+- Final web typecheck passed. Changed-file ESLint passed for all 31 TypeScript/Vue files.
+- Final iOS simulator build and **39 tests in 6 suites passed**, including the new WebKit unmute-after-fallback regression. Strict formatting/SwiftLint passed for all 25 changed/new Swift files.
+- API media ownership/review regressions: **36 tests in 3 suites passed**. No API files changed.
+- Production build and hydration results: pending final run.
 
 ## Remaining manual release checks
 
