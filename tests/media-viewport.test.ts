@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { measureVideo } from '../utils/media/viewport'
-afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks() })
+afterEach(() => { document.body.replaceChildren(); document.body.style.overflow = ''; document.documentElement.style.overflow = ''; vi.restoreAllMocks() })
 function rect(el: HTMLElement, top: number, height: number) {
   el.getBoundingClientRect = () => ({ top, bottom: top + height, height, left: 0, right: 400, width: 400, x: 0, y: top, toJSON: () => ({}) })
 }
@@ -15,6 +15,14 @@ function surface(top: number, height = 200) {
 describe('usable media viewport', () => {
   it('uses the scroller center rather than a rounded card clipping boundary', () => {
     const { video } = surface(150)
+    expect(measureVideo(video)?.distance).toBe(150)
+  })
+  it('uses the visual viewport when a fixed app shell leaves the body and html at zero height', () => {
+    const { video } = surface(150)
+    document.body.style.overflow = 'hidden auto'
+    document.documentElement.style.overflow = 'hidden auto'
+    vi.spyOn(document.body, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 400, 0))
+    vi.spyOn(document.documentElement, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 400, 0))
     expect(measureVideo(video)?.distance).toBe(150)
   })
   it('requires 75% even when a card clips its child', () => {

@@ -12,7 +12,9 @@ export function measureVideo(el: HTMLElement): { distance: number } | null {
   for (let parent: HTMLElement | null = el; parent; parent = parent.parentElement) {
     const style = getComputedStyle(parent)
     if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return null
-    if (parent === el) continue
+    // Root overflow applies to the browser viewport, not a potentially zero-height
+    // body box (the app shell is fixed-positioned).
+    if (parent === el || parent === document.body || parent === document.documentElement) continue
     const overflow = style.overflowY + style.overflowX + style.overflow
     if (/(auto|scroll|hidden|clip)/.test(overflow)) clips.push(parent.getBoundingClientRect())
     if (/(auto|scroll)/.test(overflow)) {
