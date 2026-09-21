@@ -1,5 +1,4 @@
 import type {
-  BillingCheckoutSession,
   BillingMe,
   BillingPortalSession,
   BillingTier,
@@ -23,7 +22,8 @@ export function useSettingsBilling() {
   const billingMe = ref<BillingMe | null>(null)
   const billingLoading = ref(false)
   const billingError = ref<string | null>(null)
-  const checkoutLoading = ref<BillingTier | null>(null)
+  const checkout = useMembershipCheckout()
+  const { checkoutLoading } = checkout
   const portalLoading = ref(false)
 
   const billingFreeMonthsPremiumPlus = computed(() => {
@@ -69,26 +69,13 @@ export function useSettingsBilling() {
   }
 
   async function startCheckout(tier: BillingTier) {
-    if (checkoutLoading.value) return
-    checkoutLoading.value = tier
     billingError.value = null
-    try {
-      const res = await apiFetchData<BillingCheckoutSession>('/billing/checkout-session', {
-        method: 'POST',
-        body: { tier },
-      })
-      const url = (res?.url ?? '').trim()
-      if (!url) throw new Error('Missing checkout URL.')
-      await navigateTo(url, { external: true })
-    } catch (e: unknown) {
-      billingError.value = getApiErrorMessage(e) || 'Failed to start checkout.'
-    } finally {
-      checkoutLoading.value = null
-    }
+    await checkout.startCheckout(tier)
+    billingError.value = checkout.checkoutError.value
   }
 
   async function openPortal() {
-    if (portalLoading.value) return
+    if (portalLoading.value || billingMe.value?.source !== 'stripe') return
     portalLoading.value = true
     billingError.value = null
     try {

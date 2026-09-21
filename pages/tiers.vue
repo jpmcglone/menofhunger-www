@@ -7,12 +7,25 @@
         <h1 class="text-[28px] font-semibold leading-9">{{ tiersIntro.title }}</h1>
         <p class="moh-body moh-text-muted">{{ tiersIntro.description }}</p>
       </header>
+      <section aria-label="Your membership" class="space-y-3 rounded-xl moh-surface p-5" :aria-busy="loading">
+        <p class="moh-meta uppercase">Your membership</p>
+        <h2 class="text-xl font-semibold leading-7" :style="{ color: membershipAccent(currentTier) }">{{ currentTierName }}</h2>
+        <p class="moh-body moh-text-muted">{{ membershipDescription }}</p>
+        <AppMembershipAction :action="summaryAction" :disabled="!billing || loading || Boolean(checkoutLoading) || Boolean(membershipError)" :busy="Boolean(checkoutLoading)" @checkout="startCheckout" />
+        <p v-if="loading" class="moh-meta moh-text-muted" role="status">Checking membership…</p>
+        <div v-if="membershipError" class="space-y-2" role="alert">
+          <p>{{ membershipError }}</p>
+          <Button label="Retry" severity="secondary" :loading="loading" @click="refresh" />
+        </div>
+        <AppInlineAlert v-if="checkoutError" severity="danger">{{ checkoutError }}</AppInlineAlert>
+      </section>
       <div class="membership-grid grid gap-4">
-        <article v-for="tier in tiers" :key="tier.id" class="flex min-w-0 flex-col gap-4 rounded-xl border moh-border moh-surface p-5" :aria-label="tier.name">
+        <article v-for="tier in tiers" :key="tier.id" class="membership-card flex min-w-0 flex-col gap-4 rounded-xl border moh-border moh-surface p-5" :class="{ 'membership-current': currentTier === tier.id }" :style="{ '--membership-accent': membershipAccent(tier.id) }" :aria-label="`${tier.name}${currentTier === tier.id ? ' — your current tier' : ''}`">
+          <div class="membership-accent" aria-hidden="true" />
           <div class="space-y-2">
             <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-xl font-semibold leading-7">{{ tier.name }}</h2>
-              <span v-if="currentTier === tier.id" class="moh-meta moh-text-muted">Your tier</span>
+              <h2 class="text-xl font-semibold leading-7" :style="{ color: membershipAccent(tier.id) }">{{ tier.name }}</h2>
+              <span v-if="currentTier === tier.id" class="moh-meta font-semibold">Your current tier</span>
             </div>
             <p class="moh-meta moh-text-muted">{{ tier.subtitle }}</p>
           </div>
@@ -21,9 +34,7 @@
           <ul class="moh-body space-y-4">
             <li v-for="highlight in tier.highlights" :key="highlight">{{ highlight }}</li>
           </ul>
-          <NuxtLink :to="currentTier === tier.id ? '/settings/billing' : tierAction(tier).to" class="membership-link mt-auto">
-            {{ currentTier === tier.id ? 'Manage membership' : tierAction(tier).label }}
-          </NuxtLink>
+          <AppMembershipAction class="mt-auto" :action="membershipAction(tier.id, currentTier, billing)" :disabled="!billing || loading || Boolean(checkoutLoading) || Boolean(membershipError)" :busy="checkoutLoading === tier.id" @checkout="startCheckout" />
         </article>
       </div>
       <p v-if="recruitBonusEligible && !isPremium" class="moh-body moh-text-muted">
@@ -67,7 +78,8 @@
 </template>
 
 <script setup lang="ts">
-import { tiers, tiersFooterNote, tiersIntro, tiersMetaDescription, type Tier } from '~/config/tiers.data'
+import { includesMembership, membershipAccent, membershipAction } from '~/utils/membership'
+import { tiers, tiersFooterNote, tiersIntro, tiersMetaDescription, type Tier, type TierId } from '~/config/tiers.data'
 definePageMeta({
   layout: 'app',
   title: 'Tiers',
@@ -81,55 +93,39 @@ usePageSeo({
   ogType: 'website',
 })
 
-const { user, isAuthed } = useAuth()
-const isVerified = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
-const isPremiumPlus = computed(() => Boolean(user.value?.premiumPlus))
-// Inclusive so CTAs behave correctly even if data is inconsistent.
-const isPremium = computed(() => Boolean(user.value?.premium || user.value?.premiumPlus))
-// Only one tier highlighted: the highest the user has. Null when not logged in.
-const currentTier = computed(() =>
-  user.value
-    ? isPremiumPlus.value
-      ? 'premiumPlus'
-      : isPremium.value
-        ? 'premium'
-        : isVerified.value
-          ? 'verified'
-          : 'unverified'
-    : null
-)
-
-function tierAction(tier: Tier): { label: string; to: string } {
-  if (!isAuthed.value) return { label: tier.id === 'unverified' ? 'Create an account' : tier.cta?.label ?? 'Get started', to: '/login' }
-  if (tier.id === 'unverified') return { label: 'Explore the community', to: '/home' }
-  if (!isVerified.value) return { label: tier.id === 'verified' ? 'Get verified' : 'Verify to upgrade', to: '/settings/verification' }
-  return { label: tier.id === 'verified' ? 'View verification' : tier.cta?.label ?? 'View membership', to: tier.id === 'verified' ? '/settings/verification' : '/settings/billing' }
-}
+const { user, billing, loading, error: membershipError, currentTier, refresh } = useMembership()
+const { checkoutLoading, checkoutError, startCheckout } = useMembershipCheckout()
+const route = useRoute()
+const currentTierName = computed(() => tiers.find(t => t.id === currentTier.value)?.name ?? 'Sign in to see your membership')
+const isPremium = computed(() => currentTier.value === 'premium' || currentTier.value === 'premiumPlus')
+const nextTier = computed<TierId>(() => {
+  const requested = route.query.plan
+  if ((requested === 'premium' || requested === 'premiumPlus') && requested !== currentTier.value && !includesMembership(currentTier.value, requested)) return requested
+  if (currentTier.value === 'unverified') return 'verified'
+  return currentTier.value === 'premium' || currentTier.value === 'premiumPlus' ? 'premiumPlus' : 'premium'
+})
+const summaryAction = computed(() => membershipAction(nextTier.value, currentTier.value, billing.value))
+const membershipDescription = computed(() => {
+  if (!user.value) return 'Compare the tiers below, then sign in to choose your next step.'
+  if (billing.value?.source === 'apple') return 'Your subscription is managed by Apple.'
+  if (billing.value?.source === 'grant') return 'Your membership includes granted access. View Billing for its details.'
+  if (currentTier.value === 'unverified') return 'Verification is free and unlocks participation. Get verified before choosing a paid tier.'
+  if (currentTier.value === 'verified') return 'You’re on the free Verified tier.'
+  if (currentTier.value === 'premiumPlus') return 'You’re a Steward. Your membership includes everything in Premium.'
+  return 'Your current membership. Upgrade for Steward benefits.'
+})
 const availableBenefits = (tier: Tier) => tier.can.filter(item => !item.comingSoon)
 const plannedBenefits = (tier: Tier) => tier.can.filter(item => item.comingSoon)
 
-// Recruit bonus — fetch billing data client-side only when the user is logged in and not
-// already premium (that's the only scenario where showing the bonus is relevant).
-import type { BillingMe } from '~/types/api'
-const { apiFetchData } = useApiClient()
-const recruitBonusEligible = ref(false)
-const recruiterName = ref<string | null>(null)
-
-onMounted(async () => {
-  if (!isAuthed.value || isPremium.value) return
-  try {
-    const billing = await apiFetchData<BillingMe>('/billing/me', { method: 'GET' })
-    recruitBonusEligible.value = Boolean(billing.recruitBonusEligible)
-    recruiterName.value = billing.recruiter?.username ?? billing.recruiter?.name ?? null
-  } catch { /* best-effort */ }
-})
+const recruitBonusEligible = computed(() => Boolean(billing.value?.recruitBonusEligible))
+const recruiterName = computed(() => billing.value?.recruiter?.username ?? billing.value?.recruiter?.name ?? null)
 </script>
 
 <style scoped>
 .membership-page { container-type: inline-size; }
 @container (min-width: 520px) { .membership-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container (min-width: 960px) { .membership-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.membership-link { display: flex; min-height: 44px; align-items: center; justify-content: center; padding: 11px 16px; border-radius: 999px; background: var(--moh-button-secondary-fill); color: var(--moh-button-secondary-label); font-size: 14px; line-height: 22px; font-weight: 600; text-align: center; }
-.membership-link:hover { box-shadow: 0 0 0 2px var(--moh-border); }
-.membership-link:focus-visible { outline: 2px solid var(--moh-brass); outline-offset: 3px; }
+.membership-card { border-top-color: var(--membership-accent); }
+.membership-accent { height: 4px; background: var(--membership-accent); }
+.membership-current { border-color: var(--membership-accent); box-shadow: inset 0 0 0 1px var(--membership-accent); background: color-mix(in srgb, var(--membership-accent) 8%, var(--moh-surface)); }
 </style>

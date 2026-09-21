@@ -5,11 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSettingsBilling } from '~/composables/settings/useSettingsBilling'
 import { contractFixtures } from './fixtures/api-contracts.gen'
 
-const spies = vi.hoisted(() => ({ fetch: vi.fn(), me: vi.fn(), navigate: vi.fn(), query: {} as Record<string, string> }))
+const spies = vi.hoisted(() => ({ fetch: vi.fn(), me: vi.fn(), navigate: vi.fn(), query: {} as Record<string, string>, user: { value: { id: 'member' } }, confirm: vi.fn() }))
 mockNuxtImport('useApiClient', () => () => ({ apiFetchData: spies.fetch }))
-mockNuxtImport('useAuth', () => () => ({ me: spies.me }))
+mockNuxtImport('useAuth', () => () => ({ me: spies.me, user: spies.user }))
 mockNuxtImport('useRoute', () => () => ({ path: '/settings/billing', query: spies.query }))
 mockNuxtImport('navigateTo', () => spies.navigate)
+mockNuxtImport('useAppConfirm', () => () => ({ confirm: spies.confirm }))
 mockNuxtImport('useAppToast', () => () => ({ push: vi.fn() }))
 function render() {
   let billing!: ReturnType<typeof useSettingsBilling>
@@ -50,7 +51,7 @@ describe('shared billing contracts and checkout recovery', () => {
     expect(billing.billingError.value).toBeTruthy()
     expect(billing.checkoutLoading.value).toBeNull()
     expect(spies.navigate).not.toHaveBeenCalled()
-    spies.fetch.mockResolvedValueOnce({ url: 'https://checkout.stripe.com/synthetic' })
+    spies.fetch.mockResolvedValueOnce(contractFixtures.billing.verified).mockResolvedValueOnce({ url: 'https://checkout.stripe.com/synthetic' })
     await billing.startCheckout('premium')
     expect(spies.navigate).toHaveBeenCalledWith('https://checkout.stripe.com/synthetic', { external: true })
     view.unmount()

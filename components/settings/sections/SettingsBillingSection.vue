@@ -91,16 +91,20 @@
 
     <AppInlineAlert v-if="billingError" severity="danger">{{ billingError }}</AppInlineAlert>
 
+    <div v-if="billingMe?.source === 'apple'" class="space-y-2">
+      <p class="text-sm moh-text-muted">Your subscription is managed by Apple.</p>
+      <a href="https://apps.apple.com/account/subscriptions" class="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">Manage with Apple</a>
+    </div>
     <div class="flex flex-wrap items-center gap-3">
       <Button
-        v-if="billingMe?.verified && !billingMe?.premium"
+        v-if="billingMe?.verified && billingMe?.source !== 'apple' && !billingMe?.premium && !billingMe?.premiumPlus"
         label="Get Premium"
         :loading="checkoutLoading === 'premium'"
         :disabled="Boolean(checkoutLoading)"
         @click="startCheckout('premium')"
       />
       <Button
-        v-if="billingMe?.verified && !billingMe?.premiumPlus"
+        v-if="billingMe?.verified && billingMe?.source !== 'apple' && !billingMe?.premiumPlus"
         :label="billingMe?.premium ? 'Upgrade to Steward' : 'Get Premium+'"
         severity="secondary"
         :loading="checkoutLoading === 'premiumPlus'"
@@ -108,7 +112,7 @@
         @click="startCheckout('premiumPlus')"
       />
       <Button
-        v-if="billingMe?.verified && (billingMe?.premium || billingMe?.premiumPlus)"
+        v-if="billingMe?.source === 'stripe' && (billingMe?.premium || billingMe?.premiumPlus)"
         label="Manage subscription"
         severity="secondary"
         :loading="portalLoading"
@@ -342,13 +346,6 @@ const {
   devResetPremium,
   checkoutSuccessModal,
   checkoutSuccessTier,
-  referralCodeDraft,
-  referralCodeSaving,
-  referralCodeSaved,
-  referralCodeError,
-  referralCodeCopied,
-  copyReferralCode,
-  saveReferralCode,
   recruiterCodeDraft,
   recruiterSaving,
   recruiterError,

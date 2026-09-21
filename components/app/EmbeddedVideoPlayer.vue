@@ -11,7 +11,6 @@
       <div class="line-clamp-2 text-sm font-semibold">{{ title }}</div><div v-if="author" class="text-xs text-white/70">{{ author }}</div>
     </div>
     <span v-if="active && state === 'buffering'" class="pointer-events-none absolute left-3 top-3 z-20 rounded bg-black/60 p-2 text-white" role="status" aria-label="Loading video"><Icon name="tabler:loader-2" class="animate-spin" /></span>
-    <button v-if="active && painted" type="button" class="absolute right-2 top-2 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white" :aria-label="actualMuted ? 'Unmute' : 'Mute'" @click.stop="toggleMute"><Icon :name="actualMuted ? 'tabler:volume-off' : 'tabler:volume'" aria-hidden="true" /></button>
   </div>
 </template>
 <script setup lang="ts">
@@ -30,7 +29,6 @@ const surface = ref<HTMLElement | null>(null)
 const active = computed(() => manager.activeId.value === id)
 const state = ref<PlaybackState>('idle')
 const painted = ref(false)
-const actualMuted = ref(true)
 let yt: YouTubePlayer | null = null
 let rumble: HTMLIFrameElement | null = null
 let request: PlayRequest | null = null
@@ -55,13 +53,11 @@ function report(next: PlaybackState, user = false) {
 }
 function applyAudio(sound: VideoSound) {
   expected = { ...sound }
-  actualMuted.value = sound.muted
   audioEchoUntil = Date.now() + 350
   if (yt && ready) { yt.setVolume(sound.volume * 100); if (sound.muted) yt.mute(); else yt.unMute() }
   if (rumble && ready) send('audio', sound)
 }
 function receiveAudio(muted: boolean, volume: number) {
-  actualMuted.value = muted
   if (!active.value || !ready || Date.now() < audioEchoUntil) return
   if (muted !== expected.muted || Math.abs(volume - expected.volume) > 0.015) {
     expected = { muted, volume }
@@ -99,7 +95,6 @@ const adapter: MediaPlayerAdapter = {
     request = next
     fallbackMuted = false
     expected = { muted: next.muted, volume: next.volume }
-    actualMuted.value = next.muted
     if (yt && ready) { applyAudio(expected); yt.playVideo(); return }
     if (rumble && ready) { send('play', { ...expected, time: position }); return }
     const version = ++generation
@@ -162,7 +157,6 @@ function onMessage(event: MessageEvent) {
   if (typeof data.muted === 'boolean') receiveAudio(data.muted, typeof data.volume === 'number' ? data.volume : expected.volume)
 }
 function play() { manager.activate(id) }
-function toggleMute() { manager.reportPlayerAudio({ muted: !actualMuted.value }); if (actualMuted.value === false && state.value === 'paused') play() }
 watch([box, () => props.youtubeUrl, () => props.rumbleUrl], ([el], _old, cleanup) => {
   if (!el || !import.meta.client) return
   position = 0

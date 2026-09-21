@@ -2,12 +2,14 @@ import { runInNewContext } from 'node:vm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { rumbleDocument } from '~/utils/media/rumble-document'
 
-function player() {
+function player(initialize = true) {
   const calls: string[] = []
   const events: Record<string, (value?: unknown) => void> = {}
   let receiver: (event: unknown) => void = () => {}
   let ready: (api: unknown) => void = () => {}
   const parent = { postMessage: vi.fn() }
+  const loader = { src: '', onerror: () => {} }
+  const document = { createElement: () => loader, head: { appendChild: vi.fn() } }
   vi.useFakeTimers()
   const api = {
     pause: () => calls.push('pause'), mute: () => calls.push('mute'), unmute: () => calls.push('unmute'),
@@ -19,15 +21,22 @@ function player() {
   const Rumble = (_command: string, options: { api: typeof ready }) => { ready = options.api }
   const html = rumbleDocument('https://rumble.com/embed/v17j3tt/', 'instance', 'https://app.test')
   const script = html.match(/<script>([\s\S]*?)<\/script>/)![1]!
-  runInNewContext(script, { Date, setTimeout, clearTimeout, window: { Rumble }, Rumble, parent, addEventListener: (_: string, callback: typeof receiver) => { receiver = callback } })
-  ready(api)
+  runInNewContext(script, { Date, setTimeout, clearTimeout, document, window: { Rumble }, Rumble, parent, addEventListener: (_: string, callback: typeof receiver) => { receiver = callback } })
+  if (initialize) ready(api)
   const send = (data: unknown, origin = 'https://app.test', source = parent) => receiver({ data, origin, source })
-  return { calls, events, parent, send, html }
+  return { calls, events, parent, send, html, loader }
 }
 
 afterEach(() => vi.useRealTimers())
 
 describe('Rumble player bridge', () => {
+  it('reports bootstrap failure before the provider becomes ready', () => {
+    const p = player(false)
+    expect(p.loader.src).toBe('https://rumble.com/embedJS/u7a20.v17j3tt/')
+    p.loader.onerror()
+    expect(p.parent.postMessage).toHaveBeenCalledWith({ channel: 'instance', state: 'error' }, 'https://app.test')
+    expect(p.calls).toEqual([])
+  })
   it('starts only on an authenticated command, without triggering the provider’s pause/play throttle', () => {
     const p = player()
     expect(p.calls).toEqual(['mute'])

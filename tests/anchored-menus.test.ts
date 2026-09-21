@@ -17,7 +17,7 @@ const menus = [
   'components/app/UserPickerInput.vue',
   'components/app/article/TagInput.vue',
   'components/app/article/ReactionBar.vue',
-  'components/app/chat/ChatMarvChatStrip.vue',
+  'components/app/MarvModeDropdown.vue',
 ]
 
 describe('anchored menus – viewport positioning', () => {

@@ -21,5 +21,9 @@ addEventListener('message',function(event){ if(event.source!==parent||event.orig
  if(d.action==='audio'||d.action==='play'){ if(Number.isFinite(d.volume))api.setVolume(Math.max(0,Math.min(1,d.volume))); if(d.muted)api.mute();else api.unmute(); }
  if(d.action==='play'){ clearTimeout(startTimer); startTimer=setTimeout(function(){ if(Number.isFinite(d.time)&&d.time>0)api.setCurrentTime(d.time); api.autoplay(!d.muted); },Math.max(0,readyAt-Date.now())); }
 });
-</script><script src="https://rumble.com/embedJS/${pub}.${video}/" onerror="parent.postMessage({channel:${json(channel)},state:'error'},${json(parentOrigin)})"></script></body></html>`
+const loader=document.createElement('script');
+loader.src=${json(`https://rumble.com/embedJS/${pub}.${video}/`)};
+loader.onerror=function(){parent.postMessage({channel,state:'error'},parentOrigin);};
+document.head.appendChild(loader);
+</script></body></html>`
 }
