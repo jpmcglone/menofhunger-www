@@ -123,7 +123,7 @@
         <Icon name="tabler:chevron-right" size="16" class="shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
       </NuxtLink>
 
-      <AppAccountSwitcher :active="moreOpen" />
+      <AppAccountSwitcher :active="moreOpen" @close="moreOpen = false" />
 
       <div class="flex flex-col">
         <template v-for="mi in mainMenuItems" :key="mi.key">

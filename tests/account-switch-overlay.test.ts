@@ -1,8 +1,15 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { defineComponent, h, nextTick } from 'vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AccountSwitchOverlay from '~/components/app/AccountSwitchOverlay.vue'
 import { useAccountSwitchState } from '~/composables/useAccountSwitchState'
+
+const overlaySource = readFileSync(
+  resolve(__dirname, '../components/app/AccountSwitchOverlay.vue'),
+  'utf8',
+)
 
 let view: Awaited<ReturnType<typeof mountSuspended>> | undefined
 afterEach(() => { view?.unmount(); vi.useRealTimers(); vi.restoreAllMocks() })
@@ -48,6 +55,15 @@ describe('account switch feedback', () => {
     expect(reload).toHaveBeenCalledTimes(1)
     state.transition.value = null
     await nextTick()
+    await vi.advanceTimersByTimeAsync(250)
+    await nextTick()
     expect(view.find('dialog').exists()).toBe(false)
+  })
+
+  it('fades the frosted overlay in and out', () => {
+    expect(overlaySource).toContain('<Transition name="account-switch"')
+    expect(overlaySource).toContain('backdrop-filter: blur(20px)')
+    expect(overlaySource).toContain('opacity 200ms ease')
+    expect(overlaySource).toContain('prefers-reduced-motion')
   })
 })

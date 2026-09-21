@@ -17,11 +17,10 @@
       </p>
     </div>
 
-    <AppAiConsentHost />
     <section class="space-y-2">
       <h3 class="text-sm font-semibold moh-text">Personal requests to OpenAI</h3>
-      <p class="text-sm moh-text-muted">{{ marvMe?.aiConsentGranted ? 'Allowed. MARV can use your requests, selected images, and relevant profile and conversation context.' : 'Off. Enable Marv to send your requests, selected images, and relevant profile and conversation context to OpenAI.' }} Private fitness records stay excluded. Public content and permitted conversation context remain available to MARV.</p>
-      <Button :label="marvMe?.aiConsentGranted ? 'Turn off personal requests' : 'Enable Marv'" severity="secondary" :loading="consentBusy" :disabled="!hasFetched" @click="changeConsent" />
+      <p class="text-sm moh-text-muted">{{ marvMe?.aiConsentGranted ? 'Allowed. MARV can use your requests, selected images, and relevant profile and conversation context.' : 'Off. MARV will not send your personal requests to OpenAI until you allow them.' }} Private fitness records stay excluded. Public content and permitted conversation context remain available to MARV. Using Marv turns personal requests back on.</p>
+      <Button :label="marvMe?.aiConsentGranted ? 'Turn off personal requests' : 'Allow personal requests'" severity="secondary" :loading="consentBusy" :disabled="!hasFetched" @click="changeConsent" />
       <p v-if="consentError" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ consentError }}</p>
     </section>
 
@@ -156,7 +155,7 @@
                 </span>
               </div>
               <div class="text-xs text-gray-500 dark:text-gray-400">
-                Mode {{ event.effectiveMode }} · {{ event.creditsSpent }} credits · {{ formatRelative(event.createdAt) }}
+                Mode {{ marvinModeLabel(event.effectiveMode) }} · {{ event.creditsSpent }} credits · {{ formatRelative(event.createdAt) }}
               </div>
             </div>
           </li>
@@ -176,6 +175,7 @@
 <script setup lang="ts">
 import type { MarvinContextCardDto, MarvinSourceDto, MarvinUsageEventDto } from '~/types/api'
 import { onActivated, onMounted } from 'vue'
+import { marvinModeLabel } from '~/utils/marvin-mode'
 
 const {
   me: marvMe,

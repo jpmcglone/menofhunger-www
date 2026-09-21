@@ -105,7 +105,7 @@
         aria-label="Account menu"
         @click.stop
       >
-        <AppAccountSwitcher compact :active="menuOpen" />
+        <AppAccountSwitcher compact :active="menuOpen" @close="closeMenu" />
         <div v-if="canSwitch && extraMenuItems.length" class="border-t moh-border" />
         <div class="py-1">
           <template v-for="(item, index) in extraMenuItems" :key="item.key || index">

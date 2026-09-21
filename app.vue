@@ -4,7 +4,6 @@
     <NuxtLoadingIndicator color="var(--p-primary-color)" :height="4" />
     <AppLayoutAuthBootOverlay />
     <AppAccountSwitchOverlay />
-    <AppAiConsentNotice />
     <ClientOnly><AppVoicePlaybackHost /></ClientOnly>
     <NuxtLayout>
       <NuxtPage :key="`identity-${identityVersion}`" />

@@ -1,92 +1,22 @@
 <template>
   <!--
-    A compact strip rendered just below the main chat header when the selected
-    conversation is the viewer's DM with Marv. Shows:
-      - a "Model" dropdown (Auto / Fast / Regular / Smart) that PATCHes preferences
-      - a small credits chip ("1,184 credits / refill in 6h")
-
-    This strip is realtime-aware via `useMarv()`: PATCHes update local state
-    optimistically, and credit changes arrive through the `marv:credits-updated`
-    websocket event registered in `useMarv.startRealtime()`.
+    Compact strip under the Marv DM header.
+    Mode menu: Figma MARV/Mode menu (https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=776-1269)
   -->
   <div
     class="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-gradient-to-r from-amber-50/50 via-rose-50/40 to-violet-50/40 px-4 py-2 dark:border-zinc-800 dark:from-amber-500/5 dark:via-rose-500/5 dark:to-violet-500/5"
     role="region"
     aria-label="Marv controls"
   >
-    <!-- Model dropdown -->
-    <div ref="dropdownRef" class="relative" @keydown.escape="open = false">
-      <!-- Trigger: ghost pill, no border — "MODEL  Auto ▾" -->
-      <button
-        type="button"
-        :disabled="modeBusy"
-        class="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/8"
-        aria-haspopup="listbox"
-        :aria-expanded="open"
-        @click="open = !open"
-      >
-        <span class="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Model</span>
-        <span
-          class="flex h-4 w-4 items-center justify-center rounded-md text-[11px] transition-colors"
-          :class="modeIconBg(preferredMode ?? 'auto', true)"
-        >
-          <AppMarvMark v-if="(preferredMode ?? 'auto') === 'auto'" :size="16" />
-          <Icon v-else :name="modeIcon(preferredMode ?? 'auto')" aria-hidden="true" />
-        </span>
-        <span class="font-semibold text-gray-800 dark:text-gray-100">{{ modeLabel(preferredMode ?? 'auto') }}</span>
-        <Icon
-          name="tabler:chevron-down"
-          class="text-[10px] text-gray-400 transition-transform duration-150 dark:text-gray-500"
-          :class="open ? 'rotate-180' : ''"
-          aria-hidden="true"
-        />
-      </button>
-
-      <Teleport to="body">
-      <Transition
-        enter-active-class="transition duration-150 ease-out"
-        enter-from-class="opacity-0 translate-y-1 scale-[0.97]"
-        enter-to-class="opacity-100 translate-y-0 scale-100"
-        leave-active-class="transition duration-100 ease-in"
-        leave-from-class="opacity-100 translate-y-0 scale-100"
-        leave-to-class="opacity-0 translate-y-1 scale-[0.97]"
-      >
-        <ul
-          v-if="open"
-          ref="menuEl"
-          role="listbox"
-          aria-label="Model"
-          class="fixed z-[2000] min-w-[220px] origin-top-left rounded-2xl bg-white py-1.5 shadow-2xl ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/[0.07]"
-          :style="menuStyle"
-        >
-          <li
-            v-for="mode in (['auto', 'fast', 'regular', 'smart'] as const)"
-            :key="mode"
-            role="option"
-            :aria-selected="preferredMode === mode"
-            :class="[
-              'mx-1.5 flex cursor-pointer items-center gap-3 rounded-xl px-2.5 py-2 text-xs transition-colors',
-              preferredMode === mode
-                ? 'bg-violet-50 text-gray-900 dark:bg-violet-500/10 dark:text-white'
-                : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5',
-            ]"
-            @click="onPickMode(mode)"
-          >
-            <!-- Mode icon -->
-            <span
-              class="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[13px] transition-colors"
-              :class="modeIconBg(mode, preferredMode === mode)"
-            >
-              <AppMarvMark v-if="mode === 'auto'" :size="18" />
-              <Icon v-else :name="modeIcon(mode)" aria-hidden="true" />
-            </span>
-            <span class="font-semibold">{{ modeLabel(mode) }}</span>
-            <span class="ml-auto font-normal text-gray-400 dark:text-gray-500">{{ modeSubtitle(mode) }}</span>
-          </li>
-        </ul>
-      </Transition>
-      </Teleport>
-    </div>
+    <AppMarvModeDropdown
+      :model-value="preferredMode ?? 'auto'"
+      :costs="me?.costs"
+      :disabled="modeBusy"
+      plain
+      legend="Mode"
+      aria-label="Mode"
+      @update:model-value="onPickMode"
+    />
 
     <button type="button" class="min-h-11 px-2 text-xs font-semibold" @click="showActions = true">Actions</button>
     <Dialog v-model:visible="showActions" modal header="Your MARV actions" :style="{ width: '36rem', maxWidth: '94vw' }">
@@ -106,68 +36,13 @@
 </template>
 
 <script setup lang="ts">
-import { onClickOutside } from '@vueuse/core'
 import type { MarvinModeDto } from '~/types/api'
 
-const { preferredMode, credits, setPreferredMode } = useMarv()
+const { me, preferredMode, credits, setPreferredMode } = useMarv()
 const showActions = ref(false)
 const modeBusy = ref(false)
-const open = ref(false)
-const dropdownRef = ref<HTMLElement | null>(null)
-const { style: menuStyle, menuEl, place: placeMenu, reset: resetMenu } = useMenuPosition()
-onClickOutside(dropdownRef, () => { open.value = false }, { ignore: [menuEl] })
-
-watch(open, (isOpen) => {
-  if (!isOpen) {
-    resetMenu()
-    return
-  }
-  const el = dropdownRef.value
-  if (!el) return
-  placeMenu(el, {
-    menuWidth: 220,
-    menuHeight: 196,
-    gap: 6,
-    trackViewport: true,
-  })
-})
-
-function modeLabel(m: MarvinModeDto): string {
-  if (m === 'auto') return 'Auto'
-  if (m === 'fast') return 'Fast'
-  if (m === 'smart') return 'Smart'
-  return 'Regular'
-}
-
-function modeIcon(m: MarvinModeDto): string {
-  if (m === 'auto') return 'tabler:sparkles'
-  if (m === 'fast') return 'tabler:bolt'
-  if (m === 'smart') return 'tabler:brain'
-  return 'tabler:scale'
-}
-
-function modeIconBg(m: MarvinModeDto, selected: boolean): string {
-  if (selected) {
-    if (m === 'auto') return 'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400'
-    if (m === 'fast') return 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400'
-    if (m === 'smart') return 'bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400'
-    return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400'
-  }
-  if (m === 'auto') return 'bg-gray-100 text-gray-400 dark:bg-zinc-800 dark:text-gray-500'
-  if (m === 'fast') return 'bg-gray-100 text-gray-400 dark:bg-zinc-800 dark:text-gray-500'
-  if (m === 'smart') return 'bg-gray-100 text-gray-400 dark:bg-zinc-800 dark:text-gray-500'
-  return 'bg-gray-100 text-gray-400 dark:bg-zinc-800 dark:text-gray-500'
-}
-
-function modeSubtitle(m: MarvinModeDto): string {
-  if (m === 'auto') return 'recommended'
-  if (m === 'fast') return 'quickest'
-  if (m === 'smart') return 'deepest'
-  return 'balanced'
-}
 
 async function onPickMode(mode: MarvinModeDto) {
-  open.value = false
   if (modeBusy.value) return
   if (mode === preferredMode.value) return
   modeBusy.value = true

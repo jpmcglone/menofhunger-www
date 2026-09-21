@@ -116,7 +116,6 @@
                 :feature="personOnlyBlockedFeature"
               />
               <slot v-else />
-              <AppAiConsentHost fallback />
             </div>
             </div>
 

@@ -65,7 +65,7 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t moh-border">
               <div v-for="m in modeKeys" :key="m" class="space-y-1">
-                <div class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">{{ modeLabel(m) }}</div>
+                <div class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">{{ marvinModeLabel(m) }}</div>
                 <div class="text-sm">
                   Cost:
                   <span class="tabular-nums font-medium">
@@ -204,7 +204,7 @@
                 <th class="px-3 py-2 font-semibold tabular-nums">Spent (30d)</th>
                 <th class="px-3 py-2 font-semibold tabular-nums">Events (30d)</th>
                 <th class="px-3 py-2 font-semibold">State</th>
-                <th class="px-3 py-2"></th>
+                <th class="px-3 py-2" />
               </tr>
             </thead>
             <tbody>
@@ -324,6 +324,7 @@ import type {
   MarvAdminDailyCostRowDto,
 } from '~/types/api'
 import { formatDateTime } from '~/utils/time-format'
+import { marvinModeLabel } from '~/utils/marvin-mode'
 
 definePageMeta({
   layout: 'app',
@@ -342,9 +343,6 @@ const { apiFetchData, apiFetch } = useApiClient()
 
 const modeKeys = ['fast', 'regular', 'smart'] as const
 type ModeKey = (typeof modeKeys)[number]
-function modeLabel(m: ModeKey) {
-  return m === 'fast' ? 'Fast' : m === 'smart' ? 'Smart' : 'Regular'
-}
 function defaultCost(m: ModeKey) {
   return m === 'fast' ? 1 : m === 'smart' ? 4 : 2
 }

@@ -605,6 +605,15 @@ describe('hydration guardrails (structural)', () => {
     expect(page).toMatch(/IntersectionObserver/)
   })
 
+  it('keeps a quiet regenerate on an up-to-date Catch me up summary', () => {
+    const modal = readFromRepo('components/app/MarvCatchUpModal.vue')
+    expect(modal).toMatch(/label="Regenerate"/)
+    expect(modal).toMatch(/kind="ghost"/)
+    expect(modal).toMatch(/function regenerate\(\) \{\s*void run\(\{ refresh: true \}\)/)
+    const composable = readFromRepo('composables/useMarvCatchUp.ts')
+    expect(composable).toMatch(/if \(opts\?\.refresh\) body\.refresh = true/)
+  })
+
   it('keeps the modal panel at a fixed height (not content-sized) so it never resizes between states', () => {
     // A resizing modal feels janky. The panel must declare an explicit viewport-bounded height
     // as well as the viewport-constrained max-h cap.

@@ -1606,10 +1606,10 @@ const aiSourceRows = computed(() => {
 })
 
 const AI_MODE_META: Record<string, { label: string; dot: string; bar: string }> = {
-  fast:    { label: 'Fast',    dot: 'bg-green-500',  bar: 'bg-green-500' },
-  regular: { label: 'Regular', dot: 'bg-blue-500',   bar: 'bg-blue-500' },
-  smart:   { label: 'Smart',   dot: 'bg-violet-500', bar: 'bg-violet-500' },
-  auto:    { label: 'Auto',    dot: 'bg-gray-400',   bar: 'bg-gray-400' },
+  fast:    { label: 'Standard', dot: 'bg-green-500',  bar: 'bg-green-500' },
+  regular: { label: 'Search',   dot: 'bg-blue-500',   bar: 'bg-blue-500' },
+  smart:   { label: 'Deep',     dot: 'bg-violet-500', bar: 'bg-violet-500' },
+  auto:    { label: 'Auto',     dot: 'bg-gray-400',   bar: 'bg-gray-400' },
 }
 
 const aiModeRows = computed(() => {

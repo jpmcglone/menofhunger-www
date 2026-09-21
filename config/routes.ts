@@ -32,6 +32,20 @@ export function isUserProfilePath(path: string): boolean {
   return path.startsWith('/u/')
 }
 
+/** True when `path` is this member's `/u/:username` profile, including nested tabs. */
+export function isOwnUserProfilePath(path: string, username?: string | null): boolean {
+  const handle = username?.trim()
+  if (!handle) return false
+  const pathname = path.split(/[?#]/, 1)[0] ?? ''
+  const match = pathname.match(/^\/u\/([^/]+)/)
+  if (!match?.[1]) return false
+  try {
+    return decodeURIComponent(match[1]).toLowerCase() === handle.toLowerCase()
+  } catch {
+    return match[1].toLowerCase() === handle.toLowerCase()
+  }
+}
+
 export function isPostPermalinkPath(path: string): boolean {
   return path.startsWith('/p/')
 }

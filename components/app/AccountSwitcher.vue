@@ -13,9 +13,10 @@
       type="button"
       class="moh-tap flex w-full items-center gap-2.5 moh-surface-hover moh-focus text-left"
       :class="compact ? 'px-3.5 py-2' : 'px-5 py-2.5'"
-      :disabled="account.isCurrent || Boolean(switchingId)"
+      :disabled="Boolean(switchingId)"
       :aria-current="account.isCurrent ? 'true' : undefined"
-      @click="onSwitch(account.id)"
+      :aria-label="accountActionLabel(account)"
+      @click="onPick(account)"
     >
       <AppUserAvatar
         :user="account"
@@ -57,7 +58,12 @@
 </template>
 
 <script setup lang="ts">
+import type { SwitchableAccount } from '~/types/api'
+import { isOwnUserProfilePath } from '~/config/routes'
+
 const { accounts, canSwitch, switchingId, refresh, switchTo } = useAccountSwitcher()
+const route = useRoute()
+const emit = defineEmits<{ close: [] }>()
 
 const props = withDefaults(
   defineProps<{
@@ -76,7 +82,32 @@ watch(
   { immediate: true },
 )
 
-function onSwitch(userId: string) {
-  void switchTo(userId)
+watch(switchingId, (id) => {
+  if (id) emit('close')
+})
+
+function accountLabel(account: SwitchableAccount): string {
+  return account.name || account.username || 'account'
+}
+
+function accountActionLabel(account: SwitchableAccount): string {
+  if (account.isCurrent) return `View ${accountLabel(account)} profile`
+  return `Switch to ${accountLabel(account)}`
+}
+
+function onPick(account: SwitchableAccount) {
+  emit('close')
+  if (account.isCurrent) {
+    openOwnProfileIfNeeded(account.username)
+    return
+  }
+  void switchTo(account.id)
+}
+
+function openOwnProfileIfNeeded(username: string | null | undefined) {
+  const handle = username?.trim()
+  if (!handle) return
+  if (isOwnUserProfilePath(route.path, handle)) return
+  void navigateTo(`/u/${encodeURIComponent(handle)}`)
 }
 </script>
