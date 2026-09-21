@@ -34,6 +34,7 @@
           class="relative z-10 h-full w-full"
           :class="videoIframeLoaded ? '' : 'pointer-events-none'"
           :title="youtubeOEmbed?.title ? youtubeOEmbed.title : 'Embedded video'"
+          referrerpolicy="strict-origin-when-cross-origin"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowfullscreen
           @load="onVideoIframeLoad"
@@ -66,9 +67,9 @@
         >
           <Icon name="tabler:volume" class="text-base" aria-hidden="true" />
         </button>
-        <!-- Play overlay — hidden once the video is active -->
+        <!-- Play overlay — hidden once the iframe has actually painted -->
         <div
-          v-if="!videoIsPlayable"
+          v-if="!(videoIsPlayable && videoIframeLoaded)"
           class="absolute inset-0 z-[25] flex flex-col justify-between pointer-events-none"
           aria-hidden="true"
         >
@@ -84,10 +85,11 @@
               {{ youtubeOEmbed.authorName }}
             </div>
           </div>
-          <!-- Play button (centred) -->
+          <!-- Play button (centred). Explicit square size so CSS-mode Tabler icons
+               stay a circle; padding-only wrappers collapse to the triangle. -->
           <div class="absolute inset-0 flex items-center justify-center">
-            <div class="rounded-full bg-black/60 p-3.5">
-              <Icon name="tabler:player-play-filled" class="text-2xl text-white" aria-hidden="true" />
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black/60">
+              <Icon name="tabler:player-play-filled" class="h-5 w-5 translate-x-px text-white" aria-hidden="true" />
             </div>
           </div>
         </div>
@@ -242,7 +244,7 @@
 
 <script setup lang="ts">
 import { mediaFocus } from '~/utils/mediaFocus'
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, youtubeVolumeCommand, postYouTubeIframeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlHostname, previewSourceLabel, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, withRumbleAutoplay, youtubeMuteCommand, youtubePlayCommand, youtubeVolumeCommand, postYouTubeIframeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlHostname, previewSourceLabel, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata, peekLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -619,6 +621,13 @@ function applyEmbedVolume(volume01: number) {
   postYouTubeIframeCommand(win, youtubeVolumeCommand(volume01))
 }
 
+function applyEmbedPlay() {
+  if (!import.meta.client) return
+  const win = videoIframeEl.value?.contentWindow
+  if (!win || isPreviewLinkRumble.value) return
+  postYouTubeIframeCommand(win, youtubePlayCommand())
+}
+
 function applyEmbedAudio() {
   applyEmbedMute(!appWideSoundOn.value)
   applyEmbedVolume(appWideVolume.value)
@@ -636,6 +645,7 @@ function scheduleYoutubeMuteSync() {
     youtubeMuteSyncTimers.push(window.setTimeout(() => {
       if (!desiredVideoSrc.value || !videoIframeLoaded.value) return
       syncYoutubeMuteFromAppPref()
+      applyEmbedPlay()
     }, delay))
   }
 }

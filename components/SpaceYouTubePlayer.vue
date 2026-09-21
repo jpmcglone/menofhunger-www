@@ -350,6 +350,7 @@ function prepareWatchPartyIframe() {
     'allow',
     'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
   )
+  iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin')
   iframe.setAttribute('allowfullscreen', '')
   iframe.setAttribute('playsinline', '')
   iframe.setAttribute('webkit-playsinline', '')

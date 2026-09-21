@@ -438,6 +438,15 @@ export function youtubeMuteCommand(muted: boolean): string {
   })
 }
 
+/** YouTube IFrame API play command. Used after load when URL autoplay is ignored. */
+export function youtubePlayCommand(): string {
+  return JSON.stringify({
+    event: 'command',
+    func: 'playVideo',
+    args: [],
+  })
+}
+
 /** Send a YouTube iframe command after the required `listening` handshake. */
 export function postYouTubeIframeCommand(win: Window, commandJson: string): void {
   win.postMessage(youtubeListeningCommand(), '*')

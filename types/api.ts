@@ -263,7 +263,7 @@ export type NotificationPreferences = {
   pushGroupActivity: boolean
   /** Word of the day + quote of the day push (fires at 9:00am / 9:30am ET). */
   pushDailyContent: boolean
-  /** 6pm ET reminder to complete today's check-in (skipped if user already checked in). */
+  /** 8pm ET reminder to complete today's check-in (at-risk streaks only). */
   pushCheckinReminder: boolean
   emailDigestWeekly: boolean
   emailNewNotifications: boolean

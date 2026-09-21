@@ -174,7 +174,7 @@
               <label class="flex min-h-11 items-center justify-between gap-4 py-2">
                 <span class="flex min-w-0 items-center gap-3">
                   <AppIconGlyph name="streak" :size="20" class="text-[var(--moh-text-muted)]" />
-                  <span class="font-medium">Streak reminder</span>
+                  <span class="font-medium">Check-in streak</span>
                 </span>
                 <Checkbox v-model="notifPrefs.emailStreakReminder" binary :disabled="notifPrefsSaving || !emailIsVerified" />
               </label>

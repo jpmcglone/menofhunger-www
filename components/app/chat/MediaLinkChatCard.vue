@@ -19,10 +19,10 @@
         @error="onPosterError"
       >
       <div v-if="kind === 'video'" class="absolute inset-0 flex items-center justify-center">
-        <div class="rounded-full bg-black/60 p-2.5">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/60">
           <Icon
             name="tabler:player-play-filled"
-            class="translate-x-px text-lg text-white"
+            class="h-5 w-5 translate-x-px text-white"
             aria-hidden="true"
           />
         </div>

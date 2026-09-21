@@ -408,6 +408,11 @@ export function useEmbeddedVideoManager() {
     if (!id) return
     if (import.meta.server) return
     ensureListeners()
+    // User tap must steal radio/voice. The activePostId watcher claims with
+    // `automatic: true`, which cannot interrupt a paused voice note or radio.
+    if (!(registry?.get(id) instanceof HTMLVideoElement)) {
+      if (!mediaFocus.claim(`video:embed:${id}`, () => { activePostId.value = null })) return
+    }
 
     // If PiP is active, a user-initiated play on another video should swap PiP to that video.
     if (pipPostId.value && pipPostId.value !== id) {

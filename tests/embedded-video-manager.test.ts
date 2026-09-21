@@ -15,6 +15,8 @@ describe('embedded video manager', () => {
     expect(src).toContain('new ResizeObserver')
     // Register used to only RAF once; first pick then waited for scroll.
     expect(src).toContain('scheduleComputeAfterLayout()')
+    expect(src).toContain('mediaFocus.claim(`video:embed:${id}`')
+    expect(src).toContain('User tap must steal radio/voice')
   })
 
   it('shares one volume level across players, defaulting to full volume and muted', () => {

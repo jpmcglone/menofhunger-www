@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, withRumbleAutoplay, youtubeMuteCommand, youtubeListeningCommand, youtubeVolumeCommand, postYouTubeIframeCommand, rumbleMuteCommand, rumbleVolumeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, clampMediaVolume, mediaVolumeToPercent, portraitEmbedFrameStyle, sameNormalizedUrl } from '../utils/link-utils'
+import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, withRumbleAutoplay, youtubeMuteCommand, youtubePlayCommand, youtubeListeningCommand, youtubeVolumeCommand, postYouTubeIframeCommand, rumbleMuteCommand, rumbleVolumeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, clampMediaVolume, mediaVolumeToPercent, portraitEmbedFrameStyle, sameNormalizedUrl } from '../utils/link-utils'
 
 const VIDEO_ID = 'dQw4w9WgXcQ'
 
@@ -50,6 +50,12 @@ describe('parseYouTubeUrl — URL shapes', () => {
   it('rejects IDs that are too short or contain invalid chars', () => {
     expect(parseYouTubeUrl('https://youtu.be/abc')).toBeNull()
     expect(parseYouTubeUrl('https://youtu.be/../../etc/passwd')).toBeNull()
+  })
+
+  it('keeps IDs that start with a hyphen and strips share tracking', () => {
+    const url = 'https://youtu.be/-M_FVBKdWSo?si=NkXp2290rvmzs-u9'
+    expect(parseYouTubeUrl(url)?.id).toBe('-M_FVBKdWSo')
+    expect(parseYouTubeUrl('https://www.youtube.com/watch?v=-M_FVBKdWSo&si=abc')?.id).toBe('-M_FVBKdWSo')
   })
 })
 
@@ -120,6 +126,12 @@ describe('getYouTubeEmbedUrl', () => {
   it('returns null for non-YouTube URLs', () => {
     expect(getYouTubeEmbedUrl('https://vimeo.com/123456')).toBeNull()
   })
+
+  it('embeds hyphen-prefix IDs on youtube-nocookie without dropping the leading dash', () => {
+    const url = getYouTubeEmbedUrl('https://youtu.be/-M_FVBKdWSo?si=NkXp2290rvmzs-u9', { autoplay: true })
+    expect(url).toContain('/embed/-M_FVBKdWSo?')
+    expect(url).not.toContain('/embed/M_FVBKdWSo')
+  })
 })
 
 describe('youtubeOEmbedRequestUrl', () => {
@@ -188,6 +200,10 @@ describe('withRumbleAutoplay', () => {
   it('builds a YouTube IFrame mute command', () => {
     expect(JSON.parse(youtubeMuteCommand(true))).toMatchObject({ func: 'mute' })
     expect(JSON.parse(youtubeMuteCommand(false))).toMatchObject({ func: 'unMute' })
+  })
+
+  it('builds a YouTube IFrame play command', () => {
+    expect(JSON.parse(youtubePlayCommand())).toMatchObject({ event: 'command', func: 'playVideo', args: [] })
   })
 
   it('handshakes before sending a YouTube iframe command', () => {
@@ -288,6 +304,11 @@ describe('PostRowLinkPreview portrait video chrome', () => {
     expect(src).toContain('postRumbleIframeCommand')
     expect(src).toContain('postRumbleIframeVolume')
     expect(src).toContain('youtubeVolumeCommand')
+    expect(src).toContain('youtubePlayCommand')
+    expect(src).toContain('applyEmbedPlay')
+    expect(src).toContain('referrerpolicy="strict-origin-when-cross-origin"')
+    expect(src).toContain('flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black/60')
+    expect(src).toContain('v-if="!(videoIsPlayable && videoIframeLoaded)"')
     expect(src).toContain('appWideVolume')
     expect(src).toContain('applyEmbedAudio')
     expect(src).toContain('muted: true')

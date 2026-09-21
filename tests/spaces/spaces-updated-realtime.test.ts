@@ -171,6 +171,7 @@ describe('spaces updated realtime wiring (structural)', () => {
     expect(player).toMatch(/youtube-nocookie.com/)
     expect(player).toMatch(/prepareWatchPartyIframe/)
     expect(player).toMatch(/accelerometer; autoplay/)
+    expect(player).toMatch(/strict-origin-when-cross-origin/)
     expect(player).toMatch(/pageshow/)
     expect(player).toMatch(/shouldCorrectPlayingPosition/)
     expect(player).toMatch(/if \(isYtPlaying\(\)\) return/)
