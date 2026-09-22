@@ -4,6 +4,7 @@ import { bumpAuthGeneration, bumpIdentityVersion, clearAuthClientState, getAuthG
 import { clearMohCacheAll } from '~/composables/useApiClient'
 import type { AccountKind, AccountSwitch, Impersonation, SwitchableAccount } from '~/types/api'
 import { isSafeRedirect } from '~/utils/url'
+import { forgetSessionIdentity, rememberSessionIdentity } from '~/utils/session-identity-preview'
 
 export type AuthUser = {
   id: string
@@ -105,6 +106,10 @@ export function useAuth() {
     // NOTE: useAuth() is used in middleware, so we can't use Vue lifecycle hooks here.
     const nuxtApp = useNuxtApp()
     ;(nuxtApp as { hooks: { hookOnce: (name: string, cb: () => void) => void } }).hooks.hookOnce('app:mounted', () => {
+      watch(user, (next, prev) => {
+        if (next?.id) rememberSessionIdentity(next)
+        else if (prev?.id) forgetSessionIdentity()
+      })
       const { addUsersCallback } = usePresence()
       const { invalidateUserPreviewCache } = useUserPreview()
       const cb: UsersCallback = {
