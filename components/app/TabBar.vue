@@ -39,10 +39,7 @@
               <AppNavIcon
                 :item="item" :selected="isActive(item.to)"
                 :size="24"
-                :class="['opacity-90', item.iconClass, item.key === 'check-ins' ? '!opacity-100' : '']"
-                :style="item.key === 'check-ins'
-                  ? `color: var(--moh-checkin); opacity: ${viewerCrewMembership !== null ? '1' : '0.75'}`
-                  : undefined"
+                :class="['opacity-90', item.iconClass]"
                 aria-hidden="true"
               />
               <AppNotificationBadge v-if="item.key === 'notifications'" />
@@ -94,27 +91,25 @@
               <Icon name="tabler:coin" size="13" aria-hidden="true" />
               {{ moreUser.coins!.toLocaleString() }} coins
             </NuxtLink>
-            <!-- Personal streak (orange) + crew streak (green) when in a crew -->
-            <span v-if="!isPageAccount && viewerCrewMembership && moreCrewStreakDays !== null" class="flex items-center gap-1 tabular-nums">
-              <span class="flex items-center gap-0.5 text-xs font-medium text-orange-500 dark:text-orange-400">
+            <!-- Personal streak in header: quiet meta, not orange chrome. -->
+            <span v-if="!isPageAccount && viewerCrewMembership && moreCrewStreakDays !== null" class="flex items-center gap-1 tabular-nums moh-meta">
+              <span class="flex items-center gap-0.5 text-xs font-medium">
                 <Icon name="tabler:flame" size="13" aria-hidden="true" />
                 {{ moreUser?.checkinStreakDays ?? 0 }}d
               </span>
-              <span class="text-gray-400 dark:text-gray-500 font-normal text-xs">·</span>
+              <span class="font-normal text-xs opacity-50" aria-hidden="true">·</span>
               <NuxtLink
                 :to="viewerCrewMembership.crewSlug ? `/c/${viewerCrewMembership.crewSlug}` : '/crew'"
-                class="flex items-center gap-0.5 text-xs font-semibold hover:underline"
-                style="color: var(--moh-checkin)"
+                class="flex items-center gap-0.5 text-xs font-medium hover:underline moh-focus"
                 @click.stop
               >
                 <Icon name="tabler:users" size="13" class="opacity-80" aria-hidden="true" />
                 {{ moreCrewStreakDays }}d crew
               </NuxtLink>
             </span>
-            <!-- Personal streak only (no crew) -->
             <span
               v-else-if="!isPageAccount && (moreUser?.checkinStreakDays ?? 0) > 0"
-              class="flex items-center gap-1 text-xs font-medium text-orange-500 dark:text-orange-400 tabular-nums"
+              class="flex items-center gap-1 text-xs font-medium moh-meta tabular-nums"
             >
               <Icon name="tabler:flame" size="13" aria-hidden="true" />
               {{ moreUser!.checkinStreakDays }}d streak
@@ -144,10 +139,7 @@
                 <Icon
                   :name="moreMenuIconName(mi)"
                   size="20"
-                  :class="['opacity-90', mi.iconClass, mi.key === 'check-ins' ? '!opacity-100' : '']"
-                  :style="mi.key === 'check-ins'
-                    ? `color: var(--moh-checkin); opacity: ${viewerCrewMembership !== null ? '1' : '0.75'}`
-                    : undefined"
+                  :class="['opacity-90', mi.iconClass]"
                   aria-hidden="true"
                 />
                 <div
@@ -166,6 +158,12 @@
                 </div>
               </div>
             </div>
+            <ClientOnly>
+              <span
+                v-if="mi.key === 'check-ins' && !isPageAccount && (moreUser?.checkinStreakDays ?? 0) > 0"
+                class="shrink-0 text-sm font-medium moh-meta tabular-nums"
+              >{{ moreUser!.checkinStreakDays }}d</span>
+            </ClientOnly>
           </NuxtLink>
 
         </template>
