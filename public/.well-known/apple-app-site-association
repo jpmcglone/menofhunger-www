@@ -14,6 +14,7 @@
           { "/": "/home", "comment": "Home tab" },
           { "/": "/groups", "comment": "Groups hub" },
           { "/": "/settings", "comment": "Settings" },
+          { "/": "/tiers", "comment": "Native membership comparison and StoreKit purchases" },
           { "/": "/feedback", "comment": "Send feedback" },
           { "/": "/check-ins", "comment": "Check-ins hub" },
           { "/": "/daily", "comment": "Daily word / quote hub" },

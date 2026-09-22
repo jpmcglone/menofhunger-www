@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
@@ -18,6 +20,10 @@ function render() {
 }
 beforeEach(() => { vi.resetAllMocks(); state.user.value = { id: 'member' } })
 describe('membership presentation', () => {
+  it('claims the native membership universal link', () => {
+    const association = JSON.parse(readFileSync(resolve(process.cwd(), 'public/.well-known/apple-app-site-association'), 'utf8'))
+    expect(association.applinks.details[0].components.some((rule: Record<string, string>) => rule['/'] === '/tiers')).toBe(true)
+  })
   it('selects only the highest tier and honors fresh billing', () => {
     expect(membershipTier({ premium: true, premiumPlus: true })).toBe('premiumPlus')
     expect(membershipTier({ premium: true }, contractFixtures.billing.verified)).toBe('verified')
