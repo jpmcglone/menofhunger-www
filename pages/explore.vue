@@ -28,21 +28,12 @@ v-for="tab in searchTabs" :key="tab.key"
 
     <div class="pt-4 pb-0 sm:pb-4 space-y-4">
 
-      <!-- Cashtag header: $SPY · company name + live chart -->
-      <!-- Chart renders for any well-formed $SYMBOL; company name is best-effort from the API -->
-      <div v-if="cashtagHeaderSymbol" class="border-b moh-border">
-        <div class="moh-gutter-x pt-3 pb-1 flex items-baseline gap-1.5">
-          <span class="text-sm font-bold text-[var(--p-primary-color)]">${{ cashtagHeaderSymbol }}</span>
-          <span v-if="cashtagName" class="text-sm moh-text-muted">· {{ cashtagName }}</span>
-        </div>
-        <ClientOnly>
-          <AppCashtagStockWidget
-            :key="`${cashtagHeaderSymbol}-${colorMode.value}`"
-            :symbol="cashtagHeaderSymbol"
-            :height="200"
-          />
-        </ClientOnly>
-      </div>
+      <!-- Cashtag stock card: identity + TradingView quote/chart + timeframe · no trade -->
+      <AppCashtagStockCard
+        v-if="cashtagHeaderSymbol"
+        :symbol="cashtagHeaderSymbol"
+        :name="cashtagName"
+      />
 
       <!-- Min length hint -->
       <div v-if="searchQueryTrimmed && searchQueryTrimmed.length < 2" class="px-4">
@@ -687,7 +678,6 @@ usePageSeo({
 })
 
 const route = useRoute()
-const colorMode = useColorMode()
 const router = useRouter()
 const { apiFetch, apiFetchData } = useApiClient()
 const { invalidate: invalidateMyGroups } = useMyGroups()

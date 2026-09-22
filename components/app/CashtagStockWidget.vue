@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full overflow-hidden" :class="isDark ? 'bg-zinc-900' : 'bg-gray-50'">
+  <div class="w-full overflow-hidden rounded-xl" :class="chromeClass">
     <div
       ref="containerEl"
       class="tradingview-widget-container"
@@ -11,34 +11,37 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{
+/** TradingView mini-symbol-overview dateRange values. */
+export type CashtagChartRange = '1D' | '1M' | '3M' | '12M' | 'ALL'
+
+const props = withDefaults(defineProps<{
   symbol: string
   /** Height in px (default 220) */
   height?: number
-}>()
+  /** Chart window — remounts the embed when changed. */
+  dateRange?: CashtagChartRange
+}>(), {
+  height: 220,
+  dateRange: '1D',
+})
 
 const containerEl = ref<HTMLElement | null>(null)
 const colorMode = useColorMode()
 
-/**
- * colorMode.value is reactive — it's the resolved effective mode ('dark'/'light').
- * We rely on it as the primary signal so watch(isDark) fires on theme switches.
- * DOM class and matchMedia are fallbacks for the 'system' case only.
- */
 const isDark = computed<boolean>(() => {
-  const val = colorMode.value  // reactive; updates when user switches theme
+  const val = colorMode.value
   if (val === 'dark') return true
   if (val === 'light') return false
-  // 'system' — resolve via OS preference
   if (!import.meta.client) return true
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true
 })
+
+const chromeClass = computed(() => (isDark.value ? 'bg-zinc-900' : 'bg-gray-50'))
 
 function mountWidget() {
   const el = containerEl.value
   if (!el) return
 
-  // Remove any previously injected script so hot-reload / symbol change works
   const prev = el.querySelector('script[data-tv-widget]')
   if (prev) prev.remove()
   const widgetEl = el.querySelector('.tradingview-widget-container__widget')
@@ -49,16 +52,17 @@ function mountWidget() {
   script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js'
   script.async = true
   script.type = 'text/javascript'
+  // Green trend line matches X-style up charts; TV still draws the live quote.
   script.textContent = JSON.stringify({
     symbol: props.symbol,
     width: '100%',
     height: props.height ?? 220,
     locale: 'en',
-    dateRange: '1M',
+    dateRange: props.dateRange ?? '1D',
     colorTheme: isDark.value ? 'dark' : 'light',
-    trendLineColor: 'rgba(41, 98, 255, 1)',
-    underLineColor: 'rgba(41, 98, 255, 0.16)',
-    underLineBottomColor: 'rgba(41, 98, 255, 0)',
+    trendLineColor: 'rgba(0, 186, 124, 1)',
+    underLineColor: 'rgba(0, 186, 124, 0.18)',
+    underLineBottomColor: 'rgba(0, 186, 124, 0)',
     isTransparent: false,
     autosize: true,
     largeChartUrl: '',
@@ -68,12 +72,13 @@ function mountWidget() {
 
 onMounted(() => nextTick(() => mountWidget()))
 
-// Re-mount if symbol changes without a full key change
-watch(() => props.symbol, () => nextTick(() => mountWidget()))
+watch(
+  () => [props.symbol, props.dateRange, isDark.value] as const,
+  () => nextTick(() => mountWidget()),
+)
 </script>
 
 <style scoped>
-/* Strip TradingView iframe default border */
 .tradingview-widget-container :deep(iframe) {
   display: block;
   border: none !important;
