@@ -1,5 +1,6 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="loading && !initialLoading" />
     <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Feedback"  description="Review and triage user feedback.">
       <template #leading>
         <div class="md:hidden">
@@ -53,7 +54,8 @@
       </AppInlineAlert>
     </div>
 
-    <div v-if="!loading && items.length === 0" class="px-4 text-sm moh-text-muted">
+    <div v-if="initialLoading" class="flex justify-center py-12"><AppLogoLoader /></div>
+    <div v-else-if="items.length === 0 && !error" class="px-4 text-sm moh-text-muted">
       No feedback yet.
     </div>
 
@@ -248,7 +250,7 @@ const statusFilter = ref<typeof statusOptions[number]['value']>('all')
 const categoryFilter = ref<typeof categoryOptions[number]['value']>('all')
 const feedbackQuery = ref('')
 
-const { items, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<AdminFeedbackItem>({
+const { items, nextCursor, loading, loadingMore, initialLoading, error, refresh, loadMore } = useCursorFeed<AdminFeedbackItem>({
   stateKey: 'admin-feedback',
   buildRequest: (cursor) => ({
     path: '/admin/feedback',

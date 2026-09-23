@@ -215,8 +215,8 @@
             <AppInlineAlert v-if="postsFeedError" class="moh-gutter-x mt-3" severity="danger">
               {{ postsFeedError }}
             </AppInlineAlert>
-            <AppSubtleSectionLoader :loading="postsFeedLoading && !postsFeedPosts.length" min-height-class="min-h-[200px]">
-              <div v-if="!postsFeedPosts.length && !postsFeedLoading" class="px-3 py-6 text-sm moh-text-muted sm:px-4">
+            <AppSubtleSectionLoader :loading="postsFeedInitialLoading" :refreshing="postsFeedLoading && !postsFeedInitialLoading" min-height-class="min-h-[200px]">
+              <div v-if="!postsFeedPosts.length" class="px-3 py-6 text-sm moh-text-muted sm:px-4">
                 No posts yet.
                 <Button v-if="isMember" label="Start a conversation" text @click="openGroupComposer" />
               </div>
@@ -256,8 +256,8 @@
             <AppInlineAlert v-if="repliesFeedError" class="moh-gutter-x mt-3" severity="danger">
               {{ repliesFeedError }}
             </AppInlineAlert>
-            <AppSubtleSectionLoader :loading="repliesFeedLoading && !repliesFeedPosts.length" min-height-class="min-h-[200px]">
-              <div v-if="!repliesFeedPosts.length && !repliesFeedLoading" class="px-3 py-6 text-sm moh-text-muted sm:px-4">
+            <AppSubtleSectionLoader :loading="repliesFeedInitialLoading" :refreshing="repliesFeedLoading && !repliesFeedInitialLoading" min-height-class="min-h-[200px]">
+              <div v-if="!repliesFeedPosts.length" class="px-3 py-6 text-sm moh-text-muted sm:px-4">
                 No posts yet.
               </div>
               <div v-else class="relative mt-3">
@@ -292,7 +292,7 @@
 
           <!-- ─── Media tab ──────────────────────────────────────────────── -->
           <div v-if="tabActivated.media" v-show="activeGroupTab === 'media'" class="min-h-[75vh]">
-            <AppSubtleSectionLoader :loading="mediaFeed.loading.value && !mediaFeed.items.value.length" min-height-class="min-h-[200px]">
+            <AppSubtleSectionLoader :loading="!mediaFeed.hasLoadedOnce.value && !mediaFeed.error.value && !mediaFeed.items.value.length" :refreshing="mediaFeed.loading.value && mediaFeed.hasLoadedOnce.value" min-height-class="min-h-[200px]">
               <div v-if="mediaFeed.error.value" class="px-3 py-6 text-sm text-red-700 dark:text-red-300 sm:px-4">
                 {{ mediaFeed.error.value }}
               </div>
@@ -563,6 +563,7 @@ const {
   collapsedSiblingReplyCountFor: postsFeedCollapsedSiblingReplyCountFor,
   nextCursor: postsFeedNextCursor,
   loading: postsFeedLoading,
+  initialLoading: postsFeedInitialLoading,
   loadingMore: postsFeedLoadingMore,
   error: postsFeedError,
   refresh: postsFeedRefresh,
@@ -597,6 +598,7 @@ const {
   collapsedSiblingReplyCountFor: repliesFeedCollapsedSiblingReplyCountFor,
   nextCursor: repliesFeedNextCursor,
   loading: repliesFeedLoading,
+  initialLoading: repliesFeedInitialLoading,
   loadingMore: repliesFeedLoadingMore,
   error: repliesFeedError,
   refresh: repliesFeedRefresh,

@@ -25,6 +25,7 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
 
   const users = ref<FollowListUser[]>([])
   const loading = ref(false)
+  const hasLoaded = ref(false)
   const error = ref<string | null>(null)
   const cache = useState<Record<string, { expiresAt: number; users: FollowListUser[] }>>('who-to-follow-cache', () => ({}))
 
@@ -40,6 +41,7 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
     const key = cacheKey(limit)
     const hit = cache.value[key]
     if (!opts?.force && hit && hit.expiresAt > Date.now()) {
+      hasLoaded.value = true
       users.value = hit.users
       error.value = null
       return
@@ -61,8 +63,8 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
       cache.value = { ...cache.value, [key]: { expiresAt: Date.now() + WHO_TO_FOLLOW_TTL_MS, users: next } }
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load suggestions.'
-      users.value = []
     } finally {
+      hasLoaded.value = true
       loading.value = false
     }
   }
@@ -92,6 +94,7 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
   return {
     users,
     loading,
+    hasLoaded,
     error,
     refresh,
     removeUserById,

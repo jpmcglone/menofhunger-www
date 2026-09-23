@@ -18,11 +18,11 @@
         {{ error }}
       </AppInlineAlert>
 
-      <AppSubtleSectionLoader :loading="shellLoading || loading" min-height-class="min-h-[120px]">
+      <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[120px]">
         <p v-if="!shellLoading && notApplicableReason" class="moh-gutter-x text-sm moh-text-muted py-6 text-center leading-relaxed">
           {{ notApplicableReason }}
         </p>
-        <p v-else-if="!shellLoading && !loading && !pending.length" class="moh-gutter-x text-sm moh-text-muted py-6 text-center">
+        <p v-else-if="!shellLoading && !pending.length" class="moh-gutter-x text-sm moh-text-muted py-6 text-center">
           No pending requests.
         </p>
         <ul v-else-if="pending.length" class="moh-divide">
@@ -195,4 +195,5 @@ onMounted(async () => {
     error.value = getApiErrorMessage(e) || 'Could not load this page.'
   }
 })
+const showInitialLoader = useInitialLoading(loading, () => pending.value.length > 0, error)
 </script>

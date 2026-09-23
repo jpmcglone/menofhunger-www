@@ -433,7 +433,7 @@ watch(
 
 watch([lightboxVideoEl, () => props.src], ([el], _old, cleanup) => {
   if (!el) return
-  cleanup(mediaManager.registerVideo(mediaID, el))
+  cleanup(mediaManager.registerVideo(mediaID, el, el, `file:${props.src}`))
   mediaManager.activate(mediaID)
   mediaManager.pin(mediaID, true)
 }, { flush: 'post' })

@@ -13,9 +13,9 @@
         {{ error }}
       </AppInlineAlert>
 
-      <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[240px]">
+      <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[240px]">
         <div
-          v-if="initialLoadResolved && !displayPosts.length && !nextCursor && !loading"
+          v-if="initialLoadResolved && !displayPosts.length && !nextCursor"
           class="px-3 py-6 sm:px-4 sm:py-8 text-center text-[13px] sm:text-sm text-gray-500 dark:text-gray-400"
         >
           No new posts yet.
@@ -77,7 +77,7 @@ const { markNewPostsRead } = useNotifications()
 const notifBadge = useNotificationsBadge()
 const initialLoadResolved = ref(false)
 
-const showInitialLoader = computed(() => !initialLoadResolved.value || (loading.value && displayPosts.value.length === 0))
+const showInitialLoader = computed(() => !initialLoadResolved.value && !error.value && displayPosts.value.length === 0)
 
 onMounted(async () => {
   try {

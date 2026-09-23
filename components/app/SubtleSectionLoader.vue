@@ -1,5 +1,6 @@
 <template>
-  <div class="relative">
+  <div class="relative" :class="loading ? minHeightClass : undefined" :aria-busy="loading || refreshing">
+    <AppRefreshIndicator :loading="refreshing && !loading" />
     <div
       :class="[
         'absolute inset-x-0 top-0 z-0 flex items-center justify-center transition-opacity duration-150',
@@ -12,6 +13,8 @@
     </div>
 
     <div
+      :inert="loading"
+      :aria-hidden="loading"
       class="relative z-10 transition-opacity duration-150"
       :class="loading ? 'opacity-0 pointer-events-none' : 'opacity-100'"
     >
@@ -23,10 +26,12 @@
 <script setup lang="ts">
 withDefaults(defineProps<{
   loading: boolean
+  refreshing?: boolean
   compact?: boolean
   minHeightClass?: string
 }>(), {
   compact: false,
+  refreshing: false,
   minHeightClass: 'min-h-[240px]',
 })
 </script>

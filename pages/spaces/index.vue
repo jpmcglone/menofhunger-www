@@ -1,5 +1,5 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
     <div class="w-full pb-6">
 
       <!-- Header -->
@@ -29,12 +29,13 @@
         </div>
       </div>
 
+      <AppRefreshIndicator :loading="loading && loadedOnce" />
       <!-- Loading -->
       <div v-if="!loadedOnce" class="moh-gutter-x py-6 flex items-center gap-2 moh-meta" role="status" aria-live="polite">
         <Icon name="tabler:loader" class="text-[18px] opacity-80 animate-spin" aria-hidden="true" />
         <span>Loading spaces…</span>
       </div>
-      <div v-else-if="spaces.length === 0 && !loading" class="moh-gutter-x py-4 moh-meta">
+      <div v-else-if="spaces.length === 0" class="moh-gutter-x py-4 moh-meta">
         No live or upcoming spaces.
       </div>
 

@@ -44,7 +44,7 @@
     </div>
 
     <div v-else class="mt-4">
-      <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
+      <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[220px]">
         <div v-if="folderNotFound" class="px-4 moh-text-muted text-sm">
           Folder not found.
         </div>
@@ -257,7 +257,7 @@ const items = feed.items
 const nextCursor = feed.nextCursor
 const loading = feed.loading
 const error = feed.error
-const showInitialLoader = computed(() => loading.value && items.value.length === 0)
+const showInitialLoader = feed.initialLoading
 
 const bookmarksFeedBump = useState<number>('moh.bookmarks.feed.bump.v1', () => 0)
 

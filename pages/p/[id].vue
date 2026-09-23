@@ -224,8 +224,9 @@
               @update:sort="onCommentsSortChangeWithScroll"
             />
           </div>
-          <AppSubtleSectionLoader :loading="commentsInitialLoading" min-height-class="min-h-[140px]">
-            <div v-if="!comments.length" class="px-4 sm:px-6 py-6 text-sm moh-text-muted">
+          <AppSubtleSectionLoader :loading="commentsInitialLoading" :refreshing="commentsLoading && !commentsInitialLoading" min-height-class="min-h-[140px]">
+            <AppInlineAlert v-if="commentsError" severity="warning">{{ commentsError }}</AppInlineAlert>
+            <div v-if="!comments.length && !commentsError" class="px-4 sm:px-6 py-6 text-sm moh-text-muted">
               No replies yet.
             </div>
             <template v-else>
@@ -506,6 +507,7 @@ const {
   comments,
   commentsNextCursor,
   commentsLoading,
+  commentsError,
   commentsCounts,
   commentsSort,
   commentCountDisplay,
@@ -520,7 +522,7 @@ const {
   post,
   isOnlyMe,
 })
-const commentsInitialLoading = computed(() => commentsLoading.value && comments.value.length === 0)
+const commentsInitialLoading = useInitialLoading(commentsLoading, () => comments.value.length > 0, commentsError)
 
 /** Guests see 2 public replies then a CTA; unverified authed users get the same tease + verify CTA. */
 const conversationTeaseLimit = 2

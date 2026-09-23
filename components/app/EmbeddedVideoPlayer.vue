@@ -160,7 +160,7 @@ function play() { manager.activate(id) }
 watch([box, () => props.youtubeUrl, () => props.rumbleUrl], ([el], _old, cleanup) => {
   if (!el || !import.meta.client) return
   position = 0
-  cleanup(manager.register(id, el, adapter, next => { state.value = next }))
+  cleanup(manager.register(id, el, adapter, next => { state.value = next }, props.youtubeUrl ? `youtube:${parseYouTubeUrl(props.youtubeUrl)?.id ?? props.youtubeUrl}` : `rumble:${props.rumbleUrl}`))
 }, { flush: 'post' })
 function fullscreen() { manager.pin(id, !!document.fullscreenElement && !!box.value?.contains(document.fullscreenElement)) }
 onMounted(() => { window.addEventListener('message', onMessage); document.addEventListener('fullscreenchange', fullscreen) })

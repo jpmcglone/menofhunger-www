@@ -1,7 +1,7 @@
 <template>
   <section
     :class="[
-      'h-full overflow-y-auto no-scrollbar border-b border-gray-200 dark:border-zinc-800',
+      'relative h-full overflow-y-auto no-scrollbar border-b border-gray-200 dark:border-zinc-800',
       // When both panes are visible, add the divider between them.
       !isTinyViewport ? 'border-b-0 border-r' : ''
     ]"
@@ -90,8 +90,9 @@
       <slot name="pinned" />
     </div>
 
+    <AppRefreshIndicator :loading="listRefreshing" />
     <div v-if="listLoading" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
-      Loading…
+      <AppLogoLoader compact />
     </div>
 
     <div v-else-if="displayList.length === 0" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
@@ -256,6 +257,7 @@ const props = defineProps({
   activeTab: { type: String as PropType<'primary' | 'requests'>, required: true },
   activeList: { type: Array as PropType<MessageConversation[]>, required: true },
   listLoading: { type: Boolean, required: true },
+  listRefreshing: { type: Boolean, default: false },
   showRequestsBadge: { type: Boolean, required: true },
   requestsBadgeText: { type: [String, Number] as PropType<string | number>, required: true },
   badgeToneClass: { type: String, required: true },

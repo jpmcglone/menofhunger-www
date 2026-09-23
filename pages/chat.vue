@@ -26,6 +26,7 @@
             :active-tab="activeTab"
             :active-list="activeList"
             :list-loading="listLoading"
+            :list-refreshing="listRefreshing"
             :show-requests-badge="showRequestsBadge"
             :requests-badge-text="requestsBadgeText"
             :badge-tone-class="badgeToneClass"
@@ -373,6 +374,7 @@ const {
   activeList,
   nextCursor,
   listLoading,
+  listRefreshing,
   loadingMore,
   showRequestsBadge,
   requestsBadgeText,

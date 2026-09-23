@@ -43,8 +43,8 @@
       </AppHorizontalScroller>
     </div>
 
-    <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
-      <div v-if="fetchError" class="px-3 py-6 sm:px-4 sm:py-8">
+    <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[220px]">
+      <div v-if="fetchError && !notifications.length" class="px-3 py-6 sm:px-4 sm:py-8">
         <AppInlineAlert severity="danger">
           <AppUserErrorMessage :error="fetchError" fallback="Could not load notifications." />
         </AppInlineAlert>
@@ -217,6 +217,7 @@ const {
   decrementUnreadKind,
   itemHref,
 } = useNotifications()
+const notifBadge = useNotificationsBadge()
 
 async function retryFetch() {
   await fetchList({ forceRefresh: true })
@@ -251,7 +252,6 @@ async function onChipSelect(kind: NotificationKind | 'other' | null) {
   void router.replace({ query })
 }
 
-const notifBadge = useNotificationsBadge()
 const {
   setNotificationUndeliveredCount,
   addInterest,
@@ -285,11 +285,7 @@ watch(
   },
   { deep: true },
 )
-// Show the full-page loader on first visit (never fetched) OR when arriving with
-// unread badge count > 0 — new notifications came in while we were away and we
-// don't want to flash the stale list before the fresh fetch lands.
-const entryPending = ref(false)
-const showInitialLoader = computed(() => !hasFetched.value || entryPending.value)
+const showInitialLoader = computed(() => !hasFetched.value && !fetchError.value && notifications.value.length === 0)
 
 function chipHasUnseenNotifications(kind: NotificationKind | 'other' | null): boolean {
   const category = notificationFilterCategory(kind)
@@ -634,13 +630,11 @@ function syncNotificationsOnEntry() {
 }
 
 onMounted(() => {
-  if (notifBadge.count.value > 0) entryPending.value = true
-  void syncNotificationsOnEntry().finally(() => { entryPending.value = false })
+  void syncNotificationsOnEntry()
 })
 
 onActivated(() => {
-  if (notifBadge.count.value > 0) entryPending.value = true
-  void syncNotificationsOnEntry().finally(() => { entryPending.value = false })
+  void syncNotificationsOnEntry()
 })
 
 watch(() => route.query.kind, async () => {

@@ -1,4 +1,5 @@
 import type { ArticleComment } from '~/types/api'
+import { getApiErrorMessage } from '~/utils/api-error'
 
 export function useArticleComments(articleId: Ref<string>) {
   const { apiFetch, apiFetchData } = useApiClient()
@@ -6,17 +7,19 @@ export function useArticleComments(articleId: Ref<string>) {
   const comments = ref<ArticleComment[]>([])
   const nextCursor = ref<string | null>(null)
   const loading = ref(false)
+  const loadError = ref<string | null>(null)
   const submitting = ref(false)
   const loadingRepliesByParent = ref<Record<string, boolean>>({})
 
   async function load() {
     loading.value = true
+    loadError.value = null
     try {
       const res = await apiFetch<ArticleComment[]>(`/articles/${articleId.value}/comments?limit=20`)
       comments.value = res.data ?? []
       nextCursor.value = res.pagination?.nextCursor ?? null
-    } catch {
-      // silent
+    } catch (error) {
+      loadError.value = getApiErrorMessage(error) || "Could not load replies."
     } finally {
       loading.value = false
     }
@@ -152,6 +155,7 @@ export function useArticleComments(articleId: Ref<string>) {
     comments,
     nextCursor,
     loading,
+    loadError,
     submitting,
     load,
     loadMore,

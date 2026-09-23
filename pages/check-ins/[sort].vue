@@ -45,8 +45,8 @@
         </AppInlineAlert>
       </div>
 
-      <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
-        <div v-if="posts.length === 0" class="px-4 py-6 text-sm moh-text-muted">
+      <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[220px]">
+        <div v-if="posts.length === 0 && !error" class="px-4 py-6 text-sm moh-text-muted">
           No check-ins yet.
         </div>
 
@@ -111,7 +111,7 @@ usePageSeo({
 
 // ─── Feed ───────────────────────────────────────────────────────────────────
 
-const { items: posts, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<FeedPost>({
+const { items: posts, nextCursor, loading, loadingMore, initialLoading: showInitialLoader, error, refresh, loadMore } = useCursorFeed<FeedPost>({
   stateKey: `check-ins-feed-${sort.value}`,
   buildRequest: (cursor) => ({
     path: '/posts',
@@ -130,7 +130,6 @@ const { items: posts, nextCursor, loading, loadingMore, error, refresh, loadMore
   defaultErrorMessage: 'Failed to load check-ins.',
   loadMoreErrorMessage: 'Failed to load more check-ins.',
 })
-const showInitialLoader = computed(() => loading.value && posts.value.length === 0)
 
 function onDeleted(id: string) {
   posts.value = posts.value.filter((p) => p.id !== id)

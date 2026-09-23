@@ -1,5 +1,6 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="loading && !initialLoading" />
     <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Verification"  description="Review and approve pending verification requests.">
       <template #leading>
         <div class="md:hidden">
@@ -45,7 +46,8 @@
       </AppInlineAlert>
     </div>
 
-    <div v-else-if="!loading && items.length === 0" class="px-4 text-sm moh-text-muted">
+    <div v-else-if="initialLoading" class="flex justify-center py-12"><AppLogoLoader /></div>
+    <div v-else-if="items.length === 0 && !error" class="px-4 text-sm moh-text-muted">
       No verification requests yet.
     </div>
 
@@ -304,7 +306,7 @@ const statusOptions = [
 const statusFilter = ref<typeof statusOptions[number]['value']>('pending')
 const query = ref('')
 
-const { items, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<AdminVerificationRequest>({
+const { items, nextCursor, loading, loadingMore, initialLoading, error, refresh, loadMore } = useCursorFeed<AdminVerificationRequest>({
   stateKey: 'admin-verification',
   buildRequest: (cursor) => ({
     path: '/admin/verification',

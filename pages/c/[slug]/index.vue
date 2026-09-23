@@ -167,8 +167,8 @@
           {{ feedError }}
         </AppInlineAlert>
 
-        <AppSubtleSectionLoader :loading="feedLoading && !posts.length" min-height-class="min-h-[200px]">
-          <div v-if="!posts.length && !feedLoading" class="px-3 py-6 text-sm moh-text-muted text-center">
+        <AppSubtleSectionLoader :loading="feedInitialLoading" :refreshing="feedLoading && !feedInitialLoading" min-height-class="min-h-[200px]">
+          <div v-if="!posts.length" class="px-3 py-6 text-sm moh-text-muted text-center">
             No posts from this crew yet.
           </div>
           <div v-else class="relative">
@@ -460,6 +460,7 @@ const {
   collapsedSiblingReplyCountFor,
   nextCursor,
   loading: feedLoading,
+  initialLoading: feedInitialLoading,
   loadingMore,
   error: feedError,
   refresh: feedRefresh,

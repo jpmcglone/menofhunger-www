@@ -6,14 +6,14 @@
       <h1 class="moh-h2">Scheduled Posts</h1>
     </div>
 
-    <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
+    <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[220px]">
       <!-- Error -->
       <div v-if="error" class="moh-gutter-x mt-4">
         <AppInlineAlert severity="danger">{{ error }}</AppInlineAlert>
       </div>
 
       <!-- Empty state -->
-      <div v-else-if="items.length === 0 && !loading" class="moh-gutter-x py-8 text-center">
+      <div v-else-if="items.length === 0" class="moh-gutter-x py-8 text-center">
         <Icon name="tabler:calendar-time" class="text-3xl moh-text-muted mb-2" aria-hidden="true" />
         <p class="text-sm moh-text-muted">Nothing scheduled yet.</p>
         <div class="mt-4 flex justify-center">
@@ -87,7 +87,7 @@ function openScheduleComposer() {
 
 const { items, nextCursor, loading, error, loadMore, deleteScheduled, patchItem } = useScheduledPosts()
 
-const showInitialLoader = computed(() => loading.value && items.value.length === 0)
+const showInitialLoader = useInitialLoading(loading, () => items.value.length > 0, error)
 
 // ─── Edit modal ───────────────────────────────────────────────────────────────
 const editing = ref<ScheduledPost | null>(null)

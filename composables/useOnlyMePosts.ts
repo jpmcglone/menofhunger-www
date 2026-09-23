@@ -16,7 +16,7 @@ export function useOnlyMePosts() {
   })
 
   const posts = feed.items
-  const { nextCursor, loading, error, refresh, loadMore } = feed
+  const { nextCursor, loading, initialLoading, error, refresh, loadMore } = feed
 
   function removePost(id: string) {
     const pid = (id ?? '').trim()
@@ -35,5 +35,5 @@ export function useOnlyMePosts() {
     posts.value = posts.value.map((p) => (p.id === pid ? updated : p))
   }
 
-  return { posts, nextCursor, loading, error, refresh, loadMore, removePost, prependPost, replacePost }
+  return { posts, nextCursor, loading, initialLoading, error, refresh, loadMore, removePost, prependPost, replacePost }
 }

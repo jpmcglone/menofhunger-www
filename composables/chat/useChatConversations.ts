@@ -44,6 +44,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
 
   const nextCursorByTab = ref<{ primary: string | null; requests: string | null }>({ primary: null, requests: null })
   const listLoadingByTab = ref<{ primary: boolean; requests: boolean }>({ primary: false, requests: false })
+  const loadedByTab = ref({ primary: false, requests: false })
   const loadingMore = ref(false)
 
   const selectedConversation = computed(() =>
@@ -63,7 +64,8 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
     return list
   })
   const nextCursor = computed(() => nextCursorByTab.value[activeTab.value])
-  const listLoading = computed(() => listLoadingByTab.value[activeTab.value])
+  const listLoading = computed(() => !loadedByTab.value[activeTab.value] && activeList.value.length === 0)
+  const listRefreshing = computed(() => listLoadingByTab.value[activeTab.value] && !listLoading.value)
 
   // Drive the requests tab badge from local state so it clears immediately when a request
   // is accessed (unreadCount → 0) or deleted (removed from the list). The global nav badge
@@ -92,6 +94,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
       }
       nextCursorByTab.value = { ...nextCursorByTab.value, [tab]: res.pagination?.nextCursor ?? null }
     } finally {
+      loadedByTab.value = { ...loadedByTab.value, [tab]: true }
       listLoadingByTab.value = { ...listLoadingByTab.value, [tab]: false }
     }
   }
@@ -451,6 +454,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
     activeList,
     nextCursor,
     listLoading,
+    listRefreshing,
     requestsBadgeCount,
     showRequestsBadge,
     requestsBadgeText,

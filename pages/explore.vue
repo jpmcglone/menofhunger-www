@@ -1,5 +1,6 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="(discoverLoading && !discoverInitialLoading) || (topicLoading && !topicLoadingInitial) || (categoryLoading && !categoryLoadingInitial)" />
   <div class="w-full explore-page">
     <!-- Sticky search bar (replaces layout title bar) -->
     <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
@@ -100,7 +101,7 @@ v-else-if="searchActive && !activeTopic && !activeCategory"
           </AppInlineAlert>
         </div>
 
-        <div v-else-if="topicLoading && topicPosts.length === 0" class="flex justify-center py-12">
+        <div v-else-if="topicLoadingInitial" class="flex justify-center py-12">
           <AppLogoLoader />
         </div>
 
@@ -177,7 +178,7 @@ v-else-if="searchActive && !activeTopic && !activeCategory"
           </AppInlineAlert>
         </div>
 
-        <div v-else-if="categoryLoading && categoryPosts.length === 0" class="flex justify-center py-12">
+        <div v-else-if="categoryLoadingInitial" class="flex justify-center py-12">
           <AppLogoLoader />
         </div>
 
@@ -803,7 +804,7 @@ const {
   enabled: computed(() => !isSearching.value),
   isAuthed: computed(() => isAuthed.value),
 })
-const discoverInitialLoading = computed(() => discoverLoading.value && !discoverHasLoadedOnce.value)
+const discoverInitialLoading = computed(() => !discoverHasLoadedOnce.value && !discoverError.value)
 
 const joinExploreGroupId = ref<string | null>(null)
 
@@ -1605,6 +1606,8 @@ watch(
   },
   { immediate: true },
 )
+const topicLoadingInitial = useInitialLoading(topicLoading, () => topicPosts.value.length > 0, topicError)
+const categoryLoadingInitial = useInitialLoading(categoryLoading, () => categoryPosts.value.length > 0, categoryError)
 </script>
 
 <style scoped>

@@ -13,6 +13,8 @@ export interface MediaPlayerAdapter {
 export type VideoCandidate = {
   adapter: MediaPlayerAdapter
   autoplay?: boolean
+  /** Stable media identity, independent of a mounted player instance. */
+  playbackKey?: string
   /** null means disconnected, covered, or less than 75% visible. */
   measure(): { distance: number } | null
   onState?(state: PlaybackState): void
@@ -22,6 +24,7 @@ export type VideoCandidate = {
 export class VideoAutoplayCoordinator {
   private entries = new Map<string, VideoCandidate>()
   private suppressed = new Set<string>()
+  private manuallyPaused = new Set<string>()
   private active: string | null = null
   private pinned: string | null = null
   private backgroundPinned = false
@@ -40,6 +43,8 @@ export class VideoAutoplayCoordinator {
 
   get activeId() { return this.active }
   get audio() { return { ...this.sound } }
+  private playbackKey(id: string) { return this.entries.get(id)?.playbackKey ?? id }
+  private isSuppressed(id: string) { return this.suppressed.has(id) || this.manuallyPaused.has(this.playbackKey(id)) }
   private focusID(id: string) { return `video:feed:${id}` }
 
   register(id: string, candidate: VideoCandidate): () => void {
@@ -89,9 +94,11 @@ export class VideoAutoplayCoordinator {
       entry.adapter.pause('interrupted')
       return
     }
+    if (state === 'playing' && this.active === id) this.manuallyPaused.delete(this.playbackKey(id))
     entry.onState?.(state)
     if (state === 'paused' && userInitiated || state === 'ended' || state === 'blocked' || state === 'failed') {
-      this.suppressed.add(id)
+      if (state === 'paused' && userInitiated) this.manuallyPaused.add(this.playbackKey(id))
+      else this.suppressed.add(id)
       if (this.active === id && (this.pinned !== id || state !== 'paused')) this.pauseActive('interrupted')
     }
     this.schedule()
@@ -100,6 +107,7 @@ export class VideoAutoplayCoordinator {
   /** Explicit playback alone may replace selected/paused audio. */
   play(id: string) {
     this.suppressed.delete(id)
+    this.manuallyPaused.delete(this.playbackKey(id))
     this.start(id, false)
   }
 
@@ -128,9 +136,9 @@ export class VideoAutoplayCoordinator {
     const currentBox = this.active ? measured.get(this.active) : null
     if (currentBox && !best) best = this.active
     if (currentBox && best && currentBox.distance <= measured.get(best)!.distance + 120) best = this.active
-    if (!best || best === this.active || this.suppressed.has(best)) {
+    if (!best || best === this.active || this.isSuppressed(best)) {
       this.pending = null
-      if (best && this.suppressed.has(best) && this.active) this.pauseActive('viewport')
+      if (best && this.isSuppressed(best) && this.active) this.pauseActive('viewport')
       return
     }
     const now = Date.now()
@@ -147,7 +155,7 @@ export class VideoAutoplayCoordinator {
   private start(id: string, automatic: boolean) {
     const entry = this.entries.get(id)
     if (!entry || this.hidden && this.pinned !== id) return
-    if (automatic && this.suppressed.has(id)) return
+    if (automatic && this.isSuppressed(id)) return
     const previousID = this.active
     const previousOwner = previousID ? this.focusID(previousID) : null
     // An automatic feed-to-feed transition may replace its own owner, but never audio or a lightbox.
@@ -190,6 +198,7 @@ export class VideoAutoplayCoordinator {
   reset() {
     this.stopAll()
     this.suppressed.clear()
+    this.manuallyPaused.clear()
     this.setAudio({ muted: true, volume: 1 })
     this.schedule()
   }

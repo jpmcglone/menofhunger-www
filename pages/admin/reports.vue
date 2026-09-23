@@ -1,5 +1,6 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="loading && !initialLoading" />
     <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Reports"  description="Review and triage reported posts and users.">
       <template #leading>
         <div class="md:hidden">
@@ -61,7 +62,8 @@
       </AppInlineAlert>
     </div>
 
-    <div v-if="!loading && items.length === 0" class="px-4 text-sm moh-text-muted">
+    <div v-if="initialLoading" class="flex justify-center py-12"><AppLogoLoader /></div>
+    <div v-else-if="items.length === 0 && !error" class="px-4 text-sm moh-text-muted">
       No reports yet.
     </div>
 
@@ -259,7 +261,7 @@ const targetFilter = ref<typeof targetOptions[number]['value']>('all')
 const reasonFilter = ref<typeof reasonOptions[number]['value']>('all')
 const reportsQuery = ref('')
 
-const { items, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<AdminReportItem>({
+const { items, nextCursor, loading, loadingMore, initialLoading, error, refresh, loadMore } = useCursorFeed<AdminReportItem>({
   stateKey: 'admin-reports',
   buildRequest: (cursor) => ({
     path: '/admin/reports',

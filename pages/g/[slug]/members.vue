@@ -60,7 +60,7 @@
           {{ error }}
         </AppInlineAlert>
 
-        <AppSubtleSectionLoader :loading="loading && !rows.length" min-height-class="min-h-[120px]">
+        <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[120px]">
           <ul v-if="filteredRows.length" class="moh-divide">
             <li
               v-for="m in filteredRows"
@@ -314,4 +314,5 @@ onMounted(async () => {
   void markReadBySubject({ group_id: shell.value.id })
   await reloadFromServer()
 })
+const showInitialLoader = useInitialLoading(loading, () => rows.value.length > 0, error)
 </script>

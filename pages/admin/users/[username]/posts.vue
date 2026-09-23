@@ -7,7 +7,7 @@
       :username="username"
     />
 
-    <div v-if="loading" class="px-4 py-16 flex justify-center">
+    <div v-if="initialLoading" class="px-4 py-16 flex justify-center">
       <AppLogoLoader :size="48" />
     </div>
 
@@ -99,4 +99,5 @@ async function loadMore() {
 }
 
 watch(() => username.value, () => void loadInitial(), { immediate: true })
+const initialLoading = useInitialLoading(loading, () => items.value.length > 0, error)
 </script>

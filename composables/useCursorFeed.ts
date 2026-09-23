@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import type { ApiEnvelope } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
-import type { MohApiQuery } from '~/composables/useApiClient'
+import { useApiClient, type MohApiQuery } from '~/composables/useApiClient'
 
 export type CursorFeedBuildRequest = (cursor: string | null) => { path: string; query?: MohApiQuery }
 
@@ -47,6 +47,8 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
   const loading: Ref<boolean> = stateMode === 'state' ? useState<boolean>(`${stateKey}-loading`, () => false) : ref(false)
   const loadingMore: Ref<boolean> = stateMode === 'state' ? useState<boolean>(`${stateKey}-loading-more`, () => false) : ref(false)
   const error: Ref<string | null> = stateMode === 'state' ? useState<string | null>(`${stateKey}-error`, () => null) : ref<string | null>(null)
+  const hasLoaded = stateMode === 'state' ? useState<boolean>(`${stateKey}-loaded`, () => false) : ref(false)
+  const initialLoading = computed(() => !hasLoaded.value && !error.value && items.value.length === 0)
   let refreshPromise: Promise<void> | null = null
   let refreshQueued = false
 
@@ -94,6 +96,7 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
           try {
             const { path, query } = options.buildRequest(null)
             const res = await apiFetch<T[]>(path, { method: 'GET', query })
+            if (refreshQueued) continue
             const data = res.data ?? []
             items.value = options.mergeOnRefresh
               ? options.mergeOnRefresh(data, existing)
@@ -106,6 +109,7 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
           }
         } while (refreshQueued)
       } finally {
+        hasLoaded.value = true
         loading.value = false
         refreshPromise = null
       }
@@ -135,5 +139,5 @@ export function useCursorFeed<T>(options: UseCursorFeedOptions<T>) {
     }
   }
 
-  return { items, nextCursor, loading, loadingMore, error, refresh, loadMore }
+  return { items, nextCursor, loading, loadingMore, hasLoaded, initialLoading, error, refresh, loadMore }
 }

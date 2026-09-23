@@ -7,12 +7,12 @@ describe('unified viewport playback', () => {
   let coordinator: VideoAutoplayCoordinator
   beforeEach(() => { vi.useFakeTimers(); focus = new MediaFocus(); coordinator = new VideoAutoplayCoordinator(focus) })
   afterEach(() => { coordinator.dispose(); vi.useRealTimers() })
-  function video(id: string, distance: number | null = 0) {
+  function video(id: string, distance: number | null = 0, playbackKey?: string) {
     const box = { distance }
     const play = vi.fn((_request: PlayRequest) => {})
     const pause = vi.fn()
     const setAudio = vi.fn()
-    const dispose = coordinator.register(id, { adapter: { play, pause, setAudio }, measure: () => box.distance === null ? null : { distance: box.distance } })
+    const dispose = coordinator.register(id, { playbackKey, adapter: { play, pause, setAudio }, measure: () => box.distance === null ? null : { distance: box.distance } })
     return { box, play, pause, setAudio, dispose }
   }
   async function settle() { coordinator.schedule(); await vi.advanceTimersByTimeAsync(301) }
@@ -57,12 +57,36 @@ describe('unified viewport playback', () => {
     focus.release('voice'); expect(coordinator.activeId).toBe('video')
     expect(focus.currentId).toBe('video:feed:video')
   })
-  it('respects user pause until exit/reentry, including explicit sound playback', async () => {
+  it('remembers user pause after exit/reentry until explicit play', async () => {
     const item = video('video'); coordinator.play('video'); coordinator.setAudio({ muted: false })
     coordinator.report('video', 'paused', true); await settle(); expect(item.play).toHaveBeenCalledOnce()
     item.box.distance = null; await settle(); item.box.distance = 0; await settle()
+    expect(item.play).toHaveBeenCalledOnce()
+    expect(coordinator.activeId).toBeNull()
+    coordinator.play('video'); expect(item.play).toHaveBeenCalledTimes(2)
+    item.box.distance = null; await settle(); item.box.distance = 0; await settle()
+    expect(item.play).toHaveBeenCalledTimes(3)
+  })
+  it('retains a manual pause across remounts without suppressing a different video', async () => {
+    const original = video('row:1', 0, 'file:one.mp4'); await settle()
+    coordinator.report('row:1', 'paused', true); original.dispose()
+    const replacement = video('row:2', 0, 'file:one.mp4'); await settle()
+    expect(replacement.play).not.toHaveBeenCalled()
+    replacement.box.distance = null
+    const other = video('row:3', 0, 'file:two.mp4'); await settle()
+    expect(other.play).toHaveBeenCalledOnce()
+    other.box.distance = null; replacement.box.distance = 0; await settle()
+    expect(replacement.play).not.toHaveBeenCalled()
+    coordinator.reset(); await settle()
+    expect(replacement.play).toHaveBeenCalledOnce()
+  })
+  it('remembers paused fullscreen video but clears that choice when its controls resume', async () => {
+    const item = video('video'); await settle(); coordinator.pin('video', true)
+    coordinator.report('video', 'paused', true)
+    coordinator.report('video', 'playing')
+    coordinator.pin('video', false); item.box.distance = null; await settle()
+    item.box.distance = 0; await settle()
     expect(item.play).toHaveBeenCalledTimes(2)
-    item.box.distance = null; await settle(); expect(coordinator.activeId).toBeNull()
   })
   it('selects center with hysteresis and waits for stability', async () => {
     const a = video('a', 100); const b = video('b', 150); await settle()

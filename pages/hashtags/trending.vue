@@ -1,5 +1,5 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
     <div class="w-full">
       <div class="px-4 pt-4 pb-2">
         <AppPageHeader
@@ -15,7 +15,8 @@
         </AppInlineAlert>
       </div>
 
-      <div v-if="loading && tags.length === 0" class="flex justify-center py-12">
+      <AppRefreshIndicator :loading="loading && !initialLoading" />
+      <div v-if="initialLoading" class="flex justify-center py-12">
         <AppLogoLoader />
       </div>
 
@@ -71,7 +72,7 @@ usePageSeo({
   noindex: true,
 })
 
-const { items: tags, nextCursor, loading, loadingMore, error, refresh, loadMore } = useCursorFeed<HashtagResult>({
+const { items: tags, nextCursor, loading, loadingMore, initialLoading, error, refresh, loadMore } = useCursorFeed<HashtagResult>({
   stateKey: 'hashtags-trending',
   buildRequest: (cursor) => ({
     path: '/hashtags/trending',

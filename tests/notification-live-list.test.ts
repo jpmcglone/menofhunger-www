@@ -39,6 +39,7 @@ const callback = () => mocks.add.mock.calls.at(-1)![0]
 beforeEach(() => {
   states.clear()
   vi.clearAllMocks()
+  mocks.fetch.mockReset()
   user.value = { id: 'viewer' }
   mocks.fetch.mockImplementation(() => new Promise(() => {}))
   scope = effectScope()
@@ -47,6 +48,21 @@ beforeEach(() => {
 afterEach(() => scope.stop())
 
 describe('session notification lifecycle', () => {
+  it('preserves established notifications during a filter request', async () => {
+    mocks.fetch.mockResolvedValueOnce(response([row('existing')]))
+    await inbox.fetchList()
+    const next = deferred()
+    mocks.fetch.mockReturnValueOnce(next.promise)
+    const changing = inbox.setKind('comment')
+    expect(inbox.hasFetched.value).toBe(true)
+    expect(inbox.loading.value).toBe(true)
+    expect(inbox.notifications.value).toEqual([row('existing')])
+    next.resolve(response([]))
+    await changing
+    expect(inbox.notifications.value).toEqual([])
+    expect(inbox.hasFetched.value).toBe(true)
+  })
+
   it('keeps distinct events about one post and deduplicates repeated IDs offscreen', () => {
     callback().onNew({ notification: (row('one') as any).notification })
     callback().onNew({ notification: (row('two', 'mention') as any).notification })

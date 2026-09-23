@@ -41,6 +41,9 @@
                   <div :class="titleWrap ? 'moh-h2 text-balance' : 'truncate moh-h2'">
                     {{ title }}
                   </div>
+                  <p v-if="subtitle" class="moh-body moh-text-muted mt-1 text-pretty">
+                    {{ subtitle }}
+                  </p>
                 </div>
                 <button
                   v-if="showClose"
@@ -97,6 +100,8 @@ const props = withDefaults(
   defineProps<{
     modelValue: boolean
     title: string
+    /** Optional line under the title, inside the header. */
+    subtitle?: string
     /** Max width Tailwind class for the panel (default matches follow list dialog sizing). */
     maxWidthClass?: string
     /** When false, clicking the backdrop does nothing. */
@@ -116,6 +121,7 @@ const props = withDefaults(
   }>(),
   {
     maxWidthClass: 'max-w-[38rem]',
+    subtitle: '',
     dismissableMask: true,
     showClose: true,
     disableClose: false,

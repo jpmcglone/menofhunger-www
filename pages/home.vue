@@ -191,7 +191,7 @@
           <AppUserErrorMessage :error="error" fallback="Failed to load feed." />
         </AppInlineAlert>
 
-        <AppSubtleSectionLoader :loading="showMainLoader" min-height-class="min-h-[240px]">
+        <AppSubtleSectionLoader :loading="showMainLoader" :refreshing="loading && !showMainLoader" min-height-class="min-h-[240px]">
             <AppFeedFollowingEmptyState
               v-if="initialFeedResolved && showFollowingEmptyState"
               :following-count="followingCount"
@@ -204,13 +204,6 @@
             />
 
             <div ref="feedVirtualListContainerEl" class="relative">
-              <div
-                class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
-                :class="feedRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                :aria-hidden="!feedRefreshingOverlay"
-              >
-                <AppLogoLoader compact />
-              </div>
 
               <!--
                 Virtualized feed list — only ~OVERSCAN+visible rows are mounted at any time.
@@ -225,9 +218,6 @@
                   height: feedTotalSize + 'px',
                   width: '100%',
                   position: 'relative',
-                  transition: 'opacity 150ms',
-                  opacity: feedRefreshingOverlay ? 0.6 : 1,
-                  pointerEvents: feedRefreshingOverlay ? 'none' : 'auto',
                 }"
               >
                 <div
@@ -264,7 +254,7 @@
               </div>
 
               <p
-                v-if="initialFeedResolved && !loading && activeHomeFeedDisplayItems.length === 0"
+                v-if="initialFeedResolved && activeHomeFeedDisplayItems.length === 0"
                 class="px-4 py-12 text-center text-sm text-gray-400 dark:text-zinc-500"
               >
                 No posts in this filter yet.
@@ -811,7 +801,6 @@ watch(
 )
 
 const showMainLoader = computed(() => !initialFeedResolved.value && !error.value && posts.value.length === 0)
-const feedRefreshingOverlay = computed(() => loading.value && initialFeedResolved.value && displayItems.value.length > 0)
 
 function openOnlyMeComposer() {
   openComposer?.('onlyMe')

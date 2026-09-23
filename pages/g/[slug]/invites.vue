@@ -34,9 +34,9 @@
         {{ error }}
       </AppInlineAlert>
 
-      <AppSubtleSectionLoader :loading="shellLoading || (loading && !invites.length)" min-height-class="min-h-[120px]">
+      <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[120px]">
         <p
-          v-if="!shellLoading && !loading && !invites.length"
+          v-if="!shellLoading && !invites.length"
           class="moh-gutter-x text-sm moh-text-muted py-8 text-center"
         >
           No pending invites. Tap <span class="font-semibold moh-text">Invite</span> to add someone.
@@ -281,4 +281,5 @@ onMounted(async () => {
   addGroupInviteCallback(inviteCb)
 })
 onBeforeUnmount(() => removeGroupInviteCallback(inviteCb))
+const showInitialLoader = useInitialLoading(loading, () => invites.value.length > 0, error)
 </script>

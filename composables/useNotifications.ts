@@ -237,18 +237,19 @@ export function useNotifications() {
         seen.add(key)
         return true
       })
+      hasFetched.value = true
       nextCursor.value = res.pagination?.nextCursor ?? null
       unreadByKind.value = normalizeUnreadByKind(res.pagination?.unreadByKind)
       unreadByCategory.value = res.pagination?.unreadByCategory ?? {}
       return res.pagination
     } catch (error: unknown) {
       if (!isCurrent()) return
+      hasFetched.value = true
       fetchError.value = getApiErrorMessage(error) || 'Could not load notifications.'
       pendingRefresh.value = true
     } finally {
       if (isCurrent()) {
         loading.value = false
-        hasFetched.value = true
         // Failure stays retryable on entry/foreground/reconnect, without a retry loop.
         if (succeeded && pendingRefresh.value) void fetchList({ forceRefresh: true })
       }
@@ -775,7 +776,6 @@ export function useNotifications() {
     if (next !== activeKind.value) {
       generation.value += 1
       loading.value = false
-      notifications.value = []
       nextCursor.value = null
       activeKind.value = next
     }

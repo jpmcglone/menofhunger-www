@@ -50,7 +50,7 @@
           </AppInlineAlert>
         </div>
 
-        <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
+        <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[220px]">
           <div v-if="moreSuggestions.length > 0" class="space-y-0 transition-opacity duration-150">
             <AppUserRow
               v-for="u in moreSuggestions"
@@ -62,7 +62,7 @@
             />
           </div>
 
-          <div v-else class="px-4">
+          <div v-else-if="!error" class="px-4">
             <div class="rounded-xl border moh-border bg-gray-50/50 dark:bg-zinc-900/30 px-4 py-6 text-center">
               <p class="text-sm moh-text-muted">
                 No suggestions yet — try following a few people first.
@@ -96,13 +96,13 @@ usePageSeo({
   image: '/images/banner.png',
 })
 
-const { users, loading, error, refresh, removeUserById } = useWhoToFollow()
+const { users, loading, hasLoaded, error, refresh, removeUserById } = useWhoToFollow()
 const arenaFollows = useArenaFollowSuggestions({ limit: 6 })
 const arenaUsers = arenaFollows.users
 const arenaLabel = arenaFollows.arenaLabel
 const moreSuggestions = computed(() => excludeFollowSuggestions(users.value, arenaUsers.value))
 
-const showInitialLoader = computed(() => loading.value && users.value.length === 0)
+const showInitialLoader = computed(() => !hasLoaded.value && !error.value && users.value.length === 0)
 
 function removeFollowedUser(userId: string) {
   arenaFollows.removeUserById(userId)

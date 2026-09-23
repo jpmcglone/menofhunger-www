@@ -1,5 +1,6 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="loading && !initialLoading" />
     <div class="moh-gutter-x border-b moh-border pt-4 pb-4 flex items-start justify-between gap-3">
       <div class="min-w-0">
         <h1 class="moh-h1">Referral Pilot</h1>
@@ -10,7 +11,7 @@
       </div>
     </div>
 
-    <div v-if="loading" class="flex justify-center py-16">
+    <div v-if="initialLoading" class="flex justify-center py-16">
       <AppLogoLoader />
     </div>
 
@@ -155,4 +156,5 @@ function formatCents(cents: number): string {
 
 onMounted(() => void load())
 onActivated(() => void load())
+const initialLoading = useInitialLoading(loading, () => affiliates.value.length > 0, error)
 </script>

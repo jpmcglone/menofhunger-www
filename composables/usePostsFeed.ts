@@ -1033,6 +1033,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       () => {
         if (!feedEnabled()) {
           posts.value = []
+          feed.hasLoaded.value = false
           nextCursor.value = null
           return
         }
@@ -1045,6 +1046,8 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   return {
     posts,
     displayPosts,
+    initialLoading: feed.initialLoading,
+    hasLoaded: feed.hasLoaded,
     displayItems,
     collapsedSiblingReplyCountFor,
     nextCursor,

@@ -32,7 +32,7 @@
       </div>
     </div>
 
-    <AppSubtleSectionLoader :loading="initialLoading" min-height-class="min-h-[220px]">
+    <AppSubtleSectionLoader :loading="initialLoading" :refreshing="feed.loading.value && !initialLoading" min-height-class="min-h-[220px]">
       <div v-if="feed.error.value" class="py-8 text-center text-sm text-red-500">
         {{ feed.error.value }}
       </div>
@@ -122,7 +122,7 @@ const feed = useArticleFeed({
 })
 
 const initialLoading = computed(
-  () => (feed.loading.value || !feed.hasLoadedOnce.value) && feed.articles.value.length === 0,
+  () => (!feed.hasLoadedOnce.value && !feed.error.value) && feed.articles.value.length === 0,
 )
 
 usePageSeo({

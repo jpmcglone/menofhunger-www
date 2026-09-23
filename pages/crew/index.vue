@@ -1,12 +1,13 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="loading && !initialLoading" />
     <div class="moh-gutter-x pt-4 pb-10 space-y-6">
       <div class="flex items-center gap-2">
         <h1 class="moh-h1">Your Crew</h1>
         <span class="ml-2 text-xs uppercase tracking-wide moh-text-muted">5 men, max</span>
       </div>
 
-      <div v-if="loading" class="flex justify-center py-16">
+      <div v-if="initialLoading" class="flex justify-center py-16">
         <AppLogoLoader />
       </div>
 
@@ -512,4 +513,5 @@ onMounted(() => addCrewCallback(crewRealtimeCb))
 onBeforeUnmount(() => removeCrewCallback(crewRealtimeCb))
 
 void load()
+const initialLoading = useInitialLoading(loading, false, error)
 </script>

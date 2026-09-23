@@ -1,5 +1,6 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="loading && !initialLoading" />
     <!-- Header -->
     <div class="moh-gutter-x border-b moh-border pt-4 pb-4">
       <h1 class="moh-h1" style="text-wrap: balance">Invite</h1>
@@ -9,7 +10,7 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="space-y-px">
+    <div v-if="initialLoading" class="space-y-px">
       <div class="moh-gutter-x py-5 space-y-3 animate-pulse">
         <div class="h-24 rounded-2xl bg-gray-200 dark:bg-zinc-800" />
         <div class="h-10 rounded-xl bg-gray-200 dark:bg-zinc-800" />
@@ -603,4 +604,5 @@ onBeforeUnmount(() => {
   removeReferralCallback(referralCb)
   if (copiedTimer) clearTimeout(copiedTimer)
 })
+const initialLoading = useInitialLoading(loading, false, error)
 </script>

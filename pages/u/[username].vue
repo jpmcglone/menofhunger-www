@@ -264,22 +264,12 @@
       <div v-if="!effectiveProfileCtaKind && tabActivated.posts" v-show="activeProfileTab === 'posts'" class="min-h-[75vh]">
         <ClientOnly>
           <template #fallback><div class="flex justify-center pt-12 pb-8"><AppLogoLoader /></div></template>
-          <AppSubtleSectionLoader :loading="postsOnlyInitialLoading" min-height-class="min-h-[220px]">
+          <AppSubtleSectionLoader :loading="postsOnlyInitialLoading" :refreshing="postsOnlyLoading && !postsOnlyInitialLoading" min-height-class="min-h-[220px]">
             <div>
               <div v-if="postsOnlyError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">{{ postsOnlyError }}</div>
               <div v-else-if="postsOnlyHasLoadedOnce && postsOnlyItems.length === 0" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
               <div v-else class="relative mt-3">
-                <div
-                  class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
-                  :class="postsOnlyRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                  :aria-hidden="!postsOnlyRefreshingOverlay"
-                >
-                  <AppLogoLoader compact />
-                </div>
-                <div
-                  class="transition-opacity duration-150"
-                  :class="postsOnlyRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
-                >
+                <div>
                 <template v-for="item in postsOnlyItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
                   <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
                   <AppFeedPostRow
@@ -310,22 +300,12 @@
       <div v-if="!effectiveProfileCtaKind && tabActivated.replies" v-show="activeProfileTab === 'replies'" class="min-h-[75vh]">
         <ClientOnly>
           <template #fallback><div class="flex justify-center pt-12 pb-8"><AppLogoLoader /></div></template>
-          <AppSubtleSectionLoader :loading="repliesInitialLoading" min-height-class="min-h-[220px]">
+          <AppSubtleSectionLoader :loading="repliesInitialLoading" :refreshing="profileLoading && !repliesInitialLoading" min-height-class="min-h-[220px]">
             <div>
               <div v-if="profileError" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">{{ profileError }}</div>
               <div v-else-if="profileHasLoadedOnce && itemsWithoutPinned.length === 0 && !pinnedPostForDisplay" class="px-4 mt-3 text-sm text-gray-500 dark:text-gray-400">No posts yet.</div>
               <div v-else class="relative mt-3">
-                <div
-                  class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
-                  :class="repliesRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                  :aria-hidden="!repliesRefreshingOverlay"
-                >
-                  <AppLogoLoader compact />
-                </div>
-                <div
-                  class="transition-opacity duration-150"
-                  :class="repliesRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
-                >
+                <div>
                 <template v-for="item in itemsWithoutPinned" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
                   <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
                   <AppFeedPostRow
@@ -354,22 +334,12 @@
 
       <!-- ─── Articles tab ─────────────────────────────────────────────── -->
       <div v-if="!effectiveProfileCtaKind && tabActivated.articles" v-show="activeProfileTab === 'articles'" class="min-h-[75vh]">
-        <AppSubtleSectionLoader :loading="articlesInitialLoading" min-height-class="min-h-[220px]">
+        <AppSubtleSectionLoader :loading="articlesInitialLoading" :refreshing="profileArticlesFeed.loading.value && !articlesInitialLoading" min-height-class="min-h-[220px]">
           <div v-if="profileArticlesFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
             {{ profileArticlesFeed.error.value }}
           </div>
           <div v-else class="relative mt-3">
-            <div
-              class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
-              :class="articlesRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-              :aria-hidden="!articlesRefreshingOverlay"
-            >
-              <AppLogoLoader compact />
-            </div>
-            <div
-              class="transition-opacity duration-150"
-              :class="articlesRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
-            >
+            <div>
             <TransitionGroup name="profile-articles-list" tag="div">
               <AppArticleListCard
                 v-for="article in profileArticlesFeed.articles.value"
@@ -396,22 +366,12 @@
 
       <!-- ─── Media tab ─────────────────────────────────────────────────── -->
       <div v-if="!effectiveProfileCtaKind && tabActivated.media" v-show="activeProfileTab === 'media'" class="min-h-[75vh]">
-        <AppSubtleSectionLoader :loading="mediaInitialLoading" min-height-class="min-h-[220px]">
+        <AppSubtleSectionLoader :loading="mediaInitialLoading" :refreshing="profileMediaFeed.loading.value && !mediaInitialLoading" min-height-class="min-h-[220px]">
           <div v-if="profileMediaFeed.error.value" class="px-4 mt-3 text-sm text-red-700 dark:text-red-300">
             {{ profileMediaFeed.error.value }}
           </div>
           <div v-else class="relative mt-3">
-            <div
-              class="absolute inset-x-0 top-3 z-20 flex justify-center transition-opacity duration-150"
-              :class="mediaRefreshingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-              :aria-hidden="!mediaRefreshingOverlay"
-            >
-              <AppLogoLoader compact />
-            </div>
-            <div
-              class="transition-opacity duration-150"
-              :class="mediaRefreshingOverlay ? 'opacity-60 pointer-events-none' : 'opacity-100'"
-            >
+            <div>
             <TransitionGroup
               name="media-grid"
               tag="div"
@@ -495,7 +455,10 @@
         :profile-avatar-url="profileAvatarUrl"
         :profile-banner-url="profileBannerUrl"
         @patch-profile="patchPublicProfile"
+        @saved="followSuggestionsOpen = true"
       />
+
+      <AppProfileSavedFollowDialog v-model="followSuggestionsOpen" />
 
       <AppBadgesDialog
         :open="badgesOpen"
@@ -914,28 +877,16 @@ const profileMediaFeed = useUserMedia(normalizedUsername, {
   includeRestricted: true,
 })
 const postsOnlyInitialLoading = computed(
-  () => postsOnlyLoading.value && !postsOnlyHasLoadedOnce.value && postsOnlyItems.value.length === 0,
+  () => !postsOnlyHasLoadedOnce.value && !postsOnlyError.value && postsOnlyItems.value.length === 0,
 )
 const repliesInitialLoading = computed(
-  () => profileLoading.value && !profileHasLoadedOnce.value && itemsWithoutPinned.value.length === 0 && !pinnedPostForDisplay.value,
+  () => !profileHasLoadedOnce.value && !profileError.value && itemsWithoutPinned.value.length === 0 && !pinnedPostForDisplay.value,
 )
 const articlesInitialLoading = computed(
-  () => profileArticlesFeed.loading.value && !profileArticlesFeed.hasLoadedOnce.value && profileArticlesFeed.articles.value.length === 0,
+  () => !profileArticlesFeed.hasLoadedOnce.value && !profileArticlesFeed.error.value && profileArticlesFeed.articles.value.length === 0,
 )
 const mediaInitialLoading = computed(
-  () => profileMediaFeed.loading.value && !profileMediaFeed.hasLoadedOnce.value && profileMediaFeed.items.value.length === 0,
-)
-const postsOnlyRefreshingOverlay = computed(
-  () => postsOnlyLoading.value && postsOnlyHasLoadedOnce.value && postsOnlyItems.value.length > 0,
-)
-const repliesRefreshingOverlay = computed(
-  () => profileLoading.value && profileHasLoadedOnce.value && itemsWithoutPinned.value.length > 0,
-)
-const articlesRefreshingOverlay = computed(
-  () => profileArticlesFeed.loading.value && profileArticlesFeed.hasLoadedOnce.value && profileArticlesFeed.articles.value.length > 0,
-)
-const mediaRefreshingOverlay = computed(
-  () => profileMediaFeed.loading.value && profileMediaFeed.hasLoadedOnce.value && profileMediaFeed.items.value.length > 0,
+  () => !profileMediaFeed.hasLoadedOnce.value && !profileMediaFeed.error.value && profileMediaFeed.items.value.length === 0,
 )
 
 function onProfilePostEdited(payload: { id: string; post: import('~/types/api').FeedPost }) {
@@ -1316,6 +1267,7 @@ const hideAvatarThumb = computed(() => viewer.visible.value && viewer.kind.value
 const hideAvatarDuringBanner = computed(() => viewer.visible.value && viewer.kind.value === 'banner')
 
 const editOpen = ref(false)
+const followSuggestionsOpen = ref(false)
 const pendingEditProfile = useState('pending-edit-profile', () => false)
 const consumedEditIntent = ref(false)
 const presentingEditProfile = ref(false)

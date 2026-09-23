@@ -1,5 +1,6 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="(loading && !loadingInitial) || (recentLoading && !recentLoadingInitial)" />
   <div class="w-full">
     <div class="px-4 pt-4 pb-0 sm:pb-6">
       <h1 class="flex items-center gap-2 text-xl font-bold tracking-tight text-green-600 dark:text-green-400">
@@ -25,7 +26,7 @@
       </AppInlineAlert>
     </div>
 
-    <div v-else-if="loading && users.length === 0" class="px-4 py-8 flex justify-center">
+    <div v-else-if="loadingInitial" class="px-4 py-8 flex justify-center">
       <AppLogoLoader />
     </div>
 
@@ -58,7 +59,7 @@
           Men who were online within the last hour.
         </p>
         <p
-          v-else-if="!recentLoading && !recentError"
+          v-else-if="!recentLoadingInitial && !recentError"
           class="mt-0.5 text-sm text-gray-500 dark:text-gray-400"
         >
           {{ recentUsers.length === 0 ? 'No one recently around.' : 'No one in the last hour.' }}
@@ -73,7 +74,7 @@
         </AppInlineAlert>
       </div>
 
-      <div v-else-if="recentLoading && recentUsers.length === 0" class="px-4 py-3 flex justify-center">
+      <div v-else-if="recentLoadingInitial" class="px-4 py-3 flex justify-center">
         <AppLogoLoader compact />
       </div>
 
@@ -551,6 +552,8 @@ onBeforeUnmount(() => {
     removeInterest(users.value.map((u) => u.id))
   }
 })
+const loadingInitial = useInitialLoading(loading, () => users.value.length > 0, error)
+const recentLoadingInitial = useInitialLoading(recentLoading, () => recentUsers.value.length > 0, recentError)
 </script>
 
 <style scoped>

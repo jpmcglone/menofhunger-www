@@ -117,7 +117,7 @@
 
     <!-- Published articles feed -->
     <div v-if="tabActivated.published" v-show="activeTab === 'published'" role="tabpanel">
-      <AppSubtleSectionLoader :loading="publishedInitialLoading" min-height-class="min-h-[220px]">
+      <AppSubtleSectionLoader :loading="publishedInitialLoading" :refreshing="publishedFeed.loading.value && !publishedInitialLoading" min-height-class="min-h-[220px]">
         <div v-if="publishedFeed.error.value" class="py-12 text-center">
           <p class="moh-body">Couldn't load articles.</p>
           <p
@@ -160,7 +160,7 @@
 
     <!-- Drafts -->
     <div v-if="tabActivated.drafts" v-show="activeTab === 'drafts'" role="tabpanel">
-      <AppSubtleSectionLoader :loading="draftsInitialLoading" min-height-class="min-h-[220px]">
+      <AppSubtleSectionLoader :loading="draftsInitialLoading" :refreshing="draftsState.loading.value && !draftsInitialLoading" min-height-class="min-h-[220px]">
         <div v-if="draftsState.error.value" class="py-12 text-center">
           <p class="moh-body">Couldn't load articles.</p>
           <p
@@ -347,10 +347,10 @@ const publishedFeed = useArticleFeed({
 })
 const draftsState = useArticleDrafts({ visibility: visibilityFilter, enabled: isVerifiedMember })
 const publishedInitialLoading = computed(
-  () => (publishedFeed.loading.value || !publishedFeed.hasLoadedOnce.value) && publishedFeed.articles.value.length === 0,
+  () => (!publishedFeed.hasLoadedOnce.value && !publishedFeed.error.value) && publishedFeed.articles.value.length === 0,
 )
 const draftsInitialLoading = computed(
-  () => draftsState.loading.value && !draftsState.hasLoadedOnce.value && draftsState.drafts.value.length === 0,
+  () => !draftsState.hasLoadedOnce.value && !draftsState.error.value && draftsState.drafts.value.length === 0,
 )
 
 onMounted(() => {

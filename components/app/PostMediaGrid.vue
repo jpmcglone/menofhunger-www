@@ -346,7 +346,7 @@ function toLightboxItems(): LightboxMediaItem[] {
 
 watch([singleVideoEl, () => props.interactive, () => items.value[0]?.url], ([el, interactive], _old, onCleanup) => {
   if (!import.meta.client || !interactive || !el || items.value.length !== 1) return
-  onCleanup(videoManager.registerVideo(videoInstanceId, el, singleVideoContainerRef.value ?? el))
+  onCleanup(videoManager.registerVideo(videoInstanceId, el, singleVideoContainerRef.value ?? el, `file:${items.value[0]?.url}`))
 }, { flush: 'post' })
 watch(() => videoManager.appWideSoundOn.value, on => { singleVideoMuted.value = !on })
 

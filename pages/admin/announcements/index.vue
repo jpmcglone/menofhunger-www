@@ -1,5 +1,6 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="loading && !initialLoading" />
     <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Announcements" description="Each lodge notice once a day. Each ad every 12 hours. One per open.">
       <template #leading>
         <div class="md:hidden">
@@ -17,7 +18,8 @@
       <AppInlineAlert severity="danger">{{ error }}</AppInlineAlert>
     </div>
 
-    <div v-else-if="!loading && items.length === 0" class="px-4 py-8 text-sm moh-text-muted">
+    <div v-else-if="initialLoading" class="flex justify-center py-12"><AppLogoLoader /></div>
+    <div v-else-if="items.length === 0" class="px-4 py-8 text-sm moh-text-muted">
       No announcements yet.
     </div>
 
@@ -102,4 +104,5 @@ async function load() {
 onMounted(() => {
   void load()
 })
+const initialLoading = useInitialLoading(loading, () => items.value.length > 0, error)
 </script>

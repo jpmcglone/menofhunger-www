@@ -1,4 +1,5 @@
 import type { Ref } from 'vue'
+import { getApiErrorMessage } from '~/utils/api-error'
 import type { ApiPagination, FeedPost, GetPostCommentsData } from '~/types/api'
 
 export function usePostComments(options: {
@@ -13,6 +14,7 @@ export function usePostComments(options: {
   const comments = ref<FeedPost[]>([])
   const commentsNextCursor = ref<string | null>(null)
   const commentsLoading = ref(false)
+  const commentsError = ref<string | null>(null)
   const commentsCounts = ref<ApiPagination['counts']>(null)
 
   const commentsSort = useCookie<'new' | 'trending'>('moh.post.comments.sort.v1', {
@@ -29,7 +31,8 @@ export function usePostComments(options: {
 
   async function fetchComments(cursor: string | null = null) {
     if (!post.value?.id || isOnlyMe.value) return
-    if (cursor === null) commentsLoading.value = true
+    commentsLoading.value = true
+    commentsError.value = null
     try {
       const params = new URLSearchParams({
         limit: '30',
@@ -53,9 +56,8 @@ export function usePostComments(options: {
       // commentCount bumps so PostRow doesn't display a doubled count.
       const ids = list.map((c) => c.id).filter(Boolean)
       if (ids.length) clearBumpsForPostIds(ids)
-    } catch {
-      if (cursor === null) comments.value = []
-      commentsNextCursor.value = null
+    } catch (error) {
+      commentsError.value = getApiErrorMessage(error) || "Could not load replies."
     } finally {
       commentsLoading.value = false
     }
@@ -125,6 +127,7 @@ export function usePostComments(options: {
     comments,
     commentsNextCursor,
     commentsLoading,
+    commentsError,
     commentsCounts,
     commentsSort,
     commentCountDisplay,

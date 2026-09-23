@@ -30,6 +30,16 @@
     "/admin/activation",
     "/groups",
     "/groups/explore",
-    "/g/this-group-does-not-exist"
+    "/g/this-group-does-not-exist",
+    "/notifications",
+    "/online",
+    "/who-to-follow",
+    "/new-posts",
+    "/check-ins",
+    "/hashtags/trending",
+    "/crew",
+    "/topics/this-topic-does-not-exist",
+    "/state/ny",
+    "/g/this-group-does-not-exist/members"
   ]
 }

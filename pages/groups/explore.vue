@@ -1,5 +1,6 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="(metaLoading && !metaInitialLoading) || searchLoading" />
     <div class="w-full">
       <!-- Header band: edge-to-edge with gutter padding, divided by border-b. -->
       <div class="moh-gutter-x border-b moh-border pb-4 pt-4 space-y-3">
@@ -82,7 +83,7 @@
         </AppInlineAlert>
 
         <!-- Initial spotlight loading -->
-        <div v-if="metaLoading" class="flex justify-center py-10">
+        <div v-if="metaInitialLoading" class="flex justify-center py-10">
           <AppLogoLoader />
         </div>
 
@@ -423,5 +424,6 @@ onBeforeUnmount(() => {
   if (debounceHandle) clearTimeout(debounceHandle)
   searchToken += 1 // invalidate any inflight requests
 })
+const metaInitialLoading = useInitialLoading(metaLoading, () => discoverRows.value.length > 0, metaError)
 </script>
 

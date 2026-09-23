@@ -1,6 +1,6 @@
 <template>
   <section
-    class="mt-8 border-t moh-border pt-6"
+    class="relative mt-8 border-t moh-border pt-6"
     :style="{ '--article-accent': accentColor }"
   >
     <h2 class="mb-4 text-base font-semibold text-[var(--moh-text)]">
@@ -103,8 +103,10 @@
       </div>
     </div>
 
+    <AppInlineAlert v-if="loadError" severity="warning">{{ loadError }}</AppInlineAlert>
     <!-- Loading state -->
-    <div v-if="loading" class="flex justify-center py-8">
+    <AppRefreshIndicator :loading="loading && !initialLoading" />
+    <div v-if="initialLoading" class="flex justify-center py-8">
       <Icon name="tabler:loader-2" class="animate-spin moh-text-soft" />
     </div>
 
@@ -202,7 +204,7 @@
         Load more replies
       </button>
 
-      <p v-if="!loading && comments.length === 0" class="py-6 text-center text-sm moh-text-muted">
+      <p v-if="!initialLoading && !loadError && comments.length === 0" class="py-6 text-center text-sm moh-text-muted">
         No replies yet. Be the first!
       </p>
     </div>
@@ -241,6 +243,7 @@ const {
   comments,
   nextCursor,
   loading,
+  loadError,
   submitting,
   load,
   loadMore,
@@ -511,4 +514,5 @@ function hasMoreReplies(comment: ArticleComment): boolean {
 async function onLoadMoreReplies(parentId: string) {
   await loadMoreReplies(parentId)
 }
+const initialLoading = useInitialLoading(loading, () => comments.value.length > 0, loadError)
 </script>

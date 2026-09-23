@@ -297,6 +297,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
+  (e: 'saved'): void
   (e: 'patchProfile', patch: Partial<Pick<
     PublicProfile,
     'name' | 'bio' | 'avatarVideo' | 'avatarUrl' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
@@ -822,6 +823,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
     }
 
     emit('update:modelValue', false)
+    if (!adminId) emit('saved')
   },
   {
     defaultError: 'Failed to save profile.',

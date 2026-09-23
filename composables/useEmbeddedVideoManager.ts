@@ -83,9 +83,9 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
     mutations.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['inert', 'aria-hidden', 'hidden', 'style', 'class'] })
     visibility()
   }
-  function register(id: string, el: HTMLElement, adapter: MediaPlayerAdapter, onState?: (state: PlaybackState) => void, autoplay = true) {
+  function register(id: string, el: HTMLElement, adapter: MediaPlayerAdapter, onState?: (state: PlaybackState) => void, autoplay = true, playbackKey?: string) {
     registrations.get(id)?.()
-    const cleanup = coordinator.register(id, { adapter, measure: () => measureVideo(el), onState, autoplay })
+    const cleanup = coordinator.register(id, { adapter, measure: () => measureVideo(el), onState, autoplay, playbackKey })
     elements.set(id, el)
     resize?.observe(el)
     let disposed = false
@@ -99,7 +99,7 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
     registrations.set(id, dispose)
     return dispose
   }
-  function registerVideo(id: string, el: HTMLVideoElement, container: HTMLElement = el, autoplay = true) {
+  function registerVideo(id: string, el: HTMLVideoElement, container: HTMLElement = el, autoplay = true, playbackKey?: string) {
     const state = states.get(id) ?? ref<PlaybackState>('idle')
     states.set(id, state)
     managed.add(el)
@@ -134,7 +134,7 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
       },
       setAudio: audio,
     }
-    const dispose = register(id, container, adapter, next => { state.value = next }, autoplay)
+    const dispose = register(id, container, adapter, next => { state.value = next }, autoplay, playbackKey ?? `file:${el.currentSrc || el.src}`)
     const gesture = () => { userGesture = Date.now() }
     const play = () => {
       if (!requested && Date.now() - userGesture < 1500) coordinator.play(id)
@@ -142,7 +142,7 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
     }
     const pause = () => {
       if (programmaticPause) { programmaticPause = false; return }
-      if (!requested || el.ended) return
+      if (!requested || el.ended || !el.isConnected || (!el.getAttribute('src') && !el.querySelector('source'))) return
       requested = false
       coordinator.report(id, 'paused', true)
     }
@@ -193,8 +193,8 @@ export function useEmbeddedVideoManager() {
   }
   return {
     activeId, appWideSoundOn, appWideVolume,
-    register: (id: string, el: HTMLElement, adapter: MediaPlayerAdapter, state?: (s: PlaybackState) => void) => runtime?.register(id, el, adapter, state) ?? (() => {}),
-    registerVideo: (id: string, el: HTMLVideoElement, container?: HTMLElement) => runtime?.registerVideo(id, el, container) ?? (() => {}),
+    register: (id: string, el: HTMLElement, adapter: MediaPlayerAdapter, state?: (s: PlaybackState) => void, playbackKey?: string) => runtime?.register(id, el, adapter, state, true, playbackKey) ?? (() => {}),
+    registerVideo: (id: string, el: HTMLVideoElement, container?: HTMLElement, playbackKey?: string) => runtime?.registerVideo(id, el, container, true, playbackKey) ?? (() => {}),
     activate: (id: string) => runtime?.coordinator.play(id),
     report: (id: string, state: PlaybackState, user = false) => runtime?.coordinator.report(id, state, user),
     pin: (id: string, pinned: boolean) => runtime?.coordinator.pin(id, pinned),

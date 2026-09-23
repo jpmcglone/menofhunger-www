@@ -18,8 +18,8 @@
         </AppInlineAlert>
       </div>
 
-      <AppSubtleSectionLoader :loading="showInitialLoader" min-height-class="min-h-[220px]">
-        <div v-if="notes.length === 0" class="px-4 py-6 text-sm moh-text-muted">
+      <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="notesLoading && !showInitialLoader" min-height-class="min-h-[220px]">
+        <div v-if="notes.length === 0 && !notesError" class="px-4 py-6 text-sm moh-text-muted">
           No “Only me” posts yet.
         </div>
 
@@ -105,7 +105,7 @@ const loadMoreNotes = notesFeed.loadMore
 const removeNote = notesFeed.removePost
 const replaceNote = notesFeed.replacePost
 const prependNote = notesFeed.prependPost
-const showInitialLoader = computed(() => notesLoading.value && notes.value.length === 0)
+const showInitialLoader = notesFeed.initialLoading
 
 function onOnlyMePostEdited(payload: { id: string; post: FeedPost }) {
   replaceNote(payload.post)
