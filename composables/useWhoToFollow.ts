@@ -16,7 +16,7 @@ export function excludeFollowSuggestions<T extends { id: string }>(
   return users.filter(user => !excludedIds.has(user.id))
 }
 
-export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?: number }) {
+export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?: number; autoRefresh?: boolean }) {
   const { apiFetch } = useApiClient()
   const { user } = useAuth()
 
@@ -73,7 +73,7 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
   watch(
     [enabled, isAuthed],
     ([on, authed]) => {
-      if (!on) return
+      if (!on || options?.autoRefresh === false) return
       if (import.meta.client) {
         window.setTimeout(() => {
           if (enabled.value && isAuthed.value === authed) void refresh({ limit: defaultLimit })
