@@ -141,7 +141,7 @@ export function icePathLabel(kind: IcePathKind | null | undefined): string | nul
 }
 
 /** Select the transport's actual path, never an arbitrary successful connectivity check. */
-function selectedIcePairs(stats: Record<string, unknown>[]): Record<string, unknown>[] {
+export function selectedIcePairs(stats: Record<string, unknown>[]): Record<string, unknown>[] {
   const pairs = stats.filter((s) => s.type === 'candidate-pair')
   const selectedIds = new Set(stats
     .filter((s) => s.type === 'transport' && typeof s.selectedCandidatePairId === 'string')

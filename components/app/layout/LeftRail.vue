@@ -91,12 +91,6 @@
                   :class="['opacity-90', item.iconClass]"
                   aria-hidden="true"
                 />
-                <div
-                  v-if="item.key === 'crew' || item.key === 'spaces'"
-                  class="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
-                >
-                  <AppNewBadge label="BETA" variant="beta" />
-                </div>
                 <AppNotificationBadge v-if="item.key === 'notifications'" />
                 <AppMessagesBadge v-if="item.key === 'messages'" />
                 <AppCrewInvitesBadge v-if="item.key === 'crew'" />

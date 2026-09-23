@@ -10,6 +10,7 @@ import {
   type IcePathKind,
   type QualityCounters,
 } from './callQuality'
+import { isPathTrouble, nextRelayStreak, pathSampleFromStats, RELAY_AFTER_TROUBLED_SAMPLES } from './callRelayFallback'
 
 const SAMPLE_INTERVAL_MS = 2_000
 
@@ -19,6 +20,8 @@ type PeerQuality = {
   counters: QualityCounters
   /** When the connection last became `connected`; samples inside the warm-up window are ignored. */
   connectedAt: number | null
+  /** Consecutive troubled samples on a STUN path. */
+  relayStreak: number
 }
 
 /**
@@ -32,13 +35,16 @@ export class CallQualityManager {
   private timer: ReturnType<typeof setInterval> | null = null
   private readonly onTierChange: (userId: string, tier: number) => void
   private readonly onIcePath: (userId: string, path: IcePathKind | null) => void
+  private readonly onPathTrouble: (userId: string) => void
 
   constructor(
     onTierChange: (userId: string, tier: number) => void,
     onIcePath: (userId: string, path: IcePathKind | null) => void = () => {},
+    onPathTrouble: (userId: string) => void = () => {},
   ) {
     this.onTierChange = onTierChange
     this.onIcePath = onIcePath
+    this.onPathTrouble = onPathTrouble
   }
 
   /** Read the selected ICE pair as soon as ICE connects (don't wait for the 2s quality tick). */
@@ -50,7 +56,7 @@ export class CallQualityManager {
 
   attach(userId: string, pc: RTCPeerConnection): void {
     const top = topTierFor(this.peers.size + (this.peers.has(userId) ? 0 : 1))
-    this.peers.set(userId, { pc, tier: top, counters: { bad: 0, good: 0 }, connectedAt: null })
+    this.peers.set(userId, { pc, tier: top, counters: { bad: 0, good: 0 }, connectedAt: null, relayStreak: 0 })
     void this.applyTier(userId)
     this.reclampAll()
     this.ensureTimer()
@@ -116,14 +122,21 @@ export class CallQualityManager {
       }
       if (p.connectedAt === null) p.connectedAt = now
       const values: Record<string, unknown>[] = []
+      let path: IcePathKind | null = null
       try {
         const report = await p.pc.getStats()
         report.forEach((v) => values.push(v as unknown as Record<string, unknown>))
-        this.onIcePath(userId, icePathFromStats(values))
+        path = icePathFromStats(values)
+        this.onIcePath(userId, path)
       } catch {
         continue
       }
       if (now - p.connectedAt < QUALITY_WARMUP_MS) continue
+      p.relayStreak = nextRelayStreak(p.relayStreak, path, isPathTrouble(pathSampleFromStats(values)))
+      if (p.relayStreak >= RELAY_AFTER_TROUBLED_SAMPLES) {
+        p.relayStreak = 0
+        this.onPathTrouble(userId)
+      }
       let bad = false
       try {
         const cap = VIDEO_QUALITY_TIERS[Math.min(p.tier, AUDIO_ONLY_TIER)]?.maxBitrate ?? null

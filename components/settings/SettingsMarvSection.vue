@@ -18,9 +18,9 @@
     </div>
 
     <section class="space-y-2">
-      <h3 class="text-sm font-semibold moh-text">Personal requests to OpenAI</h3>
-      <p class="text-sm moh-text-muted">{{ marvMe?.aiConsentGranted ? 'Allowed. MARV can use your requests, selected images, and relevant profile and conversation context.' : 'Off. MARV will not send your personal requests to OpenAI until you allow them.' }} Private fitness records stay excluded. Public content and permitted conversation context remain available to MARV. Using Marv turns personal requests back on.</p>
-      <Button :label="marvMe?.aiConsentGranted ? 'Turn off personal requests' : 'Allow personal requests'" severity="secondary" :loading="consentBusy" :disabled="!hasFetched" @click="changeConsent" />
+      <h3 class="text-sm font-semibold moh-text">MARV and OpenAI</h3>
+      <p class="text-sm moh-text-muted">{{ marvMe?.aiConsentGranted ? 'On. MARV sends your requests and the context it needs to OpenAI so it can answer. Your private fitness records are never sent. Turn this off and MARV will ask again before it sends anything.' : 'Off. MARV will ask before it sends your requests to OpenAI. Your private fitness records are never sent.' }}</p>
+      <Button :label="marvMe?.aiConsentGranted ? 'Turn off' : 'Allow'" severity="secondary" :loading="consentBusy" :disabled="!hasFetched" @click="changeConsent" />
       <p v-if="consentError" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ consentError }}</p>
     </section>
 

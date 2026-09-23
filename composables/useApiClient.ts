@@ -120,6 +120,7 @@ function mergeHeaders(a?: HeadersInit, b?: HeadersInit): HeadersInit | undefined
 
 export function useApiClient() {
   const config = useRuntimeConfig()
+  const consent = useAiConsent()
   const { switchingId } = useAccountSwitchState()
   // IMPORTANT: On the client, only `public` + `app` runtime config keys are accessible.
   // Accessing server-only keys on the client triggers a Nuxt warning.
@@ -219,11 +220,17 @@ export function useApiClient() {
     unauthorized: 'redirect' | 'ignore' = 'redirect',
   ): Promise<ApiEnvelope<T>> {
     let attempt = 0
+    let requestedConsent = false
     const authGeneration = getAuthGeneration()
     while (true) {
       try {
         return await $fetch<ApiEnvelope<T>>(url, fetchOptions)
       } catch (e) {
+        // The API refuses personal MARV requests before any write, so one retry after consent is safe.
+        if (getErrorReason(e) === 'ai_consent_required' && !requestedConsent && import.meta.client) {
+          requestedConsent = true
+          if (await consent.request() && authGeneration === getAuthGeneration()) continue
+        }
         if (getErrorStatus(e) === 401 && unauthorized !== 'ignore'
           && authGeneration === getAuthGeneration() && !switchingId.value) {
           const reason = getErrorReason(e)

@@ -6,6 +6,8 @@ import {
   callMediaTrackInfo,
   callMediaTransceiverInfo,
 } from '../callMediaLog'
+import type { IcePathKind } from '../callQuality'
+import { hasRelayServer, RELAY_CONFIRM_MS } from '../callRelayFallback'
 import { CallQualityManager, prioritizeAudioSender } from '../useCallQualityManager'
 import type { CallLocalTrackKind, CallSignal, CallTransport, CallTransportOptions, PeerMediaState } from './CallTransport'
 
@@ -48,6 +50,9 @@ type Peer = {
   holdNegotiate: boolean
   /** Serialize setLocal/setRemote/addIceCandidate — concurrent applies break Chrome↔libwebrtc. */
   queue: Promise<void>
+  /** One relay attempt per peer per call: `trying` until TURN is the selected path, else `reverted`. */
+  relay: 'off' | 'trying' | 'on' | 'reverted'
+  relayTimer: ReturnType<typeof setTimeout> | null
 }
 
 /**
@@ -77,7 +82,14 @@ export class PeerToPeerCallTransport implements CallTransport {
 
   constructor(opts: CallTransportOptions, onTierChange: (userId: string, tier: number) => void = () => {}) {
     this.opts = opts
-    this.quality = new CallQualityManager(onTierChange, (userId, path) => this.opts.events.onIcePath?.(userId, path))
+    this.quality = new CallQualityManager(
+      onTierChange,
+      (userId, path) => {
+        this.confirmRelay(userId, path)
+        this.opts.events.onIcePath?.(userId, path)
+      },
+      (userId) => this.moveToRelay(userId),
+    )
   }
 
   get qualityManager(): CallQualityManager {
@@ -367,6 +379,8 @@ export class PeerToPeerCallTransport implements CallTransport {
       dataChannel: null,
       holdNegotiate: true,
       queue: Promise.resolve(),
+      relay: 'off',
+      relayTimer: null,
     }
     this.peers.set(userId, peer)
     callMediaLog('peer-add', { peer: userId, polite: peer.polite })
@@ -463,6 +477,7 @@ export class PeerToPeerCallTransport implements CallTransport {
     this.clearDisconnectedTimer(peer)
     this.clearConnectingTimer(peer)
     this.clearGiveUpTimer(peer)
+    this.clearRelayTimer(peer)
     this.quality.detach(userId)
     try {
       peer.pc.onnegotiationneeded = null
@@ -573,6 +588,51 @@ export class PeerToPeerCallTransport implements CallTransport {
     } catch {
       // Not supported (very old browsers): nothing more we can do without a reload.
     }
+  }
+
+  /**
+   * A working but lossy STUN path is not "failed", so ICE never leaves it. Restrict this
+   * side to relay candidates and restart ICE; the old pair carries media until the relay
+   * pair is selected. Either side may do this — perfect negotiation resolves the glare.
+   */
+  private moveToRelay(userId: string): void {
+    const peer = this.peers.get(userId)
+    if (!peer || this.destroyed || peer.relay !== 'off' || peer.state !== 'connected') return
+    if (!hasRelayServer(this.opts.iceServers)) return
+    if (!this.setIcePolicy(peer, 'relay')) return
+    peer.relay = 'trying'
+    callMediaLog('relay', { peer: userId, phase: 'trying' })
+    peer.relayTimer = setTimeout(() => {
+      peer.relayTimer = null
+      if (peer.relay !== 'trying' || this.destroyed) return
+      peer.relay = 'reverted'
+      callMediaLog('relay', { peer: userId, phase: 'reverted' })
+      if (this.setIcePolicy(peer, 'all')) peer.pc.restartIce()
+    }, RELAY_CONFIRM_MS)
+    peer.pc.restartIce()
+  }
+
+  private confirmRelay(userId: string, path: IcePathKind | null): void {
+    const peer = this.peers.get(userId)
+    if (!peer || peer.relay !== 'trying' || path !== 'turn') return
+    peer.relay = 'on'
+    this.clearRelayTimer(peer)
+    callMediaLog('relay', { peer: userId, phase: 'on' })
+  }
+
+  private setIcePolicy(peer: Peer, policy: RTCIceTransportPolicy): boolean {
+    try {
+      peer.pc.setConfiguration({ ...peer.pc.getConfiguration(), iceTransportPolicy: policy })
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  private clearRelayTimer(peer: Peer): void {
+    if (!peer.relayTimer) return
+    clearTimeout(peer.relayTimer)
+    peer.relayTimer = null
   }
 
   private setPeerState(peer: Peer, state: PeerMediaState): void {
