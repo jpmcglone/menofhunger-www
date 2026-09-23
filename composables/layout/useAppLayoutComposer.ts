@@ -83,6 +83,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
 
   const shareDialogOpen = ref(false)
   const sharePost = ref<FeedPost | null>(null)
+  const firstPost = useFirstPostPrompt()
   const composerCustomGroupName = ref<string | null>(null)
   const composerCustomAllowedVisibilities = ref<PostVisibility[] | null>(null)
   const composerCustomDisableMedia = ref(false)
@@ -115,6 +116,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
   const composerGroupId = computed(() => groupComposerCtx.value?.groupId ?? null)
 
   const anyOverlayOpen = computed(() => composerModalOpen.value || (replyModalOpen.value && replyModalHasParent.value))
+  const firstPostPromptOpen = computed(() => firstPost.eligible.value && !anyOverlayOpen.value && !shareDialogOpen.value)
 
   useScrollLock(anyOverlayOpen)
   const composerSheetStyle = ref<Record<string, string>>({ left: '0px', right: '0px', width: 'auto' })
@@ -306,6 +308,12 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
   }
   provide(MOH_OPEN_COMPOSER_FROM_ONLYME_KEY, openComposerFromOnlyMe)
 
+  function startFirstPost() {
+    const text = firstPost.starter.value
+    firstPost.markSeen()
+    openComposerModal(text)
+  }
+
   function closeComposerModal() {
     composerModalOpen.value = false
     composerInitialText.value = null
@@ -447,8 +455,10 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
 
   useOverlayDismiss(composerModalOpen, closeComposerModal)
 
+  // The composer and the bottom cards (check-in answered, first post) all align to the center column.
+  const centerAlignedOpen = computed(() => composerModalOpen.value || shareDialogOpen.value || firstPostPromptOpen.value)
   watch(
-    composerModalOpen,
+    centerAlignedOpen,
     (open) => {
       if (!import.meta.client) return
       window.removeEventListener('resize', updateComposerSheetStyle)
@@ -498,6 +508,11 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     // Share dialog (post-checkin share)
     sharePost,
     shareDialogOpen,
+    // First post invitation
+    firstPostPromptOpen,
+    firstPostStarter: firstPost.starter,
+    dismissFirstPost: firstPost.markSeen,
+    startFirstPost,
     // Overlay state
     anyOverlayOpen,
     // FAB / nav button presentation

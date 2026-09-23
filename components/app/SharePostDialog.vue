@@ -13,8 +13,9 @@
           v-if="open"
           class="fixed"
           :class="isCheckin
-            ? 'pointer-events-none inset-x-0 bottom-[calc(var(--moh-tabbar-height,4rem)+var(--moh-safe-bottom,0px))] z-[80] px-3 pb-3 md:bottom-0 md:px-4 md:pb-4'
+            ? ['pointer-events-none bottom-[calc(var(--moh-tabbar-height,4rem)+var(--moh-safe-bottom,0px))] z-[80] px-3 pb-3 md:bottom-0 md:px-4 md:pb-4', alignStyle ? '' : 'inset-x-0']
             : 'inset-0 z-[9999] flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6'"
+          :style="isCheckin ? alignStyle : undefined"
           role="presentation"
           @click.self="!isCheckin && close()"
         >
@@ -31,7 +32,7 @@
               v-if="open"
               class="relative w-full text-left"
               :class="isCheckin
-                ? 'pointer-events-auto mx-auto grid max-w-6xl gap-x-5 rounded-xl border moh-border bg-[var(--moh-surface-2)] p-4 shadow-lg sm:grid-cols-[minmax(0,1fr)_auto] xl:max-w-7xl'
+                ? 'pointer-events-auto grid gap-x-5 rounded-xl border moh-border bg-[var(--moh-surface-2)] p-4 shadow-lg sm:grid-cols-[minmax(0,1fr)_auto]'
                 : 'max-w-md rounded-t-3xl bg-white shadow-[0_24px_80px_rgba(0,0,0,0.35)] ring-1 ring-black/10 sm:rounded-3xl dark:bg-[color:var(--moh-surface-2)] dark:ring-white/15'"
               :style="isCheckin ? undefined : { paddingBottom: `calc(var(--moh-safe-bottom, 0px) + 1.5rem)` }"
               :role="isCheckin ? 'region' : 'dialog'"
@@ -140,6 +141,8 @@ const { user } = useAuth()
 const props = defineProps<{
   open: boolean
   post: FeedPost
+  /** Center-column `left` / `width` for the check-in card; full width when omitted. */
+  alignStyle?: Record<string, string>
 }>()
 
 const emit = defineEmits<{

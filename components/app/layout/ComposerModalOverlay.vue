@@ -3,6 +3,15 @@
     v-if="sharePost"
     v-model:open="shareDialogOpen"
     :post="sharePost"
+    :align-style="composerSheetStyle"
+  />
+
+  <AppFirstPostPrompt
+    :open="firstPostPromptOpen"
+    :starter="firstPostStarter"
+    :align-style="composerSheetStyle"
+    @start="startFirstPost"
+    @dismiss="dismissFirstPost"
   />
 
   <ClientOnly>
@@ -117,6 +126,10 @@ const {
   composerSheetPlacementStyle,
   sharePost,
   shareDialogOpen,
+  firstPostPromptOpen,
+  firstPostStarter,
+  startFirstPost,
+  dismissFirstPost,
   closeComposerModal,
   onComposerPending,
   onComposerPosted,
