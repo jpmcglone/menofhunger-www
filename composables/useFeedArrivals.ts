@@ -7,7 +7,6 @@ export function useFeedArrivals(options: {
   viewerId: Ref<string | undefined>
   filter: Ref<string>
   context: Ref<string>
-  isReading: () => boolean
   prepend: (post: FeedPost) => void
 }) {
   const pending = ref<FeedPost[]>([])
@@ -26,12 +25,24 @@ export function useFeedArrivals(options: {
       && (options.filter.value === 'all' || post.visibility === options.filter.value))
   }
 
+  const loadedIds = computed(() => {
+    const ids = new Set<string>()
+    for (const post of options.posts.value) {
+      let node: FeedPost | undefined = post
+      while (node && !ids.has(node.id)) {
+        ids.add(node.id)
+        if (!node.parent && node.parentId) ids.add(node.parentId)
+        node = node.parent
+      }
+    }
+    return ids
+  })
+
   function receive(post: FeedPost) {
-    if (!eligible(post) || options.posts.value.some(item => item.id === post.id)) return
+    if (!eligible(post) || loadedIds.value.has(post.id)) return
     const index = pending.value.findIndex(item => item.id === post.id)
     if (index >= 0) { pending.value[index] = post; return }
-    if (options.isReading() || pending.value.length) pending.value.unshift(post)
-    else options.prepend(post)
+    if (pending.value.length < 60) pending.value.unshift(post)
   }
 
   function applyUpdate(payload: WsPostsLiveUpdatedPayload) {
@@ -48,11 +59,17 @@ export function useFeedArrivals(options: {
     }
   }
 
+  function receiveBatch(posts: FeedPost[]) {
+    // Preserve server recommendation order within each batch.
+    const known = new Set([...loadedIds.value, ...pending.value.map(post => post.id)])
+    const fresh = posts.filter(post => eligible(post) && !known.has(post.id)).slice(0, 60 - pending.value.length)
+    for (const post of fresh.reverse()) receive(post)
+  }
+
   function clear() { pending.value = [] }
   watch([options.context, options.viewerId], clear, { flush: 'sync' })
-  watch(() => options.posts.value.map(post => post.id), ids => {
-    const existing = new Set(ids)
-    pending.value = pending.value.filter(post => !existing.has(post.id))
+  watch(loadedIds, ids => {
+    pending.value = pending.value.filter(post => !ids.has(post.id))
   })
-  return { pending, authors, receive, applyUpdate, reveal, clear }
+  return { pending, authors, receive, receiveBatch, applyUpdate, reveal, clear }
 }

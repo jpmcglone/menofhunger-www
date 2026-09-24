@@ -176,7 +176,7 @@
       >
         <template #arrivals>
           <AppFeedNewPostsPill
-            v-if="feedArrivals.pending.value.length"
+            v-if="feedArrivals.pending.value.length && isReadingFeed"
             class="pointer-events-auto"
             :authors="feedArrivals.authors.value"
             :count="feedArrivals.pending.value.length"
@@ -184,6 +184,17 @@
           />
         </template>
       </AppFeedHomeFeedHeader>
+
+      <!-- Always reserve the arrival row, so its appearance cannot move posts. -->
+      <div v-if="isAuthed" ref="feedArrivalRowEl" class="h-11">
+        <AppFeedNewPostsPill
+          v-if="feedArrivals.pending.value.length && !isReadingFeed"
+          inline
+          :authors="feedArrivals.authors.value"
+          :count="feedArrivals.pending.value.length"
+          @reveal="revealFeedArrivals"
+        />
+      </div>
 
       <div ref="homeFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
@@ -293,6 +304,7 @@
 </template>
 
 <script setup lang="ts">
+import { useDocumentVisibility, useEventListener } from '@vueuse/core'
 import type { PostVisibility, CheckinAllowedVisibility } from '~/types/api'
 import type { ComponentPublicInstance } from 'vue'
 import type { PostsFeedDisplayItem } from '~/composables/usePostsFeed'
@@ -512,7 +524,6 @@ const {
   loadingMore,
   error,
   refresh,
-  softRefreshNewer,
   notifyVisibleRowIds,
   loadMore,
   addReply,
@@ -539,7 +550,15 @@ const {
 const homeTabReturnGate = useTabReturnRefreshGate('home')
 
 const homeFeedContentEl = ref<HTMLElement | null>(null)
-const homeFeedHeaderEl = computed(() => homeFeedContentEl.value?.previousElementSibling as HTMLElement | null)
+const feedArrivalRowEl = ref<HTMLElement | null>(null)
+const homeFeedHeaderEl = computed(() => feedArrivalRowEl.value?.previousElementSibling as HTMLElement | null)
+const isReadingFeed = ref(false)
+function updateFeedReadingPosition() {
+  const root = middleScrollerRef.value
+  const row = feedArrivalRowEl.value
+  isReadingFeed.value = Boolean(root && row && row.getBoundingClientRect().bottom <= root.getBoundingClientRect().top + (homeFeedHeaderEl.value?.offsetHeight ?? 0))
+}
+useEventListener(middleScrollerRef, 'scroll', updateFeedReadingPosition, { passive: true })
 const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(homeFeedContentEl, homeFeedHeaderEl)
 
 function handleFeedScopeChange(scope: Parameters<typeof onFeedScopeChange>[0]) {
@@ -826,12 +845,6 @@ const feedArrivals = useFeedArrivals({
   viewerId: computed(() => authUser.value?.id),
   filter: feedFilter,
   context: computed(() => `${feedScope.value}:${feedSort.value}:${feedFilter.value}`),
-  isReading: () => {
-    const root = middleScrollerRef.value
-    const head = homeFeedContentEl.value
-    if (!root || !head) return false
-    return head.getBoundingClientRect().top < root.getBoundingClientRect().top + (homeFeedHeaderEl.value?.offsetHeight ?? 0) - 2
-  },
   prepend: prependToHomeFeed,
 })
 let pendingPostSubscriptions = new Set<string>()
@@ -863,41 +876,30 @@ watch(loading, (active) => {
 })
 
 let unregisterReplyPending: null | (() => void) = null
+const { apiFetchData: fetchArrivalPosts } = useApiClient()
+const pageVisibility = useDocumentVisibility()
+const arrivalPolling = useFeedArrivalPolling({
+  active: computed(() => arrivalsActive.value && pageVisibility.value === 'visible' && isAuthed.value && feedArrivals.pending.value.length < 60 && !loading.value),
+  periodic: computed(() => forYou.value && feedArrivals.pending.value.length < 60),
+  context: computed(() => `${authUser.value?.id}:${feedScope.value}:${feedSort.value}:${feedFilter.value}`),
+  fetch: signal => fetchArrivalPosts<import('~/types/api').FeedPost[]>('/posts', {
+    query: { limit: 20, sort: forYou.value ? 'forYou' : feedSort.value, visibility: feedFilter.value,
+      followingOnly: feedScope.value === 'following', topLevelOnly: true },
+    signal, mohRetry: false,
+  }),
+  receive: posts => { feedArrivals.receiveBatch(posts); homeTabReturnGate.markSuccess() },
+})
 function catchUpHomeFeed() {
-  if (posts.value.length > 0 && !homeTabReturnGate.shouldRefresh()) return
-  const mark = () => homeTabReturnGate.markSuccess()
-  if (posts.value.length > 0) {
-    // For You is a ranked shuffle — "newer than head" prepend is the wrong model.
-    // Hard-replace so returning to the tab actually re-ranks. Following / All stay
-    // on the chrono soft-prepend so scroll position is preserved.
-    if (forYou.value) {
-      void refresh({ forYouRefresh: true }).then(mark)
-    } else {
-      // Posts are already in memory (keepalive). Soft-refresh only fetches posts newer than the
-      // current head and prepends them, preserving the scroll position via anchor adjustment.
-      // We delay by 300ms so this runs after the scroll-restoration plugin's 200ms re-apply,
-      // preventing the two position adjustments from conflicting.
-      // `onPrepend` adjusts scrollTop by N * estimated row height to keep the current view stable
-      // (the virtualizer uses absolute positioning, so a prepend shifts all row offsets down).
-      setTimeout(() => void softRefreshNewer({
-        onPrepend: (addedCount) => {
-          const scroller = middleScrollerRef.value
-          if (scroller && addedCount > 0) {
-            scroller.scrollTop += addedCount * FEED_ESTIMATED_ROW_PX
-          }
-        },
-      }).then(mark), 300)
-    }
-  } else {
-    // No posts yet (e.g. first activation, auth change) — do a full refresh.
-    void refresh().then(mark)
-  }
+  if (!posts.value.length) { void refresh().then(() => homeTabReturnGate.markSuccess()); return }
+  if (homeTabReturnGate.shouldRefresh()) void arrivalPolling.check()
 }
+watch(pageVisibility, value => { if (value === 'visible' && arrivalsActive.value) catchUpHomeFeed() })
 onActivated(() => {
   if (!import.meta.client) return
-  catchUpHomeFeed()
-  // Real-time: prepend new posts from followed users to the home feed.
   arrivalsActive.value = true
+  catchUpHomeFeed()
+  void nextTick(updateFeedReadingPosition)
+  // Realtime and HTTP arrivals share the same explicit-reveal queue.
   addPostsCallback(feedNewPostCb)
   // Optimistic replies: when the reply modal forwards a pending submit, slot
   // the optimistic row into the parent's position via `addReply` and let

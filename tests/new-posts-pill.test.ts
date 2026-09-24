@@ -20,6 +20,17 @@ describe('new posts pill interaction', () => {
     expect(wrapper.emitted('reveal')).toHaveLength(1)
     wrapper.unmount()
   })
+  it('uses the same accessible reveal action in its full-width row', async () => {
+    const wrapper = mount(NewPostsPill, {
+      props: { authors: [], count: 1, inline: true },
+      global: { stubs: { Icon: true, AppAvatarFacepile: true } },
+    })
+    expect(wrapper.get('button').classes()).toContain('w-full')
+    expect(wrapper.get('button').attributes('aria-label')).toContain('1 new post.')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('reveal')).toHaveLength(1)
+    wrapper.unmount()
+  })
   it.each([false, true])('scrolls the feed below its sticky tabs, reduced motion=%s', async reduced => {
     const root = document.createElement('div')
     const target = document.createElement('div')

@@ -15,12 +15,11 @@ function setup() {
   const viewerId = ref('me')
   const filter = ref('all')
   const context = ref('forYou:all')
-  let reading = true
   const arrivals = scope.run(() => useFeedArrivals({
-    posts, viewerId, filter, context, isReading: () => reading,
+    posts, viewerId, filter, context,
     prepend: item => { if (!posts.value.some(p => p.id === item.id)) posts.value.unshift(item) },
   }))!
-  return { ...arrivals, posts, viewerId, filter, context, atTop: () => { reading = false } }
+  return { ...arrivals, posts, viewerId, filter, context }
 }
 
 describe('feed arrivals', () => {
@@ -33,11 +32,29 @@ describe('feed arrivals', () => {
     expect(a.posts.value.map(p => p.id)).toEqual(['second', 'first', 'existing'])
     expect(a.pending.value).toEqual([])
   })
-  it('inserts directly at the top but never flushes an existing reading queue', () => {
-    const a = setup(); a.atTop(); a.receive(post('first'))
-    expect(a.posts.value[0]?.id).toBe('first')
-    const b = setup(); b.receive(post('queued')); b.atTop(); b.receive(post('later'))
-    expect(b.posts.value.map(p => p.id)).toEqual(['existing'])
+  it('always buffers arrivals, including when the feed is at the top', () => {
+    const a = setup(); a.receive(post('first')); a.receive(post('later'))
+    expect(a.posts.value.map(p => p.id)).toEqual(['existing'])
+    expect(a.pending.value.map(p => p.id)).toEqual(['later', 'first'])
+  })
+  it('merges recommendations in server order and deduplicates socket echoes', () => {
+    const a = setup(); a.receive(post('socket'))
+    a.receiveBatch([post('recommended'), post('socket'), post('existing'), post('older')])
+    expect(a.pending.value.map(p => p.id)).toEqual(['recommended', 'older', 'socket'])
+    a.reveal()
+    expect(a.posts.value.map(p => p.id)).toEqual(['recommended', 'older', 'socket', 'existing'])
+  })
+  it('bounds the queue without discarding arrivals already promised to the reader', () => {
+    const a = setup()
+    for (let i = 0; i < 65; i++) a.receive(post(String(i)))
+    expect(a.pending.value).toHaveLength(60)
+    expect(a.pending.value.at(-1)?.id).toBe('0')
+  })
+  it('does not queue a root already embedded in a loaded conversation', () => {
+    const a = setup()
+    a.posts.value = [post('reply', 'a', {parentId:'root', parent:post('root')})]
+    a.receiveBatch([post('root'), post('new')])
+    expect(a.pending.value.map(p => p.id)).toEqual(['new'])
   })
   it('shows at most three distinct authors', () => {
     const a = setup()
