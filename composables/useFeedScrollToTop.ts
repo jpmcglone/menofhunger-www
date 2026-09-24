@@ -22,6 +22,7 @@ export function useFeedScrollToTop(
     void nextTick(() => {
       const s = scroller.value
       const target = feedContentEl?.value
+      const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
 
       if (target) {
         const scrollerTop = s ? s.getBoundingClientRect().top : 0
@@ -31,11 +32,11 @@ export function useFeedScrollToTop(
         // Zero or positive means it is already visible below the sticky header.
         const delta = targetTop - scrollerTop - headerH
         if (delta >= 0) return
-        if (s) s.scrollBy({ top: delta, behavior: 'smooth' })
-        else window.scrollBy({ top: delta, behavior: 'smooth' })
+        if (s) s.scrollBy({ top: delta, behavior })
+        else window.scrollBy({ top: delta, behavior })
       } else {
-        if (s) s.scrollTo({ top: 0, behavior: 'smooth' })
-        else window.scrollTo({ top: 0, behavior: 'smooth' })
+        if (s) s.scrollTo({ top: 0, behavior })
+        else window.scrollTo({ top: 0, behavior })
       }
     })
   }

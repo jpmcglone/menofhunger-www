@@ -173,7 +173,17 @@
         @reselect="handleFeedScopeReselect"
         @update:sort="handleFeedSortChange"
         @update:filter="handleFeedFilterChange"
-      />
+      >
+        <template #arrivals>
+          <AppFeedNewPostsPill
+            v-if="feedArrivals.pending.value.length"
+            class="pointer-events-auto"
+            :authors="feedArrivals.authors.value"
+            :count="feedArrivals.pending.value.length"
+            @reveal="revealFeedArrivals"
+          />
+        </template>
+      </AppFeedHomeFeedHeader>
 
       <div ref="homeFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
@@ -529,7 +539,8 @@ const {
 const homeTabReturnGate = useTabReturnRefreshGate('home')
 
 const homeFeedContentEl = ref<HTMLElement | null>(null)
-const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(homeFeedContentEl)
+const homeFeedHeaderEl = computed(() => homeFeedContentEl.value?.previousElementSibling as HTMLElement | null)
+const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(homeFeedContentEl, homeFeedHeaderEl)
 
 function handleFeedScopeChange(scope: Parameters<typeof onFeedScopeChange>[0]) {
   onFeedScopeChange(scope)
@@ -807,18 +818,49 @@ function openOnlyMeComposer() {
 }
 
 const replyModal = useReplyModal()
-const { addPostsCallback, removePostsCallback } = usePresence()
+const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
 const { prependToHomeFeed } = useHomeFeedPrepend()
 
+const feedArrivals = useFeedArrivals({
+  posts,
+  viewerId: computed(() => authUser.value?.id),
+  filter: feedFilter,
+  context: computed(() => `${feedScope.value}:${feedSort.value}:${feedFilter.value}`),
+  isReading: () => {
+    const root = middleScrollerRef.value
+    const head = homeFeedContentEl.value
+    if (!root || !head) return false
+    return head.getBoundingClientRect().top < root.getBoundingClientRect().top + (homeFeedHeaderEl.value?.offsetHeight ?? 0) - 2
+  },
+  prepend: prependToHomeFeed,
+})
+let pendingPostSubscriptions = new Set<string>()
+const arrivalsActive = ref(false)
+watch([() => feedArrivals.pending.value.map(post => post.id), arrivalsActive], ([ids, active]) => {
+  const next = new Set(active ? ids : [])
+  subscribePosts([...next].filter(id => !pendingPostSubscriptions.has(id)))
+  unsubscribePosts([...pendingPostSubscriptions].filter(id => !next.has(id)))
+  pendingPostSubscriptions = next
+})
+onBeforeUnmount(() => unsubscribePosts([...pendingPostSubscriptions]))
+function revealFeedArrivals() {
+  feedArrivals.reveal()
+  scrollFeedToTop()
+}
 const feedNewPostCb = {
   onFeedNewPost: (payload: import('~/types/api').WsFeedNewPostPayload) => {
-    const post = payload?.post
-    if (!post?.id) return
-    // Group posts never appear on the home feed; the Groups badge is the signal.
-    if (post.communityGroupId) return
-    prependToHomeFeed(post)
+    if (payload?.post) feedArrivals.receive(payload.post)
   },
+  onLiveUpdated: feedArrivals.applyUpdate,
 }
+// A completed refresh supersedes only the arrivals that existed when it began.
+let arrivalsBeforeRefresh = new Set<string>()
+watch(loading, (active) => {
+  if (active) arrivalsBeforeRefresh = new Set(feedArrivals.pending.value.map(post => post.id))
+  else if (!error.value) {
+    feedArrivals.pending.value = feedArrivals.pending.value.filter(post => !arrivalsBeforeRefresh.has(post.id))
+  }
+})
 
 let unregisterReplyPending: null | (() => void) = null
 function catchUpHomeFeed() {
@@ -855,6 +897,7 @@ onActivated(() => {
   if (!import.meta.client) return
   catchUpHomeFeed()
   // Real-time: prepend new posts from followed users to the home feed.
+  arrivalsActive.value = true
   addPostsCallback(feedNewPostCb)
   // Optimistic replies: when the reply modal forwards a pending submit, slot
   // the optimistic row into the parent's position via `addReply` and let
@@ -877,6 +920,7 @@ onActivated(() => {
   unregisterReplyPending = replyModal.registerOnReplyPending(pendingCb)
 })
 onDeactivated(() => {
+  arrivalsActive.value = false
   removePostsCallback(feedNewPostCb)
   unregisterReplyPending?.()
   unregisterReplyPending = null

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="sticky top-0 z-20 moh-surface relative border-b moh-border flex items-center gap-2 pr-3 sm:pr-4"
+    class="sticky top-0 z-20 moh-surface border-b moh-border flex items-center gap-2 pr-3 sm:pr-4"
   >
     <AppFeedScopeSelector
       :model-value="scope"
@@ -9,6 +9,10 @@
       @update:model-value="$emit('update:scope', $event as FeedScope)"
       @reselect="$emit('reselect', $event as FeedScope)"
     />
+
+    <div class="pointer-events-none absolute inset-x-0 top-full flex justify-center pt-2">
+      <slot name="arrivals" />
+    </div>
 
     <!-- Keep the filter target separate from horizontally scrollable tabs. -->
     <div class="flex shrink-0 items-center py-1">
