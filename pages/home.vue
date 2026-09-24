@@ -871,9 +871,14 @@ const feedNewPostCb = {
 }
 // A completed refresh supersedes only the arrivals that existed when it began.
 let arrivalsBeforeRefresh = new Set<string>()
+let arrivalRefreshStartedAt = Date.now()
 watch(loading, (active) => {
-  if (active) arrivalsBeforeRefresh = new Set(feedArrivals.pending.value.map(post => post.id))
+  if (active) {
+    arrivalRefreshStartedAt = Date.now()
+    arrivalsBeforeRefresh = new Set(feedArrivals.pending.value.map(post => post.id))
+  }
   else if (!error.value) {
+    feedArrivals.advanceBoundary(arrivalRefreshStartedAt)
     feedArrivals.pending.value = feedArrivals.pending.value.filter(post => !arrivalsBeforeRefresh.has(post.id))
   }
 })

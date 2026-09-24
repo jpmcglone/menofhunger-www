@@ -10,6 +10,7 @@ export function useFeedArrivals(options: {
   prepend: (post: FeedPost) => void
 }) {
   const pending = ref<FeedPost[]>([])
+  let freshSince = Date.now()
   const authors = computed(() => {
     const seen = new Set<string>()
     return pending.value.map(post => post.author).filter(author => {
@@ -20,7 +21,7 @@ export function useFeedArrivals(options: {
   })
 
   function eligible(post: FeedPost) {
-    return Boolean(post.id && !post.deletedAt && !post.communityGroupId && !post.parentId
+    return Boolean(Date.parse(post.createdAt) > freshSince && post.id && !post.deletedAt && !post.communityGroupId && !post.parentId
       && post.visibility !== 'onlyMe' && post.author.id !== options.viewerId.value
       && (options.filter.value === 'all' || post.visibility === options.filter.value))
   }
@@ -66,10 +67,15 @@ export function useFeedArrivals(options: {
     for (const post of fresh.reverse()) receive(post)
   }
 
-  function clear() { pending.value = [] }
+  // Unseen recommendations can be old. Only publication after this visit/refresh is an arrival.
+  function advanceBoundary(startedAt: number) {
+    freshSince = Math.max(freshSince, startedAt)
+    pending.value = pending.value.filter(eligible)
+  }
+  function clear() { pending.value = []; advanceBoundary(Date.now()) }
   watch([options.context, options.viewerId], clear, { flush: 'sync' })
   watch(loadedIds, ids => {
     pending.value = pending.value.filter(post => !ids.has(post.id))
   })
-  return { pending, authors, receive, receiveBatch, applyUpdate, reveal, clear }
+  return { pending, authors, receive, receiveBatch, applyUpdate, reveal, clear, advanceBoundary }
 }

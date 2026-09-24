@@ -1,14 +1,15 @@
 import { effectScope, nextTick, ref } from 'vue'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FeedPost } from '~/types/api'
 import { useFeedArrivals } from '~/composables/useFeedArrivals'
 
 function post(id: string, author = id, extra: Partial<FeedPost> = {}): FeedPost {
-  return { id, body: id, visibility: 'public', parentId: null, communityGroupId: null,
+  return { id, createdAt: new Date(Date.now() + 1).toISOString(), body: id, visibility: 'public', parentId: null, communityGroupId: null,
     deletedAt: null, author: { id: author, username: author, avatarUrl: null }, ...extra } as FeedPost
 }
 const scopes: ReturnType<typeof effectScope>[] = []
-afterEach(() => { scopes.splice(0).forEach(scope => scope.stop()) })
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-24T18:00:00Z')) })
+afterEach(() => { scopes.splice(0).forEach(scope => scope.stop()); vi.useRealTimers() })
 function setup() {
   const scope = effectScope(); scopes.push(scope)
   const posts = ref([post('existing')])
@@ -23,6 +24,44 @@ function setup() {
 }
 
 describe('feed arrivals', () => {
+  it('rejects old, equal-boundary and invalid dates from polling and realtime', () => {
+    const a = setup()
+    const old = post('yesterday', 'old', { createdAt: '2026-09-23T18:00:00Z' })
+    const beforeVisit = post('today', 'old', { createdAt: '2026-09-24T17:59:00Z' })
+    const boundary = post('boundary', 'old', { createdAt: new Date().toISOString() })
+    const invalid = post('invalid', 'old', { createdAt: 'invalid' })
+    a.receive(old); a.receive(beforeVisit); a.receive(boundary); a.receive(invalid)
+    a.receiveBatch([old, beforeVisit, boundary, invalid, post('fresh')])
+    expect(a.pending.value.map(p => p.id)).toEqual(['fresh'])
+    expect(a.authors.value.map(author => author.id)).toEqual(['fresh'])
+    a.reveal()
+    expect(a.posts.value.map(p => p.id)).toEqual(['fresh', 'existing'])
+  })
+  it('refresh advances the boundary while preserving posts published during the request', () => {
+    const a = setup()
+    a.receive(post('before-refresh'))
+    vi.advanceTimersByTime(1000)
+    const refreshStarted = Date.now()
+    a.receive(post('during-refresh'))
+    vi.advanceTimersByTime(1000)
+    a.advanceBoundary(refreshStarted)
+    expect(a.pending.value.map(p => p.id)).toEqual(['during-refresh'])
+    a.receiveBatch([post('resurfaced', 'old', { createdAt: new Date(refreshStarted - 1).toISOString() })])
+    expect(a.pending.value.map(p => p.id)).toEqual(['during-refresh'])
+    a.advanceBoundary(refreshStarted - 2000)
+    a.receive(post('still-old', 'old', { createdAt: new Date(refreshStarted).toISOString() }))
+    expect(a.pending.value.map(p => p.id)).toEqual(['during-refresh'])
+  })
+  it('a new feed context establishes a new freshness boundary', () => {
+    const a = setup()
+    const earlier = post('earlier')
+    a.receive(earlier)
+    vi.advanceTimersByTime(1000)
+    a.context.value = 'following:all'
+    a.receive(earlier)
+    a.receive(post('fresh'))
+    expect(a.pending.value.map(p => p.id)).toEqual(['fresh'])
+  })
   it('keeps the visible feed unchanged until reveal, newest first and without echoes', () => {
     const a = setup()
     a.receive(post('first')); a.receive(post('second')); a.receive(post('first'))
