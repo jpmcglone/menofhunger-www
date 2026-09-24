@@ -24,7 +24,7 @@ We use **Sentry** (errors, performance, session replay) and **PostHog** (product
 | Request URL (path) | Yes | Debug which route failed. |
 | Request query string | Yes, scrubbed | Non-sensitive query params remain; credentials are redacted. |
 | Request headers (non-auth) | Yes | Useful for debugging (`User-Agent`, `Accept`, etc.). |
-| Session replay | Yes, sampled | 10% of normal sessions, 100% of sessions with errors. |
+| Session replay | Production errors only | No normal-session sampling; the free plan includes 50 replays a month. Use PostHog replay for behavior. |
 | User email / phone | No | We never set these on `Sentry.setUser`, and the scrubber redacts any field named like them. |
 
 ## What we explicitly strip
@@ -56,6 +56,30 @@ PostHog is a separate pipeline from Sentry. Policy:
 - EU users: Sentry processes data in the EU region when `NUXT_PUBLIC_SENTRY_DSN` points at the EU ingest. Verify the DSN before a region-sensitive launch.
 - Data retention: Sentry errors default to 90 days, replays to 30 days. Adjust in the Sentry org settings; document any change here.
 - Right-to-erasure: when a user requests deletion, also submit a Sentry user-deletion request via the Sentry UI (search by `user.id`).
+
+## Sentry triage
+
+Projects in the `jp-mcglone` org: `menofhunger-www`, `menofhunger-api`, and `menofhunger-ios`.
+Each has the default "high priority issues" alert, which matches every environment, so
+only real traffic may report:
+
+- Web and API report only when a DSN is configured (`NUXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN`).
+  Leave both unset locally.
+- iOS Release builds report as the API environment (`production`). Debug builds start Sentry
+  only with `--verify-sentry` or `--preview-sentry-mask`, and then report as `debug`.
+- Releases identify the deploy: the commit SHA for web (Nuxt build plugin) and API
+  (`RENDER_GIT_COMMIT`), and version plus build for iOS. "First seen in release" names the
+  deploy that introduced an issue.
+
+For each new issue, fix it or close it with a reason:
+
+- **Fix:** resolve it in the fixing release, so a regression reopens it.
+- **Not our code or not actionable:** add a narrow `ignoreErrors` pattern that cites the issue
+  ID (see `sentry.client.config.ts`), then resolve it.
+- **Rare and harmless:** use "Ignore until escalating" and leave a note explaining why.
+
+In Cursor, ask the Sentry MCP for unresolved issues in `environment:production`. Use Seer
+analysis for issues that have stack traces.
 
 ## Testing the scrubber
 

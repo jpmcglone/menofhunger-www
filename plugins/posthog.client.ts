@@ -1,4 +1,5 @@
 import posthog, { type PostHog } from 'posthog-js'
+import { sanitizeAnalyticsProperties } from '~/utils/analytics-privacy'
 import type { AuthUser } from '~/composables/useAuth'
 
 export default defineNuxtPlugin((nuxtApp) => {
@@ -13,6 +14,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   const isValidKey = key && key.startsWith('phc_') && key.length >= 20
 
   let client: PostHog | null = null
+  let impersonating = false
 
   if (isValidKey) {
     posthog.init(key, {
@@ -21,37 +23,55 @@ export default defineNuxtPlugin((nuxtApp) => {
       capture_pageleave: true,
       persistence: 'localStorage+cookie',
       autocapture: false,
-      // Session replay — masks all inputs by default for privacy.
-      // Enable/disable in PostHog → Project Settings → Session Replay.
-      session_recording: {
-        maskAllInputs: true,
-        maskTextSelector: '[data-ph-mask]', // add data-ph-mask to any sensitive element
+      // Private conversations never enter replay. Product funnels use explicit events.
+      disable_session_recording: true,
+      before_send: (event) => {
+        if (!event || impersonating) return null
+        event.properties = sanitizeAnalyticsProperties(event.properties)
+        return event
       },
     })
 
     client = posthog
+    posthog.register({ platform: 'www', environment: import.meta.dev ? 'development' : 'production' })
+    let identifiedId: string | null = null
 
     // Track route changes as pageviews.
     const router = useRouter()
-    router.afterEach((to) => {
-      posthog.capture('$pageview', { $current_url: window.location.origin + to.fullPath })
-    })
+    let lastPath: string | null = null
+    function capturePageview(path: string, name?: unknown) {
+      if (path === lastPath) return
+      lastPath = path
+      posthog.capture('$pageview', { $current_url: window.location.origin + path, route_name: String(name ?? '') })
+    }
+    router.afterEach((to) => capturePageview(to.path, to.name))
 
     // Identify the user once auth state is loaded.
     nuxtApp.hooks.hookOnce('app:mounted', () => {
       const authUser = useState<AuthUser | null>('auth-user')
 
-      if (authUser.value) identifyUser(authUser.value)
+      function syncIdentity(user: AuthUser | null) {
+        impersonating = Boolean(user?.impersonation)
+        if (impersonating) return
+        const previous = identifiedId ?? (posthog.get_property('$user_id') as string | undefined)
+        if (previous && previous !== user?.id) {
+          posthog.reset()
+          posthog.register({ platform: 'www', environment: import.meta.dev ? 'development' : 'production' })
+        }
+        identifiedId = user?.id ?? null
+        if (user) identifyUser(user)
+      }
+      syncIdentity(authUser.value)
 
       watch(authUser, (user) => {
-        if (user) identifyUser(user)
-        else posthog.reset()
+        syncIdentity(user)
       })
 
       posthog.capture('app_opened')
+      capturePageview(router.currentRoute.value.path, router.currentRoute.value.name)
     })
   } else if (key) {
-    console.log('[PostHog] Key looks like a placeholder — skipping init. Set NUXT_PUBLIC_POSTHOG_KEY to your real project key.')
+    console.warn('[PostHog] Key looks like a placeholder — skipping init. Set NUXT_PUBLIC_POSTHOG_KEY to your real project key.')
   }
 
   function identifyUser(user: AuthUser) {
@@ -61,7 +81,6 @@ export default defineNuxtPlugin((nuxtApp) => {
       {
         $name: user.username ? `@${user.username}` : undefined,
         name: user.name ?? undefined,
-        email: user.email ?? undefined,
         username: user.username ?? undefined,
         premium: user.premium ?? false,
         premium_plus: user.premiumPlus ?? false,

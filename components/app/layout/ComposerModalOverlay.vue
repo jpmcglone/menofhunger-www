@@ -6,14 +6,6 @@
     :align-style="composerSheetStyle"
   />
 
-  <AppFirstPostPrompt
-    :open="firstPostPromptOpen"
-    :starter="firstPostStarter"
-    :align-style="composerSheetStyle"
-    @start="startFirstPost"
-    @dismiss="dismissFirstPost"
-  />
-
   <ClientOnly>
     <Transition
       enter-active-class="transition-opacity duration-200 ease-out"
@@ -126,10 +118,6 @@ const {
   composerSheetPlacementStyle,
   sharePost,
   shareDialogOpen,
-  firstPostPromptOpen,
-  firstPostStarter,
-  startFirstPost,
-  dismissFirstPost,
   closeComposerModal,
   onComposerPending,
   onComposerPosted,

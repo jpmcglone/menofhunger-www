@@ -3,11 +3,12 @@ import { init } from '@sentry/nuxt'
 import '../sentry.client.config'
 
 describe('Sentry client ignore list', () => {
-  it('initializes browser integrations during Nuxt startup', () => {
+  it('initializes tracing without production replay in the test environment', () => {
     const options = vi.mocked(init).mock.calls[0]?.[0]
     expect(options).toBeDefined()
     expect(options?.integrations)
-      .toEqual([{ name: 'BrowserTracing' }, { name: 'Replay' }])
+      .toEqual([{ name: 'BrowserTracing' }])
+    expect(options?.replaysOnErrorSampleRate).toBe(0)
   })
 
   it('drops Facebook Android IAB postMessage noise (MENOFHUNGER-WWW-1V)', () => {

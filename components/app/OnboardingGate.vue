@@ -333,6 +333,12 @@ const show = computed(() => {
 })
 
 const page = ref<1 | 2 | 3>(1)
+const { capture: captureOnboarding } = usePostHog()
+onMounted(() => {
+  watch([show, page], ([visible, step]) => {
+    if (visible) captureOnboarding('onboarding_step_viewed', { step })
+  }, { immediate: true })
+})
 const didLand = ref(false)
 
 watch(
@@ -701,7 +707,7 @@ async function applyReferralIfNeeded() {
 async function finishOnboarding() {
   const { whenSocketConnected, emitActivity } = usePresence()
   void whenSocketConnected(5000).then(() => emitActivity())
-  useNuxtApp().$posthog?.capture('onboarding_completed', {
+  useNuxtApp().$posthog?.capture('onboarding_gate_finished', {
     arena_count: interests.value.length,
   })
   const latest = await me()

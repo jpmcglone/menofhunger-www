@@ -6,6 +6,13 @@ const config = useRuntimeConfig()
 const dsn = String(config.public?.sentry?.dsn || '').trim()
 const environment = String(config.public?.sentry?.environment || '').trim() || undefined
 const isProd = environment === 'production'
+const apiOrigin = (() => {
+  try {
+    return new URL(String(config.public?.apiBaseUrl || '')).origin
+  } catch {
+    return null
+  }
+})()
 
 Sentry.init({
   dsn: dsn || undefined,
@@ -15,19 +22,25 @@ Sentry.init({
   integrations: [
     // Captures page-load and navigation performance spans, and wires up distributed tracing.
     browserTracingIntegration(),
-    // Records session replays; on error always capture, otherwise sample lightly.
-    replayIntegration({
-      maskAllText: false,
-      blockAllMedia: false,
-    }),
+    // The free plan includes 50 replays a month, so only production error sessions upload one.
+    // Behavioral replay belongs in PostHog, which has a far larger free replay quota.
+    ...(isProd
+      ? [
+          replayIntegration({
+            maskAllText: false,
+            blockAllMedia: false,
+          }),
+        ]
+      : []),
   ],
 
   // 100% in dev/staging so nothing is missed; 20% in production to stay within quota.
   tracesSampleRate: isProd ? 0.2 : 1.0,
+  // Connect browser traces to API spans (the API honors the incoming sampling decision).
+  tracePropagationTargets: ['localhost', /^\//, ...(apiOrigin ? [apiOrigin] : [])],
 
-  // Replay: record 10% of normal sessions, always record sessions with errors.
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0,
+  replaysSessionSampleRate: 0,
+  replaysOnErrorSampleRate: isProd ? 1.0 : 0,
 
   // Include user IP + some default request/context data so we can correlate errors
   // with affected users and environments. Actual PII (auth cookies, session tokens,

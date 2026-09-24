@@ -3463,3 +3463,5 @@ export type GroupActivity = {
   newPostCount: number
   newPostIds: string[]
 }
+
+export type { ActivationDto } from './api-contracts.gen'
