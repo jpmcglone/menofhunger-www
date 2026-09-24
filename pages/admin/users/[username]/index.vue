@@ -338,6 +338,8 @@
         </div>
       </div>
 
+      <AdminUserMcpConnections v-if="user" :user-id="user.id" />
+
       <!-- Recent cards -->
       <div class="px-4 grid gap-4 lg:grid-cols-3">
         <!-- Posts -->

@@ -121,6 +121,8 @@
 
               <SettingsFitnessSection v-if="showsBlock('fitness')" />
 
+              <SettingsAiConnectionSection v-if="showsBlock('ai')" />
+
               <div v-if="showsBlock('danger')" class="space-y-4">
                 <div class="border-t moh-border pt-6 -mt-2">
                   <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
@@ -149,6 +151,7 @@ import SettingsPrivacySection from '~/components/settings/sections/SettingsPriva
 import SettingsNotificationsSection from '~/components/settings/sections/SettingsNotificationsSection.vue'
 import SettingsDangerZoneSection from '~/components/settings/sections/SettingsDangerZoneSection.vue'
 import SettingsFitnessSection from '~/components/settings/sections/SettingsFitnessSection.vue'
+import SettingsAiConnectionSection from '~/components/settings/sections/SettingsAiConnectionSection.vue'
 
 // Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=414-12178
 definePageMeta({
@@ -165,8 +168,9 @@ usePageSeo({
 
 // Verification has its own destination so signup and verification prompts open
 // the agreement flow directly instead of burying it among account fields.
-type SettingsSection = 'account' | 'verification' | 'notifications' | 'privacy' | 'billing' | 'marv' | 'fitness'
+type SettingsSection = 'account' | 'verification' | 'notifications' | 'privacy' | 'billing' | 'marv' | 'ai' | 'fitness'
 type SettingsBlock =
+  | 'ai'
   | 'account'
   | 'verification'
   | 'billing'
@@ -221,7 +225,7 @@ onMounted(() => {
 const allowedSections = computed<SettingsSection[]>(() =>
   isPageAccount.value
     ? ['account', 'notifications', 'privacy', 'marv', 'fitness']
-    : ['account', 'verification', 'notifications', 'privacy', 'billing', 'marv', 'fitness'],
+    : ['account', 'verification', 'notifications', 'privacy', 'billing', 'marv', 'ai', 'fitness'],
 )
 
 // Old narrower URL keys redirect into one of the top-level sections.
@@ -254,7 +258,7 @@ const rawRouteParam = typeof route.params.section === 'string' ? route.params.se
 if (rawRouteParam && rawRouteParam in sectionAlias) {
   await navigateTo(`/settings/${sectionAlias[rawRouteParam]}`, { replace: true })
 }
-if (isPageAccount.value && (rawRouteParam === 'billing' || rawRouteParam === 'verification')) {
+if (isPageAccount.value && (rawRouteParam === 'billing' || rawRouteParam === 'verification' || rawRouteParam === 'ai')) {
   await navigateTo('/settings/account', { replace: true })
 }
 
@@ -312,6 +316,12 @@ const sections = computed(() => {
       description: 'Preferred reply mode, credits, and recent activity.',
     },
     {
+      key: 'ai' as const,
+      label: 'Connect your AI',
+      icon: 'link' as const,
+      description: 'Read-only access for ChatGPT, Claude, or Cursor.',
+    },
+    {
       key: 'fitness' as const,
       label: 'Fitness & Apple Health',
       icon: 'fitness' as const,
@@ -331,6 +341,7 @@ const sectionToBlocks: Record<SettingsSection, ReadonlyArray<SettingsBlock>> = {
   privacy: ['privacy', 'blocked'],
   billing: ['billing'],
   marv: ['marv'],
+  ai: ['ai'],
   fitness: ['fitness'],
 }
 

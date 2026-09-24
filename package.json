@@ -22,7 +22,8 @@
     "validate-api-types": "node scripts/validate-api-types.mjs",
     "check:post-row-click": "node scripts/check-post-row-click.mjs",
     "check:hydration": "node scripts/check-hydration.mjs",
-    "check": "npm run lint && npm run typecheck && npm run validate-api-types && npm test && nuxt build",
+    "check:env-docs": "node scripts/check-env-docs.mjs",
+    "check": "npm run check:env-docs && npm run lint && npm run typecheck && npm run validate-api-types && npm test && nuxt build",
     "typecheck": "nuxt prepare && node --preserve-symlinks --preserve-symlinks-main node_modules/vue-tsc/bin/vue-tsc.js --noEmit"
   },
   "dependencies": {
