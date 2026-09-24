@@ -10,7 +10,7 @@
       <div
         ref="leftNavViewportRef"
         :class="[
-          'min-h-0 flex-1 no-scrollbar',
+          'left-nav-viewport min-h-0 flex-1 no-scrollbar',
           'overflow-hidden',
         ]"
       >
@@ -27,9 +27,9 @@
             <div class="flex h-12 w-12 shrink-0 items-center justify-center">
               <AppLogo
                 :alt="siteConfig.name"
-                :width="48"
-                :height="48"
-                imgClass="h-12 w-12 rounded"
+                :width="28"
+                :height="28"
+                img-class="h-7 w-7 rounded"
               />
             </div>
             <span
@@ -73,7 +73,8 @@
             >
               <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
                 <ClientOnly v-if="item.key === 'bookmarks'">
-                  <AppIconGlyph name="bookmark"
+                  <AppIconGlyph
+                    name="bookmark"
                     :selected="hasBookmarks || isActiveNav(item.to)"
                     :size="28"
                     class="opacity-90"
@@ -192,7 +193,8 @@
                 >
                   <span class="relative flex h-6 w-6 shrink-0 items-center justify-center">
                     <ClientOnly v-if="mi.key === 'bookmarks'">
-                      <AppIconGlyph name="bookmark"
+                      <AppIconGlyph
+                        name="bookmark"
                         :selected="hasBookmarks || isActiveNav(mi.to)"
                         :size="22"
                         :style="hasBookmarks ? { color: 'var(--p-primary-color)' } : undefined"
@@ -456,3 +458,10 @@ function onLeftNavClick(to: string, e: MouseEvent) {
   if (to === '/home') props.scrollMiddleToTop()
 }
 </script>
+
+<style scoped>
+/* The capacity-limited viewport clips overflow; keep keyboard focus inside each target. */
+.left-nav-viewport :deep(.moh-focus:focus-visible) {
+  outline-offset: -2px;
+}
+</style>
