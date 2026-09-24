@@ -131,8 +131,14 @@ export function useSfx() {
     await Promise.allSettled(list.map((u) => preloadUrl(u)))
   }
 
-  async function playUrl(url: string, opts?: { volume?: number }) {
+  async function playUrl(url: string, opts?: {
+    volume?: number
+    shouldPlay?: () => boolean
+    waitUntilEnded?: boolean
+    subscribeToStop?: (stop: () => void) => () => void
+  }) {
     if (!import.meta.client) return
+    if (opts?.shouldPlay && !opts.shouldPlay()) return
     addUnlockListenersOnce()
 
     const ok = await ensureUnlocked()
@@ -142,7 +148,7 @@ export function useSfx() {
     if (!ctx) return
 
     const buf = await loadBuffer(url)
-    if (!buf) return
+    if (!buf || (opts?.shouldPlay && !opts.shouldPlay())) return
 
     const source = ctx.createBufferSource()
     const gain = ctx.createGain()
@@ -151,21 +157,27 @@ export function useSfx() {
     source.connect(gain)
     gain.connect(ctx.destination)
 
-    try {
-      source.start(0)
-    } catch {
-      // ignore
-    }
-    source.onended = () => {
-      try {
+    const ended = new Promise<void>((resolve) => {
+      let unsubscribe: (() => void) | undefined
+      let finished = false
+      const cleanup = () => {
+        if (finished) return
+        finished = true
+        unsubscribe?.()
         source.disconnect()
         gain.disconnect()
-      } catch {
-        // ignore
+        resolve()
       }
-    }
+      source.onended = cleanup
+      try {
+        source.start(0)
+        unsubscribe = opts?.subscribeToStop?.(() => { if (!finished) source.stop(); cleanup() })
+      } catch {
+        cleanup()
+      }
+    })
+    if (opts?.waitUntilEnded) await ended
   }
 
   return { playUrl, preloadUrl, preloadUrls }
 }
-

@@ -827,6 +827,7 @@ function weightEntryDeltaClass(current: number, previous: number): string {
   return diff > 0 ? 'text-red-400' : 'text-green-500'
 }
 
+const actionSounds = useActionSounds()
 async function submitLogWeight() {
   const raw = parseFloat(logWeightInput.value)
   if (!raw || raw <= 0) return
@@ -835,6 +836,7 @@ async function submitLogWeight() {
   savingWeight.value = true
   try {
     await apiFetchData<unknown>('/fitness/weight', { method: 'POST', body: { weightKg } })
+    void actionSounds.play('save')
     toast.push({ title: 'Weight logged.', tone: 'success' })
     showLogWeight.value = false
     logWeightInput.value = ''
@@ -962,6 +964,7 @@ async function submitSetGoal() {
   savingGoal.value = true
   try {
     await apiFetchData<unknown>('/fitness/goals', { method: 'PUT', body: { kind: 'weight', targetKg, startKg } })
+    void actionSounds.play('save')
     toast.push({ title: 'Goal saved.', tone: 'success' })
     showSetGoal.value = false
     goalTargetInput.value = ''

@@ -636,11 +636,14 @@ watch(
   () => fillEmptyEditFieldsFromProfile(),
 )
 
+const actionSounds = useActionSounds()
 const { submit: saveProfile, submitting: saving } = useFormSubmit(
   async () => {
     if (!canEdit.value) return
     editError.value = null
 
+    const soundStartedAt = Date.now()
+    const hadMediaUpload = Boolean(pendingAvatarFile.value || pendingBannerFile.value)
     const adminId = props.targetUserId ?? null
     const bannerInitUrl = adminId ? `/admin/users/${adminId}/uploads/banner/init` : '/uploads/banner/init'
     const bannerCommitUrl = adminId ? `/admin/users/${adminId}/uploads/banner/commit` : '/uploads/banner/commit'
@@ -822,6 +825,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       syncUserCaches(u, previousUsername)
     }
 
+    if (hadMediaUpload && Date.now() - soundStartedAt >= 3000) void actionSounds.play('upload-ready')
     emit('update:modelValue', false)
     if (!adminId) emit('saved')
   },

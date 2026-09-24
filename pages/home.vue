@@ -856,7 +856,10 @@ watch([() => feedArrivals.pending.value.map(post => post.id), arrivalsActive], (
   pendingPostSubscriptions = next
 })
 onBeforeUnmount(() => unsubscribePosts([...pendingPostSubscriptions]))
+const actionSounds = useActionSounds()
 function revealFeedArrivals() {
+  if (!feedArrivals.pending.value.length) return
+  void actionSounds.play('feed-reveal')
   feedArrivals.reveal()
   scrollFeedToTop()
 }

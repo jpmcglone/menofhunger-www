@@ -19,6 +19,9 @@ export function useComposerUploads(opts: {
   apiFetchData: <T>(url: string, init: any) => Promise<T>
   concurrency?: number
 }) {
+  const actionSounds = useActionSounds()
+  let disposed = false
+  onScopeDispose(() => { disposed = true })
   const uploadWorkerRunning = ref(false)
   const uploadInFlight = ref(0)
   const UPLOAD_CONCURRENCY = typeof opts.concurrency === 'number' ? Math.max(1, Math.floor(opts.concurrency)) : 3
@@ -195,6 +198,7 @@ export function useComposerUploads(opts: {
   function processUploadQueue() {
     if (uploadWorkerRunning.value) return
     uploadWorkerRunning.value = true
+    const startedAt = Date.now()
 
     const pump = () => {
       while (uploadInFlight.value < UPLOAD_CONCURRENCY) {
@@ -214,6 +218,10 @@ export function useComposerUploads(opts: {
       const queued = opts.composerMedia.value.some((m) => m.source === 'upload' && m.uploadStatus === 'queued')
       if (!queued && uploadInFlight.value === 0) {
         uploadWorkerRunning.value = false
+        const uploads = opts.composerMedia.value.filter(m => m.source === 'upload')
+        if (Date.now() - startedAt >= 3000 && uploads.length && uploads.every(m => m.uploadStatus === 'done')) {
+          void actionSounds.play('upload-ready', { valid: () => !disposed })
+        }
       }
     }
 

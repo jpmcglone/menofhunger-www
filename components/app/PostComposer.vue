@@ -1640,7 +1640,9 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
   },
 )
 
+const actionSounds = useActionSounds()
 function pushPostedToast(post: FeedPost) {
+  void actionSounds.play(post.kind === 'checkin' ? 'checkin' : 'publish')
   seedPermalinkPost(post)
   toast.push(buildPostedToastParams(post, { isReply: Boolean(props.replyTo) }))
 }

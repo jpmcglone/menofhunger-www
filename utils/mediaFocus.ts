@@ -1,6 +1,7 @@
 /** One foreground media owner. Paused voice notes retain focus so autoplay cannot steal it. */
 export class MediaFocus {
   private callActive = false
+  get isCallActive() { return this.callActive }
   setCallActive(active: boolean) {
     this.callActive = active
     // Calls coexist with playback, but still own microphone capture.
@@ -8,8 +9,8 @@ export class MediaFocus {
       const previous = this.owner
       this.owner = null
       previous.stop()
-      this.changed()
     }
+    this.changed()
   }
   private listeners = new Set<(id: string | null) => void>()
   subscribe(listener: (id: string | null) => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }

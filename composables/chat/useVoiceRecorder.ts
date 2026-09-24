@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue'
 import { mediaFocus } from '~/utils/mediaFocus'
+import { useActionSounds } from '../useActionSounds'
 
 export const VOICE_NOTE_MAX_SECONDS = 120
 const WAV_SAMPLE_RATE = 16_000
@@ -69,6 +70,7 @@ export type VoiceRecorder = {
 }
 
 export function useVoiceRecorder(): VoiceRecorder {
+  const actionSounds = useActionSounds()
   const focusId = `recording:${crypto.randomUUID()}`
   const draft = ref<VoiceDraft | null>(null)
   const starting = ref(false)
@@ -141,6 +143,8 @@ export function useVoiceRecorder(): VoiceRecorder {
     const acquired = await navigator.mediaDevices.getUserMedia({ audio: true })
     if (attempt !== generation) { acquired.getTracks().forEach(t => t.stop()); return }
     stream = acquired
+    await actionSounds.play('record-start', { recordingOwner: focusId, valid: () => attempt === generation })
+    if (attempt !== generation) return
     mime = pickVoiceRecorderMime()
     startedAt = Date.now()
     elapsed.value = 0
@@ -183,6 +187,7 @@ export function useVoiceRecorder(): VoiceRecorder {
         stopResolve?.(draft.value)
         stopResolve = null
         teardownTracks()
+        void actionSounds.play('record-stop')
       }
       media.start(250)
     }
@@ -218,6 +223,7 @@ export function useVoiceRecorder(): VoiceRecorder {
       const file = new File([blob], `voice-${Date.now()}.wav`, { type: 'audio/wav' })
       teardownTracks()
       draft.value = { file, durationSeconds: Math.min(VOICE_NOTE_MAX_SECONDS, durationSeconds) }
+      void actionSounds.play('record-stop')
       resolve(draft.value)
     })
     return stopPromise

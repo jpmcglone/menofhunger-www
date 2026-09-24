@@ -82,6 +82,7 @@ function extractFeedPost(value: unknown): FeedPost | null {
 
 export function usePendingPostsManager() {
   const toast = useAppToast()
+  const actionSounds = useActionSounds()
 
   function showFailureToast(entry: Entry) {
     const id = toast.push({
@@ -120,6 +121,7 @@ export function usePendingPostsManager() {
       const seeded = seedPermalinkPost(real, entry.optimisticPost.parent)
       // Success toast for every create path (post, reply, check-in, only-me, group).
       toast.push(buildPostedToastParams(seeded))
+      void actionSounds.play(real.kind === 'checkin' ? 'checkin' : 'publish')
     } catch (e: unknown) {
       const msg = getApiErrorMessage(e) || 'Failed to post.'
       entry.status = 'failed'
