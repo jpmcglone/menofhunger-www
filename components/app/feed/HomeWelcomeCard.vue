@@ -27,12 +27,14 @@
       <NuxtLink v-if="primaryHref" :to="primaryHref" class="guide-button guide-primary" @click="track('onboarding_action_clicked', primaryAction)">{{ primaryTitle }}</NuxtLink>
       <button v-else type="button" class="guide-button guide-primary" @click="primaryClick">{{ primaryTitle }}</button>
     </template>
+    <button v-if="!approved" type="button" class="guide-button" @click="addPhoto">Add a photo or profile details</button>
     <button type="button" class="guide-button" @click="dismiss">I’ll explore first</button>
   </section>
 </template>
 
 <script setup lang="ts">
 import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
+const { addPhoto } = useFirstRunFlow()
 const props = defineProps<{ showCheckinCta?: boolean; checkinPrompt?: string; hasPosted?: boolean }>()
 const emit = defineEmits<{ 'check-in': []; compose: [] }>()
 const { progress, phase, dismissed, completedCount, syncError, sync, dismiss, track } = useActivationGuide()
@@ -40,11 +42,11 @@ const approved = computed(() => phase.value === 'approved')
 const enabled = computed(() => !dismissed.value && !approved.value && progress.value?.followed === false)
 const { users: wtfUsers, loading: wtfLoading, error: wtfError, refresh: refreshSuggestions } = useWhoToFollow({ enabled, defaultLimit: 2 })
 watch(() => props.hasPosted, () => { void sync() })
-const heading = computed(() => !approved.value ? progress.value?.verificationPending ? 'Your request is in.' : 'Find your people.'
+const heading = computed(() => !approved.value ? progress.value?.verificationPending ? 'Your request is in.' : 'You’re in. Take a look around.'
   : completedCount.value === 3 ? 'You’ve made a start.' : !progress.value?.contributed ? 'You’re approved. Join in.'
     : !progress.value.replied ? 'Keep the conversation going.' : 'A reason to return.')
 const summary = computed(() => !approved.value ? progress.value?.verificationPending
-  ? 'An admin will contact you here to arrange your video call.' : 'Request verification to join the conversation. Explore while you wait.'
+  ? 'An admin will contact you here to arrange your video call.' : 'Browse now. Verify to post and message.'
   : completedCount.value === 3 ? 'Keep the conversations going. Your next step is yours.'
     : !progress.value?.contributed ? 'Start a conversation. Give another man a reason to reply.'
       : !progress.value.replied ? 'You’ve taken the first step. Make a connection with another man.' : 'Read your replies and keep showing up for each other.')

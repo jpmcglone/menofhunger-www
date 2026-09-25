@@ -1,744 +1,154 @@
 <template>
-  <div
-    v-if="show"
-    class="fixed inset-0 z-[70] bg-white/95 dark:bg-black/90"
-  >
-    <div class="h-full w-full overflow-y-auto no-scrollbar">
-      <div class="min-h-full flex items-start sm:items-center justify-center p-4 sm:py-8">
-        <div class="w-full max-w-xl">
-          <div class="rounded-2xl border moh-border moh-bg p-5 shadow-sm flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-4rem)]">
-            <div class="shrink-0 flex items-start gap-3">
-              <Button
-                v-if="page > 1"
-                type="button"
-                text
-                rounded
-                severity="secondary"
-                aria-label="Back"
-                :disabled="submitting"
-                class="!p-1.5 -ml-1.5"
-                @click="goBack"
-              >
-                <template #icon>
-                  <Icon name="tabler:chevron-left" aria-hidden="true" />
-                </template>
-              </Button>
-              <div class="min-w-0 flex-1">
-                <div class="text-xl font-bold tracking-tight">{{ pageHeading }}</div>
-                <div class="mt-1 text-sm moh-text-muted">{{ pageSubtitle }}</div>
+  <Teleport to="body">
+    <section v-if="show" class="onboarding-screen moh-bg moh-text" role="dialog" aria-modal="true" aria-labelledby="setup-heading">
+      <div class="onboarding-column">
+        <nav class="min-h-11 flex items-center">
+          <button v-if="page === 2" type="button" class="min-h-11 moh-focus" :disabled="submitting" @click="goBack">‹ Back</button>
+          <span v-else class="text-xs font-semibold text-[var(--moh-brass)]">MEN OF HUNGER</span>
+        </nav>
+        <form class="onboarding-form" @submit.prevent="continuePage">
+          <div class="onboarding-content">
+            <p class="text-xs font-semibold text-[var(--moh-brass)]">SETUP · {{ page }} OF 2</p>
+            <h1 id="setup-heading" ref="headingRef" tabindex="-1" class="text-[28px] leading-9 font-semibold">{{ page === 1 ? 'Make it yours.' : 'What are you building?' }}</h1>
+            <template v-if="page === 1">
+              <div class="space-y-2">
+                <label for="setup-username">Username</label>
+                <InputText id="setup-username" v-model="usernameInput" class="setup-input w-full" placeholder="@ username" autocomplete="username" autocapitalize="none" :spellcheck="false" :disabled="submitting" :invalid="usernameStatus === 'taken' || usernameStatus === 'invalid'" aria-describedby="username-help" />
+                <p id="username-help" class="text-[13px] moh-text-muted" aria-live="polite">{{ usernameHelp }}</p>
               </div>
-            </div>
-
-            <div class="mt-4 flex items-center gap-1.5" aria-hidden="true">
-              <span
-                v-for="n in 3"
-                :key="n"
-                class="h-1.5 flex-1 rounded-full"
-                :class="n <= page ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-zinc-800'"
-              />
-            </div>
-
-            <div class="mt-5 space-y-4 overflow-y-auto no-scrollbar min-h-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              <div v-show="page === 1" class="space-y-4">
-                <AppUsernameField
-                  v-model="usernameInput"
-                  tone="moh"
-                  :status="usernameStatus"
-                  :helper-text="usernameErrorText"
-                  :disabled="submitting"
-                  :invalid="showUsernameError"
-                  placeholder="username"
-                >
-                  <template #label>
-                    <label class="text-sm font-medium" :class="showUsernameError ? 'text-red-500 dark:text-red-400' : 'moh-text'">
-                      Username<span class="ml-0.5" :class="showUsernameError ? 'text-red-500' : 'moh-text-muted'">*</span>
-                    </label>
-                  </template>
-                </AppUsernameField>
-
-                <div v-if="showDisplayNameField || displayName.trim()" class="space-y-2">
-                  <label class="text-sm font-medium moh-text">
-                    Display name <span class="moh-text-muted font-normal">(optional)</span>
-                  </label>
-                  <InputText
-                    v-model="displayName"
-                    class="w-full"
-                    placeholder="How you appear"
-                    maxlength="50"
-                    autocomplete="name"
-                    :disabled="submitting"
-                  />
-                  <p class="text-xs moh-text-muted">A first name is enough. Username is your identity.</p>
-                </div>
-                <button
-                  v-else
-                  type="button"
-                  class="text-sm font-medium moh-text"
-                  :disabled="submitting"
-                  @click="showDisplayNameField = true"
-                >
-                  Add display name (optional)
+              <div class="space-y-2">
+                <label for="setup-birthday">Birthday</label>
+                <p v-if="birthdateLocked" class="setup-input flex items-center px-3">{{ birthdatePretty }}</p>
+                <AppDateOfBirthInput v-else id="setup-birthday" v-model="birthdate" :disabled="submitting" :invalid="Boolean(birthdate) && !isBirthdate18Plus(birthdate)" />
+                <p class="text-[13px]" :class="birthdate && !isBirthdate18Plus(birthdate) ? 'text-red-500' : 'moh-text-muted'">{{ birthdate && !isBirthdate18Plus(birthdate) ? 'Enter a valid birthday. You must be 18 or older to join.' : 'You must be 18+. Your birthday stays private.' }}</p>
+              </div>
+              <label class="community-confirm flex items-center justify-center gap-3 min-h-12 px-4 py-3 border moh-border rounded-full cursor-pointer">
+                <Checkbox v-model="menOnlyConfirmed" binary input-id="setup-community" :disabled="submitting || menConfirmLocked" />
+                <span>I’m joining as a man.</span>
+              </label>
+            </template>
+            <template v-else>
+              <p class="text-[15px] leading-[22px] moh-text-muted">Pick at least one to shape your feed. You can change these later.</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button v-for="arena in LIFE_ARENAS" :key="arena.key" type="button" class="arena-choice min-h-12 rounded-full border px-4 py-3 moh-focus" :class="selected(arena) ? 'arena-selected' : 'moh-border'" :aria-pressed="selected(arena)" :disabled="submitting" @click="toggleOnboardingArena(arena)">
+                  <span v-if="selected(arena)" aria-hidden="true">✓ </span>{{ arena.label }}
                 </button>
               </div>
-
-              <div v-show="page === 2" class="space-y-2">
-                <label class="text-sm font-medium" :class="showInterestsError ? 'text-red-500 dark:text-red-400' : 'moh-text'">
-                  Arenas<span class="ml-0.5" :class="showInterestsError ? 'text-red-500' : 'moh-text-muted'">*</span>
-                </label>
-                <p class="text-xs moh-text-muted">Pick the arenas you're building in.</p>
-                <p v-if="interests.length" class="text-xs font-semibold moh-text">{{ interests.length }} selected</p>
-                <div class="grid grid-cols-2 gap-2">
-                  <button
-                    v-for="arena in visibleArenas"
-                    :key="arena.key"
-                    type="button"
-                    class="flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition-colors"
-                    :class="arenaChipClass(arena)"
-                    :disabled="submitting"
-                    @click="toggleOnboardingArena(arena)"
-                  >
-                    <Icon :name="arena.icon" class="text-sm shrink-0" aria-hidden="true" />
-                    <span>{{ arena.label }}</span>
-                  </button>
-                </div>
-                <button
-                  v-if="!showMoreArenas"
-                  type="button"
-                  class="pt-1 text-sm font-medium moh-text"
-                  :disabled="submitting"
-                  @click="showMoreArenas = true"
-                >
-                  More arenas
-                </button>
-                <p v-if="showInterestsError" class="text-xs text-red-500 dark:text-red-400">
-                  Pick at least one arena.
-                </p>
-              </div>
-
-              <div v-show="page === 3" class="space-y-4">
-                <div class="space-y-2">
-                  <label class="text-sm font-medium" :class="showBirthdateError ? 'text-red-500 dark:text-red-400' : 'moh-text'">
-                    Birthday<span v-if="!birthdateLocked" class="ml-0.5" :class="showBirthdateError ? 'text-red-500' : 'moh-text-muted'">*</span>
-                  </label>
-                  <AppDateOfBirthInput v-if="!birthdateLocked" v-model="birthdate" :disabled="submitting" :invalid="showBirthdateError" />
-                  <div v-else class="w-full rounded-xl border moh-border px-3 py-2 text-sm moh-text">
-                    {{ birthdatePretty }}
-                  </div>
-                  <div class="text-xs" :class="showBirthdateError ? 'text-red-500 dark:text-red-400' : 'moh-text-muted'">
-                    <span v-if="birthdateLocked">Birthday is locked once set.</span>
-                    <span v-else-if="showBirthdateError">{{ birthdateErrorText }}</span>
-                    <span v-else>MM / DD / YYYY · Must be 18+ to join.</span>
-                  </div>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="text-sm font-medium moh-text">
-                    ZIP code <span class="moh-text-muted font-normal">(optional)</span>
-                  </label>
-                  <InputText
-                    v-model="locationZipInput"
-                    inputmode="numeric"
-                    maxlength="5"
-                    placeholder="5-digit ZIP code"
-                    class="w-full"
-                    :invalid="showZipError"
-                    @input="onLocationZipInput"
-                  />
-                  <Transition
-                    enter-active-class="transition-all duration-200 ease-out"
-                    enter-from-class="opacity-0 -translate-y-1"
-                    enter-to-class="opacity-100 translate-y-0"
-                    leave-active-class="transition-all duration-150 ease-in"
-                    leave-from-class="opacity-100 translate-y-0"
-                    leave-to-class="opacity-0 -translate-y-1"
-                  >
-                    <div v-if="locationPreview" class="flex items-center gap-2 py-0.5">
-                      <ClientOnly>
-                        <AppStateShape
-                          v-if="locationPreview.state"
-                          :state="locationPreview.state"
-                          class="h-4 w-4 shrink-0 opacity-80"
-                        />
-                      </ClientOnly>
-                      <span class="text-sm font-medium moh-text">{{ locationPreview.stateDisplay ?? locationPreview.state }}</span>
-                      <span v-if="locationPreview.city" class="text-sm moh-text-muted">· {{ locationPreview.city }}</span>
-                    </div>
-                    <div v-else-if="locationPreviewLoading" class="flex items-center gap-1.5 py-0.5">
-                      <Icon name="tabler:loader-2" class="animate-spin moh-text-muted h-4 w-4" />
-                    </div>
-                    <div v-else-if="showZipError" class="py-0.5">
-                      <span class="text-xs text-red-500">ZIP code not found</span>
-                    </div>
-                  </Transition>
-                  <p class="text-xs moh-text-muted">Helps you connect with men in your state.</p>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="text-sm font-medium moh-text">
-                    Email <span class="moh-text-muted font-normal">(optional)</span>
-                  </label>
-                  <InputText
-                    v-model="email"
-                    type="email"
-                    class="w-full"
-                    placeholder="you@example.com"
-                    autocomplete="email"
-                    :disabled="submitting"
-                    :invalid="showEmailError"
-                  />
-                  <p class="text-xs" :class="showEmailError ? 'text-red-500 dark:text-red-400' : 'moh-text-muted'">
-                    {{ showEmailError ? 'Enter a valid email address.' : 'Helps us reach you for account support.' }}
-                  </p>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="text-sm font-medium moh-text">
-                    Referral code <span class="moh-text-muted font-normal">(optional)</span>
-                  </label>
-                  <InputText
-                    v-model="referralCodeInput"
-                    class="w-full font-mono"
-                    placeholder="e.g. JOHNDOE"
-                    autocomplete="off"
-                    spellcheck="false"
-                    maxlength="20"
-                    :disabled="submitting || referralLocked"
-                  />
-                  <p v-if="referralLocked" class="text-xs text-[var(--moh-brass)]">
-                    Referral applied. It can’t be changed.
-                  </p>
-                  <p v-else class="text-xs moh-text-muted">
-                    Enter his code and you’ll automatically follow him.
-                  </p>
-                  <p v-if="referralError" class="text-xs text-red-600 dark:text-red-400">{{ referralError }}</p>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="text-sm font-medium moh-text">
-                    {{ VOICE.onboarding.heardAboutLabel }}
-                    <span class="moh-text-muted font-normal">(optional)</span>
-                  </label>
-                  <Select
-                    v-model="heardAboutUs"
-                    :options="HEARD_ABOUT_US_OPTIONS"
-                    option-label="label"
-                    option-value="value"
-                    placeholder="Select one"
-                    class="w-full"
-                    :disabled="submitting"
-                    show-clear
-                  />
-                  <InputText
-                    v-if="heardAboutUs === 'other'"
-                    v-model="heardAboutUsOther"
-                    class="w-full"
-                    placeholder="Tell us how you found us"
-                    maxlength="80"
-                    :disabled="submitting"
-                    :invalid="showHeardAboutOtherError"
-                  />
-                  <p v-if="showHeardAboutOtherError" class="text-xs text-red-500 dark:text-red-400">
-                    Tell us how you found us.
-                  </p>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="text-sm font-medium" :class="showCommunityError ? 'text-red-500 dark:text-red-400' : 'moh-text'">
-                    Community<span v-if="!menConfirmLocked" class="ml-0.5" :class="showCommunityError ? 'text-red-500' : 'moh-text-muted'">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    class="flex w-full items-start gap-3 rounded-xl border p-3 text-left"
-                    :class="showCommunityError ? 'border-red-500 dark:border-red-400' : 'moh-border'"
-                    :disabled="submitting || menConfirmLocked"
-                    @click="toggleMenOnlyConfirmed"
-                  >
-                    <Checkbox
-                      :model-value="menOnlyConfirmed"
-                      binary
-                      input-id="moh-men-only"
-                      :disabled="submitting || menConfirmLocked"
-                      @click.stop
-                      @update:model-value="(v) => (menOnlyConfirmed = Boolean(v))"
-                    />
-                    <div class="text-sm moh-text leading-snug">
-                      {{ VOICE.onboarding.menConfirm }}
-                      <div class="mt-1 text-xs moh-text-muted">
-                        You can browse right away. Posting and messaging require verification first.
-                      </div>
-                    </div>
-                  </button>
-                  <p v-if="showCommunityError" class="text-xs text-red-500 dark:text-red-400">
-                    Confirm you’re joining as a man.
-                  </p>
-                </div>
-              </div>
-
-              <div v-if="error" class="text-sm text-red-700 dark:text-red-300">
-                {{ error }}
-              </div>
-
-              <div class="flex items-center justify-end gap-3 pt-1">
-                <Button
-                  class="moh-onboarding-cta w-full !rounded-full !bg-black !text-white !border-black dark:!bg-white dark:!text-black dark:!border-white"
-                  :label="page === 3 ? VOICE.onboarding.ctaStart : VOICE.onboarding.ctaContinue"
-                  :loading="submitting"
-                  :disabled="submitting || !canContinue"
-                  @click="continuePage"
-                >
-                  <template #icon>
-                    <Icon name="tabler:arrow-right" aria-hidden="true" />
-                  </template>
-                </Button>
-              </div>
-            </div>
+            </template>
+            <AppInlineAlert v-if="error" severity="danger" role="alert">{{ error }}</AppInlineAlert>
           </div>
-        </div>
+          <div class="space-y-2 pb-2">
+            <Button type="submit" class="setup-primary w-full" rounded :label="page === 1 ? 'Continue' : 'Show my feed'" :disabled="submitting || !canContinue" :loading="submitting" />
+            <p class="text-[13px] moh-text-muted">{{ page === 1 ? 'You can add a name and photo later.' : `${selectedArenaCount} ${selectedArenaCount === 1 ? 'arena' : 'arenas'} selected` }}</p>
+          </div>
+        </form>
       </div>
-    </div>
-  </div>
+    </section>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { LIFE_ARENAS, PRIMARY_ARENA_KEYS, toggleArena, type LifeArena } from '~/config/arenas'
-import { VOICE } from '~/config/voice'
+import { LIFE_ARENAS, toggleArena, type LifeArena } from '~/config/arenas'
 import { getApiErrorMessage } from '~/utils/api-error'
-import {
-  firstIncompleteOnboardingPage,
-  HEARD_ABOUT_US_OPTIONS,
-  isOnboardingFullyComplete,
-  needsOnboarding,
-} from '~/utils/onboarding'
+import { firstIncompleteOnboardingPage, isBirthdate18Plus, isOnboardingFullyComplete, needsOnboarding, type OnboardingPage } from '~/utils/onboarding'
 import { formatDateOnly } from '~/utils/time-format'
-import type { HeardAboutUs } from '~/types/api'
+import type { AuthUser } from '~/composables/useAuth'
 
-const { user, ensureLoaded, me } = useAuth()
-const usersStore = useUsersStore()
+const { user, ensureLoaded } = useAuth()
 const { apiFetchData } = useApiClient()
 const { startAfterOnboarding } = useFirstRunFlow()
-const {
-  capturedReferralCode,
-  appliedReferralCode,
-  captureReferralFromRoute,
-  markReferralApplied,
-  clearReferralCapture,
-} = useReferralCapture()
-
+const { capturedReferralCode, appliedReferralCode, markReferralApplied, clearReferralCapture } = useReferralCapture()
+const { capture } = usePostHog()
 await ensureLoaded()
-
-const show = computed(() => {
-  const u = user.value
-  if (!u?.id) return false
-  return needsOnboarding(u)
-})
-
-const page = ref<1 | 2 | 3>(1)
-const { capture: captureOnboarding } = usePostHog()
-onMounted(() => {
-  watch([show, page], ([visible, step]) => {
-    if (visible) captureOnboarding('onboarding_step_viewed', { step })
-  }, { immediate: true })
-})
-const didLand = ref(false)
-
-watch(
-  () => user.value,
-  (u) => {
-    if (!u || didLand.value) return
-    page.value = firstIncompleteOnboardingPage(u)
-    didLand.value = true
-  },
-  { immediate: true },
-)
-
-const pageHeading = computed(() => {
-  if (page.value === 1) return VOICE.onboarding.accountHeading
-  if (page.value === 2) return VOICE.onboarding.interestsHeading
-  return VOICE.onboarding.doorHeading
-})
-
-const pageSubtitle = computed(() => {
-  if (page.value === 1) return VOICE.onboarding.accountSubtitle
-  if (page.value === 2) return VOICE.onboarding.interestsSubtitle
-  return VOICE.onboarding.doorSubtitle
-})
-
-const usernameInput = ref('')
-const displayName = ref('')
-const showDisplayNameField = ref(false)
-const showMoreArenas = ref(false)
-const email = ref('')
-const heardAboutUs = ref<HeardAboutUs | null>(null)
-const heardAboutUsOther = ref('')
-const birthdate = ref('')
-const interests = ref<string[]>([])
-const menOnlyConfirmed = ref(false)
-const locationZipInput = ref('')
-const locationPreview = ref<import('~/types/api').LocationPreviewResponse | null>(null)
-const locationPreviewLoading = ref(false)
-const locationPreviewNotFound = ref(false)
-
-let locationPreviewDebounce: ReturnType<typeof setTimeout> | null = null
-
-async function fetchLocationPreview(zip: string) {
-  locationPreviewLoading.value = true
-  locationPreviewNotFound.value = false
-  try {
-    locationPreview.value = await apiFetchData<import('~/types/api').LocationPreviewResponse>(
-      '/users/location-preview',
-      { method: 'GET', query: { zip } },
-    )
-  } catch {
-    locationPreview.value = null
-    locationPreviewNotFound.value = true
-  } finally {
-    locationPreviewLoading.value = false
-  }
-}
-
-function onLocationZipInput() {
-  locationPreview.value = null
-  locationPreviewNotFound.value = false
-  if (locationPreviewDebounce) clearTimeout(locationPreviewDebounce)
-  const zip = locationZipInput.value.replace(/\D/g, '').slice(0, 5)
-  locationZipInput.value = zip
-  if (zip.length !== 5) return
-  locationPreviewDebounce = setTimeout(() => void fetchLocationPreview(zip), 300)
-}
-
+const show = computed(() => Boolean(user.value?.id) && needsOnboarding(user.value))
+const page = ref<OnboardingPage>(firstIncompleteOnboardingPage(user.value))
+const headingRef = ref<HTMLElement | null>(null)
+const usernameInput = ref(user.value?.username ?? '')
+const birthdate = ref(user.value?.birthdate?.slice(0, 10) ?? '')
+const menOnlyConfirmed = ref(user.value?.menOnlyConfirmed ?? false)
+const interests = ref<string[]>(user.value?.interests ?? [])
+const submitting = ref(false)
+const error = ref<string | null>(null)
 const usernameLocked = computed(() => Boolean(user.value?.usernameIsSet))
 const birthdateLocked = computed(() => Boolean(user.value?.birthdate))
 const menConfirmLocked = computed(() => Boolean(user.value?.menOnlyConfirmed))
-const currentUsername = computed(() => (user.value?.username ?? '').trim())
+const currentUsername = computed(() => user.value?.username ?? '')
+const birthdatePretty = computed(() => formatDateOnly(`${birthdate.value}T00:00:00.000Z`, { dateOptions: { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }, fallback: birthdate.value }))
+const { status: usernameStatus, helperText: usernameHelp, isCaseOnlyChange: usernameIsCaseOnly } = useUsernameField({ value: usernameInput, currentUsername, usernameIsSet: usernameLocked, debounceMs: 450 })
+const selected = (arena: LifeArena) => arena.featuredInterests.some(key => interests.value.includes(key))
+const selectedArenaCount = computed(() => LIFE_ARENAS.filter(selected).length)
+const canContinue = computed(() => page.value === 2 ? interests.value.length > 0
+  : Boolean(usernameInput.value.trim()) && (usernameLocked.value ? usernameIsCaseOnly.value : usernameStatus.value === 'available')
+    && (birthdateLocked.value || isBirthdate18Plus(birthdate.value)) && menOnlyConfirmed.value)
 
-const birthdatePretty = computed(() => {
-  const raw = (user.value?.birthdate ?? '').slice(0, 10)
-  if (!raw) return '—'
-  return formatDateOnly(`${raw}T00:00:00.000Z`, {
-    dateOptions: { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' },
-    fallback: raw,
-  })
+watch(() => user.value?.id, () => {
+  page.value = firstIncompleteOnboardingPage(user.value)
+  usernameInput.value = user.value?.username ?? ''
+  birthdate.value = user.value?.birthdate?.slice(0, 10) ?? ''
+  menOnlyConfirmed.value = user.value?.menOnlyConfirmed ?? false
+  interests.value = user.value?.interests ?? []
 })
-
-watch(
-  () => user.value,
-  (u) => {
-    if (!u) return
-    if (!usernameInput.value.trim() && u.username) usernameInput.value = u.username
-    if (!displayName.value.trim() && u.name) {
-      displayName.value = u.name
-      showDisplayNameField.value = true
-    }
-    if (!birthdate.value && u.birthdate) birthdate.value = u.birthdate.slice(0, 10)
-    if (interests.value.length === 0 && Array.isArray(u.interests)) interests.value = u.interests
-    if (!email.value && u.email) email.value = u.email
-    if (!menOnlyConfirmed.value && u.menOnlyConfirmed) menOnlyConfirmed.value = true
-    if (!heardAboutUs.value && u.heardAboutUs) heardAboutUs.value = u.heardAboutUs
-    if (!heardAboutUsOther.value && u.heardAboutUsOther) heardAboutUsOther.value = u.heardAboutUsOther
-    if (!locationZipInput.value && u.locationZip) {
-      locationZipInput.value = u.locationZip
-      if (u.locationZip.length === 5) void fetchLocationPreview(u.locationZip)
-    }
-  },
-  { immediate: true, deep: true },
-)
-
-const {
-  status: usernameStatus,
-  helperText: usernameHelp,
-  isCaseOnlyChange: usernameIsCaseOnly,
-} = useUsernameField({
-  value: usernameInput,
-  currentUsername,
-  usernameIsSet: usernameLocked,
-  debounceMs: 450,
-  lockedInvalidMessage: 'Username can’t be changed here. Only capitalization is allowed.',
-  caseOnlyMessage: () => {
-    const trimmed = usernameInput.value.trim()
-    return trimmed === currentUsername.value ? 'Username is set.' : 'Only capitalization changes are allowed (this change is OK).'
-  },
+onMounted(() => {
+  watch([show, page], async ([visible, step]) => {
+    if (!visible) return
+    capture('onboarding_step_viewed', { step })
+    await nextTick()
+    headingRef.value?.focus()
+  }, { immediate: true })
 })
-
-const referralCodeInput = ref('')
-const referralError = ref<string | null>(null)
-const referralLocked = computed(() => Boolean(user.value?.hasRecruiter || appliedReferralCode.value))
-
-const route = useRoute()
-watch(
-  () => route.query.ref,
-  () => {
-    captureReferralFromRoute(route)
-  },
-  { immediate: true },
-)
-
-watch(
-  [capturedReferralCode, appliedReferralCode],
-  ([captured, applied]) => {
-    const code = applied || captured
-    if (code && !referralCodeInput.value.trim()) referralCodeInput.value = code
-  },
-  { immediate: true },
-)
-
-const error = ref<string | null>(null)
-const submitting = ref(false)
-const attempted = ref(false)
-
-const birthdateInvalid = computed(() => {
-  if (page.value !== 3 || birthdateLocked.value) return false
-  return !birthdate.value || !isBirthdate18Plus(birthdate.value)
-})
-
-const birthdateErrorText = computed(() => {
-  if (!birthdate.value) return 'Birthday is required.'
-  const d = new Date(`${birthdate.value}T00:00:00.000Z`)
-  if (!Number.isNaN(d.getTime()) && d > new Date()) return 'Birthday can\'t be in the future.'
-  return 'You must be at least 18 years old to join.'
-})
-
-const communityInvalid = computed(() =>
-  page.value === 3 && !menConfirmLocked.value && !menOnlyConfirmed.value,
-)
-
-function isValidEmail(v: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)
-}
-
-const emailInvalid = computed(() => {
-  const v = email.value.trim()
-  return v.length > 0 && !isValidEmail(v)
-})
-
-const heardAboutOtherInvalid = computed(() =>
-  heardAboutUs.value === 'other' && !heardAboutUsOther.value.trim(),
-)
-
-const primaryArenas = LIFE_ARENAS.filter((arena) =>
-  (PRIMARY_ARENA_KEYS as readonly string[]).includes(arena.key),
-)
-const extraArenas = LIFE_ARENAS.filter(
-  (arena) => !(PRIMARY_ARENA_KEYS as readonly string[]).includes(arena.key),
-)
-const visibleArenas = computed(() =>
-  showMoreArenas.value ? [...primaryArenas, ...extraArenas] : primaryArenas,
-)
-
-watch(
-  interests,
-  (keys) => {
-    if (showMoreArenas.value) return
-    const extraSelected = extraArenas.some((arena) =>
-      arena.featuredInterests.some((key) => keys.includes(key)),
-    )
-    if (extraSelected) showMoreArenas.value = true
-  },
-  { immediate: true },
-)
-
-function arenaChipClass(arena: LifeArena) {
-  const selected = arena.featuredInterests.some((key) => interests.value.includes(key))
-  return selected
-    ? 'border-[var(--moh-brass)] text-[var(--moh-brass)]'
-    : 'moh-border moh-text'
-}
-
+function goBack() { error.value = null; page.value = 1 }
 function toggleOnboardingArena(arena: LifeArena) {
   if (submitting.value) return
-  interests.value = toggleArena(arena, interests.value, 30)
+  // Four representative interests per arena lets all seven fit within the API's 30-interest limit.
+  const choice = selected(arena) ? arena : { ...arena, featuredInterests: arena.featuredInterests.slice(0, 4) }
+  interests.value = toggleArena(choice, interests.value, 30)
 }
-const interestsInvalid = computed(() => !Array.isArray(interests.value) || interests.value.length < 1)
-
-const usernameInvalid = computed(() => {
-  if (usernameLocked.value) {
-    return !usernameInput.value.trim() || !usernameIsCaseOnly.value
-  }
-  const s = usernameStatus.value
-  return s !== 'available' && s !== 'checking' && s !== 'same'
-})
-
-const showUsernameError = computed(() => attempted.value && usernameInvalid.value)
-const showEmailError = computed(() => attempted.value && emailInvalid.value)
-const showHeardAboutOtherError = computed(() => attempted.value && heardAboutOtherInvalid.value)
-const showInterestsError = computed(() => attempted.value && interestsInvalid.value)
-const showBirthdateError = computed(() => attempted.value && birthdateInvalid.value)
-const showCommunityError = computed(() => attempted.value && communityInvalid.value)
-const showZipError = computed(() => attempted.value && locationPreviewNotFound.value)
-
-const usernameErrorText = computed(() => {
-  const help = usernameHelp.value
-  const s = usernameStatus.value
-  if (s === 'available' || s === 'same' || s === 'checking') return help
-  if (showUsernameError.value) return help || 'Username is required.'
-  return null
-})
-
-const canContinue = computed(() => {
-  if (page.value === 1) {
-    if (!usernameInput.value.trim()) return false
-    if (usernameLocked.value) return usernameIsCaseOnly.value
-    return usernameStatus.value === 'available'
-  }
-  if (page.value === 2) {
-    return Array.isArray(interests.value) && interests.value.length >= 1
-  }
-  if (emailInvalid.value || heardAboutOtherInvalid.value) return false
-  if (!menConfirmLocked.value && menOnlyConfirmed.value !== true) return false
-  if (!birthdateLocked.value && (!birthdate.value || !isBirthdate18Plus(birthdate.value))) return false
-  return true
-})
-
-function isBirthdate18Plus(yyyyMmDd: string): boolean {
-  const raw = (yyyyMmDd ?? '').trim()
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false
-  const d = new Date(`${raw}T00:00:00.000Z`)
-  if (Number.isNaN(d.getTime())) return false
-
-  const now = new Date()
-  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-  const cutoff = new Date(Date.UTC(todayUtc.getUTCFullYear() - 18, todayUtc.getUTCMonth(), todayUtc.getUTCDate()))
-  return d.getTime() <= cutoff.getTime()
-}
-
-function toggleMenOnlyConfirmed() {
-  if (submitting.value || menConfirmLocked.value) return
-  menOnlyConfirmed.value = !menOnlyConfirmed.value
-}
-
-function goBack() {
-  attempted.value = false
-  if (page.value > 1) page.value = (page.value - 1) as 1 | 2 | 3
-}
-
-async function continuePage() {
-  if (!canContinue.value) {
-    attempted.value = true
-    return
-  }
-  attempted.value = false
-  submitting.value = true
-  error.value = null
-  referralError.value = null
-  try {
-    if (page.value === 1) await saveAccountPage()
-    else if (page.value === 2) await saveInterestsPage()
-    else await saveDoorPage()
-
-    if (!isOnboardingFullyComplete(user.value)) {
-      page.value = firstIncompleteOnboardingPage(user.value)
-      return
-    }
-    await finishOnboarding()
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to save. Please try again.'
-  } finally {
-    submitting.value = false
-  }
-}
-
-async function patchOnboarding(payload: Record<string, unknown>) {
-  const res = await apiFetchData<{ user: import('~/composables/useAuth').AuthUser }>('/users/me/onboarding', {
-    method: 'PATCH',
-    body: payload,
-  })
-  user.value = res.user ?? user.value
-}
-
-async function saveAccountPage() {
-  const payload: Record<string, unknown> = {
-    name: displayName.value.trim(),
-  }
-  const trimmedUsername = usernameInput.value.trim()
-  if (!usernameLocked.value) {
-    payload.username = trimmedUsername
-  } else if (trimmedUsername && trimmedUsername !== currentUsername.value && usernameIsCaseOnly.value) {
-    payload.username = trimmedUsername
-  }
-  await patchOnboarding(payload)
-}
-
-async function saveInterestsPage() {
-  await patchOnboarding({ interests: interests.value })
-}
-
-async function saveDoorPage() {
-  if (!birthdateLocked.value && birthdate.value && !isBirthdate18Plus(birthdate.value)) {
-    throw new Error('You must be at least 18 years old to join Men of Hunger.')
-  }
-  const payload: Record<string, unknown> = {}
-  if (!birthdateLocked.value) payload.birthdate = birthdate.value
-  if (!menConfirmLocked.value) payload.menOnlyConfirmed = Boolean(menOnlyConfirmed.value)
-  if (locationPreview.value && locationZipInput.value.length === 5) {
-    payload.locationQuery = locationZipInput.value
-  }
-  if (email.value.trim()) payload.email = email.value.trim()
-  if (heardAboutUs.value) {
-    payload.heardAboutUs = heardAboutUs.value
-    payload.heardAboutUsOther = heardAboutUs.value === 'other' ? heardAboutUsOther.value.trim() : null
-  }
-  await patchOnboarding(payload)
-  await applyReferralIfNeeded()
-  if (referralError.value) throw new Error(referralError.value)
-}
-
-async function applyReferralIfNeeded() {
-  const code = referralCodeInput.value.trim()
-  if (!code || referralLocked.value) {
-    if (referralLocked.value) clearReferralCapture()
-    return
-  }
+async function applyCapturedReferral() {
+  const code = capturedReferralCode.value.trim()
+  if (user.value?.hasRecruiter || appliedReferralCode.value) { clearReferralCapture(); return }
+  if (!code) return
   try {
     await apiFetchData('/billing/referral/set-recruiter', { method: 'POST', body: { code } })
     markReferralApplied(code)
-    if (user.value) user.value = { ...user.value, hasRecruiter: true }
-  } catch (e: unknown) {
-    const msg = getApiErrorMessage(e) ?? ''
-    if (!msg.toLowerCase().includes('already been set')) {
-      referralError.value = msg || 'Referral code not applied.'
-    } else {
-      markReferralApplied(code)
-      if (user.value) user.value = { ...user.value, hasRecruiter: true }
-    }
-  } finally {
-    clearReferralCapture()
+  } catch {
+    // Keep the captured code available in optional profile details for a retry.
   }
 }
-
-async function finishOnboarding() {
-  const { whenSocketConnected, emitActivity } = usePresence()
-  void whenSocketConnected(5000).then(() => emitActivity())
-  useNuxtApp().$posthog?.capture('onboarding_gate_finished', {
-    arena_count: interests.value.length,
-  })
-  const latest = await me()
-  const username = (latest?.username ?? user.value?.username ?? usernameInput.value).trim()
-  if (!username) return
-  if (latest) {
-    usersStore.upsert({
-      id: latest.id,
-      username: latest.username ?? username,
-      name: latest.name ?? (displayName.value.trim() || null),
-      bio: latest.bio ?? null,
-      avatarUrl: latest.avatarUrl ?? null, avatarVideo: latest.avatarVideo ?? null,
-      bannerUrl: latest.bannerUrl ?? null,
-      premium: latest.premium,
-      premiumPlus: latest.premiumPlus,
-      verifiedStatus: latest.verifiedStatus,
-      pinnedPostId: latest.pinnedPostId ?? null,
-    })
-  }
-  clearNuxtData(`public-profile:${username.toLowerCase()}`)
-  startAfterOnboarding()
-  await navigateTo('/home', { replace: true })
+async function continuePage() {
+  if (submitting.value || !canContinue.value) return
+  submitting.value = true
+  error.value = null
+  try {
+    const body: Record<string, unknown> = page.value === 2 ? { interests: interests.value } : {}
+    if (page.value === 1) {
+      if (!usernameLocked.value || usernameInput.value.trim() !== currentUsername.value) body.username = usernameInput.value.trim()
+      if (!birthdateLocked.value) body.birthdate = birthdate.value
+      if (!menConfirmLocked.value) body.menOnlyConfirmed = menOnlyConfirmed.value
+    }
+    await applyCapturedReferral()
+    const result = await apiFetchData<{ user: AuthUser }>('/users/me/onboarding', { method: 'PATCH', body })
+    user.value = result.user
+    if (isOnboardingFullyComplete(result.user)) {
+      capture('onboarding_gate_finished', { arena_count: selectedArenaCount.value })
+      startAfterOnboarding()
+    } else page.value = firstIncompleteOnboardingPage(result.user)
+  } catch (e: unknown) {
+    error.value = getApiErrorMessage(e) || 'Couldn’t save. Please try again.'
+  } finally { submitting.value = false }
 }
 </script>
 
 <style scoped>
-@media (hover: hover) {
-  :deep(.moh-onboarding-cta.p-button:not(:disabled):hover) {
-    background: color-mix(in srgb, var(--p-primary-color, #111827) 78%, white) !important;
-    border-color: transparent !important;
-    filter: brightness(1.08);
-  }
+.onboarding-screen { position: fixed; inset: 0; z-index: 10000; overflow-y: auto; padding: 24px; }
+.onboarding-column { max-width: 400px; margin: 0 auto; min-height: calc(100dvh - 48px); display: flex; flex-direction: column; gap: 24px; }
+.onboarding-form { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; }
+.onboarding-content { display: flex; flex-direction: column; gap: 20px; margin: auto 0; padding: 24px 0; }
+.setup-input { min-height: 52px; border-radius: 10px; background: var(--moh-surface); }
+.setup-primary { min-height: 48px; background: var(--moh-text) !important; color: var(--moh-bg) !important; border-color: var(--moh-text) !important; }
+.arena-selected { background: var(--moh-brass); color: var(--moh-bg); border-color: var(--moh-brass); }
+@media (min-width: 640px) {
+  .onboarding-screen { padding: 48px; }
+  .onboarding-column { min-height: 0; gap: 32px; }
+  .onboarding-content { margin: 0; padding: 0; }
 }
 </style>

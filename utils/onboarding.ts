@@ -8,7 +8,7 @@ export type OnboardingState = {
   heardAboutUs?: HeardAboutUs | null
 }
 
-export type OnboardingPage = 1 | 2 | 3
+export type OnboardingPage = 1 | 2
 
 export const HEARD_ABOUT_US_OPTIONS: { value: HeardAboutUs; label: string }[] = [
   { value: 'friend', label: 'A friend' },
@@ -33,30 +33,26 @@ export function needsOnboarding(user: OnboardingState | null | undefined): boole
 
 export function isOnboardingPageComplete(page: OnboardingPage, user: OnboardingState | null | undefined): boolean {
   if (!user) return false
-  if (page === 1) return Boolean(user.usernameIsSet)
-  if (page === 2) return Array.isArray(user.interests) && user.interests.length >= 1
-  return Boolean(user.birthdate && user.menOnlyConfirmed)
+  if (page === 1) return Boolean(user.usernameIsSet && user.birthdate && user.menOnlyConfirmed)
+  return Array.isArray(user.interests) && user.interests.length >= 1
 }
 
 export function isOnboardingFullyComplete(user: OnboardingState | null | undefined): boolean {
-  return isOnboardingPageComplete(1, user)
-    && isOnboardingPageComplete(2, user)
-    && isOnboardingPageComplete(3, user)
+  return isOnboardingPageComplete(1, user) && isOnboardingPageComplete(2, user)
 }
 
 export function firstIncompleteOnboardingPage(user: OnboardingState | null | undefined): OnboardingPage {
-  if (!isOnboardingPageComplete(1, user)) return 1
-  if (!isOnboardingPageComplete(2, user)) return 2
-  return 3
+  return isOnboardingPageComplete(1, user) ? 2 : 1
 }
 
-export function nextIncompleteOnboardingPage(
-  from: OnboardingPage,
-  user: OnboardingState | null | undefined,
-): OnboardingPage | null {
-  for (const page of [1, 2, 3] as const) {
-    if (page <= from) continue
-    if (!isOnboardingPageComplete(page, user)) return page
-  }
-  return null
+export function nextIncompleteOnboardingPage(from: OnboardingPage, user: OnboardingState | null | undefined): OnboardingPage | null {
+  return from === 1 && !isOnboardingPageComplete(2, user) ? 2 : null
+}
+
+export function isBirthdate18Plus(value: string, now = new Date()): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const date = new Date(`${value}T00:00:00.000Z`)
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return false
+  const cutoff = new Date(Date.UTC(now.getUTCFullYear() - 18, now.getUTCMonth(), now.getUTCDate()))
+  return date <= cutoff
 }

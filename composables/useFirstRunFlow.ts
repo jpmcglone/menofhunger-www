@@ -9,22 +9,16 @@ export function useFirstRunFlow() {
   const { user } = useAuth()
   const route = useRoute()
 
-  const blocked = computed(() => step.value !== 'none')
+  const blocked = computed(() => step.value !== 'none' || arrivalSession.value)
 
-  function maybeOfferEmail() {
-    const email = (user.value?.email ?? '').trim()
-    if (!passedEmail.value && !email) {
-      step.value = 'email'
-      return
-    }
+  // A completed signup goes straight to the feed. Optional setup is user-initiated.
+  const arrivalSession = useState('moh.first-run.arrival-session', () => false)
+  function startAfterOnboarding() {
+    arrivalSession.value = true
     step.value = 'none'
   }
 
-  function startAfterOnboarding() {
-    step.value = 'photo'
-  }
-
-  /** `?welcome=1` after signup: photo interstitial, not a jump into profile edit. */
+  /** `?welcome=1` after signup: marks arrival without opening a sheet. */
   function consumeWelcomeQuery() {
     if (consumedWelcome.value) return
     if (String(route.query.welcome ?? '') !== '1') return
@@ -38,7 +32,7 @@ export function useFirstRunFlow() {
   }
 
   function skipPhoto() {
-    maybeOfferEmail()
+    step.value = 'none'
   }
 
   function addPhoto() {
@@ -46,13 +40,17 @@ export function useFirstRunFlow() {
   }
 
   function finishProfile() {
-    maybeOfferEmail()
+    step.value = 'none'
   }
 
   function finishEmail() {
     passedEmail.value = true
     step.value = 'none'
   }
+
+  watch(() => user.value?.id, (id, previous) => {
+    if (id !== previous) { arrivalSession.value = false; consumedWelcome.value = false; step.value = 'none' }
+  })
 
   return {
     step,

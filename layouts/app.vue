@@ -546,7 +546,6 @@ watch(
   (id) => {
     if (!id || !import.meta.client) return
     const push = usePushNotifications()
-    push.tryAutoPrompt()
     void push.ensureSubscribedWhenGranted()
   },
   { immediate: true },
