@@ -1,11 +1,12 @@
 import type { PostVisibility } from '~/types/api'
 
 /**
- * In-session composer visibility state.
+ * Composer visibility state for feed posts.
  *
- * Defaults to 'public' on every fresh page load (hard refresh or new tab resets it).
- * Remembers the user's last explicit non-onlyMe choice for the duration of the browser
- * session so that switching tabs or navigating around the app preserves their preference.
+ * Defaults to 'public'. Remembers the user's last explicit non-onlyMe choice for the
+ * browser tab (sessionStorage via useVisibilityMemory('post')): it survives reloads and
+ * navigation, clears when the tab closes, and is independent of article and Board audiences.
+ * The stored value is applied after mount so server and client render the same markup.
  *
  * Special contexts (check-in, group wall, only-me page) use the lockedVisibility prop
  * on PostComposer and do not interact with this state.
@@ -16,15 +17,25 @@ import type { PostVisibility } from '~/types/api'
  */
 export function useComposerVisibility() {
   // Primary: the currently active visibility in the composer UI.
-  // useState key → shared across all composable callers; resets to 'public' on page reload.
   const visibility = useState<PostVisibility>('composer:visibility', () => 'public')
+  const memory = useVisibilityMemory('post')
 
   // Shadow: last non-onlyMe choice. Used by the modal opener so that opening the
   // regular composer after an only-me post doesn't default to 'onlyMe'.
-  const feedVisibility = useState<'public' | 'verifiedOnly' | 'premiumOnly'>(
-    'composer:visibility:feed',
-    () => 'public',
-  )
+  const feedVisibility = computed<'public' | 'verifiedOnly' | 'premiumOnly'>({
+    get: () => memory.visibility.value,
+    set: (next) => memory.remember(next),
+  })
+
+  const applied = useState<boolean>('composer:visibility:memory-applied', () => false)
+  if (import.meta.client && getCurrentInstance()) {
+    onMounted(() => {
+      if (applied.value) return
+      applied.value = true
+      const remembered = memory.hydrate()
+      if (visibility.value === 'public') visibility.value = remembered
+    })
+  }
 
   return { visibility, feedVisibility }
 }

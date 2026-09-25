@@ -10,7 +10,7 @@
     </template>
 
     <p class="text-sm moh-text-muted">
-      "{{ article.title }}" is now live.
+      "{{ article.title }}" is now live<template v-if="boardPosted">{{ boardSharedToFeed ? ' — on the Board and in the feed' : ' — and on the Board' }}</template>.
     </p>
 
     <div class="mt-5 space-y-2">
@@ -21,7 +21,16 @@
       >
         View article
       </NuxtLink>
+      <NuxtLink
+        v-if="boardThreadHrefValue"
+        :to="boardThreadHrefValue"
+        class="flex min-h-11 w-full items-center justify-center rounded-full border moh-border text-sm font-semibold text-[var(--moh-text)] hover:bg-[var(--moh-surface-hover)]"
+        @click="emit('close')"
+      >
+        Open Board thread
+      </NuxtLink>
       <button
+        v-if="!boardSharedToFeed"
         type="button"
         class="flex min-h-11 w-full items-center justify-center rounded-full border moh-border text-sm font-semibold text-[var(--moh-text)] hover:bg-[var(--moh-surface-hover)]"
         @click="shareToFeed"
@@ -45,7 +54,23 @@ import { MOH_OPEN_COMPOSER_KEY, type ComposerVisibility } from '~/utils/injectio
 
 const props = defineProps<{
   article: Article
+  boardPosted?: boolean
+  boardSharedToFeed?: boolean
 }>()
+
+const boardApi = useBoardApi()
+const { user } = useAuth()
+const boardThreadHrefValue = ref<string | null>(null)
+onMounted(async () => {
+  if (!props.boardPosted || !user.value?.username) return
+  try {
+    const { threads } = await boardApi.listThreads({ sort: 'new', author: user.value.username, limit: 5 })
+    const match = threads.find((t) => t.articleId === props.article.id)
+    if (match) boardThreadHrefValue.value = boardThreadHref(match)
+  } catch {
+    // The article link is enough; the Board thread shows up in the list.
+  }
+})
 
 const emit = defineEmits<{
   (e: 'close'): void

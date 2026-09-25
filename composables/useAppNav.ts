@@ -103,6 +103,7 @@ export function useAppNav() {
       menuSection: 'main',
     },
     { key: 'articles', label: 'Articles', to: '/articles', icon: 'tabler:article', iconActive: 'tabler:article-filled', showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'board', label: 'Board', to: '/b', icon: 'tabler:layout-list', iconActive: 'tabler:layout-list-filled', showInPrimaryNav: true, menuSection: 'main' },
     { key: 'check-ins', label: 'Check-ins', to: '/check-ins', icon: 'tabler:flame', iconActive: 'tabler:flame-filled', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'fitness', label: 'Fitness', to: '/fitness', icon: 'tabler:heart-rate-monitor', iconActive: 'tabler:heart-rate-monitor', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: false, showInPrimaryNav: true, menuSection: 'main' },

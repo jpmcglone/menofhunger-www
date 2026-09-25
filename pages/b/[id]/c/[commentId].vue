@@ -1,0 +1,85 @@
+<template>
+  <AppPageContent bottom="standard">
+    <div class="flex items-center gap-3 moh-gutter-x pt-3 pb-2">
+      <NuxtLink :to="threadHref" class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-surface-hover" aria-label="Back to thread">
+        <AppIconGlyph name="back" :size="20" />
+      </NuxtLink>
+      <span class="text-lg font-bold moh-text">Comment</span>
+    </div>
+
+    <div v-if="pending && !ctxData" class="py-16 text-center moh-meta">Loading…</div>
+    <div v-else-if="error || !ctxData" class="moh-gutter-x py-16 text-center">
+      <p class="moh-body">This comment isn’t available.</p>
+      <NuxtLink to="/b" class="mt-2 inline-block text-sm hover:underline" style="color: var(--moh-verified)">Back to the Board</NuxtLink>
+    </div>
+
+    <template v-else>
+      <div class="moh-gutter-x flex flex-wrap items-center gap-x-1.5 pb-2 text-xs moh-text-soft">
+        <span>on:</span>
+        <NuxtLink :to="threadHref" class="font-medium hover:underline" style="color: var(--moh-verified)">{{ ctxData.thread.title }}</NuxtLink>
+        <template v-if="parentComment">
+          <span aria-hidden="true">·</span>
+          <NuxtLink :to="boardCommentHref(ctxData.thread.id, parentComment.id)" class="hover:underline">parent</NuxtLink>
+        </template>
+        <template v-if="ctxData.ancestors.length > 1">
+          <span aria-hidden="true">·</span>
+          <NuxtLink :to="boardCommentHref(ctxData.thread.id, ctxData.ancestors[0]!.id)" class="hover:underline">root</NuxtLink>
+        </template>
+        <span aria-hidden="true">·</span>
+        <NuxtLink :to="threadHref" class="hover:underline">full thread</NuxtLink>
+      </div>
+
+      <AppBoardThreadHead v-if="!ctxData.thread.viewerCanAccess" :thread="ctxData.thread" />
+
+      <div v-else class="border-t moh-border pb-6">
+        <div v-if="ctxData.ancestors.length" class="border-b moh-border pb-1 opacity-80">
+          <AppBoardCommentRow v-for="a in ctxData.ancestors" :key="a.id" :comment="a" :depth="0" />
+        </div>
+        <AppBoardCommentRow v-for="c in comments" :key="c.id" :comment="c" :depth="0" />
+      </div>
+    </template>
+  </AppPageContent>
+</template>
+
+<script setup lang="ts">
+import type { BoardComment } from '~/types/api'
+
+definePageMeta({ layout: 'app', title: 'Board', hideTopBar: true })
+
+const route = useRoute()
+const api = useBoardApi()
+const threadId = computed(() => String(route.params.id ?? ''))
+const commentId = computed(() => String(route.params.commentId ?? ''))
+
+const { data: ctxData, pending, error, refresh } = await useAsyncData(
+  () => `board-comment-${commentId.value}`,
+  () => api.getCommentContext(commentId.value),
+  { watch: [commentId] },
+)
+
+const threadHref = computed(() => boardThreadHref({ id: ctxData.value?.thread.id ?? threadId.value }))
+const parentComment = computed(() => ctxData.value?.ancestors[ctxData.value.ancestors.length - 1] ?? null)
+const comments = ref<BoardComment[]>(ctxData.value?.comment ? [ctxData.value.comment] : [])
+watch(ctxData, (next) => { comments.value = next?.comment ? [next.comment] : [] })
+
+const tree = useBoardCommentTree(comments, computed(() => ctxData.value?.comment?.parentId ?? null))
+provide(BOARD_COMMENT_TREE_KEY, {
+  threadId: computed(() => ctxData.value?.thread.id ?? threadId.value),
+  canReply: computed(() => Boolean(ctxData.value?.thread.viewerCanAccess && !ctxData.value.thread.articleId)),
+  maxDepth: 8,
+  highlightId: commentId,
+  add: tree.add,
+  remove: tree.remove,
+})
+
+useBoardThreadSeo(computed(() => ctxData.value?.thread), computed(() => ctxData.value?.comment))
+
+let activatedOnce = false
+onActivated(() => {
+  if (!activatedOnce) {
+    activatedOnce = true
+    return
+  }
+  void refresh()
+})
+</script>

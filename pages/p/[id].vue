@@ -338,6 +338,7 @@ import { usePostComments } from '~/composables/usePostComments'
 import { usePostDiscoverMore } from '~/composables/usePostDiscoverMore'
 import { useThreadParticipants } from '~/composables/useThreadParticipants'
 import { usePostPermalinkSeo } from '~/composables/usePostPermalinkSeo'
+import { boardPostHref } from '~/utils/board-links'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
@@ -413,6 +414,12 @@ const {
   apiErrorStatus,
   refreshPost,
 } = await usePostPermalink(postId)
+
+// Board posts live on the Board; old /p links, pushes, and shares land on the thread.
+const boardRedirect = post.value ? boardPostHref(post.value) : null
+if (boardRedirect) {
+  await navigateTo(boardRedirect, { replace: true, redirectCode: 301 })
+}
 
 const { markReadBySubject } = useNotifications()
 watch(

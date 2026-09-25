@@ -13,6 +13,10 @@
             <!-- Title + quoted message: up to 2 lines with truncation -->
             <div class="min-w-0 max-w-full text-[15px] leading-snug moh-text">
               <span
+                v-if="notification.boardThreadId"
+                class="mr-1.5 inline-flex items-center gap-1 rounded-full border moh-border px-2 py-px align-[1px] text-[11px] font-semibold moh-text-muted"
+              ><Icon name="tabler:layout-list" class="text-[10px]" aria-hidden="true" />Board</span>
+              <span
                 v-if="notificationShowsActor(notification.kind) && notification.actor"
                 class="font-semibold"
                 @mouseenter="onActorEnter"
@@ -20,7 +24,10 @@
                 @mouseleave="onActorLeave"
               >{{ actorDisplay(notification) }}</span>
               <template v-if="notification.kind === 'comment'">
-                <template v-if="notification.subjectArticleId">
+                <template v-if="notification.boardThreadId">
+                  <span class="ml-1">{{ notification.title || 'commented on your Board thread' }}</span>
+                </template>
+                <template v-else-if="notification.subjectArticleId">
                   <span class="ml-1">replied to your</span>
                   <span class="ml-1 font-semibold text-orange-600 dark:text-orange-400">article</span>
                 </template>
@@ -29,6 +36,10 @@
                   <span class="ml-1" :class="subjectPostVisibilityTextClass(notification)">post</span>
                 </template>
               </template>
+            <template v-else-if="notification.kind === 'boost' && notification.boardThreadId">
+              <span class="ml-1">boosted your</span>
+              <span class="ml-1" :class="subjectPostVisibilityTextClass(notification)">{{ notification.boardCommentId ? 'Board comment' : 'Board thread' }}</span>
+            </template>
             <template v-else-if="notification.kind === 'boost'">
               <span class="ml-1">boosted your</span>
               <span

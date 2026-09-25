@@ -13,6 +13,7 @@ import type {
   WatchPartyState,
   WsAdminUpdatedPayload,
   WsArticlesLiveUpdatedPayload,
+  BoardNewThreadPayload,
   WsArticlesCommentAddedPayload,
   WsArticlesCommentDeletedPayload,
   WsArticlesCommentUpdatedPayload,
@@ -45,6 +46,7 @@ import type {
   AccountsCallback,
   AdminCallback,
   ArticlesCallback,
+  BoardCallback,
   CallsCallback,
   CheckinsCallback,
   CrewCallback,
@@ -124,6 +126,7 @@ export function usePresenceDomains() {
   const followsCallbacks = useState<Set<FollowsCallback>>('presence-follows-callbacks', () => new Set())
   const postsCallbacks = useState<Set<PostsCallback>>('presence-posts-callbacks', () => new Set())
   const articlesCallbacks = useState<Set<ArticlesCallback>>('presence-articles-callbacks', () => new Set())
+  const boardCallbacks = useState<Set<BoardCallback>>('presence-board-callbacks', () => new Set())
   const adminCallbacks = useState<Set<AdminCallback>>('presence-admin-callbacks', () => new Set())
   const usersCallbacks = useState<Set<UsersCallback>>('presence-users-callbacks', () => new Set())
   const crewCallbacks = useState<Set<CrewCallback>>('presence-crew-callbacks', () => new Set())
@@ -155,6 +158,7 @@ export function usePresenceDomains() {
   const follows = makeRegistry(followsCallbacks)
   const posts = makeRegistry(postsCallbacks)
   const articles = makeRegistry(articlesCallbacks)
+  const board = makeRegistry(boardCallbacks)
   const admin = makeRegistry(adminCallbacks)
   const users = makeRegistry(usersCallbacks)
   const crew = makeRegistry(crewCallbacks)
@@ -490,6 +494,10 @@ export function usePresenceDomains() {
       }
     })
 
+    socket.on('board:new-thread', (data: BoardNewThreadPayload) => {
+      for (const cb of boardCallbacks.value) cb.onNewThread?.(data)
+    })
+
     socket.on('articles:liveUpdated', (data: WsArticlesLiveUpdatedPayload) => {
       if (!articlesCallbacks.value.size) return
       for (const cb of articlesCallbacks.value) {
@@ -701,6 +709,7 @@ export function usePresenceDomains() {
     follows,
     posts,
     articles,
+    board,
     admin,
     users,
     crew,

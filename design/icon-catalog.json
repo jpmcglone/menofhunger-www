@@ -183,6 +183,14 @@
     "selectedTreatment": "fill",
     "iosSelectedTreatment": "fill"
   },
+  "board": {
+    "web": "layout-list",
+    "webSelected": "layout-list-filled",
+    "ios": "list.bullet.rectangle",
+    "iosSelected": "list.bullet.rectangle.fill",
+    "selectedTreatment": "fill",
+    "iosSelectedTreatment": "fill"
+  },
   "write": {
     "web": "pencil",
     "webSelected": "pencil-filled",

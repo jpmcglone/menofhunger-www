@@ -225,7 +225,7 @@ async function retryFetch() {
 const notificationsTabReturnGate = useTabReturnRefreshGate('notifications')
 
 const kindChips = computed(() => {
-  const chips: { label: string; kind: NotificationKind | 'other' | null }[] = [
+  const chips: { label: string; kind: NotificationKind | 'other' | 'board' | null }[] = [
     { label: 'All', kind: null },
     { label: 'Posts', kind: 'followed_post' },
     { label: 'Replies', kind: 'comment' },
@@ -233,6 +233,7 @@ const kindChips = computed(() => {
     { label: 'Statuses', kind: 'status_update' },
     { label: 'Follows', kind: 'follow' },
     { label: 'Boosts', kind: 'boost' },
+    { label: 'Board', kind: 'board' },
     { label: 'Other', kind: 'other' },
   ]
   return chips
@@ -241,7 +242,7 @@ const kindChips = computed(() => {
 const router = useRouter()
 const route = useRoute()
 
-async function onChipSelect(kind: NotificationKind | 'other' | null) {
+async function onChipSelect(kind: NotificationKind | 'other' | 'board' | null) {
   await setKind(kind)
   const query = { ...route.query }
   if (kind) {
@@ -287,7 +288,8 @@ watch(
 )
 const showInitialLoader = computed(() => !hasFetched.value && !fetchError.value && notifications.value.length === 0)
 
-function chipHasUnseenNotifications(kind: NotificationKind | 'other' | null): boolean {
+function chipHasUnseenNotifications(kind: NotificationKind | 'other' | 'board' | null): boolean {
+  if (kind === 'board') return false
   const category = notificationFilterCategory(kind)
   const count = unreadByCategory.value[category]
   if (count !== undefined) return count > 0
@@ -588,9 +590,10 @@ function onNotificationKeydown(item: (typeof notifications.value)[number]) {
   void navigateTo(href)
 }
 
-function kindFromQuery(): NotificationKind | 'other' | null {
+function kindFromQuery(): NotificationKind | 'other' | 'board' | null {
   const q = route.query.kind
   if (q === 'other') return 'other'
+  if (q === 'board') return 'board'
   if (q === 'checkin_post') return 'followed_post'
   const valid: NotificationKind[] = ['comment', 'boost', 'repost', 'follow', 'followed_post', 'followed_article', 'mention', 'nudge', 'coin_transfer', 'poll_results_ready', 'generic', 'status_update', 'checkin_post', 'account_verified', 'premium_started', 'premium_ended']
   return (typeof q === 'string' && valid.includes(q as NotificationKind)) ? (q as NotificationKind) : null

@@ -46,7 +46,10 @@ v-for="tab in searchTabs" :key="tab.key"
       </div>
 
     <!-- Search results -->
-      <template v-if="isSearching">
+      <template v-if="isSearching && searchTab === 'board'">
+        <AppBoardSearchResults :query="searchQueryTrimmed" />
+      </template>
+      <template v-else-if="isSearching">
         <AppExploreSearchResults
 :users="users" :groups="searchGroups" :posts="posts" :articles="articles"
           :category="searchTab" :query="searchQueryTrimmed" :loading="loading" :error="searchError"
@@ -415,6 +418,8 @@ v-else-if="searchActive && !activeTopic && !activeCategory"
           </div>
         </section>
 
+        <AppBoardExploreSection />
+
         <!-- Trending articles -->
         <section v-if="discoverInitialLoading || trendingArticles.length > 0" class="space-y-3">
           <div class="px-4 flex items-center justify-between gap-3">
@@ -763,7 +768,7 @@ const searchQuery = ref(getRouteQ())
 const searchQueryTrimmed = computed(() => searchQuery.value.trim())
 const isSearching = computed(() => searchQueryTrimmed.value.length >= 2)
 const searchActive = ref(false)
-const searchTabs = [{ key: 'all', label: 'All' }, { key: 'people', label: 'People' }, { key: 'groups', label: 'Groups' }, { key: 'posts', label: 'Posts' }, { key: 'articles', label: 'Articles' }]
+const searchTabs = [{ key: 'all', label: 'All' }, { key: 'people', label: 'People' }, { key: 'groups', label: 'Groups' }, { key: 'posts', label: 'Posts' }, { key: 'articles', label: 'Articles' }, { key: 'board', label: 'Board' }]
 const searchTab = computed(() => searchTabs.some(t => t.key === route.query.tab) ? String(route.query.tab) : 'all')
 function selectSearchTab(tab: string) {
   void router.replace({ query: { ...route.query, tab: tab === 'all' ? undefined : tab } })

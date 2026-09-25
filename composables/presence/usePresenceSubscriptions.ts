@@ -4,6 +4,7 @@ import type { Socket } from 'socket.io-client'
 const PRESENCE_POST_SUB_REFS_KEY = 'presence-post-sub-refs'
 const PRESENCE_ARTICLE_SUB_REFS_KEY = 'presence-article-sub-refs'
 const PRESENCE_GROUP_FEED_SUB_REFS_KEY = 'presence-group-feed-sub-refs'
+const PRESENCE_BOARD_SUB_REFS_KEY = 'presence-board-sub-refs'
 
 function cleanIds(ids: string[]): string[] {
   return (ids ?? []).map((s) => String(s ?? '').trim()).filter(Boolean)
@@ -18,6 +19,7 @@ export function usePresenceSubscriptions(socketRef: Ref<Socket | null>) {
   const postSubRefs = useState<Map<string, number>>(PRESENCE_POST_SUB_REFS_KEY, () => new Map())
   const articleSubRefs = useState<Map<string, number>>(PRESENCE_ARTICLE_SUB_REFS_KEY, () => new Map())
   const groupFeedSubRefs = useState<Map<string, number>>(PRESENCE_GROUP_FEED_SUB_REFS_KEY, () => new Map())
+  const boardSubRefs = useState<number>(PRESENCE_BOARD_SUB_REFS_KEY, () => 0)
 
   function emitPostsSubscribe(postIds: string[]) {
     const socket = socketRef.value
@@ -123,8 +125,22 @@ export function usePresenceSubscriptions(socketRef: Ref<Socket | null>) {
     emitGroupsUnsubscribe(release(groupFeedSubRefs.value, cleaned))
   }
 
+  /** Board list rooms (tier-scoped by the server). Refcounted like the id rooms. */
+  function subscribeBoard() {
+    if (!import.meta.client) return
+    boardSubRefs.value += 1
+    if (socketRef.value?.connected) socketRef.value.emit('board:subscribe')
+  }
+
+  function unsubscribeBoard() {
+    if (!import.meta.client) return
+    boardSubRefs.value = Math.max(0, boardSubRefs.value - 1)
+    if (boardSubRefs.value === 0 && socketRef.value?.connected) socketRef.value.emit('board:unsubscribe')
+  }
+
   /** Re-emit all live content subscriptions after (re)connect. */
   function syncContentSubscriptions() {
+    if (boardSubRefs.value > 0) socketRef.value?.emit('board:subscribe')
     if (articleSubRefs.value.size > 0) emitArticlesSubscribe([...articleSubRefs.value.keys()])
     if (postSubRefs.value.size > 0) emitPostsSubscribe([...postSubRefs.value.keys()])
     if (groupFeedSubRefs.value.size > 0) emitGroupsSubscribe([...groupFeedSubRefs.value.keys()])
@@ -137,6 +153,8 @@ export function usePresenceSubscriptions(socketRef: Ref<Socket | null>) {
     unsubscribeArticles,
     subscribeGroups,
     unsubscribeGroups,
+    subscribeBoard,
+    unsubscribeBoard,
     syncContentSubscriptions,
   }
 }

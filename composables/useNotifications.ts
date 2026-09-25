@@ -38,7 +38,7 @@ export function useNotifications() {
   const nextCursor = useState<string | null>(`${stateKey}:nextCursor`, () => null)
   const loading = useState<boolean>(`${stateKey}:loading`, () => false)
   const pendingRefresh = useState<boolean>(`${stateKey}:pendingRefresh`, () => false)
-  const activeKind = useState<NotificationKind | 'other' | null>(`${stateKey}:activeKind`, () => null)
+  const activeKind = useState<NotificationKind | 'other' | 'board' | null>(`${stateKey}:activeKind`, () => null)
   const unreadByKind = useState<NotificationUnreadByKind>(`${stateKey}:unreadByKind`, () => ({ all: 0 }))
   // True once the first fetch has completed (success or error). Used to distinguish
   // "never fetched yet" (show loader) from "fetched and empty" (show empty state).
@@ -66,6 +66,7 @@ export function useNotifications() {
 
   function notificationMatchesActiveKind(n: Notification): boolean {
     if (!activeKind.value) return true
+    if (activeKind.value === 'board') return Boolean(n.boardThreadId)
     if (['followed_post', 'comment', 'mention', 'status_update', 'follow', 'boost', 'other'].includes(activeKind.value)) {
       return notificationCategory(n) === notificationFilterCategory(activeKind.value)
     }
@@ -771,7 +772,7 @@ export function useNotifications() {
     }
   }
 
-  async function setKind(kind: NotificationKind | 'other' | null) {
+  async function setKind(kind: NotificationKind | 'other' | 'board' | null) {
     const next = kind === 'checkin_post' ? 'followed_post' : kind
     if (next !== activeKind.value) {
       generation.value += 1
@@ -884,6 +885,10 @@ export function useNotifications() {
     ) {
       return '/crew'
     }
+    // Board activity routes to the thread (and focuses the comment when there is one).
+    if (n.boardThreadId) {
+      return n.boardCommentId ? boardCommentHref(n.boardThreadId, n.boardCommentId) : boardThreadHref({ id: n.boardThreadId })
+    }
     // Article-related notifications always route to the article page.
     if (n.subjectArticleId && (
       n.kind === 'followed_article' || n.kind === 'comment' || n.kind === 'mention' || n.kind === 'boost' || n.kind === 'generic'
@@ -913,6 +918,7 @@ export function useNotifications() {
       return meUsername ? `/u/${encodeURIComponent(meUsername)}/followers` : '/settings'
     }
     if (g.kind === 'followed_post') return '/new-posts'
+    if (g.boardThreadId) return boardThreadHref({ id: g.boardThreadId })
     if (g.subjectPostId) return `/p/${g.subjectPostId}`
     return null
   }

@@ -180,6 +180,8 @@
           Post deleted.
         </div>
 
+        <AppBoardFeedCard v-else-if="isBoardPost" :post="postView" :href="postPermalink" />
+
         <!-- Gated post: show partial body (mid-word cut, faded) then gate card -->
         <template v-else-if="isGatedPost">
           <div
@@ -244,10 +246,10 @@
           @updated="onPollUpdated"
         />
 
-        <AppPostMediaGrid v-if="!isDeletedPost && !isGatedPost && postView.media?.length" :media="postView.media" :post-id="postView.id" :row-in-view="rowInView" />
+        <AppPostMediaGrid v-if="!isDeletedPost && !isGatedPost && !isBoardPost && postView.media?.length" :media="postView.media" :post-id="postView.id" :row-in-view="rowInView" />
 
         <AppPostRowLinkPreview
-          v-if="!isDeletedPost && !isGatedPost"
+          v-if="!isDeletedPost && !isGatedPost && !isBoardPost"
           :post-id="postView.id"
           :body="postView.body"
           :has-media="Boolean(postView.media?.length)"
@@ -362,6 +364,7 @@ import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { boardPostHref } from '~/utils/board-links'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useUserOverlay } from '~/composables/useUserOverlay'
@@ -696,10 +699,22 @@ const metaTags = computed(() => {
     })
   }
 
+  if (isBoardPost.value) {
+    out.push({
+      key: 'kind:board',
+      label: 'Board',
+      class: 'moh-border moh-text-muted',
+      tooltip: tinyTooltip('Posted on the Board'),
+      icon: 'tabler:layout-list',
+      to: '/b',
+    })
+  }
+
   return out
 })
 
-const postPermalink = computed(() => `/p/${encodeURIComponent(postView.value.id)}`)
+const postPermalink = computed(() => boardPostHref(postView.value) ?? `/p/${encodeURIComponent(postView.value.id)}`)
+const isBoardPost = computed(() => postView.value.kind === 'board')
 
 function goToPost() {
   return navigateTo(postPermalink.value)

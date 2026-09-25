@@ -80,6 +80,11 @@ export function isViewingSpacePage(path: string, ownerUsername?: string | null):
   return Boolean(slug && owner && slug === owner)
 }
 
+/** Board list, threads, and comment permalinks. Public threads read logged out; `/b/new` needs an account. */
+export function isBoardReadPath(path: string): boolean {
+  return path === '/b' || (path.startsWith('/b/') && path !== '/b/new')
+}
+
 export function isPublicPrefixPath(path: string): boolean {
   return isUserProfilePath(path) || isPostPermalinkPath(path) || isArticlePermalinkPath(path) || isSpacePermalinkPath(path)
 }
@@ -110,11 +115,12 @@ export function isLoggedOutAllowedPath(path: string): boolean {
     || isGroupsHubPath(path)
     || isTopicPath(path)
     || isDailyPath(path)
+    || isBoardReadPath(path)
   )
 }
 
 export function isAuthAllowedAfterLogoutPath(path: string): boolean {
-  return AUTH_ALLOWED_AFTER_LOGOUT_PATHS.has(path)
+  return AUTH_ALLOWED_AFTER_LOGOUT_PATHS.has(path) || isBoardReadPath(path)
 }
 
 export function isNavActive(params: { currentPath: string; to: string }): boolean {

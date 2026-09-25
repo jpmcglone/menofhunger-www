@@ -141,9 +141,17 @@
     </div>
 
     <!-- Publish success dialog -->
+    <AppArticlePublishOptionsDialog
+      v-if="publishOptionsOpen"
+      :publishing="editor.publishing.value"
+      @close="publishOptionsOpen = false"
+      @confirm="onPublishConfirm"
+    />
     <AppArticlePublishSuccessDialog
       v-if="justPublished"
       :article="justPublished"
+      :board-posted="lastPublishOptions?.postToBoard === true"
+      :board-shared-to-feed="lastPublishOptions?.postToBoard === true && lastPublishOptions?.shareToFeed === true"
       @close="justPublished = null"
     />
   </div>
@@ -277,9 +285,23 @@ const titleToneClass = computed(() => {
 
 const router = useRouter()
 
+const publishOptionsOpen = ref(false)
+const lastPublishOptions = ref<{ postToBoard: boolean; shareToFeed: boolean } | null>(null)
+
+async function onPublishConfirm(options: { postToBoard: boolean; shareToFeed: boolean }) {
+  lastPublishOptions.value = options
+  await handlePublish(options)
+  publishOptionsOpen.value = false
+}
+
 async function onPrimaryAction() {
   const isDraft = editor.article.value?.isDraft !== false
   if (isDraft) {
+    // First publish offers the Board cross-post; republishing keeps the existing thread.
+    if (!editor.article.value?.publishedAt) {
+      publishOptionsOpen.value = true
+      return
+    }
     void handlePublish()
     return
   }
@@ -297,9 +319,9 @@ function onTitleInput() {
   if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` }
 }
 
-async function handlePublish() {
+async function handlePublish(options?: { postToBoard: boolean; shareToFeed: boolean }) {
   try {
-    const published = await editor.publish()
+    const published = await editor.publish(options)
     if (published) {
       justPublished.value = published
     }
@@ -364,7 +386,17 @@ async function uploadCroppedThumbnail(file: File) {
   }
 }
 
-watch(() => editor.visibility.value, () => editor.markDirty())
+// New articles start from the last article audience this tab used (independent of posts/Board).
+const articleVisibilityMemory = useVisibilityMemory('article')
+if (import.meta.client && !initialArticleRef.value) {
+  const remembered = articleVisibilityMemory.hydrate()
+  editor.visibility.value = remembered === 'premiumOnly' && !isPremium.value ? 'public' : remembered
+}
+
+watch(() => editor.visibility.value, (next) => {
+  articleVisibilityMemory.remember(next)
+  editor.markDirty()
+})
 
 onMounted(() => {
   hydrated.value = true

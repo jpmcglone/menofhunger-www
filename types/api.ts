@@ -25,6 +25,19 @@ export type BrowserHandoff = Contracts.BrowserHandoffDto
 
 export type AccountKind = 'person' | 'page'
 
+// ─── Board ──────────────────────────────────────────────────────────────────
+export type PostBoardPreview = Contracts.PostBoardPreviewDto
+export type BoardVisibility = Contracts.BoardVisibility
+export type BoardThread = Contracts.BoardThreadDto
+export type BoardComment = Contracts.BoardCommentDto
+export type BoardCommentsPage = Contracts.BoardCommentsPageDto
+export type BoardCommentContext = Contracts.BoardCommentContextDto
+export type BoardTag = Contracts.BoardTagDto
+export type BoardPreferences = Contracts.BoardPreferencesDto
+export type BoardNewThreadPayload = Contracts.BoardNewThreadPayloadDto
+export type BoardSort = 'top' | 'new' | 'comments'
+export type BoardRange = 'day' | 'week' | 'month' | 'year' | 'all'
+
 export type AccountSwitch = {
   operatorUserId: string
   operatorUsername: string | null
@@ -689,7 +702,11 @@ export type FeedPost = {
   editCount?: number
   body: string
   deletedAt: string | null
-  kind?: 'regular' | 'checkin' | 'repost' | 'articleShare' | 'status' | 'fitnessShare'
+  kind?: 'regular' | 'checkin' | 'repost' | 'articleShare' | 'status' | 'fitnessShare' | 'board'
+  /** kind=board: the Board thread root id (equals `id` for the thread). Routes to /b/:boardRootId. */
+  boardRootId?: string
+  /** kind=board thread roots: Board card fields (gated viewers get a trimmed title and no link). */
+  board?: PostBoardPreview
   checkinDayKey?: string | null
   checkinPrompt?: string | null
   visibility: PostVisibility
@@ -1532,6 +1549,9 @@ export type Notification = {
   subjectPostVisibility?: PostVisibility | null
   /** Tier of subject (post or user) for unseen row highlight. */
   subjectTier?: SubjectTier
+  /** Set when the event is about a Board thread/comment: route to /b/… and tag the row "Board". */
+  boardThreadId?: string | null
+  boardCommentId?: string | null
 }
 
 export type NotificationGroup = {
@@ -1549,6 +1569,7 @@ export type NotificationGroup = {
   latestSubjectPostPreview: SubjectPostPreview | null
   subjectPostVisibility: PostVisibility | null
   subjectTier: SubjectTier
+  boardThreadId?: string | null
 }
 
 export type FollowedPostsRollup = {

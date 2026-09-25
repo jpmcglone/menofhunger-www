@@ -19,6 +19,7 @@ import type {
   WatchPartyState,
   WsAdminUpdatedPayload,
   WsArticlesLiveUpdatedPayload,
+  BoardNewThreadPayload,
   WsArticlesCommentAddedPayload,
   WsArticlesCommentDeletedPayload,
   WsArticlesCommentUpdatedPayload,
@@ -192,6 +193,11 @@ export type ArticlesCallback = {
   onCommentDeleted?: (payload: WsArticlesCommentDeletedPayload) => void
   onCommentUpdated?: (payload: WsArticlesCommentUpdatedPayload) => void
   onCommentReactionChanged?: (payload: WsArticlesCommentReactionChangedPayload) => void
+}
+
+export type BoardCallback = {
+  /** A thread was started in a scope this socket's tier can read (ids only; refetch to render). */
+  onNewThread?: (payload: BoardNewThreadPayload) => void
 }
 
 export type AdminCallback = {

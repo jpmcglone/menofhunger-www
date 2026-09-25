@@ -5,6 +5,7 @@ import type { FeedPost } from '~/types/api'
 import type { MenuItem } from 'primevue/menuitem'
 import { siteConfig } from '~/config/site'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { boardPostHref } from '~/utils/board-links'
 import { postShareText, postShareUrl as buildPostShareUrl } from '~/utils/acquisition-share'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
@@ -91,7 +92,7 @@ export function usePostRowInteractions(opts: {
     return viewerCanInteract.value
   })
 
-  const postPermalink = computed(() => `/p/${encodeURIComponent(postView.value.id)}`)
+  const postPermalink = computed(() => boardPostHref(postView.value) ?? `/p/${encodeURIComponent(postView.value.id)}`)
   const { referralCode, ensureReferralCode } = useEnsureReferralCode()
   const postShareUrl = computed(() =>
     buildPostShareUrl(postView.value.id, referralCode.value ?? null, siteConfig.url),
@@ -156,6 +157,12 @@ export function usePostRowInteractions(opts: {
     }
     if (!viewerIsVerified.value) {
       showAuthActionModal({ kind: 'verify', action: 'comment' })
+      return
+    }
+    // Board cross-posts: the conversation lives on the Board thread.
+    const boardHref = boardPostHref(postView.value)
+    if (boardHref) {
+      void navigateTo(postView.value.parentId ? boardHref : `${boardHref}?reply=1`)
       return
     }
 

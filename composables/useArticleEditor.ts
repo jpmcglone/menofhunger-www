@@ -165,13 +165,13 @@ export function useArticleEditor(initialArticle: Ref<Article | null>, options: A
     }
   }
 
-  async function publish() {
+  async function publish(options?: { postToBoard?: boolean; shareToFeed?: boolean }) {
     if (isDirty.value || !article.value?.id) await save()
     const articleId = article.value?.id
     if (!articleId) return null
     publishing.value = true
     try {
-      const updated = await apiFetchData<Article>(`/articles/${articleId}/publish`, { method: 'POST' })
+      const updated = await apiFetchData<Article>(`/articles/${articleId}/publish`, { method: 'POST', body: options ?? {} })
       article.value = updated
       isDirty.value = false
       return updated

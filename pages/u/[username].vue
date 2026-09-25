@@ -364,6 +364,11 @@
         </AppSubtleSectionLoader>
       </div>
 
+      <!-- ─── Board tab ─────────────────────────────────────────────────── -->
+      <div v-if="!effectiveProfileCtaKind && tabActivated.board" v-show="activeProfileTab === 'board'" class="min-h-[75vh]">
+        <AppBoardProfileTab :username="normalizedUsername" />
+      </div>
+
       <!-- ─── Media tab ─────────────────────────────────────────────────── -->
       <div v-if="!effectiveProfileCtaKind && tabActivated.media" v-show="activeProfileTab === 'media'" class="min-h-[75vh]">
         <AppSubtleSectionLoader :loading="mediaInitialLoading" :refreshing="profileMediaFeed.loading.value && !mediaInitialLoading" min-height-class="min-h-[220px]">
@@ -490,6 +495,7 @@ definePageMeta({
     '/u/:username/posts',
     '/u/:username/replies',
     '/u/:username/articles',
+    '/u/:username/board',
     '/u/:username/media',
     '/u/:username/followers',
     '/u/:username/following',
@@ -734,12 +740,13 @@ const {
 } = useUrlFeedFilters({ historyBacked: true })
 
 // ─── Tab state ────────────────────────────────────────────────────────────────
-type ProfileTabKey = 'posts' | 'replies' | 'articles' | 'media'
+type ProfileTabKey = 'posts' | 'replies' | 'articles' | 'board' | 'media'
 
 function tabFromRoute(path: string): ProfileTabKey {
   if (/\/replies\/?$/.test(path)) return 'replies'
   if (/\/media\/?$/.test(path)) return 'media'
   if (/\/articles\/?$/.test(path)) return 'articles'
+  if (/\/board\/?$/.test(path)) return 'board'
   return 'posts'
 }
 
@@ -752,6 +759,7 @@ const tabActivated = reactive<Record<ProfileTabKey, boolean>>({
   posts: true,
   replies: tabFromRoute(route.path) === 'replies',
   articles: tabFromRoute(route.path) === 'articles',
+  board: tabFromRoute(route.path) === 'board',
   media: tabFromRoute(route.path) === 'media',
 })
 
@@ -764,6 +772,7 @@ const profileTabs = computed<Array<{ key: ProfileTabKey; label: string }>>(() =>
   { key: 'posts', label: 'Posts' },
   { key: 'replies', label: 'Replies' },
   { key: 'articles', label: 'Articles' },
+  { key: 'board', label: 'Board' },
   { key: 'media', label: 'Media' },
 ])
 

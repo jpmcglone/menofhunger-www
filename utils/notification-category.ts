@@ -16,7 +16,8 @@ export function notificationCategory(n: Pick<Notification, 'kind' | 'category' |
   }
 }
 
-export function notificationFilterCategory(kind: NotificationKind | 'other' | null): NotificationCategory | 'all' {
+export function notificationFilterCategory(kind: NotificationKind | 'other' | 'board' | null): NotificationCategory | 'all' {
   if (!kind) return 'all'
+  if (kind === 'board') return 'all'
   return notificationCategory({ kind: kind as NotificationKind })
 }
