@@ -15,6 +15,7 @@ type NotificationSubjectParams = {
   article_id?: string | null
   crew_id?: string | null
   group_id?: string | null
+  board_thread_id?: string | null
 }
 
 const subjectUserKinds: NotificationKind[] = [
@@ -99,6 +100,7 @@ export function closeBrowserNotificationsForSubject(params: NotificationSubjectP
   const articleId = params.article_id?.trim()
   const crewId = params.crew_id?.trim()
   const groupId = params.group_id?.trim()
+  const boardThreadId = params.board_thread_id?.trim()
 
   const paths: string[] = []
   const tags: string[] = []
@@ -124,6 +126,10 @@ export function closeBrowserNotificationsForSubject(params: NotificationSubjectP
 
   if (groupId) {
     paths.push(`/g/${encodeURIComponent(groupId)}`)
+  }
+
+  if (boardThreadId) {
+    paths.push(`/b/${encodeURIComponent(boardThreadId)}`)
   }
 
   closeBrowserNotifications({ paths, tags })

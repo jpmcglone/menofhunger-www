@@ -96,6 +96,7 @@
                 <AppMessagesBadge v-if="item.key === 'messages'" />
                 <AppCrewInvitesBadge v-if="item.key === 'crew'" />
                 <AppGroupsBadge v-if="item.key === 'groups'" />
+                <AppNavUnreadDot v-if="item.key === 'board' || item.key === 'articles'" :section="item.key" />
                 <AppSpacesNotifyBadge v-if="item.key === 'spaces'" />
                 <!-- Collapsed rail (no label): the badge hangs under the icon. -->
                 <span
@@ -223,6 +224,7 @@
                     <AppMessagesBadge v-if="mi.key === 'messages'" />
                     <AppCrewInvitesBadge v-if="mi.key === 'crew'" />
                     <AppGroupsBadge v-if="mi.key === 'groups'" />
+                    <AppNavUnreadDot v-if="mi.key === 'board' || mi.key === 'articles'" :section="mi.key" />
                     <AppSpacesNotifyBadge v-if="mi.key === 'spaces'" />
                   </span>
                   <span>{{ mi.label }}</span>

@@ -17,6 +17,8 @@ export type BoardListQuery = {
   domain?: string | null
   q?: string | null
   author?: string | null
+  /** `only`: just the threads the viewer hid (to bring them back). */
+  hidden?: 'only' | null
   limit?: number
   cursor?: string | null
 }

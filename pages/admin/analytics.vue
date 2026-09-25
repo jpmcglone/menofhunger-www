@@ -564,6 +564,65 @@
           </div>
         </div>
 
+        <!-- Board KPI cards + top threads -->
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Board <span class="text-gray-400 font-normal">({{ rangeLabel }} unless noted · not counted in Posts)</span></div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div v-for="card in boardKpiCards" :key="card.label" class="rounded-xl border moh-border p-4 space-y-1">
+              <div class="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">{{ card.label }}</div>
+              <div class="text-2xl font-bold tabular-nums">{{ card.value }}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ card.sub }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-4 space-y-2">
+          <div class="font-semibold text-sm">Top Board Threads <span class="text-gray-400 font-normal">(started in {{ rangeLabel }}, by points)</span></div>
+          <div class="rounded-xl border moh-border overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="border-b moh-border text-left text-gray-500 dark:text-gray-400">
+                  <th class="px-4 py-3 font-medium">Thread</th>
+                  <th class="px-4 py-3 font-medium">Tier</th>
+                  <th class="px-4 py-3 font-medium text-right">Points</th>
+                  <th class="px-4 py-3 font-medium text-right">Comments</th>
+                  <th class="px-4 py-3 font-medium text-right">People</th>
+                  <th class="px-4 py-3 font-medium text-right">Views</th>
+                  <th class="px-4 py-3 font-medium text-right">Started</th>
+                </tr>
+              </thead>
+              <tbody class="moh-divide">
+                <tr
+                  v-for="thread in data?.board.topThreads"
+                  :key="thread.id"
+                  class="relative hover:bg-gray-50 dark:hover:bg-zinc-900/50 cursor-pointer"
+                  @click="onAnalyticsRowClick(`/b/${thread.id}`, $event)"
+                  @auxclick="onAnalyticsRowAuxClick(`/b/${thread.id}`, $event)"
+                >
+                  <td class="px-4 py-3 max-w-[260px]">
+                    <NuxtLink :to="`/b/${thread.id}`" class="absolute inset-0 z-0" tabindex="-1" aria-hidden="true" />
+                    <div class="relative z-[1] font-medium truncate">{{ thread.title }}</div>
+                    <div class="relative z-[1] text-xs text-gray-400 dark:text-gray-500">@{{ thread.authorUsername }}</div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="visibilityBadgeClass(thread.visibility)">
+                      {{ visibilityLabel(thread.visibility) }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ thread.boostCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ thread.commentCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ thread.uniqueViewCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{{ thread.viewCount.toLocaleString() }}</td>
+                  <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ articleAge(thread.createdAt) }}</td>
+                </tr>
+                <tr v-if="!data?.board.topThreads.length">
+                  <td colspan="7" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No Board threads in this range</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Top posts table -->
         <div class="px-4 space-y-2">
           <div class="font-semibold text-sm">Top Posts by Views <span class="text-gray-400 font-normal">(all time, public, people · total)</span></div>
@@ -1022,6 +1081,29 @@
                 {{ data.landing.articles.premium.toLocaleString() }} premium
               </div>
             </div>
+
+            <div v-if="data.landing.board" class="rounded-xl border moh-border p-4 space-y-3 sm:col-span-2 lg:col-span-3">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="font-medium text-sm">Board</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Landing-eligible threads (article threads excluded); not part of Posts</div>
+                </div>
+                <div class="text-2xl font-bold tabular-nums">
+                  {{ data.landing.board.total.toLocaleString() }}
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">
+                {{ data.landing.board.comments.toLocaleString() }} comments ·
+                {{ data.landing.board.threadsThisWeek.toLocaleString() }} threads in the last 7 days ·
+                {{ data.landing.board.authors.toLocaleString() }} people ·
+                {{ data.landing.board.views.toLocaleString() }} total views
+              </div>
+              <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
+                {{ data.landing.board.public.toLocaleString() }} public /
+                {{ data.landing.board.verified.toLocaleString() }} verified /
+                {{ data.landing.board.premium.toLocaleString() }} premium
+              </div>
+            </div>
           </div>
         </div>
         </section>
@@ -1341,7 +1423,7 @@ function renderCharts() {
 
   if (contentCanvas.value) {
     const { labels, counts, totalPoints } = alignSeries(
-      [data.value.posts, data.value.checkins, data.value.articles.published, data.value.aiPosts],
+      [data.value.posts, data.value.checkins, data.value.articles.published, data.value.aiPosts, data.value.board.threads, data.value.board.comments],
       granularity,
       selectedRange.value,
       data.value.asOf,
@@ -1356,6 +1438,8 @@ function renderCharts() {
           makeLineDataset('Check-ins', counts[1] ?? [], '#f59e0b', totalPoints),
           makeLineDataset('Articles', counts[2] ?? [], '#a855f7', totalPoints),
           makeLineDataset('M.A.R.V. Posts', counts[3] ?? [], '#6366f1', totalPoints),
+          makeLineDataset('Board threads', counts[4] ?? [], '#ea580c', totalPoints),
+          makeLineDataset('Board comments', counts[5] ?? [], '#fb923c', totalPoints),
         ],
       },
       options: opts,
@@ -1504,6 +1588,23 @@ const articleKpiCards = computed(() => {
     { label: 'Boosts', value: k.totalBoostsInRange.toLocaleString(), sub: r },
     { label: 'Reactions', value: k.totalReactionsInRange.toLocaleString(), sub: r },
     { label: 'Replies', value: k.totalCommentsInRange.toLocaleString(), sub: r },
+  ]
+})
+
+const boardKpiCards = computed(() => {
+  if (!data.value) return []
+  const b = data.value.board
+  const r = rangeLabel.value
+  return [
+    { label: 'Threads', value: b.threadsInRange.toLocaleString(), sub: `${b.totalThreads.toLocaleString()} all time` },
+    { label: 'Comments', value: b.commentsInRange.toLocaleString(), sub: `${b.totalComments.toLocaleString()} all time` },
+    { label: 'People', value: b.participantsInRange.toLocaleString(), sub: `started or commented · ${r}` },
+    { label: 'Boosts', value: b.boostsInRange.toLocaleString(), sub: r },
+    {
+      label: 'Answered in 24h',
+      value: b.pctThreadsWithCommentWithin24h == null ? '—' : `${b.pctThreadsWithCommentWithin24h}%`,
+      sub: `threads started in ${r}`,
+    },
   ]
 })
 

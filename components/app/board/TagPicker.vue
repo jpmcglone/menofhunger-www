@@ -31,7 +31,8 @@
     </div>
     <div
       v-if="focused && suggestions.length && modelValue.length < max"
-      class="absolute left-0 right-0 z-20 mt-1 flex flex-wrap gap-1.5 rounded-xl border moh-border moh-surface p-2 shadow-lg"
+      class="mt-1 flex flex-wrap gap-1.5 rounded-xl border moh-border moh-surface p-2"
+      :class="inlineSuggestions ? '' : 'absolute left-0 right-0 z-20 shadow-lg'"
     >
       <button
         v-for="s in suggestions"
@@ -49,9 +50,16 @@
 <script setup lang="ts">
 import type { BoardTag } from '~/types/api'
 
-const props = withDefaults(defineProps<{ modelValue: string[]; max?: number; placeholder?: string }>(), {
+const props = withDefaults(defineProps<{
+  modelValue: string[]
+  max?: number
+  placeholder?: string
+  /** Render suggestions in flow (inside scrolling menus) instead of floating over content. */
+  inlineSuggestions?: boolean
+}>(), {
   max: 3,
   placeholder: 'Add a tag…',
+  inlineSuggestions: false,
 })
 const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>()
 

@@ -23,6 +23,11 @@
                 class="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[1.125rem] h-[1.125rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[var(--moh-bg)]"
                 aria-hidden="true"
               >{{ moreBadgeTotal > 99 ? '99+' : moreBadgeTotal }}</span>
+              <span
+                v-else-if="moreHasDot"
+                class="pointer-events-none absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-[var(--moh-bg)]"
+                aria-hidden="true"
+              />
             </div>
           </button>
 
@@ -45,6 +50,7 @@
               <AppNotificationBadge v-if="item.key === 'notifications'" />
               <AppMessagesBadge v-if="item.key === 'messages'" />
               <AppGroupsBadge v-if="item.key === 'groups'" />
+              <AppNavUnreadDot v-if="item.key === 'board' || item.key === 'articles'" :section="item.key" />
               <div v-if="item.isNew" class="pointer-events-none absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-20">
                 <AppNewBadge small />
               </div>
@@ -153,6 +159,7 @@
                 </div>
                 <AppCrewInvitesBadge v-if="mi.key === 'crew'" />
                 <AppGroupsBadge v-if="mi.key === 'groups'" />
+                <AppNavUnreadDot v-if="mi.key === 'board' || mi.key === 'articles'" :section="mi.key" />
                 <AppSpacesNotifyBadge v-if="mi.key === 'spaces'" />
               </div>
               <div class="min-w-0">
@@ -283,9 +290,17 @@ const moreBadgeTotal = computed(() => {
   return sum + otherAccountsUnread.value
 })
 const moreHasAlert = computed(() => moreBadgeTotal.value > 0)
+// Board / Articles unread already count in the bell, so they add a dot rather than a number.
+const { notificationNavUnread } = usePresence()
+const moreHasDot = computed(() => {
+  const keysInMore = new Set(mainMenuItems.value.map((mi) => mi.key))
+  return (keysInMore.has('board') && notificationNavUnread.value.board > 0)
+    || (keysInMore.has('articles') && notificationNavUnread.value.articles > 0)
+})
 const moreAriaLabel = computed(() => {
   const n = moreBadgeTotal.value
   if (n > 0) return `More — ${n} unread`
+  if (moreHasDot.value) return 'More — unread activity'
   return 'More'
 })
 

@@ -4,6 +4,7 @@ const NOTIFICATIONS_UNDELIVERED_COUNT_KEY = 'notifications-undelivered-count'
 const NOTIFICATIONS_UNREAD_COMMENT_COUNT_KEY = 'notifications-unread-comment-count'
 const MESSAGES_UNREAD_COUNTS_KEY = 'messages-unread-counts'
 const GROUPS_UNREAD_KEY = 'groups-unread'
+const NOTIFICATIONS_NAV_UNREAD_KEY = 'notifications-nav-unread'
 const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3'
 const MESSAGE_SOUND_PATH = '/sounds/new-message.mp3'
 /** Min ms between plays so we don't ding repeatedly (e.g. multiple sockets on mobile or burst of events). */
@@ -49,6 +50,11 @@ export function usePresenceBadges() {
   const groupsUnread = useState<{ total: number; byGroupId: Record<string, number> }>(GROUPS_UNREAD_KEY, () => ({
     total: 0,
     byGroupId: {},
+  }))
+  /** Unread Board / Articles notifications — drives the nav dots. Updated via `notifications:navUnreadChanged`. */
+  const notificationNavUnread = useState<{ board: number; articles: number }>(NOTIFICATIONS_NAV_UNREAD_KEY, () => ({
+    board: 0,
+    articles: 0,
   }))
   // When the viewer is actively reading a chat, the server may briefly bump unread counts
   // before the client's mark-read request is processed. Suppress those transient increases.
@@ -105,6 +111,13 @@ export function usePresenceBadges() {
     messageUnreadCounts.value = { primary: nextPrimary, requests: nextRequests }
   }
 
+  function setNotificationNavUnread(data: { boardUnreadCount?: number; articlesUnreadCount?: number }) {
+    notificationNavUnread.value = {
+      board: Math.max(0, Math.floor(Number(data?.boardUnreadCount)) || 0),
+      articles: Math.max(0, Math.floor(Number(data?.articlesUnreadCount)) || 0),
+    }
+  }
+
   function setGroupsUnread(data: { total?: number; byGroupId?: Record<string, number> }) {
     const total = Math.max(0, Math.floor(Number(data?.total)) || 0)
     const byGroupId: Record<string, number> = {}
@@ -156,6 +169,10 @@ export function usePresenceBadges() {
       messageUnreadCounts.value = incoming
     })
 
+    socket.on('notifications:navUnreadChanged', (data: { boardUnreadCount?: number; articlesUnreadCount?: number }) => {
+      setNotificationNavUnread(data)
+    })
+
     socket.on('groups:unreadChanged', (data: { total?: number; byGroupId?: Record<string, number> }) => {
       setGroupsUnread(data)
     })
@@ -176,11 +193,13 @@ export function usePresenceBadges() {
     notificationUnreadCommentCount,
     messageUnreadCounts,
     groupsUnread,
+    notificationNavUnread,
     suppressMessageUnreadBumpsForMs,
     setNotificationUndeliveredCount,
     setNotificationUnreadCommentCount,
     setMessageUnreadCounts,
     setGroupsUnread,
+    setNotificationNavUnread,
     onSocketConnected,
     registerSocketHandlers,
   }

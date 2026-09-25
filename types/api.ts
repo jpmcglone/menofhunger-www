@@ -1614,6 +1614,10 @@ export type GetNotificationsUnreadCountResponse = {
     count: number
     /** Unread reply (kind: 'comment') notifications — drives the "waiting on you" dot on the Home tab. */
     unreadCommentCount: number
+    /** Unread Board notifications — drives the Board nav dot. */
+    boardUnreadCount: number
+    /** Unread article notifications — drives the Articles nav dot. */
+    articlesUnreadCount: number
   }
 }
 
@@ -2462,6 +2466,9 @@ export type AdminAnalyticsAI = {
   interactions: AdminAnalyticsTimeSeriesPoint[]
 }
 
+export type AdminAnalyticsBoard = Contracts.AdminAnalyticsBoardDto
+export type AdminAnalyticsBoardTopThread = Contracts.AdminAnalyticsBoardTopThreadDto
+
 export type AdminAnalytics = {
   range: AnalyticsRange
   granularity: AnalyticsGranularity
@@ -2490,6 +2497,8 @@ export type AdminAnalytics = {
   monetization: AdminAnalyticsMonetization
   coins: AdminAnalyticsCoins
   articles: AdminAnalyticsArticles
+  /** Board threads and comments, reported apart from posts. */
+  board: AdminAnalyticsBoard
   groups: AdminAnalyticsGroups
   spaces: AdminAnalyticsSpaces
   ai: AdminAnalyticsAI
@@ -2561,10 +2570,14 @@ export type LandingArticleBreakdown = {
   unique: number
 }
 
+/** Board threads (minus article mirrors) and comments by landing-eligible authors; not part of posts. */
+export type LandingBoardBreakdown = Contracts.LandingBoardBreakdownDto
+
 export type LandingStats = {
   men: LandingMenBreakdown
   posts: LandingPostBreakdown
   articles: LandingArticleBreakdown
+  board: LandingBoardBreakdown
   views: LandingViewsBreakdown
 }
 

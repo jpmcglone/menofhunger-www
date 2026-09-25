@@ -181,12 +181,22 @@ watch(
   { immediate: true },
 )
 
+// Opening the thread reads every notification about it, nested replies included.
+const { isAuthed } = useAuth()
+const { markReadBySubject } = useNotifications()
+function markThreadRead() {
+  const id = thread.value?.viewerCanAccess ? thread.value.id : null
+  if (id && isAuthed.value && import.meta.client) void markReadBySubject({ board_thread_id: id })
+}
+watch([() => thread.value?.id, isAuthed], markThreadRead, { immediate: true })
+
 let activatedOnce = false
 onActivated(() => {
   if (!activatedOnce) {
     activatedOnce = true
     return
   }
+  markThreadRead()
   void refreshThread()
   void refreshComments()
 })

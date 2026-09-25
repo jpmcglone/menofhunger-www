@@ -23,6 +23,7 @@ export function useBadgeHydration() {
     setNotificationUnreadCommentCount,
     setMessageUnreadCounts,
     setGroupsUnread,
+    setNotificationNavUnread,
   } = usePresence()
   const hydratedUserId = useState<string | null>('badge-hydration:user-id', () => null)
   const hydratedAt = useState<number>('badge-hydration:hydrated-at', () => 0)
@@ -33,6 +34,7 @@ export function useBadgeHydration() {
     setNotificationUnreadCommentCount(0)
     setMessageUnreadCounts({ primary: 0, requests: 0 })
     setGroupsUnread({ total: 0, byGroupId: {} })
+    setNotificationNavUnread({})
     crewInvites.setCount(0)
     groupInvites.setCount(0)
     hydratedUserId.value = null
@@ -83,9 +85,8 @@ export function useBadgeHydration() {
       }
 
       const fallbacks: Promise<unknown>[] = []
-      if (force || !hasNotificationCount || !hasUnreadCommentCount) {
-        fallbacks.push(notifications.fetchUndeliveredCount())
-      }
+      // Board / Articles dots are not on /auth/me, so this endpoint always runs once per hydration.
+      fallbacks.push(notifications.fetchUndeliveredCount())
       if (force || !hasMessageCounts) fallbacks.push(messages.fetchUnreadCounts())
       if (force || !hasGroupsUnread) fallbacks.push(groups.refresh())
       if (force || !hasCrewInviteCount) fallbacks.push(crewInvites.refresh())

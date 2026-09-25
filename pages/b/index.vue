@@ -43,55 +43,22 @@
         :tabs="viewTabs"
         @update:model-value="setView($event as 'top' | 'new' | 'comments')"
       />
-      <select
-        v-if="view === 'top'"
-        :value="range ?? ''"
-        class="moh-focus min-h-9 rounded-full border moh-border bg-transparent px-3 text-sm moh-text-muted"
-        aria-label="Time range"
-        @change="setQuery({ range: ($event.target as HTMLSelectElement).value || undefined })"
-      >
-        <option value="">Front page</option>
-        <option value="day">Past day</option>
-        <option value="week">Past week</option>
-        <option value="month">Past month</option>
-        <option value="year">Past year</option>
-        <option value="all">All time</option>
-      </select>
-      <ClientOnly>
-        <select
-          v-if="isPremium && view !== 'comments'"
-          :value="scope"
-          class="moh-focus min-h-9 rounded-full border moh-border bg-transparent px-3 text-sm"
-          :style="{ color: scope === 'premiumOnly' ? 'var(--moh-premium)' : scope === 'verifiedOnly' ? 'var(--moh-verified)' : 'var(--moh-text-muted)' }"
-          aria-label="Audience"
-          @change="setQuery({ scope: ($event.target as HTMLSelectElement).value === 'all' ? undefined : ($event.target as HTMLSelectElement).value })"
-        >
-          <option value="all">All</option>
-          <option value="verifiedOnly">Verified only</option>
-          <option value="premiumOnly">Premium only</option>
-        </select>
-      </ClientOnly>
-      <div v-if="view !== 'comments'" class="relative">
-        <button
-          type="button"
-          class="moh-focus inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm"
-          :style="tags.length ? 'color: var(--moh-verified); border-color: var(--moh-verified)' : ''"
-          :class="tags.length ? '' : 'moh-border moh-text-muted'"
-          :aria-expanded="tagsOpen"
-          @click="tagsOpen = !tagsOpen"
-        >
-          <AppIconGlyph name="filter" :size="16" />
-          {{ tags.length ? tags.map((t) => `#${t}`).join(' ') : 'Tags' }}
-        </button>
-        <div v-if="tagsOpen" class="absolute left-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border moh-border moh-surface p-4 shadow-xl">
-          <p class="mb-2 text-sm font-semibold moh-text">Filter by tags</p>
-          <AppBoardTagPicker :model-value="tags" placeholder="Add a tag…" @update:model-value="setTags" />
-          <div class="mt-3 flex items-center justify-between text-xs moh-text-soft">
-            <button type="button" class="hover:underline" @click="setTags([])">Clear</button>
-            <span>Matches any · {{ tags.length }} of 3</span>
-          </div>
-        </div>
-      </div>
+      <AppBoardFiltersBar
+        v-if="view !== 'comments'"
+        :show-range="view === 'top'"
+        :range="range"
+        :scope="scope"
+        :tags="tags"
+        :show-hidden="showHidden"
+        :is-authed="isAuthed"
+        :viewer-is-verified="isVerifiedMember"
+        :viewer-is-premium="isPremium"
+        @update:range="setQuery({ range: $event ?? undefined })"
+        @update:scope="setQuery({ scope: $event === 'all' ? undefined : $event })"
+        @update:tags="setTags"
+        @update:show-hidden="setQuery({ hidden: $event ? '1' : undefined })"
+        @reset="clearFilters"
+      />
       <span
         v-if="domain"
         class="inline-flex items-center gap-1 rounded-full border moh-border px-3 py-1 text-xs moh-text-muted"
@@ -186,7 +153,7 @@ const route = useRoute()
 const router = useRouter()
 const api = useBoardApi()
 const toast = useAppToast()
-const { isAuthed, isPremium } = useAuth()
+const { isAuthed, isPremium, isVerifiedMember } = useAuth()
 const { requireMember } = useBoardAccess()
 const preview = useUserPreviewMultiTrigger()
 
@@ -209,8 +176,10 @@ const scope = computed<'all' | 'verifiedOnly' | 'premiumOnly'>(() => {
 const tags = computed(() => qs('tags').split(',').map((t) => t.trim()).filter(Boolean).slice(0, 3))
 const domain = computed(() => qs('domain') || null)
 const q = computed(() => qs('q') || null)
-const isFiltered = computed(() => Boolean(tags.value.length || domain.value || q.value || scope.value !== 'all' || range.value))
+const showHidden = computed(() => isAuthed.value && qs('hidden') === '1')
+const isFiltered = computed(() => Boolean(tags.value.length || domain.value || q.value || scope.value !== 'all' || range.value || showHidden.value))
 const emptyLabel = computed(() => {
+  if (showHidden.value) return 'You haven’t hidden any threads.'
   if (tags.value.length) return `No threads match ${tags.value.map((t) => `#${t}`).join(', ')}${range.value ? ' in this range' : ''}.`
   if (q.value) return `No threads match “${q.value}”.`
   return 'Be the first to post.'
@@ -248,8 +217,6 @@ function applySearch() {
   setQuery({ q: searchDraft.value.trim() || undefined })
 }
 
-const tagsOpen = ref(false)
-
 function onPostClick(e: MouseEvent) {
   if (!requireMember('post')) e.preventDefault()
 }
@@ -264,12 +231,14 @@ let loadSeq = 0
 
 function listQuery(cursor: string | null) {
   return {
-    sort: view.value === 'new' ? 'new' as const : 'top' as const,
-    range: view.value === 'top' ? range.value : null,
+    // Hidden threads list newest first: hot-ranking would drop anything past the front-page window.
+    sort: view.value === 'new' || showHidden.value ? 'new' as const : 'top' as const,
+    range: view.value === 'top' && !showHidden.value ? range.value : null,
     visibility: scope.value,
     tags: tags.value,
     domain: domain.value,
     q: q.value,
+    hidden: showHidden.value ? 'only' as const : null,
     cursor,
   }
 }
@@ -304,7 +273,6 @@ function loadMore() {
 
 watch(() => route.fullPath, () => {
   if (route.path !== '/b') return
-  tagsOpen.value = false
   void load(true)
 })
 
@@ -312,7 +280,8 @@ async function onToggleHide(thread: BoardThread) {
   const hide = !thread.viewerHidden
   try {
     await api.setHidden(thread.id, hide)
-    if (hide) threads.value = threads.value.filter((t) => t.id !== thread.id)
+    // Hidden threads leave the main Board; in the Hidden view, unhiding sends them back.
+    if (hide !== showHidden.value) threads.value = threads.value.filter((t) => t.id !== thread.id)
     toast.push({ title: hide ? 'Hidden from your Board' : 'Back on your Board', tone: 'success', durationMs: 1400 })
   } catch (e) {
     toast.push({ title: getApiErrorMessage(e) || 'Couldn’t update.', tone: 'error', durationMs: 2000 })

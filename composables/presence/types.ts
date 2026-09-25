@@ -146,6 +146,8 @@ export type WsNotificationsUpdatedPayload = {
   undeliveredCount?: number
   /** Post ids whose related notifications were just marked read (subject or actor). */
   clearedPostIds?: string[]
+  /** Board threads whose notifications (thread + every comment) were just marked read. */
+  clearedBoardThreadIds?: string[]
 }
 
 export type NotificationsCallback = {

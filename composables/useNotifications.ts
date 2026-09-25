@@ -123,9 +123,10 @@ export function useNotifications() {
    * `clearedPostIds`. Patch matching rows to read so unread bars / sticky highlights
    * clear without waiting for a full refetch.
    */
-  function applyClearedPostIds(postIds: string[]): void {
+  function applyClearedPostIds(postIds: string[], boardThreadIds: string[] = []): void {
     const cleared = new Set(postIds.map((id) => (id ?? '').trim()).filter(Boolean))
-    if (!cleared.size) return
+    const clearedThreads = new Set(boardThreadIds.map((id) => (id ?? '').trim()).filter(Boolean))
+    if (!cleared.size && !clearedThreads.size) return
     const now = new Date().toISOString()
     let mutated = false
     notifications.value = notifications.value.map((item) => {
@@ -136,6 +137,7 @@ export function useNotifications() {
           (n.subjectPostId && cleared.has(n.subjectPostId))
           || (n.actorPostId && cleared.has(n.actorPostId))
           || (n.post?.id && cleared.has(n.post.id))
+          || (n.boardThreadId && clearedThreads.has(n.boardThreadId))
         if (!matches) return item
         mutated = true
         decrementUnreadKind(n.kind)
@@ -172,7 +174,9 @@ export function useNotifications() {
       const notificationsCb: NotificationsCallback = {
         onUpdated: (payload) => {
           if (!accountId.value) return
-          if (payload?.clearedPostIds?.length) applyClearedPostIds(payload.clearedPostIds)
+          if (payload?.clearedPostIds?.length || payload?.clearedBoardThreadIds?.length) {
+            applyClearedPostIds(payload.clearedPostIds ?? [], payload.clearedBoardThreadIds ?? [])
+          }
           requestSync()
         },
         onNew: (payload) => {
@@ -286,8 +290,9 @@ export function useNotifications() {
     article_id?: string
     crew_id?: string
     group_id?: string
+    board_thread_id?: string
   }) {
-    if (!params.post_id && !params.user_id && !params.article_id && !params.crew_id && !params.group_id) return
+    if (!params.post_id && !params.user_id && !params.article_id && !params.crew_id && !params.group_id && !params.board_thread_id) return
     try {
       await apiFetch('/notifications/mark-read', {
         method: 'POST',

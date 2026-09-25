@@ -8,6 +8,7 @@ export function useNotificationsBadge() {
     notificationUndeliveredCount,
     setNotificationUndeliveredCount,
     setNotificationUnreadCommentCount,
+    setNotificationNavUnread,
   } = usePresence()
 
   const count = computed(() => Math.max(0, Number(notificationUndeliveredCount.value) || 0))
@@ -37,6 +38,7 @@ export function useNotificationsBadge() {
       // Same endpoint also seeds the "waiting on you" dot so we don't pay for a second round-trip.
       const waitingRaw = res?.data?.unreadCommentCount ?? 0
       setNotificationUnreadCommentCount(waitingRaw)
+      setNotificationNavUnread(res?.data ?? {})
     } catch {
       // Ignore; badge will update on next socket event or page load
     }

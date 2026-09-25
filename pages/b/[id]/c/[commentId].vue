@@ -105,12 +105,21 @@ function revealPending() {
 
 useBoardThreadSeo(computed(() => ctxData.value?.thread), computed(() => ctxData.value?.comment))
 
+const { isAuthed } = useAuth()
+const { markReadBySubject } = useNotifications()
+function markThreadRead() {
+  const thread = ctxData.value?.thread
+  if (thread?.viewerCanAccess && isAuthed.value && import.meta.client) void markReadBySubject({ board_thread_id: thread.id })
+}
+watch([() => ctxData.value?.thread.id, isAuthed], markThreadRead, { immediate: true })
+
 let activatedOnce = false
 onActivated(() => {
   if (!activatedOnce) {
     activatedOnce = true
     return
   }
+  markThreadRead()
   void refresh()
 })
 </script>
