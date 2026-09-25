@@ -11,8 +11,16 @@
       <div class="min-w-0 flex-1 pt-1">
         <h1 class="flex items-start gap-1.5 text-xl font-bold leading-snug moh-text break-words">
           <Icon v-if="!thread.viewerCanAccess" name="tabler:lock" class="mt-1 shrink-0 text-lg moh-text-muted" aria-hidden="true" />
-          <a v-if="externalUrl" :href="externalUrl" target="_blank" rel="noopener noreferrer nofollow ugc" class="hover:underline">{{ thread.title }}</a>
-          <NuxtLink v-else-if="thread.articleId && thread.viewerCanAccess" :to="`/a/${thread.articleId}`" class="hover:underline">{{ thread.title }}</NuxtLink>
+          <a v-if="externalUrl" :href="externalUrl" target="_blank" rel="noopener noreferrer nofollow ugc" class="group/title hover:underline">{{ thread.title }}<Icon
+            name="tabler:arrow-up-right"
+            class="ml-1 inline-block align-[-0.1em] text-[0.8em] moh-text-soft transition-transform group-hover/title:-translate-y-px group-hover/title:translate-x-px group-hover/title:text-[var(--moh-text)]"
+            aria-hidden="true"
+          /><span class="sr-only"> (opens {{ thread.domain || 'link' }} in a new tab)</span></a>
+          <NuxtLink v-else-if="thread.articleId && thread.viewerCanAccess" :to="`/a/${thread.articleId}`" class="hover:underline">{{ thread.title }}<Icon
+            name="tabler:article"
+            class="ml-1 inline-block align-[-0.1em] text-[0.8em] moh-text-soft"
+            aria-hidden="true"
+          /><span class="sr-only"> (read the article)</span></NuxtLink>
           <span v-else>{{ thread.title }}</span>
         </h1>
         <a
@@ -27,7 +35,13 @@
 
     <div class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs moh-text-soft">
       <template v-if="thread.author">
-        <AppUserAvatar :user="thread.author" size-class="h-5 w-5" :show-status="false" />
+        <NuxtLink
+          :to="`/u/${encodeURIComponent(thread.author.username ?? '')}`"
+          class="shrink-0"
+          :aria-label="`View @${thread.author.username} profile`"
+        >
+          <AppUserAvatar :user="thread.author" size-class="h-5 w-5" :show-status="false" />
+        </NuxtLink>
         <NuxtLink
           :to="`/u/${encodeURIComponent(thread.author.username ?? '')}`"
           class="font-semibold moh-text hover:underline"
@@ -41,7 +55,7 @@
           :premium-plus="thread.author.premiumPlus"
           :is-organization="thread.author.isOrganization"
         />
-        <span>@{{ thread.author.username }}</span>
+        <span v-if="showHandle">@{{ thread.author.username }}</span>
         <span aria-hidden="true">·</span>
       </template>
       <AppBoardScopeChip :visibility="thread.visibility" />
@@ -52,13 +66,7 @@
 
     <template v-if="thread.viewerCanAccess">
       <p v-if="thread.body" class="mt-2.5 whitespace-pre-wrap break-words text-[15px] leading-relaxed moh-text">{{ thread.body }}</p>
-      <img
-        v-if="thread.image?.url"
-        :src="thread.image.url"
-        :alt="thread.image.alt || ''"
-        class="mt-3 max-h-[480px] w-full rounded-xl border moh-border object-cover"
-        loading="lazy"
-      >
+      <AppPostMediaGrid v-if="thread.image?.url" :media="[thread.image]" :post-id="thread.id" />
 
       <div class="mt-2 flex flex-wrap items-center gap-x-4 text-xs moh-text-muted">
         <span class="inline-flex items-center gap-1" :aria-label="`${thread.commentCount} comments`">
@@ -71,16 +79,35 @@
           :initial-has-bookmarked="thread.viewerHasBookmarked"
           :initial-collection-ids="[]"
         />
-        <button type="button" class="moh-tap moh-focus inline-flex min-h-9 items-center hover:text-[var(--moh-text)]" aria-label="Copy link" @click="copyLink">
-          <AppIconGlyph name="share" :size="16" />
-        </button>
-        <button v-if="thread.viewerCanEdit" type="button" class="moh-tap min-h-9 hover:underline" @click="editing = !editing">edit</button>
-        <button v-if="isOwn" type="button" class="moh-tap min-h-9 hover:text-red-500" @click="onDelete">delete</button>
-        <template v-else-if="isAuthed">
-          <button type="button" class="moh-tap min-h-9 hover:underline" @click="toggleHide">{{ hidden ? 'unhide' : 'hide' }}</button>
-          <button type="button" class="moh-tap min-h-9 hover:underline" @click="reportOpen = true">flag</button>
+        <AppPostRowShareMenu :can-share="true" :tooltip="shareTooltip" :items="shareItems" />
+        <AppPostRowViewerBreakdown
+          class="ml-auto"
+          :entity-id="thread.id"
+          :breakdown-path="`/posts/${encodeURIComponent(thread.id)}/views/breakdown`"
+          :viewer-count="liveViews.viewerCount"
+          :total-view-count="liveViews.totalViewCount"
+          :has-viewed="liveViews.hasViewed"
+          @count-synced="onViewCountSynced"
+        />
+        <template v-if="menuItems.length">
+          <button
+            type="button"
+            class="moh-tap moh-focus -mr-2 inline-flex size-9 items-center justify-center rounded-full hover:bg-[var(--moh-surface-hover)] hover:text-[var(--moh-text)]"
+            aria-label="More"
+            aria-haspopup="true"
+            @click.stop="toggleMenu($event)"
+          >
+            <Icon name="tabler:dots" class="text-[18px]" aria-hidden="true" />
+          </button>
+          <Menu v-if="menuMounted" ref="menuRef" :model="menuItems" popup>
+            <template #item="{ item, props: itemProps }">
+              <a v-bind="itemProps.action" class="flex items-center gap-2">
+                <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+                <span v-bind="itemProps.label">{{ item.label }}</span>
+              </a>
+            </template>
+          </Menu>
         </template>
-        <span class="ml-auto tabular-nums moh-text-soft">{{ viewsLabel }}</span>
       </div>
 
       <form v-if="editing" class="mt-4 space-y-3 rounded-xl border moh-border p-3" @submit.prevent="saveEdit">
@@ -117,21 +144,29 @@
 </template>
 
 <script setup lang="ts">
+import type { MenuItem } from 'primevue/menuitem'
 import type { BoardThread } from '~/types/api'
 import { formatListTime, formatDateTime } from '~/utils/time-format'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
+import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
+import { appendShareParams } from '~/utils/acquisition-share'
+import { siteConfig } from '~/config/site'
+import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 const props = defineProps<{ thread: BoardThread }>()
 const emit = defineEmits<{ updated: [thread: BoardThread]; deleted: [] }>()
 
 const api = useBoardApi()
 const toast = useAppToast()
-const { user, isAuthed, isVerifiedMember } = useAuth()
+const { user, isAuthed, isVerifiedMember, isPremium } = useAuth()
 const { gateCopy } = useBoardAccess()
 const { copyText } = useCopyToClipboard()
+const { confirm } = useAppConfirm()
+const { mounted: menuMounted, menuRef, toggle: toggleMenu } = useAutoToggleMenu()
 const preview = useUserPreviewTrigger({ username: computed(() => props.thread.author?.username ?? '') })
 
+const showHandle = computed(() => authorHasDistinctName(props.thread.author))
 const reportOpen = ref(false)
 const hidden = ref(props.thread.viewerHidden)
 const isOwn = computed(() => Boolean(user.value?.id && props.thread.author?.id === user.value.id))
@@ -139,19 +174,99 @@ const externalUrl = computed(() => (props.thread.viewerCanAccess && props.thread
 const displayUrl = computed(() => (props.thread.url ?? '').replace(/^https?:\/\/(www\.)?/, ''))
 const age = computed(() => formatListTime(props.thread.createdAt))
 const createdTitle = computed(() => formatDateTime(props.thread.createdAt))
-const viewsLabel = computed(() => `${props.thread.viewerCount.toLocaleString()} ${props.thread.viewerCount === 1 ? 'view' : 'views'}`)
+// Same people · impressions chip (and hover breakdown) as posts and articles; the thread is a post.
+const postCache = usePostCache()
+const { hasViewedLocally } = usePostViewTracker()
+const liveViews = computed(() => {
+  const delta = postCache.cache.value[props.thread.id]
+  const viewerCount = Math.max(props.thread.viewerCount, delta?.viewerCount ?? 0)
+  const totalViewCount = Math.max(viewerCount, props.thread.totalViewCount, delta?.totalViewCount ?? 0)
+  const hasViewed = Boolean(props.thread.viewerHasViewed || delta?.viewerHasViewed || hasViewedLocally(props.thread.id))
+  return { viewerCount, totalViewCount, hasViewed }
+})
+function onViewCountSynced(payload: { viewerCount: number, totalViewCount: number }) {
+  postCache.patch(props.thread.id, {
+    viewerCount: Math.max(liveViews.value.viewerCount, payload.viewerCount),
+    totalViewCount: Math.max(liveViews.value.totalViewCount, payload.totalViewCount),
+  })
+}
 const tone = computed(() => boardScopeTone(props.thread.visibility))
 const scopeStyle = computed(() => (tone.value ? { boxShadow: `inset 3px 0 0 var(--moh-${tone.value})` } : undefined))
 const gate = computed(() => gateCopy(props.thread.visibility, props.thread.commentCount))
 
-async function copyLink() {
-  try {
-    await copyText(`${window.location.origin}${boardThreadHref(props.thread)}`)
-    toast.push({ title: 'Link copied', tone: 'success', durationMs: 1400 })
-  } catch {
-    toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
+type BoardMenuItem = MenuItem & { iconName?: string }
+const menuItems = computed<BoardMenuItem[]>(() => {
+  const items: BoardMenuItem[] = []
+  if (!isAuthed.value || !props.thread.viewerCanAccess) return items
+  if (!isOwn.value) {
+    items.push({
+      label: hidden.value ? 'Show on my Board' : 'Hide from my Board',
+      iconName: hidden.value ? 'tabler:eye' : 'tabler:eye-off',
+      command: () => void toggleHide(),
+    })
+    items.push({ label: 'Report thread', iconName: 'tabler:flag', command: () => { reportOpen.value = true } })
   }
+  if (props.thread.viewerCanEdit) {
+    items.push({ label: 'Edit thread', iconName: 'tabler:edit', command: () => { editing.value = true } })
+  }
+  if (isOwn.value) {
+    items.push({
+      label: 'Delete thread',
+      iconName: 'tabler:trash',
+      class: 'text-red-600 dark:text-red-400',
+      command: () => void onDelete(),
+    })
+  }
+  return items
+})
+
+const shareTooltip = tinyTooltip('Share')
+const { referralCode, ensureReferralCode } = useEnsureReferralCode()
+const { isSupported: nativeShareSupported } = useWebShare()
+const sendViaChat = useSendViaChat()
+
+async function shareUrl(): Promise<string> {
+  await ensureReferralCode()
+  return appendShareParams(`${siteConfig.url.replace(/\/$/, '')}${boardThreadHref(props.thread)}`, {
+    ref: referralCode.value ?? null,
+  })
 }
+
+const shareItems = computed<BoardMenuItem[]>(() => {
+  const items: BoardMenuItem[] = []
+  if (isAuthed.value && (isVerifiedMember.value || isPremium.value)) {
+    items.push({
+      label: 'Send via chat',
+      iconName: 'tabler:send',
+      command: async () => sendViaChat.openShare({ body: await shareUrl() }),
+    })
+  }
+  items.push({
+    label: 'Copy link',
+    iconName: 'tabler:link',
+    command: async () => {
+      try {
+        await copyText(await shareUrl())
+        toast.push({ title: 'Thread link copied', tone: 'success', durationMs: 1400 })
+      } catch {
+        toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
+      }
+    },
+  })
+  if (nativeShareSupported.value) {
+    items.push({
+      label: 'Share via…',
+      iconName: 'tabler:share-2',
+      command: async () => {
+        if (!import.meta.client || !navigator.share) return
+        const url = await shareUrl()
+        await nextTick()
+        navigator.share({ title: props.thread.title, url }).catch(() => {})
+      },
+    })
+  }
+  return items
+})
 
 async function toggleHide() {
   const next = !hidden.value
@@ -166,7 +281,13 @@ async function toggleHide() {
 }
 
 async function onDelete() {
-  if (!confirm('Delete this thread? Comments go with it.')) return
+  const ok = await confirm({
+    header: 'Delete thread?',
+    message: 'Its comments are deleted with it. This can’t be undone.',
+    confirmLabel: 'Delete',
+    confirmSeverity: 'danger',
+  })
+  if (!ok) return
   try {
     await api.deleteThread(props.thread.id)
     emit('deleted')

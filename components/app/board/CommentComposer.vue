@@ -43,7 +43,10 @@ const emit = defineEmits<{ created: [comment: BoardComment]; cancel: [] }>()
 const { user, isPremium } = useAuth()
 const { requireMember } = useBoardAccess()
 const api = useBoardApi()
+const tree = inject(BOARD_COMMENT_TREE_KEY, null)
 const body = ref('')
+watch(body, (text) => tree?.notifyTyping?.(text, props.parentId ?? null))
+onBeforeUnmount(() => tree?.stopTyping?.())
 const submitting = ref(false)
 const error = ref<string | null>(null)
 const inputEl = ref<HTMLTextAreaElement | null>(null)
@@ -68,6 +71,7 @@ async function submit() {
   error.value = null
   try {
     const created = await api.createComment(props.threadId, text, props.parentId)
+    tree?.stopTyping?.()
     body.value = ''
     nextTick(autosize)
     emit('created', created)

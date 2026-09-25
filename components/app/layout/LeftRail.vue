@@ -97,6 +97,14 @@
                 <AppCrewInvitesBadge v-if="item.key === 'crew'" />
                 <AppGroupsBadge v-if="item.key === 'groups'" />
                 <AppSpacesNotifyBadge v-if="item.key === 'spaces'" />
+                <!-- Collapsed rail (no label): the badge hangs under the icon. -->
+                <span
+                  v-if="item.isNew"
+                  class="pointer-events-none absolute -bottom-1 left-1/2 z-20 -translate-x-1/2"
+                  :class="compact ? '' : 'xl:hidden'"
+                >
+                  <AppNewBadge small />
+                </span>
               </span>
               <span
                 v-if="!compact"
@@ -106,6 +114,7 @@
                 ]"
               >
                 {{ item.label }}
+                <AppNewBadge v-if="item.isNew" />
                 <ClientOnly>
                   <span
                     v-if="item.key === 'spaces' && totalLobbyCount > 0"
@@ -317,7 +326,7 @@
 
 <script setup lang="ts">
 import { siteConfig } from '~/config/site'
-import { isModifiedNavClick, shouldInterceptSameNavClick } from '~/config/routes'
+import { boardNavPopAction, isModifiedNavClick, shouldInterceptSameNavClick } from '~/config/routes'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { ClientOnly, NuxtLink } from '#components'
 import type { AppNavItem } from '~/composables/useAppNav'
@@ -333,6 +342,7 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
+const router = useRouter()
 const { isActive: isActiveNav } = useRouteMatch(route)
 const { user } = useAuth()
 const { membership: viewerCrewMembership } = useViewerCrew()
@@ -452,6 +462,11 @@ function onHomeClick(e: MouseEvent) {
 }
 
 function onLeftNavClick(to: string, e: MouseEvent) {
+  if (boardNavPopAction({ currentPath: route.path, to, historyBack: window.history.state?.back, event: e }) === 'back') {
+    e.preventDefault()
+    router.back()
+    return
+  }
   if (!shouldInterceptSameNavClick({ currentPath: route.path, to, event: e })) return
   e.preventDefault()
   e.stopPropagation()

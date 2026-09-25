@@ -45,6 +45,9 @@
               <AppNotificationBadge v-if="item.key === 'notifications'" />
               <AppMessagesBadge v-if="item.key === 'messages'" />
               <AppGroupsBadge v-if="item.key === 'groups'" />
+              <div v-if="item.isNew" class="pointer-events-none absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-20">
+                <AppNewBadge small />
+              </div>
             </div>
           </NuxtLink>
         </template>
@@ -132,7 +135,7 @@
               mi.key !== 'only-me' ? 'moh-surface-hover' : '',
               isActive(mi.to) ? (mi.key === 'only-me' ? 'moh-nav-onlyme-active' : 'moh-surface font-bold') : '',
             ]"
-            @click="() => { moreOpen = false }"
+            @click="(e: MouseEvent) => { moreOpen = false; onMoreItemClick(mi.to, e) }"
           >
               <div class="flex items-center gap-3 min-w-0">
               <div class="relative h-10 w-10 shrink-0 flex items-center justify-center">
@@ -143,7 +146,7 @@
                   aria-hidden="true"
                 />
                 <div
-                  v-if="mi.key === 'articles'"
+                  v-if="mi.key === 'articles' || mi.isNew"
                   class="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
                 >
                   <AppNewBadge small />
@@ -245,12 +248,13 @@
 
 <script setup lang="ts">
 import type { AppNavItem } from '~/composables/useAppNav'
-import { shouldInterceptSameNavClick } from '~/config/routes'
+import { boardNavPopAction, shouldInterceptSameNavClick } from '~/config/routes'
 const props = defineProps<{
   items: AppNavItem[]
 }>()
 
 const route = useRoute()
+const router = useRouter()
 const { isActive } = useRouteMatch(route)
 const { requestLogout } = useUserMenu()
 const { user, isPageAccount } = useAuth()
@@ -324,7 +328,18 @@ function moreMenuIconName(mi: AppNavItem): string {
   return isActive(mi.to) ? (mi.iconActive ?? mi.icon) : mi.icon
 }
 
+function onMoreItemClick(to: string, e: MouseEvent) {
+  if (boardNavPopAction({ currentPath: route.path, to, historyBack: window.history.state?.back, event: e }) !== 'back') return
+  e.preventDefault()
+  router.back()
+}
+
 function onNavClick(to: string, e: MouseEvent) {
+  if (boardNavPopAction({ currentPath: route.path, to, historyBack: window.history.state?.back, event: e }) === 'back') {
+    e.preventDefault()
+    router.back()
+    return
+  }
   if (!shouldInterceptSameNavClick({ currentPath: route.path, to, event: e })) return
   e.preventDefault()
   e.stopPropagation()

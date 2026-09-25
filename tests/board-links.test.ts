@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
 import { boardPostHref } from '~/utils/board-links'
-import { isLoggedOutAllowedPath } from '~/config/routes'
+import { boardNavPopAction, isLoggedOutAllowedPath, shouldInterceptSameNavClick } from '~/config/routes'
 import { countBoardReplies, useBoardCommentTree } from '~/composables/useBoardCommentTree'
 import type { BoardComment } from '~/types/api'
 
@@ -38,6 +38,26 @@ describe('Board logged-out routing', () => {
     expect(isLoggedOutAllowedPath('/b/t1/c/c1')).toBe(true)
     expect(isLoggedOutAllowedPath('/b/new')).toBe(false)
     expect(isLoggedOutAllowedPath('/bookmarks')).toBe(false)
+  })
+})
+
+describe('Board nav click from inside the Board', () => {
+  const click = { metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, button: 0 }
+
+  it('pops one step when we came from inside the Board, else goes to the list', () => {
+    expect(boardNavPopAction({ currentPath: '/b/t1', to: '/b', historyBack: '/b?sort=new', event: click })).toBe('back')
+    expect(boardNavPopAction({ currentPath: '/b/t1/c/c1', to: '/b', historyBack: '/b/t1', event: click })).toBe('back')
+    expect(boardNavPopAction({ currentPath: '/b/t1', to: '/b', historyBack: '/home', event: click })).toBe('navigate')
+    expect(boardNavPopAction({ currentPath: '/b/t1', to: '/b', historyBack: null, event: click })).toBe('navigate')
+    // Not a Board sub-page, a different nav item, or a new-tab click: leave it alone.
+    expect(boardNavPopAction({ currentPath: '/b', to: '/b', historyBack: '/home', event: click })).toBeNull()
+    expect(boardNavPopAction({ currentPath: '/b/t1', to: '/home', historyBack: '/b', event: click })).toBeNull()
+    expect(boardNavPopAction({ currentPath: '/b/t1', to: '/b', historyBack: '/b', event: { ...click, metaKey: true } })).toBeNull()
+  })
+
+  it('no longer swallows the click on a thread just because Board is highlighted', () => {
+    expect(shouldInterceptSameNavClick({ currentPath: '/b/t1', to: '/b', event: click })).toBe(false)
+    expect(shouldInterceptSameNavClick({ currentPath: '/b', to: '/b', event: click })).toBe(true)
   })
 })
 

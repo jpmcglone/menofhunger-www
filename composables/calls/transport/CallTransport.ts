@@ -52,6 +52,12 @@ export interface CallTransport {
    * torn down. Idempotent; call it on every `calls:updated`.
    */
   setPeers(userIds: string[]): void
+  /**
+   * Seat session per remote participant (`CallParticipant.sessionId`). A changed session means
+   * that person moved the call to another tab/device: their old connection is dead, so the
+   * peer is rebuilt instead of renegotiated.
+   */
+  syncPeerSessions(sessions: Record<string, string | null>): void
   /** Relayed SDP / ICE from a remote participant. */
   handleSignal(payload: WsRtcSignalPayload): Promise<void>
   /**

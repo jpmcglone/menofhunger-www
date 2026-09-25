@@ -495,6 +495,42 @@ describe('PeerToPeerCallTransport reconnect alignment', () => {
     transport.destroy()
   })
 
+  it('rebuilds the peer when they move the call to another device, and keeps it on a same-device reconnect', async () => {
+    const { transport } = makeTransport({ selfUserId: 'zed' })
+    transport.setPeers(['alice'])
+    transport.syncPeerSessions({ alice: 'phone' })
+    await flushMicrotasks()
+    const phonePc = FakePeerConnection.instances[0]!
+
+    transport.syncPeerSessions({ alice: 'phone' })
+    expect(FakePeerConnection.instances).toHaveLength(1)
+
+    transport.syncPeerSessions({ alice: 'browser' })
+    await flushMicrotasks()
+    expect(phonePc.close).toHaveBeenCalled()
+    expect(FakePeerConnection.instances).toHaveLength(2)
+    transport.destroy()
+  })
+
+  it('an offer from a new session lands on a fresh connection, not the dead one', async () => {
+    const { transport, sendSignal } = makeTransport({ selfUserId: 'a' })
+    transport.setPeers(['zed'])
+    transport.syncPeerSessions({ zed: 'phone' })
+    await flushMicrotasks()
+    const phonePc = FakePeerConnection.instances[0]!
+    await transport.handleSignal({ callId: 'call-1', fromUserId: 'zed', fromSessionId: 'phone', description: { type: 'offer', sdp: 'v=0' } })
+    await flushMicrotasks()
+    sendSignal.mockClear()
+
+    await transport.handleSignal({ callId: 'call-1', fromUserId: 'zed', fromSessionId: 'browser', description: { type: 'offer', sdp: 'v=1' } })
+    await flushMicrotasks()
+    const browserPc = FakePeerConnection.instances[1]!
+    expect(phonePc.close).toHaveBeenCalled()
+    expect((browserPc.remoteDescription as { sdp: string }).sdp).toBe('v=1')
+    expect(sendSignal).toHaveBeenCalledWith('zed', expect.objectContaining({ description: expect.objectContaining({ type: 'answer' }) }))
+    transport.destroy()
+  })
+
   it('re-offers when still connecting with no remote description', async () => {
     const { transport, sendSignal } = makeTransport({ selfUserId: 'zed' })
     transport.setPeers(['alice'])

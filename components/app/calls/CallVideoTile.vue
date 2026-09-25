@@ -1,5 +1,5 @@
 <template>
-  <div class="relative h-full w-full rounded-2xl">
+  <div ref="rootEl" class="relative h-full w-full rounded-2xl">
     <div class="moh-speak-rings pointer-events-none absolute inset-0 z-10 rounded-[inherit]" aria-hidden="true">
       <span
         v-for="(alpha, index) in ringAlphas"
@@ -14,7 +14,7 @@
       <!-- Mirror the wrapper, never the <video>: Safari drops object-fit after scaleX on the element. -->
       <div
         class="absolute inset-0"
-        :class="mirrored && fit !== 'contain' ? 'scale-x-[-1]' : ''"
+        :class="mirrored && resolvedFit === 'cover' ? 'scale-x-[-1]' : ''"
       >
         <video
           :key="attachKey"
@@ -24,6 +24,8 @@
           @loadeddata="syncFrames"
           @loadedmetadata="syncFrames"
           @resize="syncFrames"
+          @enterpictureinpicture="inPip = true"
+          @leavepictureinpicture="onLeavePip"
           autoplay
           playsinline
           muted
@@ -32,6 +34,19 @@
       <!-- Avatar fallback while the camera is off or the stream hasn't arrived -->
       <div v-if="!showVideo" class="absolute inset-0 flex items-center justify-center">
         <AppUserAvatar :user="user" :size-class="avatarSizeClass" :show-presence="false" :show-status="false" :enable-preview="false" />
+      </div>
+
+      <!-- The browser paints only "Playing in picture-in-picture" here; give a way back. -->
+      <div v-if="inPip" class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-zinc-950 text-white">
+        <Icon name="tabler:picture-in-picture" size="28" class="opacity-70" aria-hidden="true" />
+        <p class="text-sm text-white/75">{{ label }} is in a floating window</p>
+        <button
+          type="button"
+          class="moh-focus rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90"
+          @click="bringVideoBack"
+        >
+          Show video here
+        </button>
       </div>
 
       <!-- Reconnecting scrim -->
@@ -75,8 +90,10 @@ import { callMediaLog } from '~/composables/calls/callMediaLog'
 import type { CallDisplayUser } from '~/composables/calls/useCallSession'
 import type { PeerMediaState } from '~/composables/calls/transport/CallTransport'
 import { callVideoAttachKey } from '~/composables/calls/callLifecycle'
-import { registerCallPipSource } from '~/composables/calls/callPictureInPicture'
+import { exitCallPictureInPicture, isInCallPictureInPicture, registerCallPipSource } from '~/composables/calls/callPictureInPicture'
 import { speakingRingAlphas } from '~/composables/calls/speakingDetector'
+import { callVideoFit } from '~/composables/calls/callVideoFit'
+import { useElementAspect } from '~/composables/calls/useElementAspect'
 import { icePathLabel as labelForIcePath, type IcePathKind } from '~/composables/calls/callQuality'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 
@@ -122,16 +139,30 @@ const props = withDefaults(
   },
 )
 
+const emit = defineEmits<{ aspect: [aspect: number] }>()
+
 const icePathLabel = computed(() => labelForIcePath(props.icePath))
 
+const rootEl = ref<HTMLElement | null>(null)
+const tileAspect = useElementAspect(rootEl)
+/** Width/height of the frames actually arriving; follows the sender rotating. */
+const videoAspect = ref(0)
 const videoEl = ref<HTMLVideoElement | null>(null)
+const inPip = ref(false)
 const hasVideoTrack = ref(false)
 const hasFrames = ref(false)
 const attachKey = computed(() => callVideoAttachKey(props.stream))
 
-const objectFitClass = computed(() =>
-  props.fit === 'contain' || props.variant === 'stage' || props.screenSharing ? 'object-contain' : 'object-cover',
+const resolvedFit = computed(() =>
+  callVideoFit({
+    requested: props.fit,
+    screenSharing: props.screenSharing,
+    stage: props.variant === 'stage',
+    videoAspect: videoAspect.value,
+    tileAspect: tileAspect.value,
+  }),
 )
+const objectFitClass = computed(() => (resolvedFit.value === 'contain' ? 'object-contain' : 'object-cover'))
 
 const showVideo = computed(() => {
   if (props.variant === 'stage' || props.screenSharing) return hasFrames.value || hasVideoTrack.value
@@ -167,9 +198,26 @@ function ringStyle(index: number, alpha: number) {
   }
 }
 
+/** Closing the floating window pauses the element; a live call tile must keep playing. */
+function onLeavePip() {
+  inPip.value = false
+  const el = videoEl.value
+  if (el?.srcObject && el.paused) void el.play().catch(() => {})
+}
+
+async function bringVideoBack() {
+  await exitCallPictureInPicture()
+  inPip.value = isInCallPictureInPicture(videoEl.value)
+}
+
 function syncFrames() {
   const el = videoEl.value
   hasFrames.value = Boolean(el && el.videoWidth > 0 && el.videoHeight > 0)
+  const next = el && hasFrames.value ? el.videoWidth / el.videoHeight : 0
+  if (next !== videoAspect.value) {
+    videoAspect.value = next
+    emit('aspect', next)
+  }
 }
 
 function refreshHasVideo() {
@@ -184,6 +232,7 @@ watch(
   [videoEl, () => props.stream],
   ([el, stream], _previous, onCleanup) => {
     if (!el) return
+    inPip.value = isInCallPictureInPicture(el)
     el.setAttribute('playsinline', '')
     el.setAttribute('webkit-playsinline', '')
     if (el.srcObject !== stream) el.srcObject = stream

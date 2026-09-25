@@ -10,6 +10,8 @@ export type AppNavItem = {
   iconActive?: string
   /** Optional extra class for the icon element. */
   iconClass?: string
+  /** Recently launched: nav surfaces show the NEW badge. */
+  isNew?: boolean
   requiresAuth?: boolean
   requiresVerified?: boolean
   /** Only show for premium (or premiumPlus) users. */
@@ -88,8 +90,9 @@ export function useAppNav() {
     // Authed-only core items
     // Use Tabler magnifying glass for Explore (Tabler doesn't provide a filled variant for search).
     { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInPrimaryNav: true, menuSection: 'main' },
-    { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'board', label: 'Board', to: '/b', icon: 'tabler:layout-list', iconActive: 'tabler:layout-list-filled', isNew: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'tabler:bell', iconActive: 'tabler:bell-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     {
       key: 'spaces',
       label: 'Spaces',
@@ -103,7 +106,6 @@ export function useAppNav() {
       menuSection: 'main',
     },
     { key: 'articles', label: 'Articles', to: '/articles', icon: 'tabler:article', iconActive: 'tabler:article-filled', showInPrimaryNav: true, menuSection: 'main' },
-    { key: 'board', label: 'Board', to: '/b', icon: 'tabler:layout-list', iconActive: 'tabler:layout-list-filled', showInPrimaryNav: true, menuSection: 'main' },
     { key: 'check-ins', label: 'Check-ins', to: '/check-ins', icon: 'tabler:flame', iconActive: 'tabler:flame-filled', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'fitness', label: 'Fitness', to: '/fitness', icon: 'tabler:heart-rate-monitor', iconActive: 'tabler:heart-rate-monitor', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: false, showInPrimaryNav: true, menuSection: 'main' },

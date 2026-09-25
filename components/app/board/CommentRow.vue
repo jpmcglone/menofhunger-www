@@ -1,7 +1,7 @@
 <template>
   <div :id="`c-${comment.id}`" class="relative">
     <div
-      class="flex gap-3 py-2.5 transition-colors"
+      class="flex gap-3 py-2.5 transition-colors duration-700"
       :class="isHighlighted ? 'bg-[var(--moh-surface-hover)]' : ''"
       :style="{ paddingLeft: `${16 + visualDepth * 14}px`, paddingRight: '16px' }"
     >
@@ -18,7 +18,9 @@
             <span class="moh-text-soft">[deleted]</span>
           </template>
           <template v-else-if="isTopLevel">
-            <AppUserAvatar :user="comment.author" size-class="h-7 w-7" :show-status="false" />
+            <NuxtLink :to="profileHref" class="shrink-0" :aria-label="`View @${comment.author.username} profile`">
+              <AppUserAvatar :user="comment.author" size-class="h-7 w-7" :show-status="false" />
+            </NuxtLink>
             <NuxtLink
               :to="profileHref"
               class="text-sm font-semibold moh-text hover:underline"
@@ -32,7 +34,7 @@
               :premium-plus="comment.author.premiumPlus"
               :is-organization="comment.author.isOrganization"
             />
-            <span class="moh-text-soft">@{{ comment.author.username }}</span>
+            <span v-if="showHandle" class="moh-text-soft">@{{ comment.author.username }}</span>
           </template>
           <NuxtLink
             v-else
@@ -65,12 +67,30 @@
               @click="onReplyClick"
             >Reply</button>
             <button
-              v-if="isOwn"
               type="button"
-              class="moh-tap moh-focus min-h-9 moh-text-soft hover:text-red-500"
-              @click="onDelete"
-            >Delete</button>
+              class="moh-tap moh-focus inline-flex size-9 items-center justify-center rounded-full moh-text-soft hover:bg-[var(--moh-surface-hover)] hover:text-[var(--moh-text)]"
+              aria-label="More"
+              aria-haspopup="true"
+              @click.stop="toggleMenu($event)"
+            >
+              <Icon name="tabler:dots" class="text-[16px]" aria-hidden="true" />
+            </button>
+            <Menu v-if="menuMounted" ref="menuRef" :model="menuItems" popup>
+              <template #item="{ item, props: itemProps }">
+                <a v-bind="itemProps.action" class="flex items-center gap-2">
+                  <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
+                  <span v-bind="itemProps.label">{{ item.label }}</span>
+                </a>
+              </template>
+            </Menu>
           </div>
+          <AppTypingIndicator
+            v-if="replyingUsers.length"
+            :users="replyingUsers"
+            verb="replying"
+            size="compact"
+            class="mt-0.5"
+          />
           <AppBoardCommentComposer
             v-if="replying && ctx"
             class="mt-2"
@@ -108,10 +128,13 @@
 </template>
 
 <script setup lang="ts">
+import type { MenuItem } from 'primevue/menuitem'
 import type { BoardComment } from '~/types/api'
 import { formatListTime, formatDateTime } from '~/utils/time-format'
 import { userActionColor } from '~/utils/user-tier'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
+import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 
 const props = defineProps<{ comment: BoardComment; depth: number }>()
 
@@ -130,12 +153,40 @@ const visualDepth = computed(() => Math.min(props.depth, maxDepth.value))
 const atDepthCap = computed(() => props.depth + 1 >= maxDepth.value)
 const hiddenCount = computed(() => countBoardReplies(props.comment))
 const isOwn = computed(() => Boolean(user.value?.id && user.value.id === props.comment.author.id))
-const isHighlighted = computed(() => ctx?.highlightId.value === props.comment.id)
+const isHighlighted = computed(() => ctx?.highlightId.value === props.comment.id || Boolean(ctx?.freshIds?.value.has(props.comment.id)))
+const replyingUsers = computed(() => ctx?.typingFor?.(props.comment.id) ?? [])
 const permalink = computed(() => boardCommentHref(props.comment.threadId, props.comment.id))
 const profileHref = computed(() => `/u/${encodeURIComponent(props.comment.author.username ?? '')}`)
+const showHandle = computed(() => authorHasDistinctName(props.comment.author))
 const age = computed(() => formatListTime(props.comment.createdAt))
 const createdTitle = computed(() => formatDateTime(props.comment.createdAt))
 const authorColor = computed(() => userActionColor(props.comment.author))
+
+const { confirm } = useAppConfirm()
+const { copyText } = useCopyToClipboard()
+const { mounted: menuMounted, menuRef, toggle: toggleMenu } = useAutoToggleMenu()
+type BoardMenuItem = MenuItem & { iconName?: string }
+const menuItems = computed<BoardMenuItem[]>(() => {
+  const items: BoardMenuItem[] = [{ label: 'Copy link', iconName: 'tabler:link', command: () => void copyLink() }]
+  if (isOwn.value) {
+    items.push({
+      label: 'Delete comment',
+      iconName: 'tabler:trash',
+      class: 'text-red-600 dark:text-red-400',
+      command: () => void onDelete(),
+    })
+  }
+  return items
+})
+
+async function copyLink() {
+  try {
+    await copyText(`${window.location.origin}${permalink.value}`)
+    toast.push({ title: 'Link copied', tone: 'success', durationMs: 1400 })
+  } catch {
+    toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
+  }
+}
 
 function onReplyClick() {
   if (!requireMember('comment')) return
@@ -148,7 +199,13 @@ function onReplied(created: BoardComment) {
 }
 
 async function onDelete() {
-  if (!confirm('Delete this comment?')) return
+  const ok = await confirm({
+    header: 'Delete comment?',
+    message: props.comment.replies.length ? 'Replies stay under a [deleted] placeholder.' : 'This can’t be undone.',
+    confirmLabel: 'Delete',
+    confirmSeverity: 'danger',
+  })
+  if (!ok) return
   try {
     await api.deleteComment(props.comment.id)
     ctx?.remove(props.comment.id)

@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { Socket } from 'socket.io-client'
 import type { CallsAck, CallType, RtcIceCandidate, RtcSessionDescription } from '~/types/api'
+import { tabCallSessionId } from '~/composables/calls/callSessionId'
 
 const CALLS_ACK_TIMEOUT_MS = 10_000
 
@@ -204,11 +205,11 @@ export function createPresenceEmitters(socketRef: Ref<Socket | null>) {
         ...(on && conversationId ? { conversationId } : {}),
       })
     },
-    emitPostsTyping(postId: string, typing: boolean) {
+    emitPostsTyping(postId: string, typing: boolean, replyToId?: string | null) {
       const socket = socketRef.value
       const id = (postId ?? '').trim()
       if (!socket?.connected || !id) return
-      socket.emit('posts:typing', { postId: id, typing: Boolean(typing) })
+      socket.emit('posts:typing', { postId: id, typing: Boolean(typing), ...(replyToId ? { replyToId } : {}) })
     },
     emitMessagesTyping(conversationId: string, typing: boolean) {
       const socket = socketRef.value
@@ -225,10 +226,18 @@ export function createPresenceEmitters(socketRef: Ref<Socket | null>) {
 
     // ── DM calling (acked) ────────────────────────────────────────────
     emitCallsStart(conversationId: string, type: CallType): Promise<CallsAck> {
-      return emitCallsWithAck(socketRef.value, 'calls:start', { conversationId: String(conversationId ?? '').trim(), type })
+      return emitCallsWithAck(socketRef.value, 'calls:start', {
+        conversationId: String(conversationId ?? '').trim(),
+        type,
+        sessionId: tabCallSessionId(),
+      })
     },
     emitCallsJoin(callId: string): Promise<CallsAck> {
-      return emitCallsWithAck(socketRef.value, 'calls:join', { callId: String(callId ?? '').trim() })
+      return emitCallsWithAck(socketRef.value, 'calls:join', { callId: String(callId ?? '').trim(), sessionId: tabCallSessionId() })
+    },
+    /** Current state of one call (resyncs a ring whose `calls:updated` was missed offline). */
+    emitCallsStatus(callId: string): Promise<CallsAck> {
+      return emitCallsWithAck(socketRef.value, 'calls:status', { callId: String(callId ?? '').trim() })
     },
     emitCallsLeave(callId: string): Promise<CallsAck> {
       return emitCallsWithAck(socketRef.value, 'calls:leave', { callId: String(callId ?? '').trim() })

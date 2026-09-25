@@ -25,13 +25,20 @@ const props = withDefaults(defineProps<{
 }>(), { vertical: false, disabled: false })
 
 const boostState = useBoostState()
+const postCache = usePostCache()
 const { user } = useAuth()
 const { requireMember } = useBoardAccess()
 
-const postLike = computed(() => ({ id: props.postId, boostCount: props.points, viewerHasBoosted: props.viewerHasBoosted }))
+// The post cache carries everyone's live boosts (posts:liveUpdated) and this viewer's own results.
+const live = computed(() => postCache.cache.value[props.postId])
+const postLike = computed(() => ({
+  id: props.postId,
+  boostCount: live.value?.boostCount ?? props.points,
+  viewerHasBoosted: live.value?.viewerHasBoosted ?? props.viewerHasBoosted,
+}))
 const entry = computed(() => boostState.get(postLike.value))
 const boosted = computed(() => entry.value.viewerHasBoosted)
-const count = computed(() => entry.value.boostCount)
+const count = computed(() => live.value?.boostCount ?? entry.value.boostCount)
 const activeColor = computed(() => userActionColor(user.value))
 
 async function onClick() {

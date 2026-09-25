@@ -61,6 +61,8 @@ let transport: CallTransport | null = null
 let speakingMonitor: SpeakingMonitor | null = null
 let iceServers: RtcIceServer[] = []
 let ringtone: Ringtone | null = null
+/** The OS "X is calling" notification; closed when the ring stops (answered anywhere, cancelled). */
+let incomingNotification: Notification | null = null
 let ringback: Ringtone | null = null
 let unbind: (() => void) | null = null
 /** Server-owned grace window from the last start/join ack; every give-up timer keys off it. */
@@ -305,6 +307,8 @@ export function useCallSession() {
   }
 
   function stopRinging() {
+    incomingNotification?.close()
+    incomingNotification = null
     ringtone?.stop()
     ringtone = null
     ringback?.stop()
@@ -338,7 +342,16 @@ export function useCallSession() {
       remotes: remotePeerIds(session, meId.value),
     })
     transport?.setPeers(remotePeerIds(session, meId.value))
+    transport?.syncPeerSessions(peerSessionsOf(session))
     ensureReactionPrune()
+  }
+
+  function peerSessionsOf(session: CallSession): Record<string, string | null> {
+    const out: Record<string, string | null> = {}
+    for (const p of session.participants) {
+      if (p.userId !== meId.value) out[p.userId] = p.sessionId ?? null
+    }
+    return out
   }
 
   // ─── Actions ────────────────────────────────────────────────────────────────
@@ -719,6 +732,15 @@ export function useCallSession() {
         transport?.setPeers(e.userIds)
       }
     }
+    if (next.phase === 'in_call' && next.call?.id === session.id) {
+      transport?.syncPeerSessions(peerSessionsOf(session))
+      // Self-heal the presenting flag: a Stop pressed while the socket was down (or a start
+      // whose emit was lost) leaves everyone else on the wrong layout until we correct it.
+      const mine = session.participants.find((p) => p.userId === meId.value)
+      if (mine && Boolean(mine.screenSharing) !== isScreenSharing.value) {
+        presence.emitCallsState(session.id, { screenSharing: isScreenSharing.value })
+      }
+    }
   }
 
   function onIncoming(payload: WsCallsIncomingPayload) {
@@ -761,8 +783,29 @@ export function useCallSession() {
         window.focus()
         n.close()
       }
+      incomingNotification = n
     } catch {
       // Notifications unavailable in this context.
+    }
+  }
+
+  /**
+   * Socket came back while this tab was ringing: the `calls:updated` saying it was answered on
+   * another device (or cancelled) may have gone out while we were offline. Ask once.
+   */
+  async function resyncRingingCall() {
+    const ringing = incoming.value?.call
+    if (phase.value !== 'incoming' || !ringing) return
+    const ack = await presence.emitCallsStatus(ringing.id)
+    if (phase.value !== 'incoming' || incoming.value?.call.id !== ringing.id) return
+    if (ack.call) {
+      onUpdated(ack.call)
+      return
+    }
+    const code = ack.error?.code
+    if (code === 'call_ended' || code === 'call_not_found') {
+      stopRinging()
+      state.value = { phase: 'idle', call: null, incoming: null }
     }
   }
 
@@ -774,7 +817,14 @@ export function useCallSession() {
     if (ack.call) {
       state.value = { ...state.value, call: ack.call }
       transport?.setPeers(remotePeerIds(ack.call, meId.value))
+      transport?.syncPeerSessions(peerSessionsOf(ack.call))
       transport?.resumeConnections()
+      // Changes made while offline never reached the server; republish what this tab really has.
+      presence.emitCallsState(ack.call.id, {
+        micEnabled: isMicEnabled.value,
+        cameraEnabled: isCameraEnabled.value,
+        screenSharing: isScreenSharing.value,
+      })
       return
     }
     const code = ack.error?.code
@@ -880,7 +930,10 @@ export function useCallSession() {
       (connected, was) => {
         if (connected) {
           clearSocketDownTimer()
-          if (was === false) void rejoinAfterReconnect()
+          if (was === false) {
+            void rejoinAfterReconnect()
+            void resyncRingingCall()
+          }
           return
         }
         // The server drops our seat after `reconnectGraceMs`; stop spinning at the same moment.
@@ -911,6 +964,11 @@ export function useCallSession() {
       if (event.persisted && (phase.value === 'in_call' || phase.value === 'outgoing')) void resumeAfterForeground()
     }
     window.addEventListener('pageshow', onPageShow)
+    // Coming back to the window (not only the tab) brings the video home from PiP.
+    const onFocus = () => {
+      if (document.visibilityState === 'visible' && isEngaged.value) void exitCallPictureInPicture()
+    }
+    window.addEventListener('focus', onFocus)
 
     const stopRouteHook = router.afterEach(() => {
       if (phase.value === 'in_call' || phase.value === 'outgoing') minimized.value = true
@@ -938,6 +996,7 @@ export function useCallSession() {
       window.removeEventListener('beforeunload', onBeforeUnload)
       window.removeEventListener('online', onOnline)
       window.removeEventListener('pageshow', onPageShow)
+      window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisibility)
       stopReconnectWatch()
       stopRouteHook()

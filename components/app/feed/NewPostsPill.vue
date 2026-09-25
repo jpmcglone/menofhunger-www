@@ -3,19 +3,19 @@
     type="button"
     class="new-posts-pill inline-flex min-h-11 items-center gap-2 px-3.5 py-1.5 text-[15px] font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--moh-text)]"
     :class="inline ? 'new-posts-row w-full justify-center border-b moh-border' : 'rounded-full shadow-lg'"
-    :aria-label="`${count} new ${count === 1 ? 'post' : 'posts'}. Show new posts`"
+    :aria-label="label ? `${label}. Show them` : `${count} new ${count === 1 ? 'post' : 'posts'}. Show new posts`"
     @click="$emit('reveal')"
   >
-    <Icon name="tabler:arrow-up" class="h-5 w-5" aria-hidden="true" />
+    <Icon :name="icon ?? 'tabler:arrow-up'" class="h-5 w-5" aria-hidden="true" />
     <AppAvatarFacepile :authors="authors" size-class="h-8 w-8" overlap-class="-ml-2" />
-    <span>New posts</span>
+    <span>{{ label ?? 'New posts' }}</span>
   </button>
 </template>
 
 <script setup lang="ts">
 // Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=847-224
 import type { ReplyAuthorPreview } from '~/utils/thread-reply-authors'
-defineProps<{ authors: ReplyAuthorPreview[]; count: number; inline?: boolean }>()
+defineProps<{ authors: ReplyAuthorPreview[]; count: number; inline?: boolean; label?: string; icon?: string }>()
 defineEmits<{ reveal: [] }>()
 </script>
 

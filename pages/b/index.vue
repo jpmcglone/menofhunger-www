@@ -108,13 +108,15 @@
       </span>
     </div>
 
-    <button
-      v-if="newThreadCount > 0 && view === 'new'"
-      type="button"
-      class="sticky top-2 z-20 mx-auto my-2 flex rounded-full px-4 py-1.5 text-sm font-semibold text-white shadow-lg"
-      style="background-color: var(--moh-verified)"
-      @click="showNewThreads"
-    >{{ newThreadCount }} new {{ newThreadCount === 1 ? 'thread' : 'threads' }}</button>
+    <div v-if="newThreadCount > 0 && view === 'new'" class="pointer-events-none sticky top-2 z-20 flex h-0 justify-center overflow-visible">
+      <AppFeedNewPostsPill
+        class="pointer-events-auto"
+        :authors="[]"
+        :count="newThreadCount"
+        :label="`${newThreadCount} new ${newThreadCount === 1 ? 'thread' : 'threads'}`"
+        @reveal="showNewThreads"
+      />
+    </div>
 
     <template v-if="view === 'comments'">
       <div class="moh-divide">
@@ -143,14 +145,14 @@
     <template v-else>
       <div class="moh-divide">
         <AppBoardThreadRow
-          v-for="t in threads"
+          v-for="t in visibleThreads"
           :key="t.id"
           :thread="t"
           :show-hide="isAuthed"
           @toggle-hide="onToggleHide"
         />
       </div>
-      <div v-if="!loading && !threads.length" class="py-12 text-center">
+      <div v-if="!loading && !visibleThreads.length" class="py-12 text-center">
         <p class="text-sm font-semibold moh-text">Nothing here yet</p>
         <p class="mt-1 text-sm moh-text-muted">{{ emptyLabel }}</p>
         <button v-if="isFiltered" type="button" class="mt-2 text-sm hover:underline" style="color: var(--moh-verified)" @click="clearFilters">Clear filters</button>
@@ -253,6 +255,8 @@ function onPostClick(e: MouseEvent) {
 }
 
 const threads = ref<BoardThread[]>([])
+const postCache = usePostCache()
+const visibleThreads = computed(() => threads.value.filter((t) => !postCache.cache.value[t.id]?.deletedAt))
 const latestComments = ref<BoardComment[]>([])
 const nextCursor = ref<string | null>(null)
 const loading = ref(false)
@@ -282,6 +286,7 @@ async function load(reset = true) {
     } else {
       const res = await api.listThreads(listQuery(reset ? null : nextCursor.value))
       if (seq !== loadSeq) return
+      postCache.clear(res.threads.map((t) => t.id))
       threads.value = reset ? res.threads : [...threads.value, ...res.threads.filter((t) => !threads.value.some((x) => x.id === t.id))]
       nextCursor.value = res.nextCursor
     }

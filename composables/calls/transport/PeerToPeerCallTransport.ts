@@ -73,6 +73,8 @@ export class PeerToPeerCallTransport implements CallTransport {
    * until `setPeers` adds the peer, then replay in order.
    */
   private readonly earlySignals = new Map<string, WsRtcSignalPayload[]>()
+  /** userId → the seat session our connection to them belongs to. */
+  private readonly peerSessions = new Map<string, string | null>()
   private readonly opts: CallTransportOptions
   private readonly quality: CallQualityManager
   private localAudio: MediaStreamTrack | null = null
@@ -100,7 +102,10 @@ export class PeerToPeerCallTransport implements CallTransport {
     if (this.destroyed) return
     const wanted = new Set(userIds.filter((id) => id && id !== this.opts.selfUserId))
     for (const id of [...this.peers.keys()]) {
-      if (!wanted.has(id)) this.removePeer(id)
+      if (!wanted.has(id)) {
+        this.removePeer(id)
+        this.peerSessions.delete(id)
+      }
     }
     for (const id of wanted) {
       if (!this.peers.has(id)) {
@@ -110,6 +115,29 @@ export class PeerToPeerCallTransport implements CallTransport {
         void this.releasePeer(id, queued)
       }
     }
+  }
+
+  syncPeerSessions(sessions: Record<string, string | null>): void {
+    if (this.destroyed) return
+    for (const [userId, sessionId] of Object.entries(sessions)) {
+      if (userId && userId !== this.opts.selfUserId) this.adoptSession(userId, sessionId)
+    }
+  }
+
+  /**
+   * Records the seat session we're paired with. When it changes, the far side is a brand-new
+   * RTCPeerConnection on another device: renegotiating the old one fails (new DTLS identity),
+   * so drop it and start clean. `firstSignal` is replayed onto the fresh peer.
+   */
+  private adoptSession(userId: string, sessionId: string | null, firstSignal?: WsRtcSignalPayload): boolean {
+    const known = this.peerSessions.get(userId)
+    this.peerSessions.set(userId, sessionId)
+    if (known === undefined || known === sessionId || !this.peers.has(userId)) return false
+    callMediaLog('peer-session-changed', { peer: userId })
+    this.removePeer(userId)
+    this.addPeer(userId)
+    void this.releasePeer(userId, firstSignal ? [firstSignal] : undefined)
+    return true
   }
 
   private async releasePeer(userId: string, queued?: WsRtcSignalPayload[]): Promise<void> {
@@ -245,6 +273,8 @@ export class PeerToPeerCallTransport implements CallTransport {
 
   async handleSignal(payload: WsRtcSignalPayload): Promise<void> {
     if (this.destroyed || payload.callId !== this.opts.callId) return
+    // The server only relays the current seat holder, so a new session here is newer than ours.
+    if (payload.fromSessionId && this.adoptSession(payload.fromUserId, payload.fromSessionId, payload)) return
     const peer = this.peers.get(payload.fromUserId)
     if (!peer) {
       const queue = this.earlySignals.get(payload.fromUserId) ?? []
@@ -340,6 +370,7 @@ export class PeerToPeerCallTransport implements CallTransport {
     this.destroyed = true
     for (const id of [...this.peers.keys()]) this.removePeer(id)
     this.earlySignals.clear()
+    this.peerSessions.clear()
     this.quality.destroy()
   }
 

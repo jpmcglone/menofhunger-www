@@ -96,6 +96,13 @@ export function boardDiscussionHref(thread: Pick<BoardThread, 'id' | 'articleId'
   return thread.articleId ? `/a/${encodeURIComponent(thread.articleId)}#comments` : boardThreadHref(thread)
 }
 
+/** Name and handle both render only when they differ; otherwise the username shows once. */
+export function authorHasDistinctName(author: { name?: string | null; username?: string | null } | null | undefined): boolean {
+  const name = author?.name?.trim()
+  if (!name) return false
+  return name.toLowerCase() !== (author?.username ?? '').trim().toLowerCase()
+}
+
 export function boardScopeTone(visibility: string | null | undefined): 'verified' | 'premium' | null {
   if (visibility === 'premiumOnly') return 'premium'
   if (visibility === 'verifiedOnly') return 'verified'

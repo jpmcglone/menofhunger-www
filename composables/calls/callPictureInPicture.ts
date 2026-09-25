@@ -22,14 +22,28 @@ export function registerCallPipSource(el: HTMLVideoElement | null | undefined): 
   }
 }
 
-export function pickCallPipSource(): HTMLVideoElement | null {
+function hasFrames(el: HTMLVideoElement): boolean {
+  return el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && el.videoWidth > 0
+}
+
+export function pickCallPipSource(opts: { requireFrames?: boolean } = {}): HTMLVideoElement | null {
   let fallback: HTMLVideoElement | null = null
   for (const el of sources) {
     if (!el.isConnected) continue
     fallback = el
-    if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && el.videoWidth > 0) return el
+    if (hasFrames(el)) return el
   }
-  return fallback
+  return opts.requireFrames ? null : fallback
+}
+
+function pageIsVisible(): boolean {
+  return typeof document === 'undefined' || document.visibilityState === 'visible'
+}
+
+/** This element is the one in the OS picture-in-picture window. */
+export function isInCallPictureInPicture(el: HTMLVideoElement | null | undefined): boolean {
+  if (!el || typeof document === 'undefined') return false
+  return document.pictureInPictureElement === el || (el as WebkitVideo).webkitPresentationMode === 'picture-in-picture'
 }
 
 export function canUseCallPictureInPicture(): boolean {
@@ -41,11 +55,14 @@ export function canUseCallPictureInPicture(): boolean {
 export async function enterCallPictureInPicture(): Promise<boolean> {
   if (typeof document === 'undefined') return false
   if (document.pictureInPictureElement) return true
-  const el = pickCallPipSource()
+  // A black floating window is worse than none: only float a tile that is showing video.
+  const el = pickCallPipSource({ requireFrames: true })
   if (!el) return false
   try {
     if (document.pictureInPictureEnabled && typeof el.requestPictureInPicture === 'function') {
       await el.requestPictureInPicture()
+      // A quick app switch can return before the request settles; don't strand the tile in PiP.
+      if (pageIsVisible()) await exitCallPictureInPicture()
       return true
     }
   } catch {
@@ -70,12 +87,12 @@ export async function exitCallPictureInPicture(): Promise<void> {
   } catch {
     // Already left PiP.
   }
-  const el = pickCallPipSource() as WebkitVideo | null
-  try {
-    if (el?.webkitPresentationMode === 'picture-in-picture') {
-      el.webkitSetPresentationMode?.('inline')
+  for (const source of sources) {
+    const el = source as WebkitVideo
+    try {
+      if (el.webkitPresentationMode === 'picture-in-picture') el.webkitSetPresentationMode?.('inline')
+    } catch {
+      // Already inline.
     }
-  } catch {
-    // Already inline.
   }
 }

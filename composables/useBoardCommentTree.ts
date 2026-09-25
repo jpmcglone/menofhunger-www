@@ -1,5 +1,6 @@
 import type { InjectionKey, Ref } from 'vue'
 import type { BoardComment } from '~/types/api'
+import type { TypingUserDisplay } from '~/composables/chat/useChatTyping'
 
 export type BoardCommentTreeContext = {
   threadId: Ref<string>
@@ -8,6 +9,12 @@ export type BoardCommentTreeContext = {
   highlightId: Ref<string | null>
   add: (comment: BoardComment) => void
   remove: (commentId: string) => void
+  /** Just-revealed live arrivals, highlighted briefly. */
+  freshIds?: Ref<Set<string>>
+  /** Who is replying to this comment right now (`null` = a new top-level comment). */
+  typingFor?: (replyToId: string | null) => TypingUserDisplay[]
+  notifyTyping?: (text: string, replyToId: string | null) => void
+  stopTyping?: () => void
 }
 
 export const BOARD_COMMENT_TREE_KEY: InjectionKey<BoardCommentTreeContext> = Symbol('board-comment-tree')

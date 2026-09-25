@@ -154,6 +154,23 @@ export function isModifiedNavClick(e: {
  * Same-item nav clicks stay put (and may scroll to top). Space permalinks
  * highlight Spaces but are not the lobby — let the real /spaces link work.
  */
+/**
+ * Clicking Board while inside a thread (or comment / composer) steps back out, like a native
+ * stack: pop one entry when we came from inside the Board (list keeps its scroll + filters),
+ * otherwise go to the list. `historyBack` is Vue Router's `history.state.back`.
+ */
+export function boardNavPopAction(params: {
+  currentPath: string
+  to: string
+  historyBack: unknown
+  event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number }
+}): 'back' | 'navigate' | null {
+  if (params.to !== '/b' || !params.currentPath.startsWith('/b/')) return null
+  if (isModifiedNavClick(params.event)) return null
+  const back = typeof params.historyBack === 'string' ? params.historyBack.split(/[?#]/, 1)[0] ?? '' : ''
+  return back === '/b' || back.startsWith('/b/') ? 'back' : 'navigate'
+}
+
 export function shouldInterceptSameNavClick(params: {
   currentPath: string
   to: string
@@ -161,6 +178,8 @@ export function shouldInterceptSameNavClick(params: {
 }): boolean {
   if (isModifiedNavClick(params.event)) return false
   if (params.to === '/spaces' && isSpacePermalinkPath(params.currentPath)) return false
+  // Board sub-pages highlight Board but aren't the list; `boardNavPopAction` handles the click.
+  if (params.to === '/b' && params.currentPath.startsWith('/b/')) return false
   return isNavActive({ currentPath: params.currentPath, to: params.to })
 }
 
@@ -173,6 +192,8 @@ export function navCompactModePath(path: string): boolean {
     path === '/radio' ||
     path.startsWith('/radio/') ||
     path.startsWith('/a/') ||
+    path === '/b' ||
+    path.startsWith('/b/') ||
     path === '/admin/analytics' ||
     path.startsWith('/admin/analytics/') ||
     isSpacePermalinkPath(path)

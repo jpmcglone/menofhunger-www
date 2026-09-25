@@ -31,9 +31,19 @@
 
       <AppBoardThreadHead v-if="!ctxData.thread.viewerCanAccess" :thread="ctxData.thread" />
 
-      <div v-else class="border-t moh-border pb-6">
+      <div v-else class="relative border-t moh-border pb-6">
         <div v-if="ctxData.ancestors.length" class="border-b moh-border pb-1 opacity-80">
           <AppBoardCommentRow v-for="a in ctxData.ancestors" :key="a.id" :comment="a" :depth="0" />
+        </div>
+        <div v-if="live.pending.value.length" class="pointer-events-none sticky top-2 z-20 flex h-0 justify-center overflow-visible">
+          <AppFeedNewPostsPill
+            class="pointer-events-auto"
+            :authors="live.pendingAuthors.value"
+            :count="live.pending.value.length"
+            :label="`${live.pending.value.length} new ${live.pending.value.length === 1 ? 'reply' : 'replies'}`"
+            icon="tabler:message-circle"
+            @reveal="revealPending"
+          />
         </div>
         <AppBoardCommentRow v-for="c in comments" :key="c.id" :comment="c" :depth="0" />
       </div>
@@ -62,15 +72,36 @@ const parentComment = computed(() => ctxData.value?.ancestors[ctxData.value.ance
 const comments = ref<BoardComment[]>(ctxData.value?.comment ? [ctxData.value.comment] : [])
 watch(ctxData, (next) => { comments.value = next?.comment ? [next.comment] : [] })
 
-const tree = useBoardCommentTree(comments, computed(() => ctxData.value?.comment?.parentId ?? null))
+const rootParentId = computed(() => ctxData.value?.comment?.parentId ?? null)
+const liveThreadId = computed(() => ctxData.value?.thread.id ?? threadId.value)
+const tree = useBoardCommentTree(comments, rootParentId)
+const live = useBoardThreadLive({
+  threadId: liveThreadId,
+  tree,
+  rootParentId,
+  canAccess: computed(() => Boolean(ctxData.value?.thread.viewerCanAccess)),
+  onThreadPatch: (payload) => {
+    if (payload.patch.deletedAt) void navigateTo('/b')
+  },
+})
 provide(BOARD_COMMENT_TREE_KEY, {
-  threadId: computed(() => ctxData.value?.thread.id ?? threadId.value),
+  threadId: liveThreadId,
   canReply: computed(() => Boolean(ctxData.value?.thread.viewerCanAccess && !ctxData.value.thread.articleId)),
   maxDepth: 8,
   highlightId: commentId,
   add: tree.add,
   remove: tree.remove,
+  freshIds: live.freshIds,
+  typingFor: live.typingFor,
+  notifyTyping: live.notifyTyping,
+  stopTyping: live.stopTyping,
 })
+
+function revealPending() {
+  const firstId = live.reveal()
+  if (!firstId) return
+  nextTick(() => document.getElementById(`c-${firstId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+}
 
 useBoardThreadSeo(computed(() => ctxData.value?.thread), computed(() => ctxData.value?.comment))
 

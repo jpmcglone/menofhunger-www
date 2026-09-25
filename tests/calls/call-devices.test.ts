@@ -70,7 +70,7 @@ describe('self-view chrome', () => {
     const tile = read('components/app/calls/CallVideoTile.vue')
     expect(tile).toContain('callVideoAttachKey')
     expect(tile).toContain(':key="attachKey"')
-    expect(tile).toContain("mirrored && fit !== 'contain' ? 'scale-x-[-1]'")
+    expect(tile).toContain("mirrored && resolvedFit === 'cover' ? 'scale-x-[-1]'")
     expect(tile).toMatch(/scale-x-\[-1\][\s\S]*<video/)
     expect(tile).not.toMatch(/<video[^>]*scale-x-\[-1\]/)
     expect(tile).toContain('clip-path: inset(0 round 1rem)')

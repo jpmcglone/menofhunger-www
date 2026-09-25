@@ -1949,6 +1949,8 @@ export type WsPostsTypingPayload = {
   }
   typing: boolean
   status?: 'thinking' | 'replying'
+  /** Board threads: the comment being answered; absent for a top-level comment. */
+  replyToId?: string
 }
 
 /** New top-level post from someone the viewer follows; pushed to each follower's user room. */

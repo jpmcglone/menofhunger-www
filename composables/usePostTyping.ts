@@ -5,6 +5,8 @@ import { userColorTier } from '~/utils/user-tier'
 
 const TYPING_TTL_MS = 7000
 
+type TypingEntry = { exp: number; display: TypingUserDisplay; replyToId: string | null }
+
 /**
  * Tracks who is currently composing a reply to the given post.
  *
@@ -12,23 +14,25 @@ const TYPING_TTL_MS = 7000
  * - Filters out the current viewer's own id.
  * - Calls `emitPostsTyping` from the reply composer (via `notifyTyping`).
  * - Ensures `subscribePosts([postId])` stays active for the lifetime of the consumer.
+ * - Board threads type into the root room and name the comment being answered
+ *   (`replyToId`); `typingUsersFor(id)` narrows to one comment, `null` to top-level.
  */
 export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
   const { user } = useAuth()
   const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts, emitPostsTyping } = usePresence()
 
-  // Map of userId → { exp: timestamp }
-  const typingByUserId = ref<Map<string, { exp: number; display: TypingUserDisplay }>>(new Map())
+  const typingByUserId = ref<Map<string, TypingEntry>>(new Map())
   let sweepTimer: ReturnType<typeof setInterval> | null = null
   let startTimer: ReturnType<typeof setTimeout> | null = null
   let stopTimer: ReturnType<typeof setTimeout> | null = null
   let isTyping = false
+  let activeReplyToId: string | null = null
 
   function sweepExpired() {
     const now = Date.now()
     const m = typingByUserId.value
     if (!m.size) return
-    const next = new Map<string, { exp: number; display: TypingUserDisplay }>()
+    const next = new Map<string, TypingEntry>()
     for (const [uid, entry] of m.entries()) {
       if (now <= entry.exp) next.set(uid, entry)
     }
@@ -38,6 +42,14 @@ export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
   const typingUsers = computed<TypingUserDisplay[]>(() => {
     return [...typingByUserId.value.values()].map((e) => e.display)
   })
+
+  function typingUsersFor(replyToId: string | null): TypingUserDisplay[] {
+    const out: TypingUserDisplay[] = []
+    for (const entry of typingByUserId.value.values()) {
+      if (entry.replyToId === replyToId) out.push(entry.display)
+    }
+    return out
+  }
 
   function onTyping(payload: WsPostsTypingPayload) {
     const pid = (payload.postId ?? '').trim()
@@ -57,7 +69,7 @@ export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
         tier,
         status: payload.status,
       }
-      next.set(uid, { exp: now + TYPING_TTL_MS, display })
+      next.set(uid, { exp: now + TYPING_TTL_MS, display, replyToId: payload.replyToId?.trim() || null })
     }
     typingByUserId.value = next
   }
@@ -86,6 +98,11 @@ export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
     ensureSub(next)
   })
 
+  function emitStop(pid: string) {
+    emitPostsTyping(pid, false, activeReplyToId)
+    isTyping = false
+  }
+
   onBeforeUnmount(() => {
     removePostsCallback(cb)
     if (sweepTimer) clearInterval(sweepTimer)
@@ -100,8 +117,7 @@ export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
     }
     if (isTyping) {
       const pid = (postIdRef.value ?? '').trim()
-      if (pid) emitPostsTyping(pid, false)
-      isTyping = false
+      if (pid) emitStop(pid)
     }
   })
 
@@ -109,9 +125,13 @@ export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
    * Call from the composer watcher with the current text value.
    * Debounces start (220ms) and stop (1600ms after idle / 120ms on clear).
    */
-  function notifyTyping(text: string) {
+  function notifyTyping(text: string, opts?: { replyToId?: string | null }) {
     const pid = (postIdRef.value ?? '').trim()
     if (!pid) return
+
+    const replyToId = opts?.replyToId?.trim() || null
+    if (isTyping && replyToId !== activeReplyToId) emitStop(pid)
+    activeReplyToId = replyToId
 
     const hasText = Boolean((text ?? '').trim().length > 0)
 
@@ -120,28 +140,25 @@ export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
       if (stopTimer) clearTimeout(stopTimer)
       stopTimer = setTimeout(() => {
         stopTimer = null
-        if (isTyping) {
-          emitPostsTyping(pid, false)
-          isTyping = false
-        }
+        if (isTyping) emitStop(pid)
       }, 120)
       return
     }
 
-    if (!startTimer) {
+    if (!startTimer && !isTyping) {
       startTimer = setTimeout(() => {
         startTimer = null
-        emitPostsTyping(pid, true)
+        emitPostsTyping(pid, true, activeReplyToId)
         isTyping = true
       }, 220)
+    } else if (isTyping) {
+      // Keep the indicator alive past the viewers' TTL while the draft is still changing.
+      emitPostsTyping(pid, true, activeReplyToId)
     }
     if (stopTimer) clearTimeout(stopTimer)
     stopTimer = setTimeout(() => {
       stopTimer = null
-      if (isTyping) {
-        emitPostsTyping(pid, false)
-        isTyping = false
-      }
+      if (isTyping) emitStop(pid)
     }, 3200)
   }
 
@@ -149,11 +166,8 @@ export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
     const pid = (postIdRef.value ?? '').trim()
     if (startTimer) { clearTimeout(startTimer); startTimer = null }
     if (stopTimer) { clearTimeout(stopTimer); stopTimer = null }
-    if (isTyping && pid) {
-      emitPostsTyping(pid, false)
-      isTyping = false
-    }
+    if (isTyping && pid) emitStop(pid)
   }
 
-  return { typingUsers, notifyTyping, stopTyping }
+  return { typingUsers, typingUsersFor, notifyTyping, stopTyping }
 }

@@ -67,17 +67,19 @@ describe('scripture verse presentation', () => {
 })
 
 describe('primary app navigation order', () => {
-  it('puts Chat before Notifications in the first four primary destinations', () => {
+  it('orders Home, Explore, Board, Notifications, then Chat', () => {
     const source = readFromRepo('composables/useAppNav.ts')
     const home = source.indexOf("key: 'home'")
     const explore = source.indexOf("key: 'explore'")
-    const messages = source.indexOf("key: 'messages'")
+    const board = source.indexOf("key: 'board'")
     const notifications = source.indexOf("key: 'notifications'")
+    const messages = source.indexOf("key: 'messages'")
 
     expect(home).toBeGreaterThan(-1)
     expect(home).toBeLessThan(explore)
-    expect(explore).toBeLessThan(messages)
-    expect(messages).toBeLessThan(notifications)
+    expect(explore).toBeLessThan(board)
+    expect(board).toBeLessThan(notifications)
+    expect(notifications).toBeLessThan(messages)
     expect(source).toMatch(/items\.slice\(0, 4\)/)
   })
 

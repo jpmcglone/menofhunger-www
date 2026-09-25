@@ -39,9 +39,26 @@
               >{{ option.label }}</button>
             </template>
           </div>
-          <div class="pb-6">
+          <AppTypingIndicator
+            v-if="live.typingFor(null).length"
+            :users="live.typingFor(null)"
+            verb="commenting"
+            size="compact"
+            class="moh-gutter-x pb-1"
+          />
+          <div class="relative pb-6">
+            <div v-if="live.pending.value.length" class="pointer-events-none sticky top-2 z-20 flex h-0 justify-center overflow-visible">
+              <AppFeedNewPostsPill
+                class="pointer-events-auto"
+                :authors="live.pendingAuthors.value"
+                :count="live.pending.value.length"
+                :label="pendingLabel"
+                icon="tabler:message-circle"
+                @reveal="revealPending"
+              />
+            </div>
             <AppBoardCommentRow v-for="c in comments" :key="c.id" :comment="c" :depth="0" />
-            <p v-if="!comments.length && !commentsPending" class="moh-gutter-x py-10 text-center moh-meta">No comments yet. Start the conversation.</p>
+            <p v-if="!comments.length && !commentsPending && !live.pending.value.length" class="moh-gutter-x py-10 text-center moh-meta">No comments yet. Start the conversation.</p>
           </div>
         </template>
       </template>
@@ -50,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import type { BoardComment, BoardThread, FeedPost } from '~/types/api'
+import type { BoardComment, BoardThread } from '~/types/api'
 
 definePageMeta({ layout: 'app', title: 'Board', hideTopBar: true })
 
@@ -76,28 +93,65 @@ const { data: commentsPage, pending: commentsPending, refresh: refreshComments }
 )
 
 const comments = ref<BoardComment[]>(commentsPage.value?.comments ?? [])
-watch(commentsPage, (page) => { comments.value = page?.comments ?? [] })
+const postCache = usePostCache()
+function collectIds(list: BoardComment[], out: string[] = []): string[] {
+  for (const c of list) {
+    out.push(c.id)
+    collectIds(c.replies, out)
+  }
+  return out
+}
+watch(commentsPage, (page) => {
+  comments.value = page?.comments ?? []
+  postCache.clear(collectIds(comments.value))
+  live.clearPending()
+})
+// Only a different thread resets the overlay; in-place patches must keep live deltas.
+watch(() => thread.value?.id, (next, prev) => {
+  if (next && next !== prev) postCache.clear([next])
+})
 
 const tree = useBoardCommentTree(comments)
+const live = useBoardThreadLive({
+  threadId,
+  tree,
+  canAccess: computed(() => Boolean(thread.value?.viewerCanAccess)),
+  onThreadPatch: (payload) => {
+    if (!thread.value) return
+    if (payload.patch.deletedAt) return onThreadDeleted()
+    if (typeof payload.patch.commentCount === 'number') thread.value = { ...thread.value, commentCount: payload.patch.commentCount }
+    if (typeof payload.patch.viewerCount === 'number') thread.value = { ...thread.value, viewerCount: payload.patch.viewerCount }
+    if (payload.reason === 'post_edited') void refreshThread()
+  },
+})
+
 provide(BOARD_COMMENT_TREE_KEY, {
   threadId,
   canReply: computed(() => Boolean(thread.value?.viewerCanAccess && !thread.value?.articleId)),
   maxDepth: 8,
   highlightId: ref(null),
-  add: (c) => {
-    tree.add(c)
-    if (thread.value) thread.value = { ...thread.value, commentCount: thread.value.commentCount + 1 }
-  },
-  remove: (id) => {
-    tree.remove(id)
-    if (thread.value) thread.value = { ...thread.value, commentCount: Math.max(0, thread.value.commentCount - 1) }
-  },
+  add: tree.add,
+  remove: tree.remove,
+  freshIds: live.freshIds,
+  typingFor: live.typingFor,
+  notifyTyping: live.notifyTyping,
+  stopTyping: live.stopTyping,
 })
 
 const commentCountLabel = computed(() => {
   const n = thread.value?.commentCount ?? 0
   return `${n} ${n === 1 ? 'comment' : 'comments'}`
 })
+const pendingLabel = computed(() => {
+  const n = live.pending.value.length
+  return `${n} new ${n === 1 ? 'comment' : 'comments'}`
+})
+
+function revealPending() {
+  const firstId = live.reveal()
+  if (!firstId) return
+  nextTick(() => document.getElementById(`c-${firstId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+}
 
 function setCommentSort(next: 'top' | 'new') {
   commentSort.value = next
@@ -107,7 +161,6 @@ function setCommentSort(next: 'top' | 'new') {
 
 function onCreated(created: BoardComment) {
   tree.add(created)
-  if (thread.value) thread.value = { ...thread.value, commentCount: thread.value.commentCount + 1 }
 }
 
 function onThreadUpdated(next: BoardThread) {
@@ -120,48 +173,14 @@ function onThreadDeleted() {
 
 useBoardThreadSeo(thread)
 
-// Realtime: the API mirrors every nested comment to the thread root room.
-const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
-function toBoardComment(post: FeedPost): BoardComment {
-  return {
-    id: post.id,
-    threadId: threadId.value,
-    parentId: post.parentId && post.parentId !== threadId.value ? post.parentId : null,
-    depth: 0,
-    body: post.body,
-    author: post.author as BoardComment['author'],
-    mentions: (post.mentions ?? []) as BoardComment['mentions'],
-    createdAt: post.createdAt,
-    deleted: false,
-    points: post.boostCount ?? 0,
-    replyCount: 0,
-    viewerHasBoosted: false,
-    replies: [],
-  }
-}
-const postsCb = {
-  onCommentAdded: (payload: { parentPostId: string; comment: FeedPost }) => {
-    if (!thread.value?.viewerCanAccess) return
-    if (payload.comment.boardRootId && payload.comment.boardRootId !== threadId.value) return
-    tree.add(toBoardComment(payload.comment))
-  },
-  onCommentDeleted: (payload: { commentId: string }) => tree.remove(payload.commentId),
-  onLiveUpdated: (payload: { postId: string; reason?: string; patch: { commentCount?: number; deletedAt?: string | null } }) => {
-    if (payload.postId !== threadId.value || !thread.value) return
-    if (payload.patch.deletedAt) return onThreadDeleted()
-    if (typeof payload.patch.commentCount === 'number') thread.value = { ...thread.value, commentCount: payload.patch.commentCount }
-    if (payload.reason === 'post_edited') void refreshThread()
-  },
-}
+// Opening a thread counts as a view, exactly like a post permalink (unique + impression).
+const { markEngaged } = usePostViewTracker()
+watch(
+  () => (thread.value?.viewerCanAccess ? thread.value.id : null),
+  (id) => { if (id && import.meta.client) markEngaged(id) },
+  { immediate: true },
+)
 
-onMounted(() => {
-  addPostsCallback(postsCb as never)
-  if (threadId.value) subscribePosts([threadId.value])
-})
-watch(threadId, (next, prev) => {
-  if (prev) unsubscribePosts([prev])
-  if (next) subscribePosts([next])
-})
 let activatedOnce = false
 onActivated(() => {
   if (!activatedOnce) {
@@ -170,9 +189,5 @@ onActivated(() => {
   }
   void refreshThread()
   void refreshComments()
-})
-onBeforeUnmount(() => {
-  removePostsCallback(postsCb as never)
-  if (threadId.value) unsubscribePosts([threadId.value])
 })
 </script>

@@ -43,11 +43,12 @@
     </div>
 
     <!-- Tiles -->
-    <div class="relative min-h-0 flex-1 px-3 pb-2">
-      <!-- Presenting: share on the stage, people in a filmstrip (Hangouts / Zoom). -->
+    <div ref="stageEl" class="relative min-h-0 flex-1 px-3 pb-2">
+      <!-- Presenting: share on the stage, people in a filmstrip (right in landscape, below in portrait). -->
       <div
         v-if="presenter"
-        class="flex h-full min-h-0 flex-col gap-2 sm:flex-row"
+        class="flex h-full min-h-0 gap-2"
+        :class="stageLandscape ? 'flex-row' : 'flex-col'"
       >
         <div class="min-h-0 min-w-0 flex-1" data-testid="call-presenting-stage">
           <CallVideoTile
@@ -65,13 +66,14 @@
           />
         </div>
         <div
-          class="flex shrink-0 gap-2 overflow-x-auto sm:h-full sm:w-[7.25rem] sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden"
+          class="flex shrink-0 gap-2"
+          :class="stageLandscape ? 'h-full w-[7.25rem] flex-col overflow-y-auto overflow-x-hidden' : 'overflow-x-auto'"
           data-testid="call-presenting-filmstrip"
         >
           <div
             v-for="p in tiles"
             :key="p.userId"
-            class="h-[6.25rem] w-[4.75rem] shrink-0 sm:h-auto sm:w-full sm:aspect-[3/4]"
+            :class="filmstripItemClass"
           >
             <CallVideoTile
               :stream="remoteStreams[p.userId] ?? null"
@@ -87,7 +89,7 @@
               fit="contain"
             />
           </div>
-          <div class="h-[6.25rem] w-[4.75rem] shrink-0 sm:h-auto sm:w-full sm:aspect-[3/4]">
+          <div :class="filmstripItemClass">
             <CallVideoTile
               :stream="localStream"
               :user="selfUser"
@@ -150,7 +152,8 @@
       <div
         v-if="!presenter && !selfInGrid"
         ref="pipEl"
-        class="absolute z-10 h-[7.5rem] w-[5.25rem] rounded-2xl shadow-xl shadow-black/50 sm:h-[9rem] sm:w-[16rem] touch-none cursor-grab active:cursor-grabbing"
+        class="absolute z-10 rounded-2xl shadow-xl shadow-black/50 touch-none cursor-grab active:cursor-grabbing transition-[width,height] duration-200"
+        :class="selfPipShapeClass"
         :style="pipStyle"
         @pointerdown="onPipPointerDown"
         @pointermove="onPipPointerMove"
@@ -167,6 +170,7 @@
           avatar-size-class="h-12 w-12"
           :speaking-level="selfSpeaking"
           :hand-raised="isGroupCall && selfHandRaised"
+          @aspect="selfVideoAspect = $event"
         />
       </div>
     </div>
@@ -206,6 +210,7 @@ import type { CallParticipant, CallSession } from '~/types/api'
 import { useCallSession } from '~/composables/calls/useCallSession'
 import { useCallTimer } from '~/composables/calls/useCallTimer'
 import { CALL_ENCRYPTION_SENTENCE, CALL_ENCRYPTION_SHORT } from '~/composables/calls/callCopy'
+import { useElementAspect } from '~/composables/calls/useElementAspect'
 import CallVideoTile from './CallVideoTile.vue'
 import CallControls from './CallControls.vue'
 
@@ -280,11 +285,30 @@ const stageConnectionState = computed(() => {
   return 'connected' as const
 })
 
+// Layout follows the call area's real orientation (phone rotation, narrow desktop window),
+// not a width breakpoint: a landscape phone and a portrait tablet both get the right split.
+const stageEl = ref<HTMLElement | null>(null)
+const stageAspect = useElementAspect(stageEl)
+const stageLandscape = computed(() => (stageAspect.value > 0 ? stageAspect.value >= 1 : import.meta.client && window.innerWidth >= window.innerHeight))
+
 const gridClass = computed(() => {
   const n = tiles.value.length + (selfInGrid.value ? 1 : 0)
   if (n <= 1) return 'grid-cols-1 grid-rows-1'
-  if (n === 2) return 'grid-cols-1 grid-rows-2 sm:grid-cols-2 sm:grid-rows-1'
+  if (n === 2) return stageLandscape.value ? 'grid-cols-2 grid-rows-1' : 'grid-cols-1 grid-rows-2'
   return 'grid-cols-2 grid-rows-2'
+})
+
+const filmstripItemClass = computed(() =>
+  stageLandscape.value ? 'w-full shrink-0 aspect-[3/4]' : 'h-[6.25rem] w-[4.75rem] shrink-0',
+)
+
+/** Self-view takes the camera's shape: phones send portrait or landscape and rotate mid-call. */
+const selfVideoAspect = ref(0)
+const selfPipShapeClass = computed(() => {
+  const aspect = isCameraEnabled.value ? selfVideoAspect.value : 0
+  if (aspect >= 1) return 'h-[5.25rem] w-[7.5rem] sm:h-[9rem] sm:w-[16rem]'
+  if (aspect > 0) return 'h-[7.5rem] w-[5.25rem] sm:h-[12rem] sm:w-[6.75rem]'
+  return 'h-[7.5rem] w-[5.25rem] sm:h-[9rem] sm:w-[16rem]'
 })
 
 const title = computed(() => {
@@ -307,6 +331,11 @@ function reactionStyle(userId: string) {
 const pipEl = ref<HTMLElement | null>(null)
 const pipPos = ref<{ x: number; y: number } | null>(null)
 let drag: { startX: number; startY: number; originX: number; originY: number } | null = null
+
+// A dragged position is only valid for the old shape; after rotation, go back to the corner.
+watch([stageLandscape, selfPipShapeClass], () => {
+  pipPos.value = null
+})
 
 const pipStyle = computed(() => {
   if (!pipPos.value) return { right: '1rem', bottom: '1rem' }
