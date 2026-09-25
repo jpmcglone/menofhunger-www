@@ -26,7 +26,7 @@
       <SettingsSectionsSettingsVerificationSection v-if="active === 'verification'" embedded @changed="sync" @done="active = null" />
       <AppFeedActivationPeople v-else-if="active === 'people'" @followed="sync" />
       <AppFeedActivationConversations v-else-if="active === 'conversations'" @reply="reply" />
-      <AppFeedActivationCompletion v-else-if="active === 'complete'" @done="active = null" />
+      <AppFeedActivationCompletion v-else-if="active === 'complete'" @done="finishGuide" />
     </AppModal>
   </section>
 </template>
@@ -64,8 +64,12 @@ const active = ref<string | null>(null)
 const complete = computed(() => Boolean(progress.value) && completedCount.value === (approved.value ? 3 : 2))
 const celebrationKey = computed(() => `moh.activation.celebrated.v1.${user.value?.id}.${phase.value}`)
 const celebrated = ref(false)
-const modalOpen = computed({ get: () => active.value !== null, set: (open) => { if (!open) active.value = null } })
+const modalOpen = computed({ get: () => active.value !== null, set: (open) => { if (!open) { if (active.value === 'complete') finishGuide(); else active.value = null } } })
 const modalTitle = computed(() => ({ verification: 'Verification', people: 'Find your people', conversations: 'Find a conversation', complete: 'Good work. You’re all set.' })[active.value ?? ''] ?? '')
+function finishGuide() {
+  active.value = null
+  dismiss()
+}
 function act(action: string) {
   track('onboarding_action_clicked', action)
   if (action === 'compose') emit('compose')

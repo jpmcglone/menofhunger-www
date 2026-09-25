@@ -19,8 +19,9 @@ beforeEach(() => {
   progress = ref({ ...pending }); phase = ref('before_approval')
   state.user = ref({ id: 'one' })
   state.reply = { open: ref(false), show: vi.fn(), registerOnReplyPosted: () => () => {} }
+  const dismissed = ref(false)
   state.guide = {
-    progress, phase, dismissed: ref(false), syncError: ref(false), sync: vi.fn(), dismiss: vi.fn(), track: vi.fn(),
+    progress, phase, dismissed, syncError: ref(false), sync: vi.fn(), dismiss: vi.fn(() => { dismissed.value = true }), track: vi.fn(),
     completedCount: computed(() => phase.value === 'approved' ? Number(progress.value.contributed) + Number(progress.value.replied) + Number(progress.value.returned) : Number(progress.value.verificationRequested) + Number(progress.value.followed)),
   }
 })
@@ -88,4 +89,16 @@ it('defers celebration while the main composer is open', async () => {
   composerOpen.value = false
   await flushPromises()
   expect(view.get('[role="dialog"]').text()).toContain('Good work. You’re all set.')
+})
+
+it.each(['Back to feed', 'Close'])('dismisses the completed guide when celebration closes with %s', async (label) => {
+  const view = await render()
+  progress.value.followed = true
+  await flushPromises()
+  const dialog = view.get('[role="dialog"]')
+  await dialog.findAll('button').find(button => button.text() === label)!.trigger('click')
+  await flushPromises()
+  expect(view.find('[role="dialog"]').exists()).toBe(false)
+  expect(view.find('[aria-label="Getting started"]').exists()).toBe(false)
+  expect((state.guide as { dismiss: ReturnType<typeof vi.fn> }).dismiss).toHaveBeenCalledTimes(1)
 })
