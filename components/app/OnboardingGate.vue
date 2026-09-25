@@ -1,50 +1,48 @@
 <template>
-  <Teleport to="body">
-    <section v-if="show" class="onboarding-screen moh-bg moh-text" role="dialog" aria-modal="true" aria-labelledby="setup-heading">
-      <div class="onboarding-column">
-        <nav class="min-h-11 flex items-center">
-          <button v-if="page === 2" type="button" class="min-h-11 moh-focus" :disabled="submitting" @click="goBack">‹ Back</button>
-          <span v-else class="text-xs font-semibold text-[var(--moh-brass)]">MEN OF HUNGER</span>
-        </nav>
-        <form class="onboarding-form" @submit.prevent="continuePage">
-          <div class="onboarding-content">
-            <p class="text-xs font-semibold text-[var(--moh-brass)]">SETUP · {{ page }} OF 2</p>
-            <h1 id="setup-heading" ref="headingRef" tabindex="-1" class="text-[28px] leading-9 font-semibold">{{ page === 1 ? 'Make it yours.' : 'What are you building?' }}</h1>
-            <template v-if="page === 1">
-              <div class="space-y-2">
-                <label for="setup-username">Username</label>
-                <InputText id="setup-username" v-model="usernameInput" class="setup-input w-full" placeholder="@ username" autocomplete="username" autocapitalize="none" :spellcheck="false" :disabled="submitting" :invalid="usernameStatus === 'taken' || usernameStatus === 'invalid'" aria-describedby="username-help" />
-                <p id="username-help" class="text-[13px] moh-text-muted" aria-live="polite">{{ usernameHelp }}</p>
-              </div>
-              <div class="space-y-2">
-                <label for="setup-birthday">Birthday</label>
-                <p v-if="birthdateLocked" class="setup-input flex items-center px-3">{{ birthdatePretty }}</p>
-                <AppDateOfBirthInput v-else id="setup-birthday" v-model="birthdate" :disabled="submitting" :invalid="Boolean(birthdate) && !isBirthdate18Plus(birthdate)" />
-                <p class="text-[13px]" :class="birthdate && !isBirthdate18Plus(birthdate) ? 'text-red-500' : 'moh-text-muted'">{{ birthdate && !isBirthdate18Plus(birthdate) ? 'Enter a valid birthday. You must be 18 or older to join.' : 'You must be 18+. Your birthday stays private.' }}</p>
-              </div>
-              <label class="community-confirm flex items-center justify-center gap-3 min-h-12 px-4 py-3 border moh-border rounded-full cursor-pointer">
-                <Checkbox v-model="menOnlyConfirmed" binary input-id="setup-community" :disabled="submitting || menConfirmLocked" />
-                <span>I’m joining as a man.</span>
-              </label>
-            </template>
-            <template v-else>
-              <p class="text-[15px] leading-[22px] moh-text-muted">Pick at least one to shape your feed. You can change these later.</p>
-              <div class="grid grid-cols-2 gap-2">
-                <button v-for="arena in LIFE_ARENAS" :key="arena.key" type="button" class="arena-choice min-h-12 rounded-full border px-4 py-3 moh-focus" :class="selected(arena) ? 'arena-selected' : 'moh-border'" :aria-pressed="selected(arena)" :disabled="submitting" @click="toggleOnboardingArena(arena)">
-                  <span v-if="selected(arena)" aria-hidden="true">✓ </span>{{ arena.label }}
-                </button>
-              </div>
-            </template>
-            <AppInlineAlert v-if="error" severity="danger" role="alert">{{ error }}</AppInlineAlert>
-          </div>
-          <div class="space-y-2 pb-2">
-            <Button type="submit" class="setup-primary w-full" rounded :label="page === 1 ? 'Continue' : 'Show my feed'" :disabled="submitting || !canContinue" :loading="submitting" />
-            <p class="text-[13px] moh-text-muted">{{ page === 1 ? 'You can add a name and photo later.' : `${selectedArenaCount} ${selectedArenaCount === 1 ? 'arena' : 'arenas'} selected` }}</p>
-          </div>
-        </form>
-      </div>
-    </section>
-  </Teleport>
+  <section v-if="show" class="onboarding-screen moh-bg moh-text" role="dialog" aria-modal="true" aria-labelledby="setup-heading">
+    <div class="onboarding-column">
+      <nav class="min-h-11 flex items-center">
+        <button v-if="page === 2" type="button" class="min-h-11 moh-focus" :disabled="submitting" @click="goBack">‹ Back</button>
+        <span v-else class="text-xs font-semibold text-[var(--moh-brass)]">MEN OF HUNGER</span>
+      </nav>
+      <form class="onboarding-form" @submit.prevent="continuePage">
+        <div class="onboarding-content">
+          <p class="text-xs font-semibold text-[var(--moh-brass)]">SETUP · {{ page }} OF 2</p>
+          <h1 id="setup-heading" ref="headingRef" tabindex="-1" class="text-[28px] leading-9 font-semibold">{{ page === 1 ? 'Make it yours.' : 'What are you building?' }}</h1>
+          <template v-if="page === 1">
+            <div class="space-y-2">
+              <label for="setup-username">Username</label>
+              <InputText id="setup-username" v-model="usernameInput" class="setup-input w-full" placeholder="@ username" autocomplete="username" autocapitalize="none" :spellcheck="false" :disabled="submitting" :invalid="usernameStatus === 'taken' || usernameStatus === 'invalid'" aria-describedby="username-help" />
+              <p id="username-help" class="text-[13px] moh-text-muted" aria-live="polite">{{ usernameHelp }}</p>
+            </div>
+            <div class="space-y-2">
+              <label for="setup-birthday">Birthday</label>
+              <p v-if="birthdateLocked" class="setup-input flex items-center px-3">{{ birthdatePretty }}</p>
+              <AppDateOfBirthInput v-else id="setup-birthday" v-model="birthdate" :disabled="submitting" :invalid="Boolean(birthdate) && !isBirthdate18Plus(birthdate)" />
+              <p class="text-[13px]" :class="birthdate && !isBirthdate18Plus(birthdate) ? 'text-red-500' : 'moh-text-muted'">{{ birthdate && !isBirthdate18Plus(birthdate) ? 'Enter a valid birthday. You must be 18 or older to join.' : 'You must be 18+. Your birthday stays private.' }}</p>
+            </div>
+            <label class="community-confirm flex items-center justify-center gap-3 min-h-12 px-4 py-3 border moh-border rounded-full cursor-pointer">
+              <Checkbox v-model="menOnlyConfirmed" binary input-id="setup-community" :disabled="submitting || menConfirmLocked" />
+              <span>I’m joining as a man.</span>
+            </label>
+          </template>
+          <template v-else>
+            <p class="text-[15px] leading-[22px] moh-text-muted">Pick at least one to shape your feed. You can change these later.</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button v-for="arena in LIFE_ARENAS" :key="arena.key" type="button" class="arena-choice min-h-12 rounded-full border px-4 py-3 moh-focus" :class="selected(arena) ? 'arena-selected' : 'moh-border'" :aria-pressed="selected(arena)" :disabled="submitting" @click="toggleOnboardingArena(arena)">
+                <span v-if="selected(arena)" aria-hidden="true">✓ </span>{{ arena.label }}
+              </button>
+            </div>
+          </template>
+          <AppInlineAlert v-if="error" severity="danger" role="alert">{{ error }}</AppInlineAlert>
+        </div>
+        <div class="space-y-2 pb-2">
+          <Button type="submit" class="setup-primary w-full" rounded :label="page === 1 ? 'Continue' : 'Show my feed'" :disabled="submitting || !canContinue" :loading="submitting" />
+          <p class="text-[13px] moh-text-muted">{{ page === 1 ? 'You can add a name and photo later.' : `${selectedArenaCount} ${selectedArenaCount === 1 ? 'arena' : 'arenas'} selected` }}</p>
+        </div>
+      </form>
+    </div>
+  </section>
 </template>
 
 <script setup lang="ts">
