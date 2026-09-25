@@ -51,7 +51,7 @@ const weekRows = computed(() => {
   return [
     { label: 'Member posts answered in 24 hours', detail: 'Personal accounts only. Pages and site admins are excluded.', value: `${pulse.repliedWithin24h} of ${pulse.memberRoots}`, icon: 'reply' as const },
     { label: 'Those authors active again', detail: 'Recorded on a later UTC day after their post.', value: `${pulse.authorsReturned} of ${pulse.authors}`, icon: 'history' as const },
-    { label: 'Lodge prompt replies', detail: 'Human replies to this week’s @menofhunger prompt.', value: pulse.lodgePromptReplies == null ? '—' : String(pulse.lodgePromptReplies), icon: 'quote' as const },
+    { label: 'Community prompt replies', detail: 'Human replies to this week’s @menofhunger prompt.', value: pulse.lodgePromptReplies == null ? '—' : String(pulse.lodgePromptReplies), icon: 'quote' as const },
     { label: 'Oldest verification wait', detail: 'Pending requests from active accounts.', value: formatWait(pulse.oldestVerificationRequestedAt), icon: 'verified' as const },
   ]
 })

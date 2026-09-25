@@ -6,7 +6,7 @@
         Connect your AI
       </div>
       <p class="text-sm text-gray-600 dark:text-gray-300">
-        Let ChatGPT, Claude, or Cursor read the lodge as you see it: the feed, threads, profiles,
+        Let ChatGPT, Claude, or Cursor read Men of Hunger as you see it: the feed, threads, profiles,
         articles, your bookmarks, and your notifications. Ask it to catch you up, then show up yourself.
       </p>
     </div>
@@ -50,7 +50,7 @@
         <ol class="list-decimal space-y-1 pl-5 text-sm text-gray-700 dark:text-gray-300">
           <li>In ChatGPT, Claude, or Cursor, add a custom connector (an MCP server) and paste the URL above.</li>
           <li>When it asks, sign in to Men of Hunger and choose <span class="font-semibold">Allow read-only access</span>.</li>
-          <li>Ask something like “Catch me up on the lodge this week.”</li>
+          <li>Ask something like “Catch me up on Men of Hunger this week.”</li>
         </ol>
       </section>
 

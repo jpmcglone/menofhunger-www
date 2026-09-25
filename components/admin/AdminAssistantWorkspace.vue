@@ -76,7 +76,7 @@ const turns = computed(() => adminNewestAsks(workspace.value?.turns ?? []))
 const prompts = [
   { label: 'Today’s priorities', question: 'What needs my attention today?' },
   { label: 'Growth & retention', question: 'How did growth and retention change this week?' },
-  { label: 'Draft a newsletter', question: 'Help me draft the next lodge newsletter.' },
+  { label: 'Draft a newsletter', question: 'Help me draft the next Men of Hunger newsletter.' },
   { label: 'Review feedback', question: 'Review feedback, reports, and verification requests.' },
 ]
 function isExpanded(turn: AdminAssistantTurnDto, index: number) {

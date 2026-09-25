@@ -1,9 +1,13 @@
 <template>
   <div class="flex items-center gap-3">
-    <NuxtLink v-if="user.username" :to="`/u/${encodeURIComponent(user.username)}`" class="min-w-0 flex flex-1 items-center gap-3 min-h-11" :aria-label="`View @${user.username} profile`">
+    <NuxtLink v-if="interactive && user.username" :to="`/u/${encodeURIComponent(user.username)}`" class="min-w-0 flex flex-1 items-center gap-3 min-h-11" :aria-label="`View @${user.username} profile`">
       <AppUserAvatar :user="user" size-class="h-10 w-10" :show-status="false" class="shrink-0" />
       <AppUserIdentityLine :user="user" badge-size="xs" :interactive="false" />
     </NuxtLink>
+    <div v-else class="min-w-0 flex flex-1 items-center gap-3 min-h-11">
+      <AppUserAvatar :user="user" size-class="h-10 w-10" :show-status="false" />
+      <AppUserIdentityLine :user="user" badge-size="xs" :interactive="false" />
+    </div>
     <button v-if="user.username" type="button" class="follow-control" :disabled="busy" :aria-label="`${following ? 'Following' : 'Follow'} @${user.username}`" :aria-busy="busy" @click="toggle">
       {{ busy ? 'Saving…' : following ? 'Following' : user.relationship?.userFollowsViewer ? 'Follow back' : 'Follow' }}
     </button>
@@ -13,7 +17,7 @@
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
-const props = defineProps<{ user: FollowListUser }>()
+const props = withDefaults(defineProps<{ user: FollowListUser; interactive?: boolean }>(), { interactive: true })
 const emit = defineEmits<{ followed: [] }>()
 const follows = useFollowState()
 const busy = ref(false)

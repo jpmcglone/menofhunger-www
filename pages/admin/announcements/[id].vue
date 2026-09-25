@@ -55,7 +55,7 @@
       <div class="flex items-center justify-between gap-3">
         <div>
           <div class="text-sm font-semibold moh-text">This is an ad</div>
-          <div class="text-xs moh-text-muted">Each lodge notice shows once a day. Each ad shows once every 12 hours. Premium members never see ads.</div>
+          <div class="text-xs moh-text-muted">Each community notice shows once a day. Each ad shows once every 12 hours. Premium members never see ads.</div>
         </div>
         <Checkbox v-model="isAd" binary />
       </div>
@@ -175,7 +175,7 @@ const cropFile = ref<File | null>(null)
 
 usePageSeo({
   title: 'Admin Announcement',
-  description: 'Edit a lodge announcement.',
+  description: 'Edit a community announcement.',
   canonicalPath: `/admin/announcements/${String(route.params.id)}`,
   noindex: true,
 })

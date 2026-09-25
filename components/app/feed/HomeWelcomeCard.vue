@@ -1,5 +1,5 @@
 <template>
-  <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 840:161 (shared guide), 841:275 (approved). -->
+  <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 881:524. -->
   <section v-if="!dismissed" class="activation-guide moh-text" aria-label="Getting started">
     <p class="text-[13px] uppercase moh-text-muted">{{ approved ? 'Your first days here' : 'Getting started' }}</p>
     <h2 class="text-[28px] leading-9 font-semibold">{{ heading }}</h2>
@@ -13,34 +13,34 @@
       <section v-for="(step, index) in steps" :key="step.title" class="space-y-2">
         <h3 class="text-[15px] leading-[22px] font-semibold">{{ step.done ? '✓' : `0${index + 1}` }} · {{ step.title }}</h3>
         <p class="text-[15px] leading-[22px] moh-text-muted">{{ step.body }}</p>
+        <button v-if="step.action" type="button" class="guide-button" :class="{ 'guide-primary': !step.done }" @click="act(step.action)">{{ step.label }}</button>
       </section>
-      <template v-if="!approved && !progress.followed">
-        <div v-if="wtfLoading && !wtfUsers.length" role="status" class="text-sm moh-text-muted">Loading suggestions…</div>
-        <div v-else-if="wtfError" class="text-sm moh-text-muted" role="status">Couldn’t load suggestions. <button class="min-h-11 underline" @click="refreshSuggestions({ force: true })">Try again</button></div>
-        <AppFeedHomeWelcomePersonRow v-for="person in wtfUsers.slice(0, 2)" :key="person.id" :user="person" @followed="sync" />
-        <NuxtLink to="/who-to-follow" class="min-h-11 flex items-center font-semibold" @click="track('onboarding_action_clicked', 'find_people')">See all suggestions →</NuxtLink>
-      </template>
       <button v-if="approved && showCheckinCta && checkinPrompt && !progress.contributed" type="button" class="text-left min-h-11" @click="track('onboarding_action_clicked', 'checkin'); $emit('check-in')">
         <AppCheckinPromptContext :prompt="checkinPrompt" compact />
         <span class="font-semibold">Answer →</span>
       </button>
-      <NuxtLink v-if="primaryHref" :to="primaryHref" class="guide-button guide-primary" @click="track('onboarding_action_clicked', primaryAction)">{{ primaryTitle }}</NuxtLink>
-      <button v-else type="button" class="guide-button guide-primary" @click="primaryClick">{{ primaryTitle }}</button>
     </template>
     <button v-if="!approved" type="button" class="guide-button" @click="addPhoto">Add a photo or profile details</button>
-    <button type="button" class="guide-button" @click="dismiss">I’ll explore first</button>
+    <button type="button" class="guide-button" @click="dismiss">{{ complete ? 'Back to feed' : 'I’ll explore first' }}</button>
+    <AppModal v-model="modalOpen" :title="modalTitle" title-wrap body-class="p-6">
+      <SettingsSectionsSettingsVerificationSection v-if="active === 'verification'" embedded @changed="sync" @done="active = null" />
+      <AppFeedActivationPeople v-else-if="active === 'people'" @followed="sync" />
+      <AppFeedActivationConversations v-else-if="active === 'conversations'" @reply="reply" />
+      <AppFeedActivationCompletion v-else-if="active === 'complete'" @done="active = null" />
+    </AppModal>
   </section>
 </template>
 
 <script setup lang="ts">
+import { MOH_COMPOSER_OPEN_KEY } from '~/utils/injection-keys'
+import type { FeedPost } from '~/types/api'
 import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
-const { addPhoto } = useFirstRunFlow()
+const { addPhoto, step: profileStep } = useFirstRunFlow()
+const composerOpen = inject(MOH_COMPOSER_OPEN_KEY, ref(false))
 const props = defineProps<{ showCheckinCta?: boolean; checkinPrompt?: string; hasPosted?: boolean }>()
 const emit = defineEmits<{ 'check-in': []; compose: [] }>()
 const { progress, phase, dismissed, completedCount, syncError, sync, dismiss, track } = useActivationGuide()
 const approved = computed(() => phase.value === 'approved')
-const enabled = computed(() => !dismissed.value && !approved.value && progress.value?.followed === false)
-const { users: wtfUsers, loading: wtfLoading, error: wtfError, refresh: refreshSuggestions } = useWhoToFollow({ enabled, defaultLimit: 2 })
 watch(() => props.hasPosted, () => { void sync() })
 const heading = computed(() => !approved.value ? progress.value?.verificationPending ? 'Your request is in.' : 'You’re in. Take a look around.'
   : completedCount.value === 3 ? 'You’ve made a start.' : !progress.value?.contributed ? 'You’re approved. Join in.'
@@ -51,21 +51,48 @@ const summary = computed(() => !approved.value ? progress.value?.verificationPen
     : !progress.value?.contributed ? 'Start a conversation. Give another man a reason to reply.'
       : !progress.value.replied ? 'You’ve taken the first step. Make a connection with another man.' : 'Read your replies and keep showing up for each other.')
 const steps = computed(() => approved.value ? [
-  { title: 'Share what you’re working on', body: 'A post, reply, or check-in is a good place to start.', done: progress.value?.contributed },
-  { title: 'Reply to another man', body: 'Ask a question, offer encouragement, or share your experience.', done: progress.value?.replied },
-  { title: 'Come back and follow through', body: 'Participate on another day. Tell us how it went.', done: progress.value?.returned },
+  { title: 'Share what you’re working on', body: 'A post, reply, or check-in is a good place to start.', done: progress.value?.contributed, action: 'compose', label: 'Write a post' },
+  { title: 'Reply to another man', body: 'Ask a question, offer encouragement, or share your experience.', done: progress.value?.replied, action: 'conversations', label: 'Find a conversation' },
+  { title: 'Come back and follow through', body: 'Participate on another day. Tell us how it went.', done: progress.value?.returned, action: '', label: '' },
 ] : [
-  { title: progress.value?.verificationRequested ? 'Verification requested' : 'Request verification', body: 'Meet an admin in a video call here in the app.', done: progress.value?.verificationRequested },
-  { title: 'Find your people', body: 'Explore beyond your starter follows. Choose men whose conversations resonate with you.', done: progress.value?.followed },
+  { title: progress.value?.verificationRequested ? 'Verification requested' : 'Request verification', body: 'Meet an admin in a video call here in the app.', done: progress.value?.verificationRequested, action: 'verification', label: progress.value?.verificationRequested ? 'View request' : 'Request verification' },
+  { title: 'Find your people', body: 'Explore beyond your starter follows. Choose men whose conversations resonate with you.', done: progress.value?.followed, action: 'people', label: 'Find people' },
 ])
-const primaryAction = computed(() => !approved.value ? 'verification' : completedCount.value === 3 ? 'complete' : !progress.value?.contributed ? 'contribute' : !progress.value.replied ? 'find_conversation' : 'notifications')
-const primaryHref = computed(() => ({ verification: '/verification', find_conversation: '/explore', notifications: '/notifications' } as Record<string, string>)[primaryAction.value])
-const primaryTitle = computed(() => ({ verification: progress.value?.verificationPending ? 'View verification' : 'Request verification', complete: 'Back to your feed', contribute: 'Introduce yourself', find_conversation: 'Find a conversation', notifications: 'View notifications' })[primaryAction.value])
-function primaryClick() {
-  track('onboarding_action_clicked', primaryAction.value)
-  if (primaryAction.value === 'complete') dismiss()
-  else emit('compose')
+const { user } = useAuth()
+const replyModal = useReplyModal()
+const active = ref<string | null>(null)
+const complete = computed(() => Boolean(progress.value) && completedCount.value === (approved.value ? 3 : 2))
+const celebrationKey = computed(() => `moh.activation.celebrated.v1.${user.value?.id}.${phase.value}`)
+const celebrated = ref(false)
+const modalOpen = computed({ get: () => active.value !== null, set: (open) => { if (!open) active.value = null } })
+const modalTitle = computed(() => ({ verification: 'Verification', people: 'Find your people', conversations: 'Find a conversation', complete: 'Good work. You’re all set.' })[active.value ?? ''] ?? '')
+function act(action: string) {
+  track('onboarding_action_clicked', action)
+  if (action === 'compose') emit('compose')
+  else active.value = action
 }
+async function reply(post: FeedPost) {
+  active.value = null
+  await nextTick()
+  replyModal.show(post)
+}
+function restoreCelebration() {
+  active.value = null
+  try { celebrated.value = localStorage.getItem(celebrationKey.value) === '1' } catch { celebrated.value = false }
+}
+function celebrate() {
+  if (!complete.value || dismissed.value || celebrated.value || active.value || replyModal.open.value || composerOpen.value || profileStep.value !== 'none') return
+  try { if (localStorage.getItem(celebrationKey.value) === '1') { celebrated.value = true; return } } catch { /* Storage is optional. */ }
+  celebrated.value = true
+  try { localStorage.setItem(celebrationKey.value, '1') } catch { /* Retain for this session. */ }
+  active.value = 'complete'
+}
+onMounted(() => { restoreCelebration(); celebrate() })
+watch(celebrationKey, restoreCelebration)
+watch([complete, active, dismissed, replyModal.open, composerOpen, profileStep], celebrate, { flush: 'post' })
+watch(active, (value, previous) => { if (!value && previous) void sync() })
+const unregisterReply = replyModal.registerOnReplyPosted(() => { void sync() })
+onBeforeUnmount(unregisterReply)
 </script>
 
 <style scoped>

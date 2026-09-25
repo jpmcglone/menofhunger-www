@@ -61,3 +61,6 @@ export type GroupComposerContext = {
 }
 export const MOH_GROUP_COMPOSER_KEY: InjectionKey<Ref<GroupComposerContext | null>> = Symbol('moh-group-composer')
 
+
+/** Main composer visibility, so contextual guides can wait before presenting another dialog. */
+export const MOH_COMPOSER_OPEN_KEY: InjectionKey<Ref<boolean>> = Symbol('moh-composer-open')

@@ -66,7 +66,7 @@ describe('admin conversation queue', () => {
       expect(wrapper.find('#conversations').exists()).toBe(false)
       expect(wrapper.text()).toContain('Member posts answered in 24 hours')
       expect(wrapper.text()).toContain('3 of 8')
-      expect(wrapper.text()).toContain('Lodge prompt replies')
+      expect(wrapper.text()).toContain('Community prompt replies')
     } finally { wrapper.unmount() }
   })
 

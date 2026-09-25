@@ -128,7 +128,7 @@ const editor = useEditor({
       underline: {},
     }),
     Image.configure({ inline: false }),
-    Placeholder.configure({ placeholder: 'Write the lodge letter…' }),
+    Placeholder.configure({ placeholder: 'Write the Men of Hunger newsletter…' }),
   ],
   editorProps: {
     attributes: {

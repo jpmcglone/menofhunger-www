@@ -62,11 +62,12 @@
       <p class="text-xs moh-text-muted">Verification is complete after an admin approves it.</p>
     </form>
 
+    <button v-if="embedded && (isVerified || verificationLatestRequest?.status === 'pending')" type="button" class="min-h-11 w-full font-semibold" @click="emit('done')">Back to feed</button>
     <NuxtLink
-      v-if="isVerified || verificationLatestRequest?.status === 'pending'"
+      v-else-if="isVerified || verificationLatestRequest?.status === 'pending'"
       :to="isVerified ? `/u/${authUser?.username}` : '/home'"
       class="flex min-h-11 w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold bg-[var(--moh-button-primary-fill)] text-[var(--moh-button-primary-label)] moh-focus"
-    >{{ isVerified ? 'View your profile' : 'Back to the lodge' }}</NuxtLink>
+    >{{ isVerified ? 'View your profile' : 'Back to feed' }}</NuxtLink>
 
     <details class="text-sm" :open="(authUser?.verifiedStatus ?? 'none') !== 'none'">
       <summary class="min-h-11 cursor-pointer py-3 font-semibold">Verification details</summary>
@@ -131,8 +132,11 @@ import { formatDateTime } from '~/utils/time-format'
 
 withDefaults(defineProps<{
   /** Show the "Verification" sub-heading divider (used when composed with other blocks). */
+  embedded?: boolean
   showDivider?: boolean
 }>(), { showDivider: false })
+
+const emit = defineEmits<{ done: []; changed: [] }>()
 
 const isVerified = computed(() => (authUser.value?.verifiedStatus ?? 'none') !== 'none')
 
@@ -185,6 +189,7 @@ const { submit: startVerification, submitting: verificationStarting } = useFormS
       body: { videoCallConsent: true },
     })
     verificationLatestRequest.value = req
+    emit('changed')
   },
   {
     defaultError: 'Failed to start verification.',

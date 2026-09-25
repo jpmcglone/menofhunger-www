@@ -1,7 +1,7 @@
 <template>
   <AppPageContent bottom="standard" class="relative">
     <AppRefreshIndicator :loading="loading && !initialLoading" />
-    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Newsletter" description="Draft, schedule, and send the lodge letter.">
+    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Newsletter" description="Draft, schedule, and send the Men of Hunger newsletter.">
       <template #leading>
         <div class="md:hidden">
           <Button as="NuxtLink" to="/admin" text severity="secondary" aria-label="Back">
@@ -69,7 +69,7 @@ definePageMeta({
 
 usePageSeo({
   title: 'Admin Newsletter',
-  description: 'Write and send the lodge letter.',
+  description: 'Write and send the Men of Hunger newsletter.',
   canonicalPath: '/admin/newsletters',
   noindex: true,
 })

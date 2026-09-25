@@ -1,5 +1,6 @@
 import { computed, onUnmounted, provide, ref, watch, type Ref } from 'vue'
 import {
+  MOH_COMPOSER_OPEN_KEY,
   MOH_GROUP_COMPOSER_KEY,
   MOH_HOME_COMPOSER_IN_VIEW_KEY,
   MOH_OPEN_COMPOSER_KEY,
@@ -75,6 +76,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
   // ─── Modal state ─────────────────────────────────────────────────────────────
 
   const composerModalOpen = ref(false)
+  provide(MOH_COMPOSER_OPEN_KEY, composerModalOpen)
   const composerInitialText = ref<string | null>(null)
   const composerSourceOnlyMePost = ref<FeedPost | null>(null)
   const composerIsFromOnlyMe = computed(() => Boolean(composerSourceOnlyMePost.value?.id))

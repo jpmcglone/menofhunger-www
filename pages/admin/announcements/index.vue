@@ -1,7 +1,7 @@
 <template>
   <AppPageContent bottom="standard" class="relative">
     <AppRefreshIndicator :loading="loading && !initialLoading" />
-    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Announcements" description="Each lodge notice once a day. Each ad every 12 hours. One per open.">
+    <AppPageHeader sticky class="px-4 pt-4 pb-3" title="Announcements" description="Each community notice once a day. Each ad every 12 hours. One per open.">
       <template #leading>
         <div class="md:hidden">
           <Button as="NuxtLink" to="/admin" text severity="secondary" aria-label="Back">
@@ -69,7 +69,7 @@ definePageMeta({
 
 usePageSeo({
   title: 'Admin Announcements',
-  description: 'Create and publish lodge announcements.',
+  description: 'Create and publish community announcements.',
   canonicalPath: '/admin/announcements',
   noindex: true,
 })

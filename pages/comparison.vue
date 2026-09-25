@@ -9,7 +9,7 @@
         X vs. Men of Hunger
       </h1>
       <p class="mx-auto max-w-2xl text-base text-gray-600 dark:text-gray-300">
-        X is the town square. Men of Hunger is the lodge. X gives you reach. Men of Hunger gives you quality.
+        X gives you reach. Men of Hunger gives you a community for meaningful conversations.
       </p>
     </div>
 
@@ -34,8 +34,8 @@
         <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white/70 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50">
           <table class="w-full table-fixed text-left text-sm">
             <colgroup>
-              <col class="w-1/2" />
-              <col class="w-1/2" />
+              <col class="w-1/2">
+              <col class="w-1/2">
             </colgroup>
             <thead class="bg-gray-50/90 dark:bg-zinc-900/70">
               <tr>
@@ -106,7 +106,7 @@ const sections: ComparisonSection[] = [
     title: 'Different by design',
     description: 'Same mechanics, opposite incentives.',
     rows: [
-      { x: 'Town square for everyone.', moh: 'The lodge for serious men.' },
+      { x: 'Town square for everyone.', moh: 'A community for serious men.' },
       { x: 'Users at scale.', moh: 'Serious men at depth.' },
       { x: 'Reach and virality are the prize.', moh: 'Quality and trust are the prize.' },
       { x: 'Ads and attention drive the product.', moh: 'Membership funds the product.' },

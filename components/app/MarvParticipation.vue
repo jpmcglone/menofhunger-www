@@ -7,7 +7,7 @@
       <NuxtLink v-for="suggestion in data.suggestions" :key="suggestion.postId" :to="`/p/${suggestion.postId}`" class="block py-4" @click="$emit('navigate')"><span class="text-xs moh-text-muted">{{ suggestion.reason }}</span><p class="mt-1 text-sm font-medium">{{ suggestion.name || `@${suggestion.username}` }}</p><p class="mt-1 line-clamp-2 text-sm moh-text-muted">{{ suggestion.body || 'Open the conversation' }}</p><span class="mt-2 inline-block text-xs font-medium">Read & reply →</span></NuxtLink>
     </div>
     <p v-else-if="error" class="mt-3 text-sm moh-text-muted">Conversations couldn't load. <button class="underline" @click="refresh">Try again</button></p>
-    <p v-else class="mt-3 text-sm moh-text-muted">You're caught up with these conversations. Check the lodge for something new.</p>
+    <p v-else class="mt-3 text-sm moh-text-muted">You're caught up with these conversations. Check the feed for something new.</p>
   </section>
 </template>
 <script setup lang="ts">
