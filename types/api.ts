@@ -43,6 +43,13 @@ export type BoardNewThreadPayload = Contracts.BoardNewThreadPayloadDto
 export type BoardSort = 'top' | 'new' | 'comments'
 export type BoardRange = 'day' | 'week' | 'month' | 'year' | 'all'
 
+// ─── Members map ────────────────────────────────────────────────────────────
+export type MembersMapUser = Contracts.UserListDto
+export type MembersMapState = Contracts.MembersMapStateDto
+export type MembersMapOnlineEntry = Contracts.MembersMapOnlineEntryDto
+export type MembersMapTotals = Contracts.MembersMapTotalsDto
+export type MembersMapSummary = Contracts.MembersMapSummaryDto
+
 export type AccountSwitch = {
   operatorUserId: string
   operatorUsername: string | null

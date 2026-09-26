@@ -17,6 +17,13 @@
           v-if="anonymousOnline !== null && anonymousOnline > 0"
           class="moh-text-soft"
         > +{{ anonymousOnline }} {{ anonymousOnline === 1 ? 'guest' : 'guests' }}</span>
+        <NuxtLink
+          v-if="canSeeMap"
+          :to="{ path: '/map', query: { online: '1' } }"
+          class="ml-auto font-semibold text-[var(--moh-link)] hover:underline underline-offset-2"
+        >
+          See who's where
+        </NuxtLink>
       </p>
     </div>
 
@@ -201,7 +208,8 @@ const recentNextCursor = useState<string | null>('online-page-recent-next-cursor
 const recentLoading = useState<boolean>('online-page-recent-loading', () => false)
 const recentError = useState<string | null>('online-page-recent-error', () => null)
 
-const { user: authUser } = useAuth()
+const { user: authUser, isVerified, isPremium } = useAuth()
+const canSeeMap = computed(() => isVerified.value || isPremium.value)
 const { nowMs } = useNowTicker({ everyMs: 15_000 })
 const viewerCanSeeLastOnline = computed(() => Boolean(authUser.value))
 const RECENTLY_ONLINE_MS = 60 * 60 * 1000

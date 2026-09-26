@@ -191,6 +191,7 @@ export function navCompactModePath(path: string): boolean {
     path.startsWith('/tiers/') ||
     path === '/radio' ||
     path.startsWith('/radio/') ||
+    path === '/map' ||
     path.startsWith('/a/') ||
     path === '/b' ||
     path.startsWith('/b/') ||
@@ -204,7 +205,7 @@ export function isRightRailForcedHiddenPath(path: string): boolean {
   // Admin user detail pages should show the right rail.
   if (/^\/admin\/users\/[^/]+/.test(path) && path !== '/admin/users') return false
   // On these routes we want the center column to be as wide as possible.
-  const forced = ['/chat', '/admin', '/settings', '/roadmap', '/tiers', '/comparison']
+  const forced = ['/chat', '/admin', '/settings', '/roadmap', '/tiers', '/comparison', '/map']
   if (forced.some((p) => path === p || path.startsWith(`${p}/`))) return true
   // Article editor needs the full center column width.
   if (path === '/articles/new' || path.startsWith('/articles/edit/')) return true

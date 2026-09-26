@@ -46,6 +46,13 @@
         >
           See all
         </NuxtLink>
+        <NuxtLink
+          v-if="canSeeMap"
+          :to="{ path: '/map', query: { state: stateCode } }"
+          class="shrink-0 text-sm font-semibold text-[var(--moh-link)] hover:underline underline-offset-2"
+        >
+          Map
+        </NuxtLink>
       </div>
 
       <AppInlineAlert v-if="error" class="mx-3 mt-3 sm:mx-4 sm:mt-4" severity="danger">
@@ -118,6 +125,8 @@ const STATE_NAMES: Record<string, string> = {
 
 const stateLabel = computed(() => STATE_NAMES[stateCode.value] ?? stateCode.value)
 const membersHref = computed(() => ({ path: '/l', query: { state: stateCode.value } }))
+const { isVerified, isPremium } = useAuth()
+const canSeeMap = computed(() => isVerified.value || isPremium.value)
 
 usePageSeo({
   title: computed(() => `Posts from ${stateLabel.value}`),
