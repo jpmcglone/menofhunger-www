@@ -348,7 +348,8 @@
                 composerUploading ||
                 composerHasFailedMedia ||
                 pollUploading ||
-                pollHasFailed
+                pollHasFailed ||
+                pollIncomplete
               "
               :title="composerHasFailedMedia ? 'Remove failed items to post' : (pollHasFailed ? 'Remove failed poll images to post' : undefined)"
               :loading="submitting"
@@ -356,6 +357,13 @@
             />
             </template>
           </AppComposerActionBar>
+          <p
+            v-if="pollIncomplete"
+            class="text-xs moh-text-muted"
+            role="status"
+          >
+            Add at least two poll options, or remove the poll.
+          </p>
           <p
             v-if="composerHasFailedMedia || pollHasFailed"
             class="text-xs text-amber-600 dark:text-amber-400"
@@ -566,6 +574,7 @@ import {
   primaryPaletteToCssVars,
 } from '~/utils/theme-tint'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { pollIsIncomplete } from '~/utils/composer-poll'
 import { visibilityTagLabel } from '~/utils/post-visibility'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useFormSubmit } from '~/composables/useFormSubmit'
@@ -1015,6 +1024,7 @@ function insertEmoji(emoji: string) {
 type ComposerPollPayload = import('~/composables/composer/types').ComposerPollPayload
 const poll = ref<ComposerPollPayload | null>(null)
 const hasPoll = computed(() => poll.value != null)
+const pollIncomplete = computed(() => pollIsIncomplete(poll.value))
 const pollUploading = ref(false)
 const pollHasFailed = ref(false)
 function onPollStatus(v: { uploading: boolean; hasFailed: boolean }) {
