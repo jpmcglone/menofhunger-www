@@ -8,13 +8,14 @@
       <span class="text-lg font-bold moh-text">Board</span>
     </div>
 
-    <div v-if="pending && !thread" class="py-16 text-center moh-meta">Loading…</div>
+    <div v-if="pending && !thread" class="flex min-h-[240px] items-center justify-center"><AppLogoLoader /></div>
     <div v-else-if="error || !thread" class="moh-gutter-x py-16 text-center">
       <p class="moh-body">This thread isn’t available.</p>
       <NuxtLink to="/b" class="mt-2 inline-block text-sm hover:underline" style="color: var(--moh-verified)">Back to the Board</NuxtLink>
     </div>
 
-    <template v-else>
+    <div v-else class="relative">
+      <AppRefreshIndicator :loading="pending || (commentsPending && Boolean(commentsPage))" />
       <AppBoardThreadHead :thread="thread" @updated="onThreadUpdated" @deleted="onThreadDeleted" />
 
       <template v-if="thread.viewerCanAccess">
@@ -62,7 +63,7 @@
           </div>
         </template>
       </template>
-    </template>
+    </div>
   </AppPageContent>
 </template>
 

@@ -85,54 +85,56 @@
       />
     </div>
 
-    <template v-if="view === 'comments'">
-      <div class="moh-divide">
-        <article v-for="c in latestComments" :key="c.id" class="moh-gutter-x py-3">
-          <div class="flex flex-wrap items-center gap-x-1.5 text-xs moh-text-soft">
-            <AppBoardBoostButton :post-id="c.id" :points="c.points" :viewer-has-boosted="c.viewerHasBoosted" />
-            <NuxtLink
-              :to="`/u/${encodeURIComponent(c.author.username ?? '')}`"
-              class="font-semibold hover:underline"
-              :style="{ color: userActionColor(c.author) }"
-              @mouseenter="(e: MouseEvent) => preview.onEnter(c.author.username, e)"
-              @mousemove="preview.onMove"
-              @mouseleave="preview.onLeave"
-            >{{ c.author.username }}</NuxtLink>
-            <NuxtLink :to="boardCommentHref(c.threadId, c.id)" class="hover:underline">{{ formatListTime(c.createdAt) }}</NuxtLink>
-            <span aria-hidden="true">·</span>
-            <span>on:</span>
-            <NuxtLink v-if="c.thread" :to="boardThreadHref({ id: c.threadId })" class="truncate hover:underline" style="color: var(--moh-verified)">{{ c.thread.title }}</NuxtLink>
-          </div>
-          <p class="mt-1 whitespace-pre-wrap break-words text-sm moh-text">{{ c.body }}</p>
-        </article>
-      </div>
-      <p v-if="!loading && !latestComments.length" class="py-12 text-center moh-meta">No comments yet.</p>
-    </template>
+    <AppSubtleSectionLoader :loading="initialLoading" :refreshing="refreshing" min-height-class="min-h-[240px]">
+      <template v-if="view === 'comments'">
+        <div class="moh-divide">
+          <article v-for="c in latestComments" :key="c.id" class="moh-gutter-x py-3">
+            <div class="flex flex-wrap items-center gap-x-1.5 text-xs moh-text-soft">
+              <AppBoardBoostButton :post-id="c.id" :points="c.points" :viewer-has-boosted="c.viewerHasBoosted" />
+              <NuxtLink
+                :to="`/u/${encodeURIComponent(c.author.username ?? '')}`"
+                class="font-semibold hover:underline"
+                :style="{ color: userActionColor(c.author) }"
+                @mouseenter="(e: MouseEvent) => preview.onEnter(c.author.username, e)"
+                @mousemove="preview.onMove"
+                @mouseleave="preview.onLeave"
+              >{{ c.author.username }}</NuxtLink>
+              <NuxtLink :to="boardCommentHref(c.threadId, c.id)" class="hover:underline">{{ formatListTime(c.createdAt) }}</NuxtLink>
+              <span aria-hidden="true">·</span>
+              <span>on:</span>
+              <NuxtLink v-if="c.thread" :to="boardThreadHref({ id: c.threadId })" class="truncate hover:underline" style="color: var(--moh-verified)">{{ c.thread.title }}</NuxtLink>
+            </div>
+            <p class="mt-1 whitespace-pre-wrap break-words text-sm moh-text">{{ c.body }}</p>
+          </article>
+        </div>
+        <p v-if="!loading && !latestComments.length" class="py-12 text-center moh-meta">No comments yet.</p>
+      </template>
 
-    <template v-else>
-      <div class="moh-divide">
-        <AppBoardThreadRow
-          v-for="t in visibleThreads"
-          :key="t.id"
-          :thread="t"
-          :show-hide="isAuthed"
-          @toggle-hide="onToggleHide"
-        />
-      </div>
-      <div v-if="!loading && !visibleThreads.length" class="py-12 text-center">
-        <p class="text-sm font-semibold moh-text">Nothing here yet</p>
-        <p class="mt-1 text-sm moh-text-muted">{{ emptyLabel }}</p>
-        <button v-if="isFiltered" type="button" class="mt-2 text-sm hover:underline" style="color: var(--moh-verified)" @click="clearFilters">Clear filters</button>
-      </div>
-    </template>
+      <template v-else>
+        <div class="moh-divide">
+          <AppBoardThreadRow
+            v-for="t in visibleThreads"
+            :key="t.id"
+            :thread="t"
+            :show-hide="isAuthed"
+            @toggle-hide="onToggleHide"
+          />
+        </div>
+        <div v-if="!loading && !visibleThreads.length" class="py-12 text-center">
+          <p class="text-sm font-semibold moh-text">Nothing here yet</p>
+          <p class="mt-1 text-sm moh-text-muted">{{ emptyLabel }}</p>
+          <button v-if="isFiltered" type="button" class="mt-2 text-sm hover:underline" style="color: var(--moh-verified)" @click="clearFilters">Clear filters</button>
+        </div>
+      </template>
 
-    <div v-if="loading" class="py-8 text-center moh-meta">Loading…</div>
-    <button
-      v-else-if="nextCursor"
-      type="button"
-      class="w-full border-t moh-border py-3 text-sm moh-text-muted transition-colors hover:bg-[var(--moh-surface-hover)]"
-      @click="loadMore"
-    >More</button>
+      <div v-if="loadingMore" class="py-8 text-center moh-meta">Loading…</div>
+      <button
+        v-else-if="nextCursor && !loading"
+        type="button"
+        class="w-full border-t moh-border py-3 text-sm moh-text-muted transition-colors hover:bg-[var(--moh-surface-hover)]"
+        @click="loadMore"
+      >More</button>
+    </AppSubtleSectionLoader>
   </AppPageContent>
 </template>
 
@@ -227,6 +229,13 @@ const visibleThreads = computed(() => threads.value.filter((t) => !postCache.cac
 const latestComments = ref<BoardComment[]>([])
 const nextCursor = ref<string | null>(null)
 const loading = ref(false)
+const loadingMore = ref(false)
+/** Content type on screen. First load, or switching threads ↔ comments, shows the loader instead of "empty". */
+const loadedKind = ref<'threads' | 'comments' | null>(null)
+const contentKind = computed(() => (view.value === 'comments' ? 'comments' as const : 'threads' as const))
+const initialLoading = computed(() => loadedKind.value !== contentKind.value)
+// Filter/sort changes and pulls keep the current rows visible under the refresh bar.
+const refreshing = computed(() => loading.value && !initialLoading.value)
 let loadSeq = 0
 
 function listQuery(cursor: string | null) {
@@ -245,7 +254,9 @@ function listQuery(cursor: string | null) {
 
 async function load(reset = true) {
   const seq = ++loadSeq
-  loading.value = true
+  const kind = contentKind.value
+  if (reset) loading.value = true
+  else loadingMore.value = true
   try {
     if (view.value === 'comments') {
       const res = await api.listLatestComments({ cursor: reset ? null : nextCursor.value })
@@ -260,10 +271,15 @@ async function load(reset = true) {
       nextCursor.value = res.nextCursor
     }
     if (reset) newThreadCount.value = 0
+    loadedKind.value = kind
   } catch (e) {
+    if (seq === loadSeq) loadedKind.value = kind
     if (seq === loadSeq) toast.push({ title: getApiErrorMessage(e) || 'Couldn’t load the Board.', tone: 'error', durationMs: 2200 })
   } finally {
-    if (seq === loadSeq) loading.value = false
+    if (seq === loadSeq) {
+      loading.value = false
+      loadingMore.value = false
+    }
   }
 }
 

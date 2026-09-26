@@ -1,21 +1,17 @@
 <template>
-  <section v-if="postId || data?.posts.length || error || open" class="border-b moh-border" :class="!postId && 'border-t'">
+  <section v-if="postId || data?.posts.length || error || open" class="border-b moh-border">
     <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 155:21 -->
-    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-[62px] w-full flex-col gap-1.5 py-2.5 text-left" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
-      <span class="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span class="inline-flex items-center gap-1.5 text-sm font-semibold">
-          <AppIconGlyph name="analytics" :size="16" class="moh-text-muted" />
-          Last 7 days
-        </span>
-        <span v-if="data && !error" class="text-[13px] font-semibold tabular-nums" aria-hidden="true">
+    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-11 w-full items-center gap-2 py-2 text-left text-[13px]" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
+      <AppIconGlyph name="analytics" :size="16" class="shrink-0 moh-text-muted" />
+      <span class="shrink-0 font-semibold">Last 7 days</span>
+      <span class="min-w-0 flex-1 truncate moh-text-muted tabular-nums" aria-hidden="true">
+        <template v-if="error">Activity unavailable</template>
+        <template v-else-if="data">
           +{{ formatShortCount(data.participantCount) }} {{ data.participantCount === 1 ? 'participant' : 'participants' }}
-        </span>
+          · {{ formatShortCount(data.postCount) }} {{ data.postCount === 1 ? 'post' : 'posts' }}
+        </template>
       </span>
-      <span v-if="error" class="text-xs moh-text-muted">Activity unavailable</span>
-      <span v-else-if="data" class="text-xs leading-4 moh-text-muted tabular-nums" aria-hidden="true">
-        {{ formatShortCount(data.postCount) }} {{ data.postCount === 1 ? 'post' : 'posts' }}<template v-if="data.reach?.scope === 'lifetime'"> &nbsp;·&nbsp; {{ formatShortCount(data.reach.people) }} reached &nbsp;·&nbsp; {{ formatShortCount(data.reach.impressions) }} impressions</template>
-      </span>
-      <span v-else class="text-xs moh-text-muted">Conversation activity</span>
+      <Icon name="tabler:chevron-right" class="shrink-0 text-sm moh-text-soft" aria-hidden="true" />
     </button>
     <button v-else type="button" class="moh-gutter-x flex min-h-12 w-full items-center gap-3 py-3 text-left" :aria-expanded="open" @click="open = !open">
       <Icon name="tabler:chart-bar" class="text-lg moh-text-muted" aria-hidden="true" />

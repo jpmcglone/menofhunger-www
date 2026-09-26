@@ -185,15 +185,18 @@
         </template>
       </AppFeedHomeFeedHeader>
 
-      <!-- Always reserve the arrival row, so its appearance cannot move posts. -->
-      <div v-if="isAuthed" ref="feedArrivalRowEl" class="h-11">
-        <AppFeedNewPostsPill
-          v-if="feedArrivals.pending.value.length && !isReadingFeed"
-          inline
-          :authors="feedArrivals.authors.value"
-          :count="feedArrivals.pending.value.length"
-          @reveal="revealFeedArrivals"
-        />
+      <!-- Zero-height anchor: the pill floats over the first post, so its arrival never moves posts
+           and there's no empty band under the tabs when nothing is waiting. -->
+      <div v-if="isAuthed" ref="feedArrivalRowEl" class="relative z-20 h-0">
+        <div class="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
+          <AppFeedNewPostsPill
+            v-if="feedArrivals.pending.value.length && !isReadingFeed"
+            class="pointer-events-auto"
+            :authors="feedArrivals.authors.value"
+            :count="feedArrivals.pending.value.length"
+            @reveal="revealFeedArrivals"
+          />
+        </div>
       </div>
 
       <div ref="homeFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
