@@ -23,6 +23,8 @@ export type AtomFeedItem = {
   title: string
   /** Full permalink URL. */
   url: string
+  /** Outside page the item is about (Board link posts) — rendered as rel="related". */
+  relatedUrl?: string | null
   /** ISO-8601 published date. */
   publishedAt: string
   /** ISO-8601 last-modified date (falls back to publishedAt). */
@@ -89,6 +91,7 @@ function buildEntry(item: AtomFeedItem): string {
   lines.push(`    <id>${escXml(item.id)}</id>`)
   lines.push(`    <title type="text">${escXml(item.title)}</title>`)
   lines.push(`    <link href="${escXml(item.url)}" rel="alternate"/>`)
+  if (item.relatedUrl) lines.push(`    <link href="${escXml(item.relatedUrl)}" rel="related"/>`)
   lines.push(`    <published>${published}</published>`)
   lines.push(`    <updated>${updated}</updated>`)
 

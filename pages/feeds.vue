@@ -48,6 +48,49 @@
         </div>
       </section>
 
+      <!-- Board feeds -->
+      <section class="mb-10">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400 mb-1">
+          Board Feeds
+        </h2>
+        <p class="text-sm text-gray-500 dark:text-zinc-400 mb-3">
+          New public Board posts, newest first. Each item opens the discussion; the shared link is inside.
+          For one tag, replace
+          <code class="font-mono bg-gray-100 dark:bg-zinc-800 px-1 rounded text-xs">:tag</code>
+          with a tag such as
+          <code class="font-mono bg-gray-100 dark:bg-zinc-800 px-1 rounded text-xs">ask</code>,
+          <code class="font-mono bg-gray-100 dark:bg-zinc-800 px-1 rounded text-xs">show</code>, or
+          <code class="font-mono bg-gray-100 dark:bg-zinc-800 px-1 rounded text-xs">hiring</code>.
+        </p>
+        <div class="rounded-lg border border-gray-200 dark:border-zinc-800 moh-divide">
+          <div
+            v-for="row in boardFeeds"
+            :key="row.url"
+            class="flex items-center justify-between gap-4 px-4 py-3"
+          >
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ row.label }}</p>
+                <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-zinc-500 border border-gray-200 dark:border-zinc-700 rounded px-1.5 py-px shrink-0">
+                  {{ row.format }}
+                </span>
+              </div>
+              <p class="text-xs text-gray-400 dark:text-zinc-500 font-mono mt-0.5 truncate">{{ row.url }}</p>
+            </div>
+            <button
+              type="button"
+              class="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 border border-gray-200 dark:border-zinc-700 rounded px-2.5 py-1 transition-colors"
+              @click="copyFeed(row.url)"
+            >
+              Copy
+            </button>
+          </div>
+        </div>
+        <p class="mt-2 text-xs text-gray-400 dark:text-zinc-500">
+          The RSS button on the Board copies the feed for the tag you're viewing.
+        </p>
+      </section>
+
       <!-- Per-author feeds -->
       <section class="mb-10">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400 mb-1">
@@ -183,7 +226,7 @@ definePageMeta({
 
 usePageSeo({
   title: 'RSS Feeds',
-  description: 'Subscribe to Men of Hunger articles and posts in any feed reader — available as RSS 2.0, Atom 1.0, and JSON Feed.',
+  description: 'Subscribe to Men of Hunger articles, Board posts, and member posts in any feed reader — available as RSS 2.0, Atom 1.0, and JSON Feed.',
   canonicalPath: '/feeds',
   ogType: 'website',
   image: '/images/banner.png',
@@ -195,6 +238,15 @@ const globalArticleFeeds = [
   { label: 'Men of Hunger — Articles', url: `${SITE}/articles/feed.xml`, format: 'RSS 2.0' },
   { label: 'Men of Hunger — Articles', url: `${SITE}/articles/feed.atom`, format: 'Atom 1.0' },
   { label: 'Men of Hunger — Articles', url: `${SITE}/articles/feed.json`, format: 'JSON Feed' },
+]
+
+const boardFeeds = [
+  { label: 'Board', url: `${SITE}/b/feed.xml`, format: 'RSS 2.0' },
+  { label: 'Board', url: `${SITE}/b/feed.atom`, format: 'Atom 1.0' },
+  { label: 'Board', url: `${SITE}/b/feed.json`, format: 'JSON Feed' },
+  { label: 'Board Tag', url: `${SITE}/b/tags/:tag/feed.xml`, format: 'RSS 2.0' },
+  { label: 'Board Tag', url: `${SITE}/b/tags/:tag/feed.atom`, format: 'Atom 1.0' },
+  { label: 'Board Tag', url: `${SITE}/b/tags/:tag/feed.json`, format: 'JSON Feed' },
 ]
 
 const perAuthorFeeds = [

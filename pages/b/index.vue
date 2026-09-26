@@ -5,6 +5,15 @@
       <h1 class="moh-h1">Board</h1>
       <div class="flex items-center gap-2">
         <button
+          v-tooltip.bottom="feedCopyLabel"
+          type="button"
+          class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-text-muted hover:text-[var(--moh-text)] moh-surface-hover transition-colors"
+          :aria-label="feedCopyLabel"
+          @click="copyBoardFeed"
+        >
+          <Icon name="tabler:rss" class="text-base" aria-hidden="true" />
+        </button>
+        <button
           type="button"
           class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-text-muted moh-surface-hover"
           :aria-expanded="searchOpen"
@@ -191,6 +200,33 @@ const scope = computed<'all' | 'verifiedOnly' | 'premiumOnly'>(() => {
 })
 const tags = computed(() => qs('tags').split(',').map((t) => t.trim()).filter(Boolean).slice(0, 3))
 const domain = computed(() => qs('domain') || null)
+
+// Public threads only; one selected tag gets its own feed, anything else gets the site-wide one.
+const { origin: siteOrigin } = useRequestURL()
+const feedTag = computed(() => (tags.value.length === 1 ? tags.value[0]!.toLowerCase() : null))
+const feedBase = computed(() => (feedTag.value ? `${siteOrigin}/b/tags/${encodeURIComponent(feedTag.value)}` : `${siteOrigin}/b`))
+const feedCopyLabel = computed(() => (feedTag.value ? `Copy RSS feed for #${feedTag.value}` : 'Copy RSS feed link'))
+const { copyText: copyTextRaw } = useCopyToClipboard()
+
+async function copyBoardFeed() {
+  try {
+    await copyTextRaw(`${feedBase.value}/feed.xml`)
+    toast.push({ title: 'RSS feed link copied', tone: 'success', durationMs: 1400 })
+  } catch {
+    toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
+  }
+}
+
+useHead(computed(() => {
+  const label = feedTag.value ? `Board #${feedTag.value}` : 'Board'
+  return {
+    link: [
+      { rel: 'alternate', type: 'application/rss+xml', title: `${label} (RSS)`, href: `${feedBase.value}/feed.xml` },
+      { rel: 'alternate', type: 'application/atom+xml', title: `${label} (Atom)`, href: `${feedBase.value}/feed.atom` },
+      { rel: 'alternate', type: 'application/feed+json', title: `${label} (JSON Feed)`, href: `${feedBase.value}/feed.json` },
+    ],
+  }
+}))
 const q = computed(() => qs('q') || null)
 const showHidden = computed(() => isAuthed.value && qs('hidden') === '1')
 const isFiltered = computed(() => Boolean(tags.value.length || domain.value || q.value || scope.value !== 'all' || range.value || showHidden.value))

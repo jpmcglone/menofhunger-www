@@ -21,6 +21,8 @@ export type JsonFeedItem = {
   id: string
   /** Full permalink URL. */
   url: string
+  /** Outside page the item is about (Board link posts) — JSON Feed `external_url`. */
+  externalUrl?: string | null
   /** Human-readable title. */
   title?: string
   /** ISO-8601 published date. */
@@ -68,6 +70,7 @@ export function buildJsonFeed(opts: BuildJsonFeedOptions): string {
       url: item.url,
       date_published: item.publishedAt,
     }
+    if (item.externalUrl) base.external_url = item.externalUrl
     if (item.title) base.title = item.title
     if (item.updatedAt) base.date_modified = item.updatedAt
     if (item.authorName) base.authors = [{ name: item.authorName, url: `${site}/u/${item.authorName}` }]

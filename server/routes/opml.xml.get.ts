@@ -114,6 +114,24 @@ export default defineEventHandler((event) => {
 
     '    </outline>',
 
+    // ── Board ─────────────────────────────────────────────────────────────
+    '    <outline text="Board" title="Board" description="New public Board posts: links and questions worth discussing. Items open the discussion.">',
+
+    outline({ type: 'rss', text: 'Board — RSS', title: 'Board (RSS)', xmlUrl: `${site}/b/feed.xml`, htmlUrl: `${site}/b` }),
+    outline({ type: 'atom', text: 'Board — Atom', title: 'Board (Atom)', xmlUrl: `${site}/b/feed.atom`, htmlUrl: `${site}/b` }),
+    outline({ type: 'jsonfeed', text: 'Board — JSON Feed', title: 'Board (JSON Feed)', jsonUrl: `${site}/b/feed.json`, htmlUrl: `${site}/b` }),
+
+    '    </outline>',
+
+    // ── Per-Tag Board (patterns) ──────────────────────────────────────────
+    '    <outline text="Per-Tag Board Feeds" title="Per-Tag Board Feeds" description="Subscribe to one Board tag. Replace :tag with a tag slug (e.g. ask, show, hiring).">',
+
+    outline({ type: 'rss', text: 'Board Tag — RSS pattern', title: 'Board Tag (RSS)', xmlUrl: `${site}/b/tags/:tag/feed.xml`, htmlUrl: `${site}/b?tags=:tag` }),
+    outline({ type: 'atom', text: 'Board Tag — Atom pattern', title: 'Board Tag (Atom)', xmlUrl: `${site}/b/tags/:tag/feed.atom`, htmlUrl: `${site}/b?tags=:tag` }),
+    outline({ type: 'jsonfeed', text: 'Board Tag — JSON Feed pattern', title: 'Board Tag (JSON Feed)', jsonUrl: `${site}/b/tags/:tag/feed.json`, htmlUrl: `${site}/b?tags=:tag` }),
+
+    '    </outline>',
+
     // ── Per-Topic (patterns) ──────────────────────────────────────────────
     '    <outline text="Per-Topic Feeds" title="Per-Topic Feeds" description="Subscribe to a specific topic. Replace :slug with a topic slug (e.g. discipline, fitness, faith).">',
 
