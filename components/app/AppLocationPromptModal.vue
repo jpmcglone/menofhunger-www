@@ -2,7 +2,7 @@
   <AppModal
     v-if="open"
     v-model="open"
-    title="Find Men Near You"
+    title="Who’s building in your state?"
     max-width-class="max-w-sm"
     :dismissable-mask="false"
     :show-close="false"
@@ -10,7 +10,8 @@
   >
     <div class="moh-gutter-x py-5 flex flex-col gap-5">
       <p class="text-sm moh-text-muted leading-relaxed">
-        Add your ZIP code to discover and connect with other men in your state.
+        Add your ZIP code to see members in your state who are working on their faith, craft,
+        and body, and follow the ones worth knowing.
       </p>
 
       <!-- ZIP input -->
@@ -61,7 +62,7 @@
     <template #footer>
       <div class="flex flex-col gap-2">
         <Button
-          label="Set my location"
+          label="Show my state"
           class="w-full"
           :disabled="!preview || saving"
           :loading="saving"
