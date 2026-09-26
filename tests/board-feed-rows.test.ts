@@ -74,14 +74,15 @@ describe('Board post row in feeds', () => {
     expect(w.text()).not.toContain('Join the discussion')
   })
 
-  it('opens article-sourced posts on the article and drops the domain', async () => {
+  it('opens article-sourced posts on their discussion and drops the domain', async () => {
     const w = await mountRow(feedPost({
       body: '',
       board: { threadId: 't1', title: 'The quiet discipline of the second shift', url: 'https://menofhunger.com/a/a1', domain: 'menofhunger.com', tags: ['work'] },
       article: { id: 'a1', title: 'The quiet discipline', excerpt: 'Most men treat the hours after work as recovery.', thumbnailUrl: null, visibility: 'public', publishedAt: null, author: { id: 'u1', username: 'aaronk', name: 'Aaron King', avatarUrl: null, verifiedStatus: 'identity', premium: false, premiumPlus: false } },
     }))
     const title = w.findAll('a').find((a) => a.text() === 'The quiet discipline of the second shift')
-    expect(title?.attributes('href')).toBe('/a/a1')
+    // The title opens the Board discussion like the rest of the row; "Read article" lives in "…".
+    expect(title?.attributes('href')).toBe('/b/t1')
     expect(w.text()).toContain('Article')
     expect(w.text()).not.toContain('menofhunger.com')
     expect(w.text()).toContain('Most men treat the hours after work as recovery.')
