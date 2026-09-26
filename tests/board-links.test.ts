@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
 import { boardPostHref } from '~/utils/board-links'
 import { boardNavPopAction, isLoggedOutAllowedPath, shouldInterceptSameNavClick } from '~/config/routes'
-import { countBoardReplies, useBoardCommentTree } from '~/composables/useBoardCommentTree'
+import { countBoardReplies, newSinceIds, useBoardCommentTree } from '~/composables/useBoardCommentTree'
+import { boardThreadOpenHref } from '~/composables/useBoardApi'
 import type { BoardComment } from '~/types/api'
 
 function comment(id: string, parentId: string | null, replies: BoardComment[] = []): BoardComment {
@@ -28,6 +29,33 @@ describe('boardPostHref', () => {
     expect(boardPostHref({ id: 't1', kind: 'board', parentId: null, boardRootId: 't1' })).toBe('/b/t1')
     expect(boardPostHref({ id: 'c1', kind: 'board', parentId: 't1', boardRootId: 't1' })).toBe('/b/t1/c/c1')
     expect(boardPostHref({ id: 'p1', kind: 'regular', parentId: null })).toBeNull()
+  })
+
+  it('opens article Board posts on the article', () => {
+    expect(boardPostHref({ id: 't2', kind: 'board', parentId: null, boardRootId: 't2', article: { id: 'a1' } })).toBe('/a/a1')
+    expect(boardThreadOpenHref({ id: 't2', articleId: 'a1' })).toBe('/a/a1')
+    expect(boardThreadOpenHref({ id: 't3', articleId: null })).toBe('/b/t3')
+  })
+})
+
+describe('newSinceIds', () => {
+  const at = (id: string, iso: string, authorId = 'other', replies: BoardComment[] = []) => ({
+    ...comment(id, null, replies),
+    createdAt: iso,
+    author: { id: authorId, username: authorId } as BoardComment['author'],
+  })
+
+  it('marks comments by others after the last visit, in reading order', () => {
+    const list = [
+      at('old', '2026-09-01T00:00:00Z', 'other', [at('newReply', '2026-09-03T00:00:00Z')]),
+      at('mine', '2026-09-03T00:00:00Z', 'me'),
+      at('newTop', '2026-09-04T00:00:00Z'),
+    ]
+    expect(newSinceIds(list, '2026-09-02T00:00:00Z', 'me')).toEqual(['newReply', 'newTop'])
+  })
+
+  it('marks nothing on a first visit', () => {
+    expect(newSinceIds([at('c', '2026-09-04T00:00:00Z')], null, 'me')).toEqual([])
   })
 })
 

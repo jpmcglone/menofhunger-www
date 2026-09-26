@@ -38,7 +38,7 @@
           <AppIconGlyph name="reply" :size="14" />
           <AppAnimatedCount :value="post.commentCount ?? 0" :format="formatShortCount" blank-zero :min-ch="2" />
         </span>
-        <span class="font-semibold" :style="{ color: tone ? `var(--moh-${tone})` : 'var(--moh-verified)' }">{{ canAccess ? 'Join the discussion →' : 'Unlock to read →' }}</span>
+        <span class="font-semibold" :style="{ color: tone ? `var(--moh-${tone})` : 'var(--moh-verified)' }">{{ ctaLabel }}</span>
       </div>
     </template>
     <p v-else class="mt-1 line-clamp-4 whitespace-pre-wrap text-sm moh-text">{{ post.body }}</p>
@@ -55,6 +55,10 @@ const board = computed(() => props.post.board ?? null)
 const isComment = computed(() => Boolean(props.post.parentId))
 const canAccess = computed(() => props.post.viewerCanAccess !== false)
 const tone = computed(() => boardScopeTone(props.post.visibility))
+const ctaLabel = computed(() => {
+  if (!canAccess.value) return 'Unlock to read →'
+  return props.post.article && !isComment.value ? 'Read the article →' : 'Join the discussion →'
+})
 const excerpt = computed(() => (props.post.body ?? '').trim())
 const imageUrl = computed(() => {
   const media = (props.post.media ?? []).find((m) => !m.deletedAt && m.kind === 'image')

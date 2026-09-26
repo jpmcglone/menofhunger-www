@@ -28,7 +28,8 @@ export type BoardCreateThreadBody = {
   url: string | null
   body: string | null
   image: { r2Key: string; width: number | null; height: number | null; alt: string | null } | null
-  tags: string[]
+  /** Omitted by clients: tags are set by AI from the post's content. */
+  tags?: string[]
   visibility: BoardVisibility
   showInFeed: boolean
 }
@@ -91,6 +92,19 @@ export function boardThreadHref(thread: Pick<BoardThread, 'id'>): string {
 
 export function boardCommentHref(threadId: string, commentId: string): string {
   return `/b/${encodeURIComponent(threadId)}/c/${encodeURIComponent(commentId)}`
+}
+
+/** Where a Board post opens: article Board posts go straight to the article, where they're discussed. */
+export function boardThreadOpenHref(thread: Pick<BoardThread, 'id' | 'articleId'>): string {
+  return thread.articleId ? `/a/${encodeURIComponent(thread.articleId)}` : boardThreadHref(thread)
+}
+
+/** "5 min read · 12 comments" for article Board posts. */
+export function boardArticleMeta(thread: Pick<BoardThread, 'readingTimeMinutes' | 'commentCount'>): string {
+  const parts: string[] = []
+  if (thread.readingTimeMinutes) parts.push(`${thread.readingTimeMinutes} min read`)
+  parts.push(`${thread.commentCount} ${thread.commentCount === 1 ? 'comment' : 'comments'}`)
+  return parts.join(' · ')
 }
 
 /** Discussion link: article-sourced threads keep their comments on the article. */

@@ -563,6 +563,7 @@ function bindViewObserve() {
     rowEl.value
     && postView.value.id
     && postView.value.viewerCanAccess !== false
+    && postView.value.kind !== 'board'
     && !isPendingLocalId(postView.value.id)
   ) {
     if (postView.value.viewerHasViewed === true) {

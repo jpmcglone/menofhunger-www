@@ -1,7 +1,6 @@
 <!-- Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=890-4564 -->
 <template>
   <article
-    ref="rowEl"
     class="relative flex items-start gap-2.5 py-3 pl-3 pr-4 transition-colors hover:bg-[var(--moh-surface-hover)]"
     :style="scopeStyle"
   >
@@ -35,7 +34,16 @@
             :to="threadHref"
             class="pointer-events-auto hover:underline"
             :class="thread.viewerCanAccess ? 'moh-text' : 'moh-text-muted'"
-          >{{ thread.title }}</NuxtLink>
+          >{{ thread.title }}<Icon
+            v-if="thread.articleId"
+            name="tabler:article"
+            class="ml-1 inline-block align-[-0.1em] text-[0.95em] moh-text-soft"
+            aria-hidden="true"
+          /></NuxtLink>
+          <span
+            v-if="thread.articleId && thread.viewerCanAccess && thread.readingTimeMinutes"
+            class="ml-1.5 whitespace-nowrap text-xs font-normal moh-text-soft"
+          >article · {{ thread.readingTimeMinutes }} min read</span>
           <!-- Site sits beside the title, HN-style; it filters the Board to that site. -->
           <NuxtLink
             v-if="thread.domain && thread.viewerCanAccess"
@@ -48,6 +56,11 @@
       <div class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs moh-text-soft">
         <AppBoardScopeChip :visibility="thread.visibility" />
         <AppBoardTagChip v-for="tag in thread.tags" :key="tag" :tag="tag" class="pointer-events-auto" />
+        <span
+          v-if="isUnanswered"
+          class="rounded-full border px-1.5 py-px text-[11px] font-semibold"
+          style="color: var(--moh-verified); border-color: var(--moh-verified)"
+        >Unanswered</span>
         <template v-if="thread.author">
           <NuxtLink
             :to="`/u/${encodeURIComponent(thread.author.username ?? '')}`"
@@ -138,7 +151,7 @@ const emit = defineEmits<{ 'toggle-hide': [thread: BoardThread] }>()
 const preview = useUserPreviewMultiTrigger()
 const { gateCopy } = useBoardAccess()
 
-const threadHref = computed(() => boardThreadHref(props.thread))
+const threadHref = computed(() => boardThreadOpenHref(props.thread))
 const discussionHref = computed(() => boardDiscussionHref(props.thread))
 const externalUrl = computed(() => (props.thread.viewerCanAccess && props.thread.url && !props.thread.articleId ? props.thread.url : null))
 const age = computed(() => formatListTime(props.thread.createdAt))
@@ -148,10 +161,9 @@ const { typingUsers } = usePostTyping(computed(() => props.thread.id))
 const postCache = usePostCache()
 const liveCommentCount = computed(() => postCache.cache.value[props.thread.id]?.commentCount ?? props.thread.commentCount)
 
-// Views work exactly like feed posts: a row that stays on screen counts an impression, and the
-// chip shows people · total views with the same hover breakdown.
-const rowEl = ref<HTMLElement | null>(null)
-const { observe: observeView, hasViewedLocally } = usePostViewTracker()
+// Rows show the same people · total views chip as posts, but only opening the post counts a view.
+const { hasViewedLocally } = usePostViewTracker()
+const isUnanswered = computed(() => props.thread.viewerCanAccess && props.thread.tags.includes('ask') && liveCommentCount.value === 0)
 const liveViews = computed(() => {
   const delta = postCache.cache.value[props.thread.id]
   const viewerCount = Math.max(props.thread.viewerCount, delta?.viewerCount ?? 0)
@@ -165,19 +177,6 @@ function onViewCountSynced(payload: { viewerCount: number, totalViewCount: numbe
     totalViewCount: Math.max(liveViews.value.totalViewCount, payload.totalViewCount),
   })
 }
-let stopObserve: (() => void) | null = null
-watch(
-  [rowEl, () => props.thread.id, () => props.thread.viewerCanAccess],
-  ([el, id, canAccess]) => {
-    stopObserve?.()
-    stopObserve = el && canAccess ? observeView(id, el) : null
-  },
-  { flush: 'post' },
-)
-onBeforeUnmount(() => {
-  stopObserve?.()
-  stopObserve = null
-})
 
 const { mounted: menuMounted, menuRef, toggle: toggleMenu } = useAutoToggleMenu()
 type BoardMenuItem = MenuItem & { iconName?: string }

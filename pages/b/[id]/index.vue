@@ -19,9 +19,8 @@
       <AppBoardThreadHead :thread="thread" @updated="onThreadUpdated" @deleted="onThreadDeleted" />
 
       <template v-if="thread.viewerCanAccess">
-        <div v-if="thread.articleId" class="moh-gutter-x border-t moh-border py-4 text-sm moh-text-muted">
-          Discussion for this article lives with the article.
-          <NuxtLink :to="`/a/${thread.articleId}#comments`" class="font-semibold hover:underline" style="color: var(--moh-verified)">Read and comment →</NuxtLink>
+        <div v-if="thread.articleId" class="moh-gutter-x border-t moh-border py-4">
+          <AppBoardArticleCard :thread="thread" />
         </div>
         <template v-else>
           <div class="moh-gutter-x border-y moh-border py-2.5">
@@ -29,6 +28,15 @@
           </div>
           <div class="flex items-center gap-1.5 moh-gutter-x pt-3 pb-1 text-xs moh-text-soft">
             <h2 class="text-sm font-semibold moh-text">{{ commentCountLabel }}</h2>
+            <template v-if="newSinceVisit.length">
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                class="moh-tap moh-focus min-h-9 font-semibold hover:underline"
+                style="color: var(--moh-verified)"
+                @click="jumpToNew"
+              >{{ newSinceVisit.length }} new since your last visit</button>
+            </template>
             <template v-for="option in commentSortOptions" :key="option.key">
               <span aria-hidden="true">·</span>
               <button
@@ -113,6 +121,17 @@ watch(() => thread.value?.id, (next, prev) => {
 })
 
 const tree = useBoardCommentTree(comments)
+
+// Last visit is read once per thread: live refetches after this visit must not clear the markers.
+const { user, isAuthed } = useAuth()
+const lastVisitAt = ref<string | null>(null)
+watch(() => thread.value?.id, () => { lastVisitAt.value = thread.value?.viewerLastSeenAt ?? null }, { immediate: true })
+const newSinceVisit = computed(() => newSinceIds(comments.value, lastVisitAt.value, user.value?.id))
+const newSinceVisitIds = computed(() => new Set(newSinceVisit.value))
+function jumpToNew() {
+  const firstId = newSinceVisit.value[0]
+  if (firstId) document.getElementById(`c-${firstId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+}
 const live = useBoardThreadLive({
   threadId,
   tree,
@@ -134,6 +153,7 @@ provide(BOARD_COMMENT_TREE_KEY, {
   add: tree.add,
   remove: tree.remove,
   freshIds: live.freshIds,
+  newSinceVisitIds,
   typingFor: live.typingFor,
   notifyTyping: live.notifyTyping,
   stopTyping: live.stopTyping,
@@ -183,7 +203,6 @@ watch(
 )
 
 // Opening the thread reads every notification about it, nested replies included.
-const { isAuthed } = useAuth()
 const { markReadBySubject } = useNotifications()
 function markThreadRead() {
   const id = thread.value?.viewerCanAccess ? thread.value.id : null

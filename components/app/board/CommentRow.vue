@@ -47,6 +47,7 @@
           >{{ comment.author.username }}</NuxtLink>
           <span class="moh-text-soft" aria-hidden="true">·</span>
           <NuxtLink :to="permalink" class="moh-text-soft hover:underline" :title="createdTitle">{{ age }}</NuxtLink>
+          <AppNewBadge v-if="isNewSinceVisit" small label="NEW" />
           <button
             type="button"
             class="moh-focus rounded px-0.5 moh-text-soft hover:text-[var(--moh-text)]"
@@ -58,6 +59,13 @@
 
         <template v-if="!collapsed">
           <p v-if="!comment.deleted" class="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed moh-text">{{ comment.body }}</p>
+          <AppPostRowLinkPreview
+            v-if="hasLink"
+            :post-id="comment.id"
+            :body="comment.body"
+            :has-media="false"
+            :row-in-view="true"
+          />
           <div v-if="!comment.deleted" class="mt-1 flex items-center gap-3 text-xs">
             <AppBoardBoostButton :post-id="comment.id" :points="comment.points" :viewer-has-boosted="comment.viewerHasBoosted" />
             <button
@@ -154,6 +162,8 @@ const atDepthCap = computed(() => props.depth + 1 >= maxDepth.value)
 const hiddenCount = computed(() => countBoardReplies(props.comment))
 const isOwn = computed(() => Boolean(user.value?.id && user.value.id === props.comment.author.id))
 const isHighlighted = computed(() => ctx?.highlightId.value === props.comment.id || Boolean(ctx?.freshIds?.value.has(props.comment.id)))
+const isNewSinceVisit = computed(() => Boolean(ctx?.newSinceVisitIds?.value.has(props.comment.id)))
+const hasLink = computed(() => !props.comment.deleted && /https?:\/\/|\bwww\./i.test(props.comment.body))
 const replyingUsers = computed(() => ctx?.typingFor?.(props.comment.id) ?? [])
 const permalink = computed(() => boardCommentHref(props.comment.threadId, props.comment.id))
 const profileHref = computed(() => `/u/${encodeURIComponent(props.comment.author.username ?? '')}`)

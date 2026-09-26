@@ -407,7 +407,8 @@ function bindFeedViewObserve() {
   stopObserve?.()
   stopObserve = null
   if (!import.meta.client || !wrapperEl.value) return
-  const accessible = chain.value.filter((p) => p.viewerCanAccess !== false && !isPendingLocalId(p.id))
+  // Board posts count a view only when opened, not when their feed card scrolls by.
+  const accessible = chain.value.filter((p) => p.viewerCanAccess !== false && p.kind !== 'board' && !isPendingLocalId(p.id))
   const alreadyViewed = accessible.filter((p) => p.viewerHasViewed === true).map((p) => p.id).filter(Boolean)
   if (alreadyViewed.length) noteAlreadyViewed(alreadyViewed)
   const postIds = accessible.map((p) => p.id).filter(Boolean)

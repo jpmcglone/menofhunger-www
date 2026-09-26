@@ -66,7 +66,15 @@
 
     <template v-if="thread.viewerCanAccess">
       <p v-if="thread.body" class="mt-2.5 whitespace-pre-wrap break-words text-[15px] leading-relaxed moh-text">{{ thread.body }}</p>
-      <AppPostMediaGrid v-if="thread.image?.url" :media="[thread.image]" :post-id="thread.id" />
+      <AppPostMediaGrid v-if="thread.image?.url && !thread.articleId" :media="[thread.image]" :post-id="thread.id" />
+      <!-- Same embeds as post rows (Spotify, YouTube, X, sites…); the post's link wins over body links. -->
+      <AppPostRowLinkPreview
+        v-if="previewBody"
+        :post-id="thread.id"
+        :body="previewBody"
+        :has-media="Boolean(thread.image?.url)"
+        :row-in-view="true"
+      />
 
       <div class="mt-2 flex flex-wrap items-center gap-x-4 text-xs moh-text-muted">
         <span class="inline-flex items-center gap-1" :aria-label="`${liveCommentCount} comments`">
@@ -80,6 +88,7 @@
           :initial-collection-ids="[]"
         />
         <AppPostRowShareMenu :can-share="true" :tooltip="shareTooltip" :items="shareItems" />
+        <AppBoardCatchUpButton v-if="!thread.articleId" :post-id="thread.id" />
         <AppPostRowViewerBreakdown
           class="ml-auto"
           :entity-id="thread.id"
@@ -114,7 +123,6 @@
         <input v-model="editTitle" maxlength="80" class="w-full rounded-lg border moh-border bg-transparent px-3 py-2 text-sm moh-text outline-none" aria-label="Title">
         <input v-if="!thread.articleId" v-model="editUrl" type="url" placeholder="https://… (optional)" class="w-full rounded-lg border moh-border bg-transparent px-3 py-2 text-sm moh-text outline-none" aria-label="Link">
         <textarea v-model="editBody" rows="4" class="w-full rounded-lg border moh-border bg-transparent px-3 py-2 text-sm moh-text outline-none" aria-label="Text" />
-        <AppBoardTagPicker v-model="editTags" />
         <p v-if="editError" class="text-xs text-red-500">{{ editError }}</p>
         <div class="flex justify-end gap-2">
           <button type="button" class="moh-tap px-3 text-sm moh-text-muted" @click="editing = false">Cancel</button>
@@ -172,6 +180,7 @@ const reportOpen = ref(false)
 const hidden = ref(props.thread.viewerHidden)
 const isOwn = computed(() => Boolean(user.value?.id && props.thread.author?.id === user.value.id))
 const externalUrl = computed(() => (props.thread.viewerCanAccess && props.thread.url && !props.thread.articleId ? props.thread.url : null))
+const previewBody = computed(() => (props.thread.articleId ? '' : [props.thread.body, props.thread.url].filter(Boolean).join('\n')))
 const displayUrl = computed(() => (props.thread.url ?? '').replace(/^https?:\/\/(www\.)?/, ''))
 const age = computed(() => formatListTime(props.thread.createdAt))
 const createdTitle = computed(() => formatDateTime(props.thread.createdAt))
@@ -304,7 +313,6 @@ const editError = ref<string | null>(null)
 const editTitle = ref(props.thread.title)
 const editUrl = ref(props.thread.url ?? '')
 const editBody = ref(props.thread.body ?? '')
-const editTags = ref<string[]>([...props.thread.tags])
 
 async function saveEdit() {
   saving.value = true
@@ -313,7 +321,6 @@ async function saveEdit() {
     const next = await api.updateThread(props.thread.id, {
       title: editTitle.value,
       ...(props.thread.articleId ? {} : { url: editUrl.value.trim() || null }),
-      tags: editTags.value,
       ...(editBody.value.trim() ? { body: editBody.value } : {}),
     })
     editing.value = false

@@ -11,6 +11,8 @@ export type BoardCommentTreeContext = {
   remove: (commentId: string) => void
   /** Just-revealed live arrivals, highlighted briefly. */
   freshIds?: Ref<Set<string>>
+  /** Comments by others posted since the viewer's previous visit. */
+  newSinceVisitIds?: Ref<Set<string>>
   /** Who is replying to this comment right now (`null` = a new top-level comment). */
   typingFor?: (replyToId: string | null) => TypingUserDisplay[]
   notifyTyping?: (text: string, replyToId: string | null) => void
@@ -18,6 +20,21 @@ export type BoardCommentTreeContext = {
 }
 
 export const BOARD_COMMENT_TREE_KEY: InjectionKey<BoardCommentTreeContext> = Symbol('board-comment-tree')
+
+/** Ids (reading order) of live comments by others created after `sinceIso`. Empty on a first visit. */
+export function newSinceIds(list: BoardComment[], sinceIso: string | null | undefined, viewerId: string | null | undefined): string[] {
+  const since = sinceIso ? Date.parse(sinceIso) : Number.NaN
+  if (!Number.isFinite(since)) return []
+  const out: string[] = []
+  const walk = (items: BoardComment[]) => {
+    for (const c of items) {
+      if (!c.deleted && c.author.id !== viewerId && Date.parse(c.createdAt) > since) out.push(c.id)
+      walk(c.replies)
+    }
+  }
+  walk(list)
+  return out
+}
 
 function findIn(list: BoardComment[], id: string): BoardComment | null {
   for (const c of list) {

@@ -59,6 +59,19 @@
         @update:show-hidden="setQuery({ hidden: $event ? '1' : undefined })"
         @reset="clearFilters"
       />
+      <!-- Quick filters over AI-set tags. -->
+      <template v-if="view !== 'comments'">
+        <button
+          v-for="quick in quickTags"
+          :key="quick.tag"
+          type="button"
+          class="moh-tap moh-focus inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold transition-colors"
+          :class="tags.includes(quick.tag) ? 'moh-text border-[var(--moh-text)]' : 'moh-border moh-text-muted hover:text-[var(--moh-text)]'"
+          :aria-pressed="tags.includes(quick.tag)"
+          :title="quick.hint"
+          @click="toggleQuickTag(quick.tag)"
+        >{{ quick.label }}</button>
+      </template>
       <span
         v-if="domain"
         class="inline-flex items-center gap-1 rounded-full border moh-border px-3 py-1 text-xs moh-text-muted"
@@ -199,6 +212,14 @@ function setQuery(patch: Record<string, string | undefined>) {
 function setView(next: 'top' | 'new' | 'comments') {
   if (next === 'comments') setQuery({ view: 'comments', sort: undefined, range: undefined })
   else setQuery({ view: undefined, sort: next === 'new' ? 'new' : undefined, range: next === 'new' ? undefined : range.value ?? undefined })
+}
+
+const quickTags = [
+  { tag: 'ask', label: 'Ask', hint: 'Questions for the community' },
+  { tag: 'show', label: 'Show', hint: 'Things members made' },
+] as const
+function toggleQuickTag(tag: string) {
+  setTags(tags.value.includes(tag) ? tags.value.filter((t) => t !== tag) : [...tags.value, tag].slice(-3))
 }
 
 function setTags(next: string[]) {

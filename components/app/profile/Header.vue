@@ -389,6 +389,10 @@
           <span class="font-semibold text-gray-900 dark:text-gray-50"><AppAnimatedCount :value="followerCountN" /></span>
           <span class="ml-1 text-gray-600 dark:text-gray-400">{{ followerLabel }}</span>
         </button>
+        <NuxtLink v-if="boardPoints > 0" to="/leaderboard?tab=board" class="hover:underline">
+          <span class="font-semibold text-gray-900 dark:text-gray-50"><AppAnimatedCount :value="boardPoints" /></span>
+          <span class="ml-1 text-gray-600 dark:text-gray-400">Board {{ boardPoints === 1 ? 'point' : 'points' }}</span>
+        </NuxtLink>
       </div>
 
       <div class="mt-4 flex flex-wrap items-center gap-2">
@@ -541,6 +545,8 @@ const props = defineProps<{
   followerCount: number | null
   followingCount: number | null
 }>()
+
+const boardPoints = computed(() => props.profile?.boardPoints ?? 0)
 
 const emit = defineEmits<{
   (

@@ -5,6 +5,7 @@
         <AppIconGlyph name="back" :size="20" />
       </NuxtLink>
       <span class="text-lg font-bold moh-text">Comment</span>
+      <AppBoardCatchUpButton v-if="ctxData?.comment && ctxData.thread.viewerCanAccess" class="ml-auto" :post-id="ctxData.comment.id" />
     </div>
 
     <div v-if="pending && !ctxData" class="flex min-h-[240px] items-center justify-center"><AppLogoLoader /></div>
@@ -105,6 +106,14 @@ function revealPending() {
 }
 
 useBoardThreadSeo(computed(() => ctxData.value?.thread), computed(() => ctxData.value?.comment))
+
+// Opening a comment permalink counts a view of that comment, like a post permalink.
+const { markEngaged } = usePostViewTracker()
+watch(
+  () => (ctxData.value?.thread.viewerCanAccess ? ctxData.value.comment?.id ?? null : null),
+  (id) => { if (id && import.meta.client) markEngaged(id) },
+  { immediate: true },
+)
 
 const { isAuthed } = useAuth()
 const { markReadBySubject } = useNotifications()

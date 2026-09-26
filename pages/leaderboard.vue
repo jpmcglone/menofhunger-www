@@ -98,7 +98,14 @@
 
             <!-- Stats (changes based on which tab is displayed) -->
             <div class="shrink-0 text-right tabular-nums">
-              <template v-if="displayTab === 'weekly'">
+              <template v-if="displayTab === 'board'">
+                <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
+                  <AppIconGlyph name="boost" :size="14" class="moh-text-muted" />
+                  {{ u.boardPoints ?? 0 }}
+                </div>
+                <div class="text-[11px] moh-text-muted">Board points</div>
+              </template>
+              <template v-else-if="displayTab === 'weekly'">
                 <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
                   <Icon name="tabler:calendar-check" class="moh-text-muted" aria-hidden="true" />
                   {{ u.daysThisWeek ?? 0 }}d
@@ -150,7 +157,14 @@
           </div>
 
           <div class="shrink-0 text-right tabular-nums">
-            <template v-if="displayTab === 'weekly'">
+            <template v-if="displayTab === 'board'">
+              <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
+                <AppIconGlyph name="boost" :size="14" class="moh-text-muted" />
+                {{ displayViewerRank.user.boardPoints ?? 0 }}
+              </div>
+              <div class="text-[11px] moh-text-muted">Board points</div>
+            </template>
+            <template v-else-if="displayTab === 'weekly'">
               <div class="flex items-center justify-end gap-1 text-sm font-semibold moh-text">
                 <Icon name="tabler:calendar-check" class="moh-text-muted" aria-hidden="true" />
                 {{ displayViewerRank.user.daysThisWeek ?? 0 }}d
@@ -184,11 +198,12 @@
 
 <script setup lang="ts">
 import type { LeaderboardUser, LeaderboardViewerRank } from '~/types/api'
+import type { BoardLeaderboardRow } from '~/composables/useBoardLeaderboard'
 import { deriveWeeklyMission } from '~/config/milestones'
 import { siteConfig } from '~/config/site'
 import { appendShareParams, weeklyMissionShareText } from '~/utils/acquisition-share'
 
-type TabId = 'all' | 'best' | 'weekly'
+type TabId = 'all' | 'best' | 'weekly' | 'board'
 
 definePageMeta({
   layout: 'app',
@@ -208,12 +223,15 @@ const tabs: { id: TabId; label: string; description: string }[] = [
   { id: 'all', label: 'Active Streak', description: 'Ranked by current active streak, then best streak as tiebreaker.' },
   { id: 'best', label: 'Best Streak', description: 'Ranked by highest streak ever achieved — current or past.' },
   { id: 'weekly', label: 'This Week', description: 'Most active this week — distinct posting days since Monday ET.' },
+  { id: 'board', label: 'Board', description: 'Board points — boosts earned on Board posts and comments.' },
 ]
 
-const activeTab = ref<TabId>('all')
-const displayTab = ref<TabId>('all')
-const displayUsers = ref<LeaderboardUser[]>([])
-const displayViewerRank = ref<LeaderboardViewerRank | null>(null)
+const route = useRoute()
+const initialTab: TabId = tabs.some((t) => t.id === route.query.tab) ? (route.query.tab as TabId) : 'all'
+const activeTab = ref<TabId>(initialTab)
+const displayTab = ref<TabId>(initialTab)
+const displayUsers = ref<BoardLeaderboardRow[]>([])
+const displayViewerRank = ref<(LeaderboardViewerRank & { user: BoardLeaderboardRow }) | null>(null)
 const initialLoading = ref(true)
 const hasFetched = ref(false)
 
@@ -221,13 +239,16 @@ const active = useCheckinsLeaderboard({ scope: 'all' })
 const best = useCheckinsLeaderboard({ scope: 'best' })
 const weekly = useCheckinsLeaderboard({ scope: 'weekly' })
 
-const scopeMap = { all: active, best, weekly } as const
+const board = useBoardLeaderboard()
+
+const scopeMap = { all: active, best, weekly, board } as const
 
 const pending = computed(() => activeTab.value !== displayTab.value)
 const activeError = computed(() => scopeMap[activeTab.value].error.value)
 const tabDescription = computed(() => tabs.find(t => t.id === activeTab.value)?.description ?? '')
 
 const viewerStreakDays = computed(() => {
+  if (displayTab.value === 'board') return 0
   return Math.max(0, Number(displayViewerRank.value?.user.checkinStreakDays ?? 0) || 0)
 })
 const viewerMission = computed(() => {
@@ -265,7 +286,7 @@ function commitScope(tabId: TabId) {
   hasFetched.value = true
 }
 
-for (const tabId of ['all', 'best', 'weekly'] as const) {
+for (const tabId of ['all', 'best', 'weekly', 'board'] as const) {
   watch(scopeMap[tabId].users, (users) => {
     if (activeTab.value === tabId && users.length > 0) {
       commitScope(tabId)
@@ -297,7 +318,7 @@ function tierColor(u: LeaderboardUser): string {
 }
 
 if (import.meta.client) {
-  switchTab('all')
+  switchTab(initialTab)
 }
 </script>
 

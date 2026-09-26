@@ -29,6 +29,8 @@ export type AccountKind = 'person' | 'page'
 export type PostBoardPreview = Contracts.PostBoardPreviewDto
 export type BoardVisibility = Contracts.BoardVisibility
 export type BoardThread = Contracts.BoardThreadDto
+export type BoardLeaderboard = Contracts.BoardLeaderboardDto
+export type BoardLeaderboardUser = Contracts.BoardLeaderboardUserDto
 export type BoardComment = Contracts.BoardCommentDto
 export type BoardCommentsPage = Contracts.BoardCommentsPageDto
 export type BoardCommentContext = Contracts.BoardCommentContextDto
@@ -606,6 +608,8 @@ export type PublicProfile = {
   longestStreakDays: number
   postCount?: number
   articleCount?: number
+  /** Boosts received across the member's live Board posts and comments. */
+  boardPoints?: number
   orgAffiliations?: OrgAffiliation[]
   /** True when the viewer has blocked this user. */
   viewerHasBlockedUser?: boolean

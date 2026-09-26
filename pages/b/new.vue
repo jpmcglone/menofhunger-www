@@ -95,9 +95,7 @@
             <p v-if="upload.error.value" class="mt-1 text-xs text-red-500">{{ upload.error.value }}</p>
             <input ref="fileEl" type="file" accept="image/png,image/jpeg,image/webp,image/avif" class="hidden" tabindex="-1" aria-hidden="true" @change="onFile">
           </div>
-          <div class="min-w-[14rem] flex-1">
-            <AppBoardTagPicker v-model="tags" placeholder="Add up to 3 tags (ask, show, hiring…)" />
-          </div>
+          <p class="min-w-[14rem] flex-1 self-center text-xs moh-text-soft">Tags are added automatically from your title, text, and link.</p>
         </div>
 
         <div class="flex min-h-11 items-center justify-between gap-3 border-t moh-border pt-4">
@@ -135,7 +133,6 @@ const memory = useVisibilityMemory('board')
 const title = ref('')
 const url = ref('')
 const body = ref('')
-const tags = ref<string[]>([])
 const showInFeed = ref(true)
 const visibility = ref<BoardVisibility>('public')
 const submitting = ref(false)
@@ -189,7 +186,6 @@ async function submit() {
       url: url.value.trim() || null,
       body: body.value.trim() || null,
       image: upload.image.value,
-      tags: tags.value,
       visibility: visibility.value,
       showInFeed: showInFeed.value,
     })
