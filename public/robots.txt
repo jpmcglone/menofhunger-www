@@ -19,7 +19,6 @@ Disallow: /coins
 Disallow: /coins/
 Disallow: /feedback
 Disallow: /new-posts
-Disallow: /online
 Disallow: /groups
 Disallow: /check-ins
 Disallow: /email/

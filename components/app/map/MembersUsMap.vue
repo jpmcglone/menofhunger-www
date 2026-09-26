@@ -95,9 +95,24 @@
       </button>
     </div>
 
-    <AppMapStateAvatarPack v-else :avatars="packed.avatars" :overflow="packed.overflow" @show-all="emit('showAll')" />
+    <AppMapStateAvatarPack v-else-if="membersVisible" :avatars="packed.avatars" :overflow="packed.overflow" @show-all="emit('showAll')" />
 
-    <div v-if="selected && packLoading" class="pointer-events-none absolute inset-0 flex items-center justify-center">
+    <!-- Counts-only viewers: the state's numbers, never faces. -->
+    <div v-else-if="selectedCount" class="pointer-events-none absolute inset-0">
+      <div
+        class="moh-map-count absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border moh-border bg-[color-mix(in_srgb,var(--moh-surface-2)_86%,transparent)] px-6 py-4 text-center shadow-lg backdrop-blur-md"
+        :style="{ left: `${selectedCount.x}px`, top: `${selectedCount.y}px` }"
+      >
+        <p class="text-4xl font-bold tabular-nums tracking-tight moh-text sm:text-5xl">{{ selectedCount.members.toLocaleString('en-US') }}</p>
+        <p class="mt-0.5 text-sm font-medium moh-text-muted">{{ selectedCount.members === 1 ? 'man' : 'men' }} in {{ selectedCount.name }}</p>
+        <p class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--moh-online)]">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--moh-online)]" aria-hidden="true" />
+          {{ selectedCount.online.toLocaleString('en-US') }} online now
+        </p>
+      </div>
+    </div>
+
+    <div v-if="selected && membersVisible && packLoading" class="pointer-events-none absolute inset-0 flex items-center justify-center">
       <AppLogoLoader compact />
     </div>
 
@@ -143,6 +158,8 @@ const props = defineProps<{
   memberTotal: number
   packLoading?: boolean
   viewerState: string | null
+  /** False for signed-out and unverified viewers: counts only, never faces. */
+  membersVisible: boolean
 }>()
 
 const emit = defineEmits<{
@@ -336,6 +353,14 @@ const packed = computed<{ avatars: PackedAvatar[]; overflow: { x: number; y: num
   return { avatars, overflow: { x: cx, y: Math.min(height.value - 36, bottom + 8), count: extra } }
 })
 
+const selectedCount = computed(() => {
+  const shape = selectedShape.value
+  const s = props.selected ? byCode.value.get(props.selected) : undefined
+  if (!shape || !s) return null
+  const [x, y] = toScreen(shape.anchor)
+  return { x, y, name: s.stateDisplay, members: s.memberCount, online: s.onlineCount }
+})
+
 const ariaLabel = computed(() => {
   const n = props.states.length
   return `Map of where members live across ${n} ${n === 1 ? 'state' : 'states'}`
@@ -440,6 +465,23 @@ onMounted(() => {
   transition:
     transform 120ms ease,
     box-shadow 120ms ease;
+}
+
+.moh-map-count {
+  animation: moh-map-count-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms backwards;
+}
+
+@keyframes moh-map-count-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%) scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moh-map-count {
+    animation: none;
+  }
 }
 
 .moh-map-pill:hover,

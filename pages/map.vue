@@ -65,6 +65,7 @@
             :member-total="mapMemberTotal"
             :pack-loading="bucketLoading && !bucketMembers.length"
             :viewer-state="viewerState"
+            :members-visible="membersVisible"
             @select="selectState"
             @show-all="revealPanel"
           />
@@ -97,13 +98,15 @@
           :totals="totals"
           :unlocated-preview="summary?.unlocatedPreview ?? []"
           :viewer-state="viewerState"
-          :viewer-has-location="Boolean(viewerState)"
+          :viewer-has-location="!user || Boolean(viewerState)"
           :bucket="bucket"
           :bucket-title="bucketTitle"
           :members="panelMembers"
           :bucket-loading="bucketLoading"
           :bucket-cursor="bucketCursor"
           :bucket-error="bucketError"
+          :members-visible="membersVisible"
+          :bucket-counts="bucketCounts"
           @load-more="loadMore"
         />
       </aside>
@@ -112,7 +115,8 @@
 </template>
 
 <script setup lang="ts">
-import type { MembersMapUser } from '~/types/api'
+import type { MembersMapSummary, MembersMapUser } from '~/types/api'
+import { siteConfig } from '~/config/site'
 import type { MembersMapBucket } from '~/composables/useMembersMap'
 import { usStateShape } from '~/utils/us-state-shapes'
 
@@ -120,14 +124,6 @@ definePageMeta({
   layout: 'app',
   title: 'Map',
   hideTopBar: true,
-  middleware: ['verified'],
-})
-
-usePageSeo({
-  title: 'Map',
-  description: 'Where the men of Men of Hunger live, and who is online right now.',
-  canonicalPath: '/map',
-  noindex: true,
 })
 
 const LEGEND_STEPS = [0.15, 0.35, 0.55, 0.75, 1]
@@ -136,9 +132,16 @@ const route = useRoute()
 const router = useRouter()
 const { user } = useAuth()
 const { isOnline } = usePresence()
+const { apiFetchData } = useApiClient()
+
+// Server-rendered so the counts are in the HTML for search engines and link previews.
+const { data: initialSummary } = await useAsyncData('members-map-summary', () =>
+  apiFetchData<MembersMapSummary>('/users/map', { method: 'GET' }).catch(() => null),
+)
 
 const {
   summary,
+  membersVisible,
   states,
   totals,
   error,
@@ -148,7 +151,7 @@ const {
   bucketLoading,
   bucketError,
   loadBucket,
-} = useMembersMap()
+} = useMembersMap({ initial: initialSummary.value })
 
 const onlineOnly = computed(() => route.query.online === '1')
 
@@ -193,7 +196,7 @@ const title = computed(() => {
 })
 
 function men(n: number) {
-  return `${n.toLocaleString()} ${n === 1 ? 'man' : 'men'}`
+  return `${n.toLocaleString('en-US')} ${n === 1 ? 'man' : 'men'}`
 }
 
 const subtitle = computed(() => {
@@ -226,7 +229,58 @@ function loadMore() {
   if (bucket.value) void loadBucket(bucket.value, { more: true })
 }
 
+const bucketCounts = computed(() => {
+  if (bucket.value === 'none') return { members: totals.value.unlocated, online: totals.value.unlocatedOnline }
+  return { members: selectedState.value?.memberCount ?? 0, online: selectedState.value?.onlineCount ?? 0 }
+})
+
 onMounted(() => {
-  watch(bucket, (next) => void loadBucket(next), { immediate: true })
+  watch([bucket, membersVisible], ([next]) => void loadBucket(next), { immediate: true })
+})
+
+// ─── SEO + link previews ──────────────────────────────────────────────────
+const seoState = computed(() => (bucket.value && bucket.value !== 'none' ? bucket.value : null))
+const seoStateName = computed(() => (seoState.value ? selectedState.value?.stateDisplay ?? usStateShape(seoState.value)?.name ?? seoState.value : null))
+
+const seoTitle = computed(() => (seoStateName.value ? `Men in ${seoStateName.value} · Member map` : 'Member map: where our men live'))
+
+const seoDescription = computed(() => {
+  const t = totals.value
+  if (seoStateName.value) {
+    const s = selectedState.value
+    const count = s?.memberCount ?? 0
+    return `${men(count)} in ${seoStateName.value}, ${(s?.onlineCount ?? 0).toLocaleString('en-US')} online right now. See where Men of Hunger members live across the United States, state by state, updated live.`
+  }
+  if (!t.members) return 'See where Men of Hunger members live across the United States, state by state, and how many are online right now.'
+  return `${men(t.members)} across ${t.states} ${t.states === 1 ? 'state' : 'states'}, ${t.online.toLocaleString('en-US')} online right now. A live map of where the Men of Hunger brotherhood lives, state by state.`
+})
+
+// The version changes with the numbers so share scrapers pick up a fresh card.
+const seoImage = computed(() => {
+  const t = totals.value
+  const v = seoState.value ? `${selectedState.value?.memberCount ?? 0}-${selectedState.value?.onlineCount ?? 0}` : `${t.members}-${t.states}-${t.online}`
+  return `/og/map.png?${new URLSearchParams({ ...(seoState.value ? { state: seoState.value } : {}), v }).toString()}`
+})
+
+const seoCanonical = computed(() => (seoState.value ? `/map?state=${seoState.value}` : '/map'))
+
+usePageSeo({
+  title: seoTitle,
+  description: seoDescription,
+  canonicalPath: seoCanonical,
+  image: seoImage,
+  imageAlt: computed(() => `${seoTitle.value}: a map of the United States shaded by how many members live in each state`),
+  imageWidth: 1200,
+  imageHeight: 630,
+  jsonLdGraph: computed(() => [
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Men of Hunger', item: siteConfig.url },
+        { '@type': 'ListItem', position: 2, name: 'Member map', item: `${siteConfig.url}/map` },
+        ...(seoState.value ? [{ '@type': 'ListItem', position: 3, name: seoStateName.value, item: `${siteConfig.url}${seoCanonical.value}` }] : []),
+      ],
+    },
+  ]),
 })
 </script>

@@ -12,8 +12,12 @@ const REFETCH_DEBOUNCE_MS = 1500
  * Summary + per-state members for the members map. HTTP catches the page up on
  * mount/activation; the online feed keeps online counts live. An online member
  * whose state we don't know yet triggers one debounced summary refetch.
+ *
+ * Signed-out and unverified viewers get counts only (`membersVisible: false`): no
+ * faces, no ids. Their feed sends count changes, and each one refetches the
+ * (server-cached) counts summary.
  */
-export function useMembersMap() {
+export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {}) {
   const { apiFetch, apiFetchData } = useApiClient()
   const {
     subscribeOnlineFeed,
@@ -25,6 +29,8 @@ export function useMembersMap() {
   } = usePresence()
 
   const summary = ref<MembersMapSummary | null>(null)
+  const membersVisible = computed(() => summary.value?.membersVisible === true)
+  let lastFetchedAt = 0
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -36,6 +42,7 @@ export function useMembersMap() {
   let ignored = new Set<string>()
 
   const states = computed<MembersMapState[]>(() => {
+    if (!membersVisible.value) return summary.value?.states ?? []
     const online = new Map<string, number>()
     for (const st of onlineStates.value.values()) if (st) online.set(st, (online.get(st) ?? 0) + 1)
     return (summary.value?.states ?? []).map((s) => ({ ...s, onlineCount: online.get(s.state) ?? 0 }))
@@ -43,6 +50,15 @@ export function useMembersMap() {
 
   const totals = computed(() => {
     const t = summary.value?.totals
+    if (!membersVisible.value) {
+      return {
+        members: t?.members ?? 0,
+        states: t?.states ?? 0,
+        unlocated: t?.unlocated ?? 0,
+        online: t?.online ?? 0,
+        unlocatedOnline: t?.unlocatedOnline ?? 0,
+      }
+    }
     let unlocatedOnline = 0
     for (const st of onlineStates.value.values()) if (!st) unlocatedOnline++
     return {
@@ -62,24 +78,37 @@ export function useMembersMap() {
     loading.value = true
     error.value = null
     try {
-      const data = await apiFetchData<MembersMapSummary>('/users/map', { method: 'GET' })
-      summary.value = data
-      for (const s of data.states) remember(s.preview, s.state)
-      remember(data.unlocatedPreview, null)
-      const next = new Map<string, string | null>()
-      for (const o of data.online) {
-        knownStates.set(o.userId, o.state)
-        next.set(o.userId, o.state)
-      }
-      onlineStates.value = next
-      ignored = new Set()
-      if (data.online.length) addOnlineIdsFromRest(data.online.map((o) => o.userId))
+      applySummary(await apiFetchData<MembersMapSummary>('/users/map', { method: 'GET' }))
     } catch (e) {
       error.value = getApiErrorMessage(e) || 'Failed to load the map.'
     } finally {
       loading.value = false
     }
   }
+
+  function applySummary(data: MembersMapSummary) {
+    summary.value = data
+    lastFetchedAt = Date.now()
+    for (const s of data.states) remember(s.preview, s.state)
+    remember(data.unlocatedPreview, null)
+    const next = new Map<string, string | null>()
+    for (const o of data.online) {
+      knownStates.set(o.userId, o.state)
+      next.set(o.userId, o.state)
+    }
+    onlineStates.value = next
+    ignored = new Set()
+    if (mounted) seedPresence()
+  }
+
+  // Presence-driven rings aren't in the server HTML, so only seed after mount (hydration-safe).
+  let mounted = false
+  function seedPresence() {
+    const ids = summary.value?.online.map((o) => o.userId) ?? []
+    if (ids.length) addOnlineIdsFromRest(ids)
+  }
+
+  if (opts.initial) applySummary(opts.initial)
 
   let refetchTimer: ReturnType<typeof setTimeout> | null = null
   function scheduleRefetch() {
@@ -91,7 +120,7 @@ export function useMembersMap() {
   }
 
   function markOnline(userId: string, isBot?: boolean) {
-    if (isBot || ignored.has(userId)) return
+    if (!membersVisible.value || isBot || ignored.has(userId)) return
     if (knownStates.has(userId)) {
       const next = new Map(onlineStates.value)
       next.set(userId, knownStates.get(userId) ?? null)
@@ -113,6 +142,11 @@ export function useMembersMap() {
       onlineStates.value = next
     },
     onSnapshot(payload) {
+      if (payload?.membersVisible === false || !membersVisible.value) {
+        // The summary we just loaded is already current; only refetch if it has gone stale.
+        if (Date.now() - lastFetchedAt > REFETCH_DEBOUNCE_MS * 2) scheduleRefetch()
+        return
+      }
       const next = new Map<string, string | null>()
       let unknown = false
       for (const u of payload?.users ?? []) {
@@ -122,6 +156,9 @@ export function useMembersMap() {
       }
       onlineStates.value = next
       if (unknown) scheduleRefetch()
+    },
+    onOnlineCount() {
+      scheduleRefetch()
     },
   }
 
@@ -147,6 +184,8 @@ export function useMembersMap() {
       bucketMembers.value = []
       bucketCursor.value = null
     }
+    // Counts-only viewers see the bucket's numbers from the summary; the member list is verified-only.
+    if (!membersVisible.value) return
     const request = ++bucketRequest
     bucketLoading.value = true
     bucketError.value = null
@@ -181,8 +220,10 @@ export function useMembersMap() {
 
   let subscribed = false
   async function start() {
+    mounted = true
+    seedPresence()
     addOnlineFeedCallback(feedCallback)
-    await fetchSummary()
+    if (!summary.value) await fetchSummary()
     await whenSocketConnected(12000)
     if (!subscribed) {
       subscribeOnlineFeed()
@@ -208,6 +249,7 @@ export function useMembersMap() {
 
   return {
     summary,
+    membersVisible,
     states,
     totals,
     loading,

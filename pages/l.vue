@@ -24,7 +24,6 @@
         <div v-if="stateMemberCountText" class="flex items-center justify-between gap-3 border-b moh-border px-4 py-3 text-sm moh-text-muted tabular-nums">
           <span>{{ stateMemberCountText }} in {{ data.location.stateDisplay ?? data.location.state }}</span>
           <NuxtLink
-            v-if="canSeeMap"
             :to="{ path: '/map', query: { state: data.location.state } }"
             class="shrink-0 font-semibold text-[var(--moh-link)] hover:underline underline-offset-2"
           >
@@ -74,8 +73,6 @@ definePageMeta({
 const route = useRoute()
 const { apiFetchData } = useApiClient()
 const { header } = useAppHeader()
-const { isVerified, isPremium } = useAuth()
-const canSeeMap = computed(() => isVerified.value || isPremium.value)
 
 const loading = ref(false)
 const error = ref<string | null>(null)

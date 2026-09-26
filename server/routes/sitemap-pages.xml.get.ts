@@ -9,6 +9,8 @@ const PAGES = [
   { path: '/',              changefreq: 'weekly',  priority: '1.0' },
   { path: '/articles',     changefreq: 'hourly',  priority: '0.9' },
   { path: '/explore',      changefreq: 'hourly',  priority: '0.8' },
+  { path: '/map',          changefreq: 'daily',   priority: '0.7' },
+  { path: '/online',       changefreq: 'always',  priority: '0.6' },
   { path: '/tiers',        changefreq: 'monthly', priority: '0.6' },
   { path: '/about',        changefreq: 'monthly', priority: '0.6' },
   { path: '/api',          changefreq: 'monthly', priority: '0.5' },
@@ -19,11 +21,21 @@ const PAGES = [
   { path: '/privacy',      changefreq: 'yearly',  priority: '0.3' },
 ]
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   const entries = PAGES.map((p) => urlEntry(`${SITE_URL}${p.path}`, {
     changefreq: p.changefreq,
     priority: p.priority,
   }))
+
+  // One page per state that has members ("Men of Hunger in Texas"); counts only, fetched anonymously.
+  const config = useRuntimeConfig(event)
+  const apiBase = (config.apiBaseUrl as string) || 'http://localhost:3001/v1'
+  const map = await $fetch<{ data: { states: Array<{ state: string; memberCount: number }> } }>(`${apiBase}/users/map`).catch(() => null)
+  for (const s of map?.data.states ?? []) {
+    if (s.memberCount > 0 && /^[A-Z]{2}$/.test(s.state)) {
+      entries.push(urlEntry(`${SITE_URL}/map?state=${s.state}`, { changefreq: 'daily', priority: '0.5' }))
+    }
+  }
 
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -33,7 +45,7 @@ export default defineEventHandler((event) => {
   ].join('\n')
 
   setResponseHeader(event, 'Content-Type', 'application/xml; charset=utf-8')
-  setResponseHeader(event, 'Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800')
+  setResponseHeader(event, 'Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400')
   return xml
 })
 

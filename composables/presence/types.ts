@@ -69,13 +69,18 @@ export type PresenceOnlineFeedSnapshotPayload = {
   users: OnlineUser[]
   totalOnline?: number
   anonymousOnline?: number
+  /** False for signed-out and unverified viewers: `users` is empty; counts arrive via `onOnlineCount`. */
+  membersVisible?: boolean
 }
+/** `presence:online-count`: the only live update count-only (signed-out / unverified) viewers get. */
+export type PresenceOnlineCountPayload = { totalOnline: number; anonymousOnline: number }
 export type OnlineFeedCallback = {
   onOnline?: (payload: PresenceOnlinePayload) => void
   onOffline?: (payload: PresenceOfflinePayload) => void
   onSnapshot?: (payload: PresenceOnlineFeedSnapshotPayload) => void
   onPlatformsChanged?: (payload: WsPresencePlatformsChangedPayload) => void
   onAnonymousCount?: (payload: PresenceAnonymousCountPayload) => void
+  onOnlineCount?: (payload: PresenceOnlineCountPayload) => void
   /** Someone on the list entered or left a voice/video call. */
   onCallChanged?: (payload: WsPresenceCallChangedPayload) => void
 }

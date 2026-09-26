@@ -2,6 +2,9 @@
   <div class="flex flex-col">
     <!-- Overview: ranked states -->
     <template v-if="!bucket">
+      <div v-if="!membersVisible" class="moh-gutter-x border-b moh-border bg-[rgba(var(--moh-brass-rgb),0.05)] py-4">
+        <AppMembersLockedCta compact />
+      </div>
       <div class="moh-gutter-x flex items-center justify-between pb-2 pt-5">
         <h2 class="text-base font-bold tracking-tight moh-text">States</h2>
         <span class="text-xs font-medium moh-text-soft">{{ onlineOnly ? 'Most online first' : 'Most men first' }}</span>
@@ -101,7 +104,7 @@
       <div class="moh-gutter-x flex items-center justify-between gap-3 pb-2 pt-5">
         <h2 class="truncate text-base font-bold tracking-tight moh-text">{{ bucketTitle }}</h2>
         <NuxtLink
-          v-if="bucket !== 'none'"
+          v-if="bucket !== 'none' && membersVisible"
           :to="{ path: '/l', query: { state: bucket } }"
           class="shrink-0 text-xs font-semibold text-[var(--moh-brass)] hover:underline"
         >
@@ -109,7 +112,17 @@
         </NuxtLink>
       </div>
 
-      <div v-if="bucketError && !members.length" class="moh-gutter-x pb-4">
+      <div v-if="!membersVisible" class="moh-gutter-x border-t moh-border pb-6 pt-5">
+        <p class="text-3xl font-bold tabular-nums tracking-tight moh-text">{{ bucketCounts.members.toLocaleString('en-US') }}</p>
+        <p class="mt-0.5 text-sm moh-text-muted">{{ bucketCounts.members === 1 ? 'man' : 'men' }}<template v-if="bucket !== 'none'"> live here</template></p>
+        <p class="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--moh-online)]">
+          <span class="h-1.5 w-1.5 rounded-full bg-[var(--moh-online)]" aria-hidden="true" />
+          {{ bucketCounts.online.toLocaleString('en-US') }} online right now
+        </p>
+        <AppMembersLockedCta class="mt-6" compact title="See who they are" />
+      </div>
+
+      <div v-else-if="bucketError && !members.length" class="moh-gutter-x pb-4">
         <AppInlineAlert severity="danger">{{ bucketError }}</AppInlineAlert>
       </div>
       <div v-else-if="bucketLoading && !members.length" class="flex justify-center py-8">
@@ -123,7 +136,7 @@
         <AppUserRow v-for="u in members" :key="u.id" :user="asRowUser(u)" show-presence />
       </div>
 
-      <div v-if="bucketCursor && !onlineOnly" class="relative flex min-h-12 items-center justify-center py-5">
+      <div v-if="membersVisible && bucketCursor && !onlineOnly" class="relative flex min-h-12 items-center justify-center py-5">
         <div ref="sentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
         <Button v-if="bucketError" label="Try again" severity="secondary" rounded @click="emit('loadMore')" />
         <AppLogoLoader v-else-if="bucketLoading" compact />
@@ -149,6 +162,9 @@ const props = defineProps<{
   bucketLoading: boolean
   bucketCursor: string | null
   bucketError: string | null
+  /** False for signed-out and unverified viewers: counts only, never names or faces. */
+  membersVisible: boolean
+  bucketCounts: { members: number; online: number }
 }>()
 
 const emit = defineEmits<{ (e: 'loadMore'): void }>()
@@ -177,7 +193,7 @@ function asRowUser(u: MembersMapUser): FollowListUser {
 }
 
 function menLabel(n: number) {
-  return `${n.toLocaleString()} ${n === 1 ? 'man' : 'men'}`
+  return `${n.toLocaleString('en-US')} ${n === 1 ? 'man' : 'men'}`
 }
 
 const sentinelEl = ref<HTMLElement | null>(null)

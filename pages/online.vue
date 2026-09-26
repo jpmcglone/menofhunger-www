@@ -11,23 +11,36 @@
         Online now
       </h1>
       <p class="mt-1 flex flex-wrap items-baseline text-sm text-gray-600 dark:text-gray-300">
-        <span v-if="totalOnline !== null">{{ totalOnline }} {{ totalOnline === 1 ? 'person is' : 'people are' }} online now.</span>
+        <span v-if="displayTotal !== null">{{ displayTotal }} {{ displayTotal === 1 ? 'person is' : 'people are' }} online now.</span>
         <span v-else>People currently active or recently around. Updates in real time.</span>
         <span
           v-if="anonymousOnline !== null && anonymousOnline > 0"
           class="moh-text-soft"
         > +{{ anonymousOnline }} {{ anonymousOnline === 1 ? 'guest' : 'guests' }}</span>
         <NuxtLink
-          v-if="canSeeMap"
           :to="{ path: '/map', query: { online: '1' } }"
           class="ml-auto font-semibold text-[var(--moh-link)] hover:underline underline-offset-2"
         >
-          See who's where
+          {{ membersVisible ? "See who's where" : 'See where' }}
         </NuxtLink>
       </p>
     </div>
 
-    <div v-if="error" class="px-4">
+    <!-- Signed-out and unverified viewers: the numbers, never names or faces. -->
+    <section v-if="!membersVisible" class="border-t moh-border">
+      <div class="moh-gutter-x py-8 text-center sm:text-left">
+        <p class="text-6xl font-bold tabular-nums tracking-tight moh-text">{{ (displayTotal ?? 0).toLocaleString('en-US') }}</p>
+        <p class="mt-1 text-base font-medium moh-text-muted">{{ displayTotal === 1 ? 'man is' : 'men are' }} online right now</p>
+        <p v-if="displayGuests > 0" class="mt-3 text-sm moh-text-soft">
+          Plus {{ displayGuests.toLocaleString('en-US') }} {{ displayGuests === 1 ? 'guest' : 'guests' }} browsing.
+        </p>
+      </div>
+      <div class="moh-gutter-x border-t moh-border bg-[rgba(var(--moh-brass-rgb),0.05)] py-5">
+        <AppMembersLockedCta title="See who's online" />
+      </div>
+    </section>
+
+    <div v-else-if="error" class="px-4">
       <AppInlineAlert severity="danger">
         {{ error }}
       </AppInlineAlert>
@@ -50,8 +63,8 @@
       <AppUserRow show-presence v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" :platforms="u.platforms" :in-call="u.inCall === true" />
     </TransitionGroup>
 
-    <!-- Recently / older online (authenticated viewers only) -->
-    <template v-if="viewerCanSeeLastOnline">
+    <!-- Recently / older online (verified viewers only) -->
+    <template v-if="membersVisible && viewerCanSeeLastOnline">
       <div
         class="px-4"
         :class="recentlyOnlineUsers.length ? 'pt-8 pb-2' : 'pt-5 pb-3'"
@@ -174,12 +187,6 @@ definePageMeta({
   hideTopBar: true,
 })
 
-usePageSeo({
-  title: 'Online now',
-  description: 'People currently active or recently around.',
-  canonicalPath: '/online',
-  noindex: true,
-})
 
 const { apiFetch } = useApiClient()
 const {
@@ -208,8 +215,35 @@ const recentNextCursor = useState<string | null>('online-page-recent-next-cursor
 const recentLoading = useState<boolean>('online-page-recent-loading', () => false)
 const recentError = useState<string | null>('online-page-recent-error', () => null)
 
-const { user: authUser, isVerified, isPremium } = useAuth()
-const canSeeMap = computed(() => isVerified.value || isPremium.value)
+const { user: authUser } = useAuth()
+const { membersVisible } = useMembersAccess()
+
+// Server-rendered counts so search results and link previews show the live number.
+const { data: ssrCounts } = await useAsyncData('online-page-counts', () =>
+  apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET', query: { includeSelf: '1', summary: '1' } })
+    .then((res) => ({ total: res?.pagination?.totalOnline ?? 0, guests: res?.pagination?.anonymousOnline ?? 0 }))
+    .catch(() => null),
+)
+const displayTotal = computed(() => totalOnline.value ?? ssrCounts.value?.total ?? null)
+const displayGuests = computed(() => anonymousOnline.value ?? ssrCounts.value?.guests ?? 0)
+
+const onlineSeoDescription = computed(() => {
+  const total = displayTotal.value
+  if (total === null) return 'See how many men are online on Men of Hunger right now. Updates live.'
+  const guests = displayGuests.value
+  const guestsText = guests > 0 ? `, plus ${guests.toLocaleString('en-US')} ${guests === 1 ? 'guest' : 'guests'} browsing` : ''
+  return `${total.toLocaleString('en-US')} ${total === 1 ? 'man is' : 'men are'} online on Men of Hunger right now${guestsText}. A live count of the brotherhood, updated in real time.`
+})
+
+usePageSeo({
+  title: "Who's online now",
+  description: onlineSeoDescription,
+  canonicalPath: '/online',
+  image: computed(() => `/og/online.png?v=${displayTotal.value ?? 0}-${displayGuests.value}`),
+  imageAlt: computed(() => `${displayTotal.value ?? 0} men online on Men of Hunger right now`),
+  imageWidth: 1200,
+  imageHeight: 630,
+})
 const { nowMs } = useNowTicker({ everyMs: 15_000 })
 const viewerCanSeeLastOnline = computed(() => Boolean(authUser.value))
 const RECENTLY_ONLINE_MS = 60 * 60 * 1000
@@ -244,6 +278,7 @@ const feedCallback: {
   onSnapshot?: (p: { users: OnlineUser[]; totalOnline?: number; anonymousOnline?: number }) => void
   onPlatformsChanged?: (p: { userId: string; platforms: string[] }) => void
   onAnonymousCount?: (p: { anonymousOnline: number }) => void
+  onOnlineCount?: (p: { totalOnline: number; anonymousOnline: number }) => void
   onCallChanged?: (p: { userId: string; inCall: boolean }) => void
 } = {
   onOnline(payload) {
@@ -331,6 +366,10 @@ const feedCallback: {
     if (typeof payload?.anonymousOnline === 'number') {
       anonymousOnline.value = Math.max(0, Math.floor(payload.anonymousOnline))
     }
+  },
+  onOnlineCount(payload) {
+    totalOnline.value = Math.max(0, Math.floor(payload.totalOnline))
+    anonymousOnline.value = Math.max(0, Math.floor(payload.anonymousOnline))
   },
   onAnonymousCount(payload) {
     if (typeof payload?.anonymousOnline !== 'number') return

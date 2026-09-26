@@ -310,6 +310,8 @@ export default defineNuxtConfig({
 
   nitro: {
     sourceMap: false,
+    // satori (share cards under /og) loads this at runtime; the dependency tracer only follows JS.
+    externals: { traceInclude: ['node_modules/harfbuzzjs/hb.wasm'] },
     prerender: {
       routes: ['/about', '/privacy', '/terms'],
       // Avoid auto-prerendering internal content endpoints.
@@ -409,7 +411,9 @@ export default defineNuxtConfig({
     '/g/*/pending': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
     '/g/*/invites': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
     '/only-me': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
-    '/online': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
+    // Public, counts-only for signed-out visitors: indexable, but never cached (live numbers, per-viewer lists).
+    '/online': { ssr: true, headers: { 'cache-control': 'no-store' } },
+    '/map': { ssr: true, headers: { 'cache-control': 'no-store' } },
     '/new-posts': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
     '/settings': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/settings/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },

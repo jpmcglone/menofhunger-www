@@ -3,7 +3,7 @@ export type RouteHeaderDefaults = { icon?: string; description?: string }
 export const PUBLIC_PATHS = new Set<string>(['/about', '/status', '/roadmap', '/tiers', '/email/unsubscribe'])
 
 // Allow logged-out browsing of core feed/discovery for now.
-export const LOGGED_OUT_ALLOWED_PATHS = new Set<string>(['/home', '/explore', '/notifications', '/feedback', '/articles'])
+export const LOGGED_OUT_ALLOWED_PATHS = new Set<string>(['/home', '/explore', '/notifications', '/feedback', '/articles', '/online', '/map'])
 
 // After logout, these pages are safe to keep the user on (even if they use the `app` layout).
 export const AUTH_ALLOWED_AFTER_LOGOUT_PATHS = new Set<string>([

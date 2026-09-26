@@ -15,6 +15,7 @@ import type {
   PresenceOfflinePayload,
   PresenceOnlineFeedSnapshotPayload,
   PresenceAnonymousCountPayload,
+  PresenceOnlineCountPayload,
 } from './types'
 
 const PRESENCE_STATE_KEY = 'presence-online-ids'
@@ -520,6 +521,15 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
       if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
         for (const cb of onlineFeedCallbacks.value) {
           cb.onCallChanged?.(data)
+        }
+      }
+    })
+
+    socket.on('presence:online-count', (data: PresenceOnlineCountPayload) => {
+      if (typeof data?.totalOnline !== 'number') return
+      if (onlineFeedSubscribed.value && onlineFeedCallbacks.value.size > 0) {
+        for (const cb of onlineFeedCallbacks.value) {
+          cb.onOnlineCount?.(data)
         }
       }
     })
