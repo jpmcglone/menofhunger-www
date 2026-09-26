@@ -81,11 +81,12 @@
       :href="previewLink"
     />
 
-    <AppWebsitePreviewCard
-      v-else-if="showGenericWebsitePreview && previewLink"
+    <AppLinkCard
+      v-else-if="showGenericWebsitePreview && previewLink && (!mayBecomeCustomEmbed || linkMetaSettled)"
       :href="previewLink"
-      :title="genericPreviewTitle"
-      :source-label="previewSourceLine"
+      :site-label="linkCardSiteLabel"
+      :state="linkCardState"
+      :title="linkMeta?.title || linkMeta?.siteName"
       :description="linkMeta?.description"
       :image-url="linkMeta?.imageUrl"
       :preview-only="previewOnly"
@@ -176,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlHostname, previewSourceLabel, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata, peekLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -355,8 +356,6 @@ const previewLink = computed(() => {
 })
 
 const showLinkPreview = computed(() => Boolean(previewLink.value && !hasMedia.value))
-const previewLinkHost = computed(() => (previewLink.value ? safeUrlHostname(previewLink.value) : null))
-const previewSourceLine = computed(() => (previewLink.value ? previewSourceLabel(previewLink.value) : 'From link'))
 const dismissedPreviewUrl = ref<string | null>(null)
 watch(previewLink, (url) => {
   if (url !== dismissedPreviewUrl.value) dismissedPreviewUrl.value = null
@@ -367,12 +366,6 @@ function dismissGenericPreview() {
 const genericPreviewSuppressed = computed(() =>
   Boolean(props.dismissible && dismissedPreviewUrl.value && dismissedPreviewUrl.value === previewLink.value),
 )
-const genericPreviewTitle = computed(() => {
-  const title = (linkMeta.value?.title ?? '').trim()
-  if (title) return title
-  return (previewLinkHost.value ?? '').replace(/^www\./i, '') || 'Link'
-})
-
 const youtubeVideoInfo = computed(() => (previewLink.value ? parseYouTubeUrl(previewLink.value) : null))
 const youtubeEmbedUrl = computed(() => (previewLink.value ? getYouTubeEmbedUrl(previewLink.value) : null))
 const isPreviewLinkRumble = computed(() => {
@@ -474,10 +467,13 @@ watch(
 )
 
 const linkMeta = ref<LinkMetadata | null>(null)
+/** True once the metadata request for the current link finished (with or without data). */
+const linkMetaSettled = ref(false)
 watch(
   [previewLink, rowInView, showLinkPreview],
   ([url, inView, canPreview], _old, onCleanup) => {
     linkMeta.value = null
+    linkMetaSettled.value = false
     if (!import.meta.client) return
     if (!canPreview) return
     if (!inView) return
@@ -519,6 +515,10 @@ watch(
         .then((meta) => {
           if (cancelled) return
           linkMeta.value = meta
+          linkMetaSettled.value = true
+        })
+        .catch(() => {
+          if (!cancelled) linkMetaSettled.value = true
         })
     }, PREVIEW_FETCH_DWELL_MS)
   },
@@ -565,6 +565,17 @@ const isCustomWebsitePreview = computed(() => Boolean(
 const showGenericWebsitePreview = computed(() =>
   Boolean(showLinkPreview.value && !isCustomWebsitePreview.value && !genericPreviewSuppressed.value),
 )
+/** Links that turn into their own embed once metadata arrives; they keep the existing card path. */
+const mayBecomeCustomEmbed = computed(() => {
+  const url = previewLink.value
+  return Boolean(url && (isXPostUrl(url) || isSubstackPostUrl(url) || isSpotifyShareUrl(url)))
+})
+const linkCardSiteLabel = computed(() => (safeUrlHostname(previewLink.value ?? '') ?? '').replace(/^www\./, '') || 'Link')
+const linkCardState = computed<'loading' | 'ready' | 'unavailable'>(() => {
+  const meta = linkMeta.value
+  if (meta && (meta.title || meta.siteName || meta.imageUrl || meta.description)) return 'ready'
+  return linkMetaSettled.value ? 'unavailable' : 'loading'
+})
 const previewInteractionLocked = computed(() =>
   Boolean(props.previewOnly && !(props.dismissible && showGenericWebsitePreview.value)),
 )
