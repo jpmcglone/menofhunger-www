@@ -22,54 +22,52 @@
         <div v-if="thread.articleId" class="moh-gutter-x border-t moh-border py-4">
           <AppBoardArticleCard :thread="thread" />
         </div>
-        <template v-else>
-          <div class="moh-gutter-x border-y moh-border py-2.5">
-            <AppBoardCommentComposer :thread-id="thread.id" :autofocus="wantsReply" @created="onCreated" />
+        <div class="moh-gutter-x border-y moh-border py-2.5">
+          <AppBoardCommentComposer :thread-id="thread.id" :autofocus="wantsReply" @created="onCreated" />
+        </div>
+        <div class="flex items-center gap-1.5 moh-gutter-x pt-3 pb-1 text-xs moh-text-soft">
+          <h2 class="text-sm font-semibold moh-text">{{ commentCountLabel }}</h2>
+          <template v-if="newSinceVisit.length">
+            <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              class="moh-tap moh-focus min-h-9 font-semibold hover:underline"
+              style="color: var(--moh-verified)"
+              @click="jumpToNew"
+            >{{ newSinceVisit.length }} new since your last visit</button>
+          </template>
+          <template v-for="option in commentSortOptions" :key="option.key">
+            <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              class="moh-tap moh-focus min-h-9 hover:text-[var(--moh-text)]"
+              :class="commentSort === option.key ? 'font-semibold moh-text' : ''"
+              :aria-pressed="commentSort === option.key"
+              @click="setCommentSort(option.key)"
+            >{{ option.label }}</button>
+          </template>
+        </div>
+        <AppTypingIndicator
+          v-if="live.typingFor(null).length"
+          :users="live.typingFor(null)"
+          verb="commenting"
+          size="compact"
+          class="moh-gutter-x pb-1"
+        />
+        <div class="relative pb-6">
+          <div v-if="live.pending.value.length" class="pointer-events-none sticky top-2 z-20 flex h-0 justify-center overflow-visible">
+            <AppFeedNewPostsPill
+              class="pointer-events-auto"
+              :authors="live.pendingAuthors.value"
+              :count="live.pending.value.length"
+              :label="pendingLabel"
+              icon="tabler:message-circle"
+              @reveal="revealPending"
+            />
           </div>
-          <div class="flex items-center gap-1.5 moh-gutter-x pt-3 pb-1 text-xs moh-text-soft">
-            <h2 class="text-sm font-semibold moh-text">{{ commentCountLabel }}</h2>
-            <template v-if="newSinceVisit.length">
-              <span aria-hidden="true">·</span>
-              <button
-                type="button"
-                class="moh-tap moh-focus min-h-9 font-semibold hover:underline"
-                style="color: var(--moh-verified)"
-                @click="jumpToNew"
-              >{{ newSinceVisit.length }} new since your last visit</button>
-            </template>
-            <template v-for="option in commentSortOptions" :key="option.key">
-              <span aria-hidden="true">·</span>
-              <button
-                type="button"
-                class="moh-tap moh-focus min-h-9 hover:text-[var(--moh-text)]"
-                :class="commentSort === option.key ? 'font-semibold moh-text' : ''"
-                :aria-pressed="commentSort === option.key"
-                @click="setCommentSort(option.key)"
-              >{{ option.label }}</button>
-            </template>
-          </div>
-          <AppTypingIndicator
-            v-if="live.typingFor(null).length"
-            :users="live.typingFor(null)"
-            verb="commenting"
-            size="compact"
-            class="moh-gutter-x pb-1"
-          />
-          <div class="relative pb-6">
-            <div v-if="live.pending.value.length" class="pointer-events-none sticky top-2 z-20 flex h-0 justify-center overflow-visible">
-              <AppFeedNewPostsPill
-                class="pointer-events-auto"
-                :authors="live.pendingAuthors.value"
-                :count="live.pending.value.length"
-                :label="pendingLabel"
-                icon="tabler:message-circle"
-                @reveal="revealPending"
-              />
-            </div>
-            <AppBoardCommentRow v-for="c in comments" :key="c.id" :comment="c" :depth="0" />
-            <p v-if="!comments.length && !commentsPending && !live.pending.value.length" class="moh-gutter-x py-10 text-center moh-meta">No comments yet. Start the conversation.</p>
-          </div>
-        </template>
+          <AppBoardCommentRow v-for="c in comments" :key="c.id" :comment="c" :depth="0" />
+          <p v-if="!comments.length && !commentsPending && !live.pending.value.length" class="moh-gutter-x py-10 text-center moh-meta">No comments yet. Start the conversation.</p>
+        </div>
       </template>
     </div>
   </AppPageContent>
@@ -147,7 +145,7 @@ const live = useBoardThreadLive({
 
 provide(BOARD_COMMENT_TREE_KEY, {
   threadId,
-  canReply: computed(() => Boolean(thread.value?.viewerCanAccess && !thread.value?.articleId)),
+  canReply: computed(() => Boolean(thread.value?.viewerCanAccess)),
   maxDepth: 8,
   highlightId: ref(null),
   add: tree.add,

@@ -30,23 +30,27 @@
             aria-hidden="true"
           /><span class="sr-only"> (opens {{ thread.domain || 'link' }} in a new tab)</span></a>
           <NuxtLink
+            v-else-if="thread.articleId && thread.viewerCanAccess"
+            :to="`/a/${encodeURIComponent(thread.articleId)}`"
+            class="group/title pointer-events-auto moh-text hover:underline"
+          >{{ thread.title }}<Icon
+            name="tabler:article"
+            class="ml-1 inline-block align-[-0.1em] text-[0.95em] moh-text-soft"
+            aria-hidden="true"
+          /><span class="sr-only"> (read the article)</span></NuxtLink>
+          <NuxtLink
             v-else
             :to="threadHref"
             class="pointer-events-auto hover:underline"
             :class="thread.viewerCanAccess ? 'moh-text' : 'moh-text-muted'"
-          >{{ thread.title }}<Icon
-            v-if="thread.articleId"
-            name="tabler:article"
-            class="ml-1 inline-block align-[-0.1em] text-[0.95em] moh-text-soft"
-            aria-hidden="true"
-          /></NuxtLink>
+          >{{ thread.title }}</NuxtLink>
           <span
             v-if="thread.articleId && thread.viewerCanAccess && thread.readingTimeMinutes"
             class="ml-1.5 whitespace-nowrap text-xs font-normal moh-text-soft"
-          >article · {{ thread.readingTimeMinutes }} min read</span>
+          >{{ thread.readingTimeMinutes }} min read</span>
           <!-- Site sits beside the title, HN-style; it filters the Board to that site. -->
           <NuxtLink
-            v-if="thread.domain && thread.viewerCanAccess"
+            v-if="thread.domain && thread.viewerCanAccess && !thread.articleId"
             :to="{ path: '/b', query: { domain: thread.domain } }"
             class="pointer-events-auto ml-1.5 whitespace-nowrap text-xs font-normal moh-text-soft hover:underline"
           >{{ thread.domain }}</NuxtLink>
@@ -151,7 +155,7 @@ const emit = defineEmits<{ 'toggle-hide': [thread: BoardThread] }>()
 const preview = useUserPreviewMultiTrigger()
 const { gateCopy } = useBoardAccess()
 
-const threadHref = computed(() => boardThreadOpenHref(props.thread))
+const threadHref = computed(() => boardThreadHref(props.thread))
 const discussionHref = computed(() => boardDiscussionHref(props.thread))
 const externalUrl = computed(() => (props.thread.viewerCanAccess && props.thread.url && !props.thread.articleId ? props.thread.url : null))
 const age = computed(() => formatListTime(props.thread.createdAt))

@@ -17,17 +17,19 @@
       </div>
       <p class="mt-1 line-clamp-2 text-[15px] font-semibold leading-snug moh-text group-hover:underline">{{ thread.title }}</p>
       <p class="mt-1 text-xs moh-text-muted">{{ meta }}</p>
-      <p class="mt-2 text-xs font-semibold" style="color: var(--moh-verified)">Read and comment →</p>
+      <p class="mt-2 text-xs font-semibold" style="color: var(--moh-verified)">Read article →</p>
     </div>
   </NuxtLink>
 </template>
 
 <script setup lang="ts">
 import type { BoardThread } from '~/types/api'
-import { boardArticleMeta, boardThreadOpenHref } from '~/composables/useBoardApi'
+import { boardArticleMeta } from '~/composables/useBoardApi'
 
 const props = defineProps<{ thread: BoardThread }>()
 
-const articleHref = computed(() => boardThreadOpenHref(props.thread))
+const articleHref = computed(() =>
+  props.thread.articleId ? `/a/${encodeURIComponent(props.thread.articleId)}` : boardThreadHref(props.thread),
+)
 const meta = computed(() => boardArticleMeta(props.thread))
 </script>

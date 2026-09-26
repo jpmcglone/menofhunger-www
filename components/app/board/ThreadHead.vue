@@ -88,7 +88,7 @@
           :initial-collection-ids="[]"
         />
         <AppPostRowShareMenu :can-share="true" :tooltip="shareTooltip" :items="shareItems" />
-        <AppBoardCatchUpButton v-if="!thread.articleId" :post-id="thread.id" />
+        <AppBoardCatchUpButton :post-id="thread.id" />
         <AppPostRowViewerBreakdown
           class="ml-auto"
           :entity-id="thread.id"

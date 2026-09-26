@@ -88,7 +88,7 @@ const live = useBoardThreadLive({
 })
 provide(BOARD_COMMENT_TREE_KEY, {
   threadId: liveThreadId,
-  canReply: computed(() => Boolean(ctxData.value?.thread.viewerCanAccess && !ctxData.value.thread.articleId)),
+  canReply: computed(() => Boolean(ctxData.value?.thread.viewerCanAccess)),
   maxDepth: 8,
   highlightId: commentId,
   add: tree.add,

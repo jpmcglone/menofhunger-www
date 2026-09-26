@@ -31,9 +31,9 @@ describe('boardPostHref', () => {
     expect(boardPostHref({ id: 'p1', kind: 'regular', parentId: null })).toBeNull()
   })
 
-  it('opens article Board posts on the article', () => {
-    expect(boardPostHref({ id: 't2', kind: 'board', parentId: null, boardRootId: 't2', article: { id: 'a1' } })).toBe('/a/a1')
-    expect(boardThreadOpenHref({ id: 't2', articleId: 'a1' })).toBe('/a/a1')
+  it('opens article Board posts on the Board (article opens from the title/link)', () => {
+    expect(boardPostHref({ id: 't2', kind: 'board', parentId: null, boardRootId: 't2', article: { id: 'a1' } })).toBe('/b/t2')
+    expect(boardThreadOpenHref({ id: 't2', articleId: 'a1' })).toBe('/b/t2')
     expect(boardThreadOpenHref({ id: 't3', articleId: null })).toBe('/b/t3')
   })
 })

@@ -94,22 +94,20 @@ export function boardCommentHref(threadId: string, commentId: string): string {
   return `/b/${encodeURIComponent(threadId)}/c/${encodeURIComponent(commentId)}`
 }
 
-/** Where a Board post opens: article Board posts go straight to the article, where they're discussed. */
+/** Board post page — article-sourced threads discuss on the Board; the article opens from the link. */
 export function boardThreadOpenHref(thread: Pick<BoardThread, 'id' | 'articleId'>): string {
-  return thread.articleId ? `/a/${encodeURIComponent(thread.articleId)}` : boardThreadHref(thread)
+  return boardThreadHref(thread)
 }
 
-/** "5 min read · 12 comments" for article Board posts. */
-export function boardArticleMeta(thread: Pick<BoardThread, 'readingTimeMinutes' | 'commentCount'>): string {
-  const parts: string[] = []
-  if (thread.readingTimeMinutes) parts.push(`${thread.readingTimeMinutes} min read`)
-  parts.push(`${thread.commentCount} ${thread.commentCount === 1 ? 'comment' : 'comments'}`)
-  return parts.join(' · ')
+/** Reading-time line for the article preview card (Board comments stay on the Board). */
+export function boardArticleMeta(thread: Pick<BoardThread, 'readingTimeMinutes'>): string {
+  if (thread.readingTimeMinutes) return `${thread.readingTimeMinutes} min read`
+  return 'Men of Hunger article'
 }
 
-/** Discussion link: article-sourced threads keep their comments on the article. */
+/** Discussion always lives on the Board thread. */
 export function boardDiscussionHref(thread: Pick<BoardThread, 'id' | 'articleId'>): string {
-  return thread.articleId ? `/a/${encodeURIComponent(thread.articleId)}#comments` : boardThreadHref(thread)
+  return boardThreadHref(thread)
 }
 
 /** Name and handle both render only when they differ; otherwise the username shows once. */
