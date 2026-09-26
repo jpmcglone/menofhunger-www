@@ -119,8 +119,9 @@ export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {})
     }, REFETCH_DEBOUNCE_MS)
   }
 
-  function markOnline(userId: string, isBot?: boolean) {
-    if (!membersVisible.value || isBot || ignored.has(userId)) return
+  // Bots (Marv) are counted like anyone else so the map matches /online and the right rail.
+  function markOnline(userId: string) {
+    if (!membersVisible.value || ignored.has(userId)) return
     if (knownStates.has(userId)) {
       const next = new Map(onlineStates.value)
       next.set(userId, knownStates.get(userId) ?? null)
@@ -133,7 +134,7 @@ export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {})
 
   const feedCallback: OnlineFeedCallback = {
     onOnline(payload) {
-      if (payload?.userId) markOnline(payload.userId, payload.user?.isBot)
+      if (payload?.userId) markOnline(payload.userId)
     },
     onOffline(payload) {
       if (!payload?.userId || !onlineStates.value.has(payload.userId)) return
@@ -150,7 +151,7 @@ export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {})
       const next = new Map<string, string | null>()
       let unknown = false
       for (const u of payload?.users ?? []) {
-        if (u.isBot || ignored.has(u.id)) continue
+        if (ignored.has(u.id)) continue
         if (knownStates.has(u.id)) next.set(u.id, knownStates.get(u.id) ?? null)
         else unknown = true
       }
