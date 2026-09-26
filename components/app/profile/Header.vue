@@ -995,6 +995,12 @@ const profileBlockHandle = computed(() => {
   return u ? `@${u}` : 'this user'
 })
 
+const { muted: viewerHasMutedProfile, toggle: toggleMuteProfile } = useMuteUser({
+  userId: computed(() => profile.value?.id),
+  username: computed(() => profile.value?.username),
+  initialMuted: computed(() => profile.value?.viewerHasMutedUser),
+})
+
 const blockingProfile = ref(false)
 const { confirm } = useAppConfirm()
 
@@ -1092,6 +1098,11 @@ const menuItems = computed<MenuItemWithIcon[]>(() => {
       command: () => {
         reportOpen.value = true
       },
+    },
+    {
+      label: viewerHasMutedProfile.value ? `Unmute ${profileBlockHandle.value}` : `Mute ${profileBlockHandle.value}`,
+      iconName: viewerHasMutedProfile.value ? 'tabler:volume' : 'tabler:volume-off',
+      command: () => void toggleMuteProfile(),
     },
     {
       label: viewerHasBlockedProfile.value ? 'Unblock user' : 'Block user',

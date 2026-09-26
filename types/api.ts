@@ -28,7 +28,10 @@ export type AccountKind = 'person' | 'page'
 // ─── Board ──────────────────────────────────────────────────────────────────
 export type PostBoardPreview = Contracts.PostBoardPreviewDto
 export type BoardVisibility = Contracts.BoardVisibility
-export type BoardThread = Contracts.BoardThreadDto
+export type BoardThread = Contracts.BoardThreadDto & {
+  /** Comments by others since the viewer last opened the thread; null when signed out, never opened, or locked. */
+  newCommentCount?: number | null
+}
 export type BoardLeaderboard = Contracts.BoardLeaderboardDto
 export type BoardLeaderboardUser = Contracts.BoardLeaderboardUserDto
 export type BoardComment = Contracts.BoardCommentDto
@@ -613,6 +616,8 @@ export type PublicProfile = {
   orgAffiliations?: OrgAffiliation[]
   /** True when the viewer has blocked this user. */
   viewerHasBlockedUser?: boolean
+  /** True when the viewer has muted this user. */
+  viewerHasMutedUser?: boolean
   /** True when this user has blocked the viewer. */
   userHasBlockedViewer?: boolean
   /** True when this user is an active member of any Crew. */

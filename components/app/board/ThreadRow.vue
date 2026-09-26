@@ -83,6 +83,12 @@
           <AppIconGlyph name="reply" :size="14" />
           <AppAnimatedCount :value="liveCommentCount" :format="formatShortCount" blank-zero :min-ch="2" />
         </span>
+        <span
+          v-if="newCommentCount"
+          class="font-semibold"
+          style="color: var(--moh-verified)"
+          :title="`${newCommentCount} new since your last visit`"
+        >{{ formatShortCount(newCommentCount) }} new</span>
         <AppTypingIndicator
           v-if="typingUsers.length && thread.viewerCanAccess"
           :users="typingUsers"
@@ -167,6 +173,10 @@ const liveCommentCount = computed(() => postCache.cache.value[props.thread.id]?.
 
 // Rows show the same people · total views chip as posts, but only opening the post counts a view.
 const { hasViewedLocally } = usePostViewTracker()
+const newCommentCount = computed(() => {
+  const count = props.thread.newCommentCount ?? 0
+  return props.thread.viewerCanAccess && count > 0 ? count : 0
+})
 const isUnanswered = computed(() => props.thread.viewerCanAccess && props.thread.tags.includes('ask') && liveCommentCount.value === 0)
 const liveViews = computed(() => {
   const delta = postCache.cache.value[props.thread.id]

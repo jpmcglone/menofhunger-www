@@ -91,6 +91,13 @@
                 </a>
               </template>
             </Menu>
+            <AppReportDialog
+              v-if="reportMounted"
+              v-model:visible="reportOpen"
+              target-type="post"
+              :subject-post-id="comment.id"
+              :subject-label="`@${comment.author.username || 'user'}`"
+            />
           </div>
           <AppTypingIndicator
             v-if="replyingUsers.length"
@@ -147,7 +154,7 @@ import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 const props = defineProps<{ comment: BoardComment; depth: number }>()
 
 const ctx = inject(BOARD_COMMENT_TREE_KEY, null)
-const { user } = useAuth()
+const { user, isAuthed } = useAuth()
 const { requireMember } = useBoardAccess()
 const api = useBoardApi()
 const toast = useAppToast()
@@ -178,6 +185,9 @@ const { mounted: menuMounted, menuRef, toggle: toggleMenu } = useAutoToggleMenu(
 type BoardMenuItem = MenuItem & { iconName?: string }
 const menuItems = computed<BoardMenuItem[]>(() => {
   const items: BoardMenuItem[] = [{ label: 'Copy link', iconName: 'tabler:link', command: () => void copyLink() }]
+  if (isAuthed.value && !isOwn.value) {
+    items.push({ label: 'Report comment', iconName: 'tabler:flag', command: openReport })
+  }
   if (isOwn.value) {
     items.push({
       label: 'Delete comment',
@@ -188,6 +198,13 @@ const menuItems = computed<BoardMenuItem[]>(() => {
   }
   return items
 })
+
+const reportMounted = ref(false)
+const reportOpen = ref(false)
+function openReport() {
+  reportMounted.value = true
+  reportOpen.value = true
+}
 
 async function copyLink() {
   try {
