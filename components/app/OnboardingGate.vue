@@ -19,7 +19,7 @@
               <label for="setup-birthday">Birthday</label>
               <p v-if="birthdateLocked" class="setup-input flex items-center px-3">{{ birthdatePretty }}</p>
               <AppDateOfBirthInput v-else id="setup-birthday" v-model="birthdate" :disabled="submitting" :invalid="Boolean(birthdate) && !isBirthdate18Plus(birthdate)" />
-              <p class="text-[13px]" :class="birthdate && !isBirthdate18Plus(birthdate) ? 'text-red-500' : 'moh-text-muted'">{{ birthdate && !isBirthdate18Plus(birthdate) ? 'Enter a valid birthday. You must be 18 or older to join.' : 'You must be 18+. Your birthday stays private.' }}</p>
+              <p class="text-[13px]" :class="birthdate && !isBirthdate18Plus(birthdate) ? 'text-red-500' : 'moh-text-muted'">{{ birthdate && !isBirthdate18Plus(birthdate) ? 'Enter a valid birthday. You must be 18 or older to join.' : 'You must be 18+. Your birth year stays private; month and day show on your profile unless you hide them in Settings.' }}</p>
             </div>
             <label class="community-confirm flex items-center justify-center gap-3 min-h-12 px-4 py-3 border moh-border rounded-full cursor-pointer">
               <Checkbox v-model="menOnlyConfirmed" binary input-id="setup-community" :disabled="submitting || menConfirmLocked" />
