@@ -4,6 +4,16 @@ import { LIFE_ARENAS } from '~/config/arenas'
 
 const WHO_TO_FOLLOW_TTL_MS = 10 * 60 * 1000
 
+/** Keeps a just-blocked member out of suggestions already on screen or cached. */
+function hideBlockedSuggestions(users: Ref<FollowListUser[]>, onBlocked?: () => void) {
+  const { blockedIds } = useBlockState()
+  watch(blockedIds, (ids) => {
+    if (users.value.some(u => ids.has(u.id))) users.value = users.value.filter(u => !ids.has(u.id))
+    onBlocked?.()
+  })
+  return (next: FollowListUser[]) => next.filter(u => !blockedIds.value.has(u.id))
+}
+
 function makeRecommendationSeed(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
@@ -30,6 +40,7 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
   const cache = useState<Record<string, { expiresAt: number; users: FollowListUser[] }>>('who-to-follow-cache', () => ({}))
 
   const isAuthed = computed(() => Boolean(user.value?.id))
+  const withoutBlocked = hideBlockedSuggestions(users, () => { cache.value = {} })
 
   function cacheKey(limit: number): string {
     return `${user.value?.id ?? 'anon'}:${limit}`
@@ -42,7 +53,7 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
     const hit = cache.value[key]
     if (!opts?.force && hit && hit.expiresAt > Date.now()) {
       hasLoaded.value = true
-      users.value = hit.users
+      users.value = withoutBlocked(hit.users)
       error.value = null
       return
     }
@@ -58,7 +69,7 @@ export function useWhoToFollow(options?: { enabled?: Ref<boolean>; defaultLimit?
         query,
         mohCache: { ttlMs: WHO_TO_FOLLOW_TTL_MS, staleWhileRevalidateMs: WHO_TO_FOLLOW_TTL_MS },
       })
-      const next = (res.data ?? []) as GetFollowRecommendationsData
+      const next = withoutBlocked((res.data ?? []) as GetFollowRecommendationsData)
       users.value = next
       cache.value = { ...cache.value, [key]: { expiresAt: Date.now() + WHO_TO_FOLLOW_TTL_MS, users: next } }
     } catch (e: unknown) {
@@ -118,6 +129,7 @@ export function useArenaFollowSuggestions(options?: { limit?: number }) {
 
   const viewerInterests = computed<string[]>(() => user.value?.interests ?? [])
   const isAuthed = computed(() => Boolean(user.value?.id))
+  const withoutBlocked = hideBlockedSuggestions(users)
 
   async function refresh() {
     if (!isAuthed.value || viewerInterests.value.length === 0) return
@@ -142,7 +154,7 @@ export function useArenaFollowSuggestions(options?: { limit?: number }) {
         method: 'GET',
         query: { limit, interests: interestsParam },
       })
-      users.value = (res.data ?? []) as GetFollowRecommendationsData
+      users.value = withoutBlocked((res.data ?? []) as GetFollowRecommendationsData)
     } catch (e: unknown) {
       error.value = getApiErrorMessage(e) || 'Failed to load arena suggestions.'
       users.value = []

@@ -112,6 +112,7 @@ export function useAuth() {
       })
       const { addUsersCallback } = usePresence()
       const { invalidateUserPreviewCache } = useUserPreview()
+      const blockState = useBlockState()
       const cb: UsersCallback = {
         onSelfUpdated: (payload: { user?: import('~/types/api').PublicProfile }) => {
           const u = payload?.user ?? null
@@ -147,6 +148,8 @@ export function useAuth() {
           }
         },
         onMeUpdated: (payload: import('~/types/api').WsUsersMeUpdatedPayload) => {
+          // A block on another tab or device: reload so post rows hide the member here too.
+          if (payload?.reason === 'block_changed') void blockState.load({ force: true })
           if (payload?.reason === 'account_banned') {
             handleUnauthorized()
             if (import.meta.client) {

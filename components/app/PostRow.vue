@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="!boardVariant"
+    v-if="!hiddenByBlock && !boardVariant"
     ref="rowEl"
     :data-post-id="postView.id"
     :class="[
@@ -335,7 +335,7 @@
   </div>
 
   <AppBoardFeedPostRow
-    v-else-if="boardVariant === 'post'"
+    v-else-if="!hiddenByBlock && boardVariant === 'post'"
     :data-post-id="postView.id"
     :class="rowBorderClass"
     :post="postView"
@@ -392,7 +392,7 @@
   </AppBoardFeedPostRow>
 
   <AppBoardFeedCommentRow
-    v-else
+    v-else-if="!hiddenByBlock"
     :data-post-id="postView.id"
     :class="rowBorderClass"
     :post="postView"
@@ -467,6 +467,7 @@ import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
+import { postChainInvolvesAuthor } from '~/utils/post-block'
 import { boardPostHref } from '~/utils/board-links'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
@@ -533,6 +534,9 @@ watch(
 // array the post came from, postView always reflects the latest server-confirmed state.
 const postCache = usePostCache()
 const postView = computed(() => postCache.get(postState.value))
+// Blocking promises "you won't see their posts": hide rows by, replying to, or embedding them.
+const { blockedIds } = useBlockState()
+const hiddenByBlock = computed(() => postChainInvolvesAuthor(postView.value, blockedIds.value))
 
 const feedGroupForRow = computed((): CommunityGroupShell | null => {
   if (props.feedGroup) return props.feedGroup
