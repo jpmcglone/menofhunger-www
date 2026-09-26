@@ -36,6 +36,7 @@ Use the [validation matrix](docs/engineering-policy.md#validation-matrix) for co
 | Keep feed concepts consistent across API, web, and iOS | [15-feed-surface](.cursor/rules/15-feed-surface.mdc) |
 | Delete safely by checking cross-platform callers and choosing delete, redirect, handoff, or deprecate | [20-deletion-deprecation](.cursor/rules/20-deletion-deprecation.mdc) |
 | Do not start dev servers/watchers (user runs them). | [25-no-dev-servers](.cursor/rules/25-no-dev-servers.mdc) |
+| Do not monitor Render/host deploys unless the user asks. | [26-no-deploy-monitor](.cursor/rules/26-no-deploy-monitor.mdc) |
 | Keep local and CI loops fast; add automation only after simplifying the surface | [30-local-loop](.cursor/rules/30-local-loop.mdc) |
 | Vitest unit tests must not open real Socket.IO connections; reset mockOnce queues between cases | [32-unit-tests](.cursor/rules/32-unit-tests.mdc) |
 | Preserve in-page layout for tab and filter URL changes | [35-in-place-route-state](.cursor/rules/35-in-place-route-state.mdc) |
