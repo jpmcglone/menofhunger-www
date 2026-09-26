@@ -259,8 +259,23 @@ export function usePostRowMenus(opts: {
     return '—'
   })
 
+  /** A Board post's title opens its discussion, so its link or article is offered here instead. */
+  function boardSourceMenuItem(): PostRowMenuItemWithIcon | null {
+    const post = postView.value
+    if (post.kind !== 'board' || post.parentId || isDeletedPost.value || isGatedPost.value) return null
+    if (post.article?.id) {
+      const href = `/a/${encodeURIComponent(post.article.id)}`
+      return { label: 'Read article', iconName: 'tabler:article', command: () => navigateTo(href) }
+    }
+    const url = post.board?.url
+    if (!url) return null
+    return { label: 'Open link', iconName: 'tabler:arrow-up-right', url, target: '_blank' }
+  }
+
   const moreMenuItems = computed<PostRowMenuItemWithIcon[]>(() => {
     const items: PostRowMenuItemWithIcon[] = []
+    const boardSource = boardSourceMenuItem()
+    if (boardSource) items.push(boardSource, { separator: true })
     if (!authorBanned.value) {
       items.push({
         label: author.value?.username ? `View @${author.value.username}` : 'View profile',

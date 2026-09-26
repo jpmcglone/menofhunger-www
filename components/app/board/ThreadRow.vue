@@ -17,29 +17,9 @@
     <div class="relative z-[2] min-w-0 flex-1 pointer-events-none">
       <div class="flex items-start gap-1.5">
         <Icon v-if="!thread.viewerCanAccess" name="tabler:lock" class="mt-0.5 shrink-0 text-[15px] moh-text-muted" aria-hidden="true" />
+        <!-- The title opens the discussion like the rest of the row; the link or article lives in "…". -->
         <p class="min-w-0 text-[15px] font-semibold leading-snug break-words">
-          <a
-            v-if="externalUrl"
-            :href="externalUrl"
-            target="_blank"
-            rel="noopener noreferrer nofollow ugc"
-            class="group/title pointer-events-auto moh-text hover:underline"
-          >{{ thread.title }}<Icon
-            name="tabler:arrow-up-right"
-            class="ml-0.5 inline-block align-[-0.1em] text-[0.95em] moh-text-soft transition-transform group-hover/title:-translate-y-px group-hover/title:translate-x-px group-hover/title:text-[var(--moh-text)]"
-            aria-hidden="true"
-          /><span class="sr-only"> (opens {{ thread.domain || 'link' }} in a new tab)</span></a>
           <NuxtLink
-            v-else-if="thread.articleId && thread.viewerCanAccess"
-            :to="`/a/${encodeURIComponent(thread.articleId)}`"
-            class="group/title pointer-events-auto moh-text hover:underline"
-          >{{ thread.title }}<Icon
-            name="tabler:article"
-            class="ml-1 inline-block align-[-0.1em] text-[0.95em] moh-text-soft"
-            aria-hidden="true"
-          /><span class="sr-only"> (read the article)</span></NuxtLink>
-          <NuxtLink
-            v-else
             :to="threadHref"
             class="pointer-events-auto hover:underline"
             :class="thread.viewerCanAccess ? 'moh-text' : 'moh-text-muted'"
@@ -125,7 +105,7 @@
       />
     </div>
 
-    <div class="relative z-[2] -my-1 -mr-2 shrink-0">
+    <div v-if="menuItems.length" class="relative z-[2] -my-1 -mr-2 shrink-0">
       <button
         type="button"
         class="moh-tap moh-focus inline-flex size-9 items-center justify-center rounded-full moh-text-soft hover:bg-[var(--moh-surface-hover)] hover:text-[var(--moh-text)]"
@@ -137,7 +117,13 @@
       </button>
       <Menu v-if="menuMounted" ref="menuRef" :model="menuItems" popup>
         <template #item="{ item, props: itemProps }">
-          <a v-bind="itemProps.action" class="flex items-center gap-2">
+          <a
+            v-bind="itemProps.action"
+            :href="item.url"
+            :target="item.target"
+            :rel="item.url ? 'noopener noreferrer nofollow ugc' : undefined"
+            class="flex items-center gap-2"
+          >
             <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
             <span v-bind="itemProps.label">{{ item.label }}</span>
           </a>
@@ -162,8 +148,10 @@ const preview = useUserPreviewMultiTrigger()
 const { gateCopy } = useBoardAccess()
 
 const threadHref = computed(() => boardThreadHref(props.thread))
-const discussionHref = computed(() => boardDiscussionHref(props.thread))
 const externalUrl = computed(() => (props.thread.viewerCanAccess && props.thread.url && !props.thread.articleId ? props.thread.url : null))
+const articleHref = computed(() =>
+  props.thread.viewerCanAccess && props.thread.articleId ? `/a/${encodeURIComponent(props.thread.articleId)}` : null,
+)
 const age = computed(() => formatListTime(props.thread.createdAt))
 const createdTitle = computed(() => formatDateTime(props.thread.createdAt))
 // Subscribes this row to its thread room: live counts land in the post cache, typing here.
@@ -195,9 +183,13 @@ function onViewCountSynced(payload: { viewerCount: number, totalViewCount: numbe
 const { mounted: menuMounted, menuRef, toggle: toggleMenu } = useAutoToggleMenu()
 type BoardMenuItem = MenuItem & { iconName?: string }
 const menuItems = computed<BoardMenuItem[]>(() => {
-  const items: BoardMenuItem[] = [
-    { label: 'Discuss', iconName: 'tabler:message-circle', command: () => void navigateTo(discussionHref.value) },
-  ]
+  const items: BoardMenuItem[] = []
+  if (externalUrl.value) {
+    // `url` + `target` render a real anchor, so cmd/middle-click and "Open in new tab" work.
+    items.push({ label: 'Open link', iconName: 'tabler:arrow-up-right', url: externalUrl.value, target: '_blank' })
+  } else if (articleHref.value) {
+    items.push({ label: 'Read article', iconName: 'tabler:article', command: () => void navigateTo(articleHref.value!) })
+  }
   if (props.thread.viewerHidden || props.showHide) {
     items.push({
       label: props.thread.viewerHidden ? 'Unhide' : 'Hide',

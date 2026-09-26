@@ -13,7 +13,13 @@
     </button>
     <Menu v-if="mounted" ref="menuRef" :model="items" popup>
       <template #item="{ item, props }">
-        <a v-bind="props.action" class="flex items-center gap-2">
+        <a
+          v-bind="props.action"
+          :href="item.url"
+          :target="item.target"
+          :rel="item.url ? 'noopener noreferrer nofollow ugc' : undefined"
+          class="flex items-center gap-2"
+        >
           <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
           <span v-bind="props.label">{{ item.label }}</span>
         </a>

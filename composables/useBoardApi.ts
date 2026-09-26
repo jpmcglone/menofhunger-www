@@ -104,12 +104,6 @@ export function boardArticleMeta(thread: Pick<BoardThread, 'readingTimeMinutes'>
   if (thread.readingTimeMinutes) return `${thread.readingTimeMinutes} min read`
   return 'Men of Hunger article'
 }
-
-/** Discussion always lives on the Board thread. */
-export function boardDiscussionHref(thread: Pick<BoardThread, 'id' | 'articleId'>): string {
-  return boardThreadHref(thread)
-}
-
 /** Name and handle both render only when they differ; otherwise the username shows once. */
 export function authorHasDistinctName(author: { name?: string | null; username?: string | null } | null | undefined): boolean {
   const name = author?.name?.trim()

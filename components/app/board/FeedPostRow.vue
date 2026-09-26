@@ -52,7 +52,7 @@
         <Icon v-if="locked" name="tabler:lock" class="mt-1 shrink-0 text-[15px] moh-text-muted" aria-hidden="true" />
         <span class="min-w-0">
           <NuxtLink
-            :to="titleHref"
+            :to="href"
             class="relative z-10 hover:underline"
             :class="locked ? 'moh-text-muted' : 'moh-text'"
           >{{ title }}</NuxtLink>
@@ -159,9 +159,6 @@ const article = computed(() => props.post.article ?? null)
 const title = computed(() => board.value?.title || article.value?.title || 'Board post')
 const tags = computed(() => board.value?.tags ?? [])
 const articleLabel = computed(() => (article.value ? 'Article' : null))
-const titleHref = computed(() =>
-  article.value && !locked.value ? `/a/${encodeURIComponent(article.value.id)}` : props.href,
-)
 const domain = computed(() => (locked.value || article.value ? null : board.value?.domain ?? null))
 const linkUrl = computed(() => (article.value ? null : board.value?.url ?? null))
 const excerpt = computed(() => (props.post.body ?? '').trim() || (article.value?.excerpt ?? '').trim())
