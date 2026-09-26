@@ -78,7 +78,7 @@
           class="ml-1 inline-flex min-w-[18px] h-[18px] shrink-0 px-1 rounded-full text-[10px] font-bold leading-[18px] justify-center text-center tabular-nums bg-violet-600 text-white"
           aria-label="Unread messages"
         >
-          {{ unreadCount > 99 ? '99+' : unreadCount }}
+          <AppAnimatedCount :value="unreadCount" :format="formatBadge" />
         </span>
       </div>
     </div>
@@ -128,6 +128,7 @@
 
 <script setup lang="ts">
 import type { PropType } from 'vue'
+const formatBadge = (n: number) => (n > 99 ? '99+' : String(n))
 
 const props = defineProps({
   /** True when the marv DM conversation is the currently-selected chat. */

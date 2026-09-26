@@ -101,11 +101,11 @@
               <span>·</span>
               <span v-if="article.boostCount" class="flex items-center gap-0.5">
                 <Icon name="tabler:arrow-up" class="text-[10px]" aria-hidden="true" />
-                {{ article.boostCount }}
+                <AppAnimatedCount :value="article.boostCount" :format="formatShortCount" />
               </span>
               <span v-if="article.commentCount" class="flex items-center gap-0.5">
                 <Icon name="tabler:message-circle" class="text-[10px]" aria-hidden="true" />
-                {{ article.commentCount }}
+                <AppAnimatedCount :value="article.commentCount" :format="formatShortCount" />
               </span>
               <span
                 v-if="displayViewCount > 0"
@@ -182,6 +182,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortCount } from '~/utils/text'
 import type { Article } from '~/types/api'
 import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/article-visibility'
 

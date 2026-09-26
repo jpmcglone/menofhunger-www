@@ -1,7 +1,7 @@
 <template>
   <AppPageContent bottom="standard">
     <div class="flex items-center gap-3 moh-gutter-x pt-3 pb-2">
-      <NuxtLink :to="threadHref" class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-surface-hover" aria-label="Back to thread">
+      <NuxtLink :to="threadHref" class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-surface-hover" aria-label="Back to post">
         <AppIconGlyph name="back" :size="20" />
       </NuxtLink>
       <span class="text-lg font-bold moh-text">Comment</span>
@@ -27,7 +27,7 @@
           <NuxtLink :to="boardCommentHref(ctxData.thread.id, ctxData.ancestors[0]!.id)" class="hover:underline">root</NuxtLink>
         </template>
         <span aria-hidden="true">·</span>
-        <NuxtLink :to="threadHref" class="hover:underline">full thread</NuxtLink>
+        <NuxtLink :to="threadHref" class="hover:underline">full post</NuxtLink>
       </div>
 
       <AppBoardThreadHead v-if="!ctxData.thread.viewerCanAccess" :thread="ctxData.thread" />

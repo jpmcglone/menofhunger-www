@@ -18,31 +18,34 @@
     <div class="relative z-[2] min-w-0 flex-1 pointer-events-none">
       <div class="flex items-start gap-1.5">
         <Icon v-if="!thread.viewerCanAccess" name="tabler:lock" class="mt-0.5 shrink-0 text-[15px] moh-text-muted" aria-hidden="true" />
-        <a
-          v-if="externalUrl"
-          :href="externalUrl"
-          target="_blank"
-          rel="noopener noreferrer nofollow ugc"
-          class="group/title pointer-events-auto text-[15px] font-semibold leading-snug moh-text hover:underline break-words"
-        >{{ thread.title }}<Icon
-          name="tabler:arrow-up-right"
-          class="ml-0.5 inline-block align-[-0.1em] text-[0.95em] moh-text-soft transition-transform group-hover/title:-translate-y-px group-hover/title:translate-x-px group-hover/title:text-[var(--moh-text)]"
-          aria-hidden="true"
-        /><span class="sr-only"> (opens {{ thread.domain || 'link' }} in a new tab)</span></a>
-        <NuxtLink
-          v-else
-          :to="threadHref"
-          class="pointer-events-auto text-[15px] font-semibold leading-snug break-words hover:underline"
-          :class="thread.viewerCanAccess ? 'moh-text' : 'moh-text-muted'"
-        >{{ thread.title }}</NuxtLink>
+        <p class="min-w-0 text-[15px] font-semibold leading-snug break-words">
+          <a
+            v-if="externalUrl"
+            :href="externalUrl"
+            target="_blank"
+            rel="noopener noreferrer nofollow ugc"
+            class="group/title pointer-events-auto moh-text hover:underline"
+          >{{ thread.title }}<Icon
+            name="tabler:arrow-up-right"
+            class="ml-0.5 inline-block align-[-0.1em] text-[0.95em] moh-text-soft transition-transform group-hover/title:-translate-y-px group-hover/title:translate-x-px group-hover/title:text-[var(--moh-text)]"
+            aria-hidden="true"
+          /><span class="sr-only"> (opens {{ thread.domain || 'link' }} in a new tab)</span></a>
+          <NuxtLink
+            v-else
+            :to="threadHref"
+            class="pointer-events-auto hover:underline"
+            :class="thread.viewerCanAccess ? 'moh-text' : 'moh-text-muted'"
+          >{{ thread.title }}</NuxtLink>
+          <!-- Site sits beside the title, HN-style; it filters the Board to that site. -->
+          <NuxtLink
+            v-if="thread.domain && thread.viewerCanAccess"
+            :to="{ path: '/b', query: { domain: thread.domain } }"
+            class="pointer-events-auto ml-1.5 whitespace-nowrap text-xs font-normal moh-text-soft hover:underline"
+          >{{ thread.domain }}</NuxtLink>
+        </p>
       </div>
 
       <div class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs moh-text-soft">
-        <NuxtLink
-          v-if="thread.domain && thread.viewerCanAccess"
-          :to="{ path: '/b', query: { domain: thread.domain } }"
-          class="pointer-events-auto hover:underline"
-        >{{ thread.domain }}</NuxtLink>
         <AppBoardScopeChip :visibility="thread.visibility" />
         <AppBoardTagChip v-for="tag in thread.tags" :key="tag" :tag="tag" class="pointer-events-auto" />
         <template v-if="thread.author">
@@ -59,10 +62,10 @@
           </NuxtLink>
         </template>
         <span :title="createdTitle">{{ age }}</span>
-        <template v-if="commentsLabel">
-          <span aria-hidden="true">·</span>
-          <span>{{ commentsLabel }}</span>
-        </template>
+        <span class="inline-flex items-center gap-1" :aria-label="`${liveCommentCount} comments`">
+          <AppIconGlyph name="reply" :size="14" />
+          <AppAnimatedCount :value="liveCommentCount" :format="formatShortCount" blank-zero :min-ch="2" />
+        </span>
         <AppTypingIndicator
           v-if="typingUsers.length && thread.viewerCanAccess"
           :users="typingUsers"
@@ -126,6 +129,7 @@ import type { MenuItem } from 'primevue/menuitem'
 import type { BoardThread } from '~/types/api'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
 import { formatListTime, formatDateTime } from '~/utils/time-format'
+import { formatShortCount } from '~/utils/text'
 import { userActionColor } from '~/utils/user-tier'
 
 const props = withDefaults(defineProps<{ thread: BoardThread; showHide?: boolean }>(), { showHide: false })
@@ -173,11 +177,6 @@ watch(
 onBeforeUnmount(() => {
   stopObserve?.()
   stopObserve = null
-})
-const commentsLabel = computed(() => {
-  const n = liveCommentCount.value
-  if (n === 0) return null
-  return `${n} ${n === 1 ? 'comment' : 'comments'}`
 })
 
 const { mounted: menuMounted, menuRef, toggle: toggleMenu } = useAutoToggleMenu()

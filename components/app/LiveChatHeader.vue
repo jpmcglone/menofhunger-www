@@ -6,7 +6,7 @@
     </div>
     <span v-if="memberCount != null" class="shrink-0 inline-flex items-center gap-1">
       <Icon name="tabler:users" class="text-[12px] opacity-30" aria-hidden="true" />
-      <span class="text-[11px] tabular-nums font-medium text-gray-900 dark:text-white">{{ memberCount }}</span>
+      <span class="text-[11px] tabular-nums font-medium text-gray-900 dark:text-white"><AppAnimatedCount :value="memberCount" /></span>
     </span>
   </div>
 

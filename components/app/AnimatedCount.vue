@@ -3,7 +3,7 @@
        grid cell. This preserves the parent's text-alignment automatically (works
        for left/center/right-aligned count gutters) and means we don't need to
        toggle `position: absolute` mid-transition. -->
-  <span class="moh-animated-count tabular-nums" :aria-label="ariaLabel">
+  <span class="moh-animated-count tabular-nums" :aria-label="ariaLabel" :style="reserveStyle">
     <Transition :name="dir">
       <span :key="display" class="moh-animated-count__inner" aria-hidden="true">{{ display }}</span>
     </Transition>
@@ -42,11 +42,25 @@ const props = withDefaults(
     /** Optional aria-label override. If omitted, the wrapper is unlabeled and
         the inner display is exposed to screen readers via natural text. */
     ariaLabel?: string
+    /**
+     * Render 0 as empty space that still holds its width, so 0 ↔ 1 rolls the digit in
+     * and out like any other change instead of the layout jumping.
+     */
+    blankZero?: boolean
+    /** Minimum width in `ch`, reserved even while blank. */
+    minCh?: number
   }>(),
-  {}
+  { blankZero: false, minCh: undefined },
 )
 
-const display = computed(() => (props.format ? props.format(props.value) : String(props.value)))
+const display = computed(() => {
+  if (props.blankZero && props.value === 0) return '\u00A0'
+  return props.format ? props.format(props.value) : String(props.value)
+})
+const reserveStyle = computed(() => {
+  const ch = props.minCh ?? (props.blankZero ? 1 : undefined)
+  return ch ? { minWidth: `${ch}ch` } : undefined
+})
 
 const dir = ref<'up' | 'down'>('up')
 let prevValue = props.value

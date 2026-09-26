@@ -365,7 +365,7 @@
           @click.stop="emit('react', messageItem!.message, group.reactionId)"
         >
           <span>{{ group.emoji }}</span>
-          <span class="font-semibold tabular-nums">{{ group.count }}</span>
+          <span class="font-semibold"><AppAnimatedCount :value="group.count" /></span>
         </button>
       </div>
 

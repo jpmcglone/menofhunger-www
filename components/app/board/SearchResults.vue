@@ -4,7 +4,7 @@
     <div v-else-if="threads.length" class="moh-divide">
       <AppBoardThreadRow v-for="t in threads" :key="t.id" :thread="t" />
     </div>
-    <p v-else-if="query.length >= 2" class="px-4 py-10 text-center moh-meta">No Board threads match “{{ query }}”.</p>
+    <p v-else-if="query.length >= 2" class="px-4 py-10 text-center moh-meta">No Board posts match “{{ query }}”.</p>
     <button
       v-if="nextCursor"
       type="button"

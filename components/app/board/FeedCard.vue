@@ -9,13 +9,12 @@
     <div class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide moh-text-soft">
       <Icon name="tabler:layout-list" class="text-xs" aria-hidden="true" />
       <span>{{ isComment ? 'Board comment' : 'Board' }}</span>
-      <span v-if="board?.domain" class="normal-case font-normal tracking-normal">· {{ board.domain }}</span>
     </div>
 
     <template v-if="board">
       <p class="mt-1 flex items-start gap-1.5 text-[15px] font-semibold leading-snug moh-text break-words">
         <Icon v-if="!canAccess" name="tabler:lock" class="mt-0.5 shrink-0 text-sm moh-text-muted" aria-hidden="true" />
-        {{ board.title }}
+        <span class="min-w-0">{{ board.title }}<span v-if="board.domain" class="ml-1.5 whitespace-nowrap text-xs font-normal moh-text-soft">{{ board.domain }}</span></span>
       </p>
       <p v-if="canAccess && excerpt" class="mt-1 line-clamp-3 text-sm moh-text-muted whitespace-pre-wrap">{{ excerpt }}</p>
       <img
@@ -31,7 +30,14 @@
           :key="tag"
           class="rounded-full border moh-border px-2 py-px text-[11px] moh-text-muted"
         >{{ tag }}</span>
-        <span>{{ post.boostCount }} {{ post.boostCount === 1 ? 'point' : 'points' }} · {{ post.commentCount ?? 0 }} {{ (post.commentCount ?? 0) === 1 ? 'comment' : 'comments' }}</span>
+        <span class="inline-flex items-center gap-1" :aria-label="`${post.boostCount} points`">
+          <AppIconGlyph name="boost" :size="14" />
+          <AppAnimatedCount :value="post.boostCount" :format="formatShortCount" blank-zero :min-ch="2" />
+        </span>
+        <span class="inline-flex items-center gap-1" :aria-label="`${post.commentCount ?? 0} comments`">
+          <AppIconGlyph name="reply" :size="14" />
+          <AppAnimatedCount :value="post.commentCount ?? 0" :format="formatShortCount" blank-zero :min-ch="2" />
+        </span>
         <span class="font-semibold" :style="{ color: tone ? `var(--moh-${tone})` : 'var(--moh-verified)' }">{{ canAccess ? 'Join the discussion →' : 'Unlock to read →' }}</span>
       </div>
     </template>
@@ -40,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortCount } from '~/utils/text'
 import type { FeedPost } from '~/types/api'
 
 const props = defineProps<{ post: FeedPost; href: string }>()

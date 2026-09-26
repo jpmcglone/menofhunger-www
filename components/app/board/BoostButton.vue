@@ -9,12 +9,15 @@
     @click.stop.prevent="onClick"
   >
     <AppIconGlyph name="boost" :selected="boosted" :size="vertical ? 20 : 18" :style="{ color: boosted ? activeColor : 'var(--moh-text-muted)' }" />
-    <span class="text-xs tabular-nums font-medium" :style="{ color: boosted ? activeColor : 'var(--moh-text-muted)' }">{{ count }}</span>
+    <span class="text-xs font-medium" :style="{ color: boosted ? activeColor : 'var(--moh-text-muted)' }">
+      <AppAnimatedCount :value="count" :format="formatShortCount" blank-zero :min-ch="vertical ? 2 : 1" />
+    </span>
   </button>
 </template>
 
 <script setup lang="ts">
 import { userActionColor } from '~/utils/user-tier'
+import { formatShortCount } from '~/utils/text'
 
 const props = withDefaults(defineProps<{
   postId: string

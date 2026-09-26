@@ -91,10 +91,9 @@
             <span class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]">
               <Icon name="tabler:message-circle" size="15" aria-hidden="true" />
             </span>
-            <span
-              v-if="replyCountDisplay > 0"
-              class="tabular-nums text-[12px] font-semibold leading-none text-[var(--moh-text)]"
-            >{{ replyCountDisplay }}</span>
+            <span class="text-[12px] font-semibold leading-none text-[var(--moh-text)]">
+              <AppAnimatedCount :value="replyCountDisplay" blank-zero :min-ch="1" />
+            </span>
           </button>
 
             <!-- Reactions (desktop) -->
@@ -216,7 +215,7 @@
                   @click="reactionState.toggle(r.reactionId, r.emoji)"
                 >
                   <span>{{ r.emoji }}</span>
-                  <span class="tabular-nums">{{ r.count }}</span>
+                  <AppAnimatedCount :value="r.count" />
                 </button>
               </div>
             </div>

@@ -1,0 +1,31 @@
+/*
+ * <TransitionGroup name="moh-list"> for lists whose order changes with a sort or filter.
+ * Rows that stay (same key) are reused and glide to their new slot; new rows fade in,
+ * dropped rows fade out without holding their space. The group container must be relative.
+ */
+.moh-list-move {
+  transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.moh-list-enter-active {
+  transition: opacity 220ms ease-out, transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.moh-list-leave-active {
+  position: absolute;
+  inset-inline: 0;
+  transition: opacity 160ms ease-in;
+}
+.moh-list-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.moh-list-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moh-list-move,
+  .moh-list-enter-active,
+  .moh-list-leave-active {
+    transition: none;
+  }
+}

@@ -12,14 +12,14 @@
       <div class="flex min-h-11 items-center justify-between gap-3 py-2">
         <label for="article-post-to-board" class="flex-1 cursor-pointer">
           <span class="block text-sm font-semibold moh-text">Also post to the Board</span>
-          <span class="block text-xs moh-text-muted">Creates a Board thread linking here. Comments stay on the article.</span>
+          <span class="block text-xs moh-text-muted">Creates a Board post linking here. Comments stay on the article.</span>
         </label>
         <ToggleSwitch v-model="postToBoard" input-id="article-post-to-board" />
       </div>
       <div class="flex min-h-11 items-center justify-between gap-3 py-2" :class="postToBoard ? '' : 'opacity-50'">
         <label for="article-board-to-feed" class="flex-1 cursor-pointer">
           <span class="block text-sm font-semibold moh-text">Also post to feed</span>
-          <span class="block text-xs moh-text-muted">The Board thread also appears as a post in the feed.</span>
+          <span class="block text-xs moh-text-muted">The Board post also appears in the feed.</span>
         </label>
         <ToggleSwitch v-model="shareToFeed" input-id="article-board-to-feed" :disabled="!postToBoard" />
       </div>

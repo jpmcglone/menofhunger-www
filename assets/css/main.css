@@ -3,6 +3,7 @@
 @import "vue-advanced-cropper/dist/style.css";
 @import "./count-breakdown.css";
 @import "./fonts.css";
+@import "./list-reorder.css";
 @plugin "@tailwindcss/typography";
 
 @theme inline {

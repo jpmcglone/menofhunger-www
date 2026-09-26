@@ -25,7 +25,7 @@
               >{{ actorDisplay(notification) }}</span>
               <template v-if="notification.kind === 'comment'">
                 <template v-if="notification.boardThreadId">
-                  <span class="ml-1">{{ notification.title || 'commented on your Board thread' }}</span>
+                  <span class="ml-1">{{ notification.title || 'commented on your Board post' }}</span>
                 </template>
                 <template v-else-if="notification.subjectArticleId">
                   <span class="ml-1">replied to your</span>
@@ -38,7 +38,7 @@
               </template>
             <template v-else-if="notification.kind === 'boost' && notification.boardThreadId">
               <span class="ml-1">boosted your</span>
-              <span class="ml-1" :class="subjectPostVisibilityTextClass(notification)">{{ notification.boardCommentId ? 'Board comment' : 'Board thread' }}</span>
+              <span class="ml-1" :class="subjectPostVisibilityTextClass(notification)">{{ notification.boardCommentId ? 'Board comment' : 'Board post' }}</span>
             </template>
             <template v-else-if="notification.kind === 'boost'">
               <span class="ml-1">boosted your</span>

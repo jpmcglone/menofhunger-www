@@ -37,8 +37,8 @@ export function useBoardAccess() {
         tone,
         title: `${scope} discussion`,
         body: tone === 'premium'
-          ? `Sign in and upgrade to Premium to read this thread${comments}.`
-          : `Sign in with a verified account to read this thread${comments}.`,
+          ? `Sign in and upgrade to Premium to read this post${comments}.`
+          : `Sign in with a verified account to read this post${comments}.`,
         ctaLabel: 'Sign in',
         ctaTo: `/login?redirect=${encodeURIComponent(route.fullPath)}`,
       }
@@ -47,7 +47,7 @@ export function useBoardAccess() {
       return {
         tone,
         title: `${scope} discussion`,
-        body: `Verify your account to read this thread${comments} and join the conversation.`,
+        body: `Verify your account to read this post${comments} and join the conversation.`,
         ctaLabel: 'Get verified',
         ctaTo: '/settings/verification',
       }
@@ -55,7 +55,7 @@ export function useBoardAccess() {
     return {
       tone,
       title: 'Premium discussion',
-      body: `Upgrade to Premium to read this thread${comments}.`,
+      body: `Upgrade to Premium to read this post${comments}.`,
       ctaLabel: 'Upgrade to Premium',
       ctaTo: '/tiers',
     }

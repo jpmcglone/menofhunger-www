@@ -221,8 +221,8 @@
                   />
                 </svg>
               </button>
-              <span class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted">
-                {{ boostCountLabel }}
+              <span class="ml-0 inline-block w-6 select-none text-left text-[11px] sm:text-xs moh-text-muted">
+                <AppAnimatedCount :value="articleBoostCount" :format="formatShortCount" blank-zero />
               </span>
             </div>
 
@@ -438,6 +438,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortCount } from '~/utils/text'
 import Menu from 'primevue/menu'
 import type { Article, ArticleSharePreview } from '~/types/api'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
@@ -888,10 +889,9 @@ onUnmounted(() => {
   }
 })
 
-const boostCountLabel = computed(() => {
-  const count = isHydrated.value ? boostState.count.value : (article.value?.boostCount ?? 0)
-  return count > 0 ? String(count) : ''
-})
+const articleBoostCount = computed(() =>
+  Math.max(0, isHydrated.value ? boostState.count.value : (article.value?.boostCount ?? 0)),
+)
 
 // Comments ref for scroll + focus
 const commentsEl = ref<{ focusCompose: () => void; composeTextareaEl: HTMLTextAreaElement | null } | null>(null)

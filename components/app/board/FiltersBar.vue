@@ -60,7 +60,7 @@
           <p class="filter-section-label filter-divider">Your Board</p>
           <button type="button" class="filter-option" role="menuitemcheckbox" :aria-checked="showHidden" @click="emit('update:showHidden', !showHidden)">
             <Icon name="tabler:eye-off" class="filter-option-icon" aria-hidden="true" />
-            <span class="min-w-0 flex-1"><span class="block">Hidden threads</span><span class="filter-hint">Only threads you hid, so you can bring them back</span></span>
+            <span class="min-w-0 flex-1"><span class="block">Hidden posts</span><span class="filter-hint">Only posts you hid, so you can bring them back</span></span>
             <Icon v-if="showHidden" name="tabler:check" class="size-4" aria-hidden="true" />
           </button>
         </template>
@@ -113,11 +113,11 @@ const rangeOptions: Array<{ value: BoardRange | null; label: string }> = [
 ]
 
 const scopeOptions = computed(() => [
-  { value: 'all' as const, title: 'All', hint: 'Every thread on the Board', icon: 'tabler:layout-grid', iconClass: '', locked: false },
+  { value: 'all' as const, title: 'All', hint: 'Every post on the Board', icon: 'tabler:layout-grid', iconClass: '', locked: false },
   {
     value: 'verifiedOnly' as const,
     title: 'Verified',
-    hint: props.viewerIsVerified ? 'Threads for verified members' : 'Verification required to read',
+    hint: props.viewerIsVerified ? 'Posts for verified members' : 'Verification required to read',
     icon: 'tabler:circle-check-filled',
     iconClass: 'scope-verified',
     locked: !props.viewerIsVerified,
@@ -125,7 +125,7 @@ const scopeOptions = computed(() => [
   {
     value: 'premiumOnly' as const,
     title: 'Premium',
-    hint: props.viewerIsPremium ? 'Threads for premium members' : 'Premium membership required to read',
+    hint: props.viewerIsPremium ? 'Posts for premium members' : 'Premium membership required to read',
     icon: 'tabler:rosette-discount-check',
     iconClass: 'scope-premium',
     locked: !props.viewerIsPremium,

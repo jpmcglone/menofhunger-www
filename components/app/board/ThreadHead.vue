@@ -69,9 +69,9 @@
       <AppPostMediaGrid v-if="thread.image?.url" :media="[thread.image]" :post-id="thread.id" />
 
       <div class="mt-2 flex flex-wrap items-center gap-x-4 text-xs moh-text-muted">
-        <span class="inline-flex items-center gap-1" :aria-label="`${thread.commentCount} comments`">
+        <span class="inline-flex items-center gap-1" :aria-label="`${liveCommentCount} comments`">
           <AppIconGlyph name="reply" :size="16" />
-          <span class="tabular-nums">{{ thread.commentCount }}</span>
+          <AppAnimatedCount :value="liveCommentCount" :format="formatShortCount" blank-zero :min-ch="2" />
         </span>
         <AppPostRowBookmarkButton
           :post-id="thread.id"
@@ -147,6 +147,7 @@
 import type { MenuItem } from 'primevue/menuitem'
 import type { BoardThread } from '~/types/api'
 import { formatListTime, formatDateTime } from '~/utils/time-format'
+import { formatShortCount } from '~/utils/text'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
@@ -176,6 +177,7 @@ const age = computed(() => formatListTime(props.thread.createdAt))
 const createdTitle = computed(() => formatDateTime(props.thread.createdAt))
 // Same people · impressions chip (and hover breakdown) as posts and articles; the thread is a post.
 const postCache = usePostCache()
+const liveCommentCount = computed(() => postCache.cache.value[props.thread.id]?.commentCount ?? props.thread.commentCount)
 const { hasViewedLocally } = usePostViewTracker()
 const liveViews = computed(() => {
   const delta = postCache.cache.value[props.thread.id]
@@ -204,14 +206,14 @@ const menuItems = computed<BoardMenuItem[]>(() => {
       iconName: hidden.value ? 'tabler:eye' : 'tabler:eye-off',
       command: () => void toggleHide(),
     })
-    items.push({ label: 'Report thread', iconName: 'tabler:flag', command: () => { reportOpen.value = true } })
+    items.push({ label: 'Report post', iconName: 'tabler:flag', command: () => { reportOpen.value = true } })
   }
   if (props.thread.viewerCanEdit) {
-    items.push({ label: 'Edit thread', iconName: 'tabler:edit', command: () => { editing.value = true } })
+    items.push({ label: 'Edit post', iconName: 'tabler:edit', command: () => { editing.value = true } })
   }
   if (isOwn.value) {
     items.push({
-      label: 'Delete thread',
+      label: 'Delete post',
       iconName: 'tabler:trash',
       class: 'text-red-600 dark:text-red-400',
       command: () => void onDelete(),
@@ -247,7 +249,7 @@ const shareItems = computed<BoardMenuItem[]>(() => {
     command: async () => {
       try {
         await copyText(await shareUrl())
-        toast.push({ title: 'Thread link copied', tone: 'success', durationMs: 1400 })
+        toast.push({ title: 'Post link copied', tone: 'success', durationMs: 1400 })
       } catch {
         toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
       }
@@ -282,7 +284,7 @@ async function toggleHide() {
 
 async function onDelete() {
   const ok = await confirm({
-    header: 'Delete thread?',
+    header: 'Delete post?',
     message: 'Its comments are deleted with it. This can’t be undone.',
     confirmLabel: 'Delete',
     confirmSeverity: 'danger',

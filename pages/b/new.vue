@@ -6,7 +6,7 @@
         <NuxtLink to="/b" class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-surface-hover" aria-label="Back to the Board">
           <AppIconGlyph name="back" :size="20" />
         </NuxtLink>
-        <h1 class="text-lg font-bold moh-text">New thread</h1>
+        <h1 class="text-lg font-bold moh-text">New post</h1>
       </div>
       <ClientOnly>
         <AppComposerVisibilityPicker
@@ -125,8 +125,8 @@ import type { BoardThread, BoardVisibility, PostVisibility } from '~/types/api'
 import { formatListTime } from '~/utils/time-format'
 import { getApiErrorMessage } from '~/utils/api-error'
 
-definePageMeta({ layout: 'app', title: 'New Board thread', hideTopBar: true })
-usePageSeo({ title: 'New Board thread', noindex: true })
+definePageMeta({ layout: 'app', title: 'New Board post', hideTopBar: true })
+usePageSeo({ title: 'New Board post', noindex: true })
 
 const api = useBoardApi()
 const { isAuthed, isVerifiedMember, isPremium } = useAuth()
@@ -196,7 +196,7 @@ async function submit() {
     memory.remember(visibility.value)
     await navigateTo(boardThreadHref(created))
   } catch (e) {
-    submitError.value = getApiErrorMessage(e) || 'Couldn’t post your thread.'
+    submitError.value = getApiErrorMessage(e) || 'Couldn’t publish your post.'
   } finally {
     submitting.value = false
   }

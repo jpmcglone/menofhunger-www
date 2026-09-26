@@ -27,7 +27,7 @@
         class="flex min-h-11 w-full items-center justify-center rounded-full border moh-border text-sm font-semibold text-[var(--moh-text)] hover:bg-[var(--moh-surface-hover)]"
         @click="emit('close')"
       >
-        Open Board thread
+        Open Board post
       </NuxtLink>
       <button
         v-if="!boardSharedToFeed"

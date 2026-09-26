@@ -10,7 +10,7 @@
 
     <div v-if="pending && !thread" class="flex min-h-[240px] items-center justify-center"><AppLogoLoader /></div>
     <div v-else-if="error || !thread" class="moh-gutter-x py-16 text-center">
-      <p class="moh-body">This thread isn’t available.</p>
+      <p class="moh-body">This post isn’t available.</p>
       <NuxtLink to="/b" class="mt-2 inline-block text-sm hover:underline" style="color: var(--moh-verified)">Back to the Board</NuxtLink>
     </div>
 

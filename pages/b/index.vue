@@ -30,9 +30,9 @@
         ref="searchEl"
         v-model="searchDraft"
         type="search"
-        placeholder="Search Board threads"
+        placeholder="Search Board posts"
         class="w-full rounded-full border moh-border bg-transparent px-4 py-2.5 text-sm moh-text outline-none focus:border-[var(--moh-text-muted)]"
-        aria-label="Search Board threads"
+        aria-label="Search Board posts"
       >
     </form>
 
@@ -80,14 +80,14 @@
         class="pointer-events-auto"
         :authors="[]"
         :count="newThreadCount"
-        :label="`${newThreadCount} new ${newThreadCount === 1 ? 'thread' : 'threads'}`"
+        :label="`${newThreadCount} new ${newThreadCount === 1 ? 'post' : 'posts'}`"
         @reveal="showNewThreads"
       />
     </div>
 
     <AppSubtleSectionLoader :loading="initialLoading" :refreshing="refreshing" min-height-class="min-h-[240px]">
       <template v-if="view === 'comments'">
-        <div class="moh-divide">
+        <TransitionGroup tag="div" name="moh-list" class="relative moh-divide">
           <article v-for="c in latestComments" :key="c.id" class="moh-gutter-x py-3">
             <div class="flex flex-wrap items-center gap-x-1.5 text-xs moh-text-soft">
               <AppBoardBoostButton :post-id="c.id" :points="c.points" :viewer-has-boosted="c.viewerHasBoosted" />
@@ -106,12 +106,13 @@
             </div>
             <p class="mt-1 whitespace-pre-wrap break-words text-sm moh-text">{{ c.body }}</p>
           </article>
-        </div>
+        </TransitionGroup>
         <p v-if="!loading && !latestComments.length" class="py-12 text-center moh-meta">No comments yet.</p>
       </template>
 
       <template v-else>
-        <div class="moh-divide">
+        <!-- Sort and filter changes reorder in place: rows still present glide to their new slot. -->
+        <TransitionGroup tag="div" name="moh-list" class="relative moh-divide">
           <AppBoardThreadRow
             v-for="t in visibleThreads"
             :key="t.id"
@@ -119,7 +120,7 @@
             :show-hide="isAuthed"
             @toggle-hide="onToggleHide"
           />
-        </div>
+        </TransitionGroup>
         <div v-if="!loading && !visibleThreads.length" class="py-12 text-center">
           <p class="text-sm font-semibold moh-text">Nothing here yet</p>
           <p class="mt-1 text-sm moh-text-muted">{{ emptyLabel }}</p>
@@ -181,9 +182,9 @@ const q = computed(() => qs('q') || null)
 const showHidden = computed(() => isAuthed.value && qs('hidden') === '1')
 const isFiltered = computed(() => Boolean(tags.value.length || domain.value || q.value || scope.value !== 'all' || range.value || showHidden.value))
 const emptyLabel = computed(() => {
-  if (showHidden.value) return 'You haven’t hidden any threads.'
-  if (tags.value.length) return `No threads match ${tags.value.map((t) => `#${t}`).join(', ')}${range.value ? ' in this range' : ''}.`
-  if (q.value) return `No threads match “${q.value}”.`
+  if (showHidden.value) return 'You haven’t hidden any posts.'
+  if (tags.value.length) return `No posts match ${tags.value.map((t) => `#${t}`).join(', ')}${range.value ? ' in this range' : ''}.`
+  if (q.value) return `No posts match “${q.value}”.`
   return 'Be the first to post.'
 })
 

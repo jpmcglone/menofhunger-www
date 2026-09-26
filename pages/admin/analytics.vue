@@ -577,12 +577,12 @@
         </div>
 
         <div class="px-4 space-y-2">
-          <div class="font-semibold text-sm">Top Board Threads <span class="text-gray-400 font-normal">(started in {{ rangeLabel }}, by points)</span></div>
+          <div class="font-semibold text-sm">Top Board Posts <span class="text-gray-400 font-normal">(started in {{ rangeLabel }}, by points)</span></div>
           <div class="rounded-xl border moh-border overflow-x-auto">
             <table class="min-w-full text-sm">
               <thead>
                 <tr class="border-b moh-border text-left text-gray-500 dark:text-gray-400">
-                  <th class="px-4 py-3 font-medium">Thread</th>
+                  <th class="px-4 py-3 font-medium">Post</th>
                   <th class="px-4 py-3 font-medium">Tier</th>
                   <th class="px-4 py-3 font-medium text-right">Points</th>
                   <th class="px-4 py-3 font-medium text-right">Comments</th>
@@ -616,7 +616,7 @@
                   <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ articleAge(thread.createdAt) }}</td>
                 </tr>
                 <tr v-if="!data?.board.topThreads.length">
-                  <td colspan="7" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No Board threads in this range</td>
+                  <td colspan="7" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No Board posts in this range</td>
                 </tr>
               </tbody>
             </table>
@@ -1086,7 +1086,7 @@
               <div class="flex items-start justify-between gap-2">
                 <div>
                   <div class="font-medium text-sm">Board</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Landing-eligible threads (article threads excluded); not part of Posts</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Landing-eligible Board posts (article posts excluded); not counted in Posts</div>
                 </div>
                 <div class="text-2xl font-bold tabular-nums">
                   {{ data.landing.board.total.toLocaleString() }}
@@ -1438,7 +1438,7 @@ function renderCharts() {
           makeLineDataset('Check-ins', counts[1] ?? [], '#f59e0b', totalPoints),
           makeLineDataset('Articles', counts[2] ?? [], '#a855f7', totalPoints),
           makeLineDataset('M.A.R.V. Posts', counts[3] ?? [], '#6366f1', totalPoints),
-          makeLineDataset('Board threads', counts[4] ?? [], '#ea580c', totalPoints),
+          makeLineDataset('Board posts', counts[4] ?? [], '#ea580c', totalPoints),
           makeLineDataset('Board comments', counts[5] ?? [], '#fb923c', totalPoints),
         ],
       },
@@ -1596,7 +1596,7 @@ const boardKpiCards = computed(() => {
   const b = data.value.board
   const r = rangeLabel.value
   return [
-    { label: 'Threads', value: b.threadsInRange.toLocaleString(), sub: `${b.totalThreads.toLocaleString()} all time` },
+    { label: 'Posts', value: b.threadsInRange.toLocaleString(), sub: `${b.totalThreads.toLocaleString()} all time` },
     { label: 'Comments', value: b.commentsInRange.toLocaleString(), sub: `${b.totalComments.toLocaleString()} all time` },
     { label: 'People', value: b.participantsInRange.toLocaleString(), sub: `started or commented · ${r}` },
     { label: 'Boosts', value: b.boostsInRange.toLocaleString(), sub: r },

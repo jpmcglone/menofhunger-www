@@ -62,7 +62,7 @@
         v-if="unreadCount > 0"
         class="absolute top-2 left-2 z-[4] min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center tabular-nums moh-notif-badge-normal"
         :aria-label="`${unreadCount} unread post${unreadCount > 1 ? 's' : ''}`"
-      >{{ unreadCount >= 99 ? '99+' : unreadCount }}</span>
+      ><AppAnimatedCount :value="unreadCount" :format="formatBadge" /></span>
     </ClientOnly>
 
     <div class="absolute inset-x-0 bottom-0 z-[3] px-2.5 pb-2 pt-3">
@@ -111,7 +111,7 @@
         v-if="unreadCount > 0"
         class="absolute top-2 left-2 z-[3] min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center tabular-nums moh-notif-badge-normal"
         :aria-label="`${unreadCount} unread post${unreadCount > 1 ? 's' : ''}`"
-      >{{ unreadCount >= 99 ? '99+' : unreadCount }}</span>
+      ><AppAnimatedCount :value="unreadCount" :format="formatBadge" /></span>
     </ClientOnly>
 
     <div class="relative z-[2]">
@@ -180,6 +180,7 @@
 <script setup lang="ts">
 import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
+const formatBadge = (n: number) => (n > 99 ? '99+' : String(n))
 
 const props = withDefaults(defineProps<{
   group: CommunityGroupShell

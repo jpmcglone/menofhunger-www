@@ -13,7 +13,7 @@
       @click="emit('toggle', r.reactionId, r.emoji)"
     >
       <span>{{ r.emoji }}</span>
-      <span class="tabular-nums">{{ r.count }}</span>
+      <AppAnimatedCount :value="r.count" />
     </button>
 
     <!-- Mount the interactive picker after hydration; both initial renders omit it. -->

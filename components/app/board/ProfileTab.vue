@@ -5,15 +5,15 @@
       <AppTabSelector
         :model-value="mode"
         aria-label="Board activity"
-        :tabs="[{ key: 'threads', label: 'Threads' }, { key: 'comments', label: 'Comments' }]"
+        :tabs="[{ key: 'threads', label: 'Posts' }, { key: 'comments', label: 'Comments' }]"
         @update:model-value="mode = $event as 'threads' | 'comments'"
       />
     </div>
 
     <AppSubtleSectionLoader :loading="initialLoading" :refreshing="refreshing" min-height-class="min-h-[220px]">
-      <div v-if="mode === 'threads'" class="moh-divide">
+      <TransitionGroup v-if="mode === 'threads'" tag="div" name="moh-list" class="relative moh-divide">
         <AppBoardThreadRow v-for="t in threads" :key="t.id" :thread="t" />
-      </div>
+      </TransitionGroup>
       <div v-else class="moh-divide">
         <article v-for="c in comments" :key="c.id" class="moh-gutter-x py-3">
           <div class="flex flex-wrap items-center gap-x-1.5 text-xs moh-text-soft">
@@ -28,7 +28,7 @@
       </div>
 
       <p v-if="loadedKey === viewKey && isEmpty" class="py-12 text-center moh-meta">
-        {{ mode === 'threads' ? 'No Board threads yet.' : 'No Board comments yet.' }}
+        {{ mode === 'threads' ? 'No Board posts yet.' : 'No Board comments yet.' }}
       </p>
       <div v-if="loadingMore" class="py-8 text-center moh-meta">Loading…</div>
       <button

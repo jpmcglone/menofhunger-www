@@ -45,7 +45,7 @@
         v-if="account.unreadBadgeCount > 0 && !account.isCurrent"
         class="shrink-0 flex min-w-[1.125rem] h-[1.125rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white"
         aria-hidden="true"
-      >{{ account.unreadBadgeCount > 99 ? '99+' : account.unreadBadgeCount }}</span>
+      ><AppAnimatedCount :value="account.unreadBadgeCount" :format="formatBadge" /></span>
       <Icon
         v-else-if="account.isCurrent"
         name="tabler:check"
@@ -60,6 +60,7 @@
 <script setup lang="ts">
 import type { SwitchableAccount } from '~/types/api'
 import { isOwnUserProfilePath } from '~/config/routes'
+const formatBadge = (n: number) => (n > 99 ? '99+' : String(n))
 
 const { accounts, canSwitch, switchingId, refresh, switchTo } = useAccountSwitcher()
 const route = useRoute()
