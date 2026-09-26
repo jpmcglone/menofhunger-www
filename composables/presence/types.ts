@@ -202,6 +202,16 @@ export type ArticlesCallback = {
   onCommentReactionChanged?: (payload: WsArticlesCommentReactionChangedPayload) => void
 }
 
+/** Members map room: someone joined, moved state, or left (card only for verified viewers). */
+export type MembersMapCallback = {
+  onChanged?: (payload: import('~/types/api-contracts.gen').MembersMapChangedPayloadDto) => void
+}
+
+/** People this viewer follows came online (server-throttled; in-app only). */
+export type FollowedOnlineCallback = {
+  onFollowedOnline?: (payload: import('~/types/api-contracts.gen').PresenceFollowedOnlinePayloadDto) => void
+}
+
 export type BoardCallback = {
   /** A thread was started in a scope this socket's tier can read (ids only; refetch to render). */
   onNewThread?: (payload: BoardNewThreadPayload) => void

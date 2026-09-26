@@ -122,6 +122,26 @@
 
         <div class="space-y-2">
           <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            In app
+          </div>
+          <div class="moh-divide">
+            <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+              <span class="flex min-w-0 items-center gap-3">
+                <span class="relative flex h-5 w-5 items-center justify-center" aria-hidden="true">
+                  <span class="h-2.5 w-2.5 rounded-full bg-[var(--moh-online)]" />
+                </span>
+                <span class="min-w-0">
+                  <span class="block font-medium">People I follow come online</span>
+                  <span class="block text-xs moh-text-muted">A quiet heads-up, at most once every couple of hours per person.</span>
+                </span>
+              </span>
+              <Checkbox v-model="notifPrefs.inAppFollowOnline" binary :disabled="notifPrefsSaving" />
+            </label>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Email
           </div>
           <div v-if="!authUser?.email" class="text-sm text-gray-600 dark:text-gray-300">

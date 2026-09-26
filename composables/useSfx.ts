@@ -179,5 +179,46 @@ export function useSfx() {
     if (opts?.waitUntilEnded) await ended
   }
 
-  return { playUrl, preloadUrl, preloadUrls }
+  /**
+   * Short synthesized motif (no audio files): each note is a sine with a soft octave overtone
+   * and a quick attack / exponential release so chimes stay gentle.
+   */
+  async function playTones(
+    notes: Array<{ freq: number; at: number; duration: number }>,
+    opts?: { volume?: number; shouldPlay?: () => boolean },
+  ) {
+    if (!import.meta.client || notes.length === 0) return
+    if (opts?.shouldPlay && !opts.shouldPlay()) return
+    addUnlockListenersOnce()
+    if (!(await ensureUnlocked())) return
+    const ctx = getAudioContext()
+    if (!ctx || (opts?.shouldPlay && !opts.shouldPlay())) return
+
+    const master = ctx.createGain()
+    master.gain.value = Math.max(0, Math.min(1, opts?.volume ?? 0.35))
+    master.connect(ctx.destination)
+    const t0 = ctx.currentTime + 0.01
+    let end = t0
+    for (const n of notes) {
+      const start = t0 + n.at
+      const stop = start + n.duration
+      end = Math.max(end, stop)
+      for (const [mult, level] of [[1, 1], [2, 0.18]] as const) {
+        const osc = ctx.createOscillator()
+        const env = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = n.freq * mult
+        env.gain.setValueAtTime(0.0001, start)
+        env.gain.exponentialRampToValueAtTime(level, start + 0.012)
+        env.gain.exponentialRampToValueAtTime(0.0001, stop)
+        osc.connect(env)
+        env.connect(master)
+        osc.start(start)
+        osc.stop(stop + 0.02)
+      }
+    }
+    setTimeout(() => master.disconnect(), Math.ceil((end - ctx.currentTime + 0.1) * 1000))
+  }
+
+  return { playUrl, preloadUrl, preloadUrls, playTones }
 }

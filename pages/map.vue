@@ -22,12 +22,32 @@
                     <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--moh-online)] opacity-60 motion-reduce:hidden" />
                     <span class="relative inline-flex h-2 w-2 rounded-full bg-[var(--moh-online)]" />
                   </span>
-                  {{ onlineLine }}
+                  <span :key="onlineLine" class="moh-header-pop">{{ onlineLine }}</span>
                 </span>
               </template>
               <span v-else class="moh-text-soft">Where every man on Men of Hunger lives, by state.</span>
             </p>
+            <p
+              v-if="reconnecting"
+              class="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-300"
+              role="status"
+            >
+              <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-current motion-reduce:animate-none" aria-hidden="true" />
+              Reconnecting… numbers may be behind
+            </p>
           </div>
+
+          <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full border moh-border bg-[var(--moh-surface-2)] moh-text transition-colors hover:bg-[var(--moh-surface-hover)]"
+            :aria-pressed="soundsOn"
+            :aria-label="soundsOn ? 'Mute map sounds' : 'Turn on map sounds'"
+            :title="soundsOn ? 'Mute map sounds' : 'Turn on map sounds'"
+            @click="toggleSounds"
+          >
+            <Icon :name="soundsOn ? 'tabler:volume' : 'tabler:volume-off'" class="h-[18px] w-[18px]" aria-hidden="true" />
+          </button>
 
           <nav class="flex rounded-full bg-[var(--moh-surface-1)] p-[3px]" aria-label="Filter the map">
             <NuxtLink
@@ -50,6 +70,7 @@
               Online now
             </NuxtLink>
           </nav>
+          </div>
         </header>
 
         <div v-if="error && !summary" class="moh-gutter-x pb-4">
@@ -66,6 +87,8 @@
             :pack-loading="bucketLoading && !bucketMembers.length"
             :viewer-state="viewerState"
             :members-visible="membersVisible"
+            :moments="moments"
+            :class="reconnecting ? 'opacity-60 transition-opacity' : 'transition-opacity'"
             @select="selectState"
             @show-all="revealPanel"
           />
@@ -142,6 +165,9 @@ const { data: initialSummary } = await useAsyncData('members-map-summary', () =>
 const {
   summary,
   membersVisible,
+  moments,
+  reconnecting,
+  mapSoundsEnabled,
   states,
   totals,
   error,
@@ -229,6 +255,17 @@ function loadMore() {
   if (bucket.value) void loadBucket(bucket.value, { more: true })
 }
 
+const actionSounds = useActionSoundsEnabled()
+const soundsOn = computed(() => mapSoundsEnabled.value !== false && actionSounds.value !== false)
+function toggleSounds() {
+  if (soundsOn.value) {
+    mapSoundsEnabled.value = false
+  } else {
+    mapSoundsEnabled.value = true
+    actionSounds.value = true
+  }
+}
+
 const bucketCounts = computed(() => {
   if (bucket.value === 'none') return { members: totals.value.unlocated, online: totals.value.unlocatedOnline }
   return { members: selectedState.value?.memberCount ?? 0, online: selectedState.value?.onlineCount ?? 0 }
@@ -284,3 +321,27 @@ usePageSeo({
   ]),
 })
 </script>
+
+<style scoped>
+.moh-header-pop {
+  display: inline-block;
+  animation: moh-header-pop 480ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes moh-header-pop {
+  0% {
+    transform: scale(1.12);
+    text-shadow: 0 0 12px color-mix(in srgb, var(--moh-online) 70%, transparent);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moh-header-pop {
+    animation: none;
+  }
+}
+</style>

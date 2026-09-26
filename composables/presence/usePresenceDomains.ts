@@ -47,6 +47,8 @@ import type {
   AdminCallback,
   ArticlesCallback,
   BoardCallback,
+  MembersMapCallback,
+  FollowedOnlineCallback,
   CallsCallback,
   CheckinsCallback,
   CrewCallback,
@@ -127,6 +129,8 @@ export function usePresenceDomains() {
   const postsCallbacks = useState<Set<PostsCallback>>('presence-posts-callbacks', () => new Set())
   const articlesCallbacks = useState<Set<ArticlesCallback>>('presence-articles-callbacks', () => new Set())
   const boardCallbacks = useState<Set<BoardCallback>>('presence-board-callbacks', () => new Set())
+  const membersMapCallbacks = useState<Set<MembersMapCallback>>('presence-members-map-callbacks', () => new Set())
+  const followedOnlineCallbacks = useState<Set<FollowedOnlineCallback>>('presence-followed-online-callbacks', () => new Set())
   const adminCallbacks = useState<Set<AdminCallback>>('presence-admin-callbacks', () => new Set())
   const usersCallbacks = useState<Set<UsersCallback>>('presence-users-callbacks', () => new Set())
   const crewCallbacks = useState<Set<CrewCallback>>('presence-crew-callbacks', () => new Set())
@@ -159,6 +163,8 @@ export function usePresenceDomains() {
   const posts = makeRegistry(postsCallbacks)
   const articles = makeRegistry(articlesCallbacks)
   const board = makeRegistry(boardCallbacks)
+  const membersMap = makeRegistry(membersMapCallbacks)
+  const followedOnline = makeRegistry(followedOnlineCallbacks)
   const admin = makeRegistry(adminCallbacks)
   const users = makeRegistry(usersCallbacks)
   const crew = makeRegistry(crewCallbacks)
@@ -498,6 +504,16 @@ export function usePresenceDomains() {
       for (const cb of boardCallbacks.value) cb.onNewThread?.(data)
     })
 
+    socket.on('members-map:changed', (data: Parameters<NonNullable<MembersMapCallback['onChanged']>>[0]) => {
+      if (!data?.kind) return
+      for (const cb of membersMapCallbacks.value) cb.onChanged?.(data)
+    })
+
+    socket.on('presence:followed-online', (data: Parameters<NonNullable<FollowedOnlineCallback['onFollowedOnline']>>[0]) => {
+      if (!Array.isArray(data?.users) || data.users.length === 0) return
+      for (const cb of followedOnlineCallbacks.value) cb.onFollowedOnline?.(data)
+    })
+
     socket.on('articles:liveUpdated', (data: WsArticlesLiveUpdatedPayload) => {
       if (!articlesCallbacks.value.size) return
       for (const cb of articlesCallbacks.value) {
@@ -710,6 +726,8 @@ export function usePresenceDomains() {
     posts,
     articles,
     board,
+    membersMap,
+    followedOnline,
     admin,
     users,
     crew,

@@ -71,8 +71,8 @@
             <AppUserAvatar :user="u" size-class="h-5 w-5" :show-presence="false" :show-status="false" :enable-preview="false" />
           </span>
         </span>
-        <span class="font-bold tabular-nums moh-text" :class="l.big ? 'text-[13px]' : 'text-xs'">{{ l.count }}</span>
-        <span v-if="!onlineOnly && l.online > 0" class="flex items-center gap-0.5 text-[11px] font-semibold tabular-nums text-[var(--moh-online)]">
+        <span :key="l.count" class="moh-count-pop font-bold tabular-nums moh-text" :class="l.big ? 'text-[13px]' : 'text-xs'">{{ l.count }}</span>
+        <span v-if="!onlineOnly && l.online > 0" :key="`o${l.online}`" class="moh-count-pop flex items-center gap-0.5 text-[11px] font-semibold tabular-nums text-[var(--moh-online)]">
           <span class="h-1.5 w-1.5 rounded-full bg-[var(--moh-online)]" aria-hidden="true" />{{ l.online }}
         </span>
         <span v-if="viewerState === l.code" class="rounded-md bg-[var(--moh-brass)] px-1 text-[9px] font-bold uppercase leading-4 text-white">You</span>
@@ -116,6 +116,22 @@
       <AppLogoLoader compact />
     </div>
 
+    <!-- Live moments: joins, people coming online, going offline. -->
+    <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div
+        v-for="m in momentMarks"
+        :key="m.id"
+        class="absolute"
+        :style="{ left: `${m.x}px`, top: `${m.y}px` }"
+      >
+        <span class="moh-moment-ring" :class="`moh-moment-ring--${m.kind}`" />
+        <span v-if="m.kind !== 'offline'" class="moh-moment-ring moh-moment-ring--late" :class="`moh-moment-ring--${m.kind}`" />
+        <span v-if="m.kind === 'join'" class="moh-moment-float moh-moment-float--join">+{{ m.count }}</span>
+        <span v-else-if="m.kind === 'online' && m.count > 1" class="moh-moment-float moh-moment-float--online">+{{ m.count }}</span>
+        <span v-else-if="m.kind === 'offline'" class="moh-moment-float moh-moment-float--offline">&minus;{{ m.count }}</span>
+      </div>
+    </div>
+
     <div class="absolute right-2 top-2 flex flex-col overflow-hidden rounded-xl border moh-border bg-[var(--moh-surface-2)] shadow-sm">
       <button type="button" class="flex h-9 w-9 items-center justify-center moh-text hover:bg-[var(--moh-surface-hover)]" aria-label="Zoom in" @click="zoomBy(1.6)">
         <Icon name="tabler:plus" class="h-4 w-4" aria-hidden="true" />
@@ -132,6 +148,7 @@
 import { useElementSize } from '@vueuse/core'
 import type { MembersMapState, MembersMapUser } from '~/types/api'
 import type { PackedAvatar } from '~/components/app/map/StateAvatarPack.vue'
+import type { MapMoment } from '~/composables/useMembersMap'
 import {
   CALLOUT_MARGIN,
   CALLOUT_STATES,
@@ -160,6 +177,8 @@ const props = defineProps<{
   viewerState: string | null
   /** False for signed-out and unverified viewers: counts only, never faces. */
   membersVisible: boolean
+  /** Live joins / online / offline effects to draw on their states. */
+  moments?: MapMoment[]
 }>()
 
 const emit = defineEmits<{
@@ -353,6 +372,18 @@ const packed = computed<{ avatars: PackedAvatar[]; overflow: { x: number; y: num
   return { avatars, overflow: { x: cx, y: Math.min(height.value - 36, bottom + 8), count: extra } }
 })
 
+/** Moments drawn at their state's label anchor; "no location" moments show in the header instead. */
+const momentMarks = computed(() =>
+  (props.moments ?? []).flatMap((m) => {
+    if (!m.state) return []
+    const shape = allShapes.get(m.state)
+    if (!shape) return []
+    if (props.selected && props.selected !== m.state) return []
+    const [x, y] = toScreen(shape.anchor)
+    return [{ ...m, x, y }]
+  }),
+)
+
 const selectedCount = computed(() => {
   const shape = selectedShape.value
   const s = props.selected ? byCode.value.get(props.selected) : undefined
@@ -469,6 +500,123 @@ onMounted(() => {
 
 .moh-map-count {
   animation: moh-map-count-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms backwards;
+}
+
+/* ─── Live moments ─────────────────────────────────────────────── */
+.moh-moment-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: moh-moment-ring 1500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.moh-moment-ring--late {
+  animation-delay: 220ms;
+}
+
+.moh-moment-ring--join {
+  color: #e6b45e;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-width: 2.5px;
+  animation-duration: 1900ms;
+}
+
+.moh-moment-ring--online {
+  color: var(--moh-online);
+}
+
+.moh-moment-ring--offline {
+  color: var(--moh-text-soft);
+  border-width: 1.5px;
+  animation-duration: 1200ms;
+}
+
+@keyframes moh-moment-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+
+.moh-moment-float {
+  position: absolute;
+  left: 14px;
+  top: -30px;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: moh-moment-float 1800ms ease-out forwards;
+}
+
+.moh-moment-float--join {
+  background: #e6b45e;
+  color: #1a1408;
+}
+
+.moh-moment-float--online {
+  background: color-mix(in srgb, var(--moh-online) 18%, var(--moh-surface-2));
+  color: var(--moh-online);
+}
+
+.moh-moment-float--offline {
+  color: var(--moh-text-soft);
+  animation-duration: 1400ms;
+}
+
+@keyframes moh-moment-float {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.85);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-22px);
+  }
+}
+
+.moh-count-pop {
+  display: inline-flex;
+  animation: moh-count-pop 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes moh-count-pop {
+  0% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moh-moment-ring,
+  .moh-moment-float,
+  .moh-count-pop {
+    animation: none;
+    opacity: 0;
+  }
+
+  .moh-count-pop {
+    opacity: 1;
+  }
 }
 
 @keyframes moh-map-count-in {

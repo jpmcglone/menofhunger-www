@@ -1,12 +1,32 @@
 import type { MembersMapState, MembersMapSummary, MembersMapUser } from '~/types/api'
-import type { OnlineFeedCallback } from '~/composables/presence/types'
+import type { MembersMapCallback, OnlineFeedCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { createOnlineSettler, type MomentKey } from '~/utils/presence-moments'
 
 /** `none` is the bucket for members without a location. */
 export type MembersMapBucket = string | 'none'
 
 const MEMBERS_PAGE = 60
 const REFETCH_DEBOUNCE_MS = 1500
+const MOMENT_LIFETIME_MS = 2600
+/** After a reconnect, count changes are catch-up, not news. */
+const RESYNC_QUIET_MS = 3000
+
+/** A short-lived map effect: someone joined, came online, or went offline in a state. */
+export type MapMoment = {
+  id: number
+  kind: 'join' | 'online' | 'offline'
+  /** null = "Location not set". */
+  state: MomentKey
+  count: number
+  /** Verified viewers only, for joins. */
+  user?: MembersMapUser
+}
+
+/** Device preference for the map's sounds (on top of the app-wide action-sounds setting). */
+export function useMapSoundsEnabled() {
+  return useCookie<boolean>('moh-map-sounds', { default: () => true, maxAge: 31536000, sameSite: 'lax' })
+}
 
 /**
  * Summary + per-state members for the members map. HTTP catches the page up on
@@ -26,7 +46,15 @@ export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {})
     removeOnlineFeedCallback,
     addOnlineIdsFromRest,
     whenSocketConnected,
+    addMembersMapCallback,
+    removeMembersMapCallback,
+    subscribeMembersMap,
+    unsubscribeMembersMap,
+    isSocketConnected,
+    wasSocketConnectedOnce,
   } = usePresence()
+  const chimes = usePresenceChimes()
+  const mapSoundsEnabled = useMapSoundsEnabled()
 
   const summary = ref<MembersMapSummary | null>(null)
   const membersVisible = computed(() => summary.value?.membersVisible === true)
@@ -219,11 +247,82 @@ export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {})
     return [...on, ...off]
   })
 
+  // ─── Live moments (effects + chimes) ─────────────────────────────────────
+  const moments = ref<MapMoment[]>([])
+  let momentSeq = 0
+  const reconnecting = computed(() => wasSocketConnectedOnce.value && !isSocketConnected.value)
+
+  function pushMoment(m: Omit<MapMoment, 'id'>) {
+    const moment = { ...m, id: ++momentSeq }
+    moments.value = [...moments.value.slice(-24), moment]
+    setTimeout(() => {
+      moments.value = moments.value.filter((x) => x.id !== moment.id)
+    }, MOMENT_LIFETIME_MS)
+    chimes.play(m.kind, { extraEnabled: () => mapSoundsEnabled.value !== false })
+  }
+
+  const onlineByKey = computed(() => {
+    const m = new Map<MomentKey, number>()
+    for (const s of states.value) m.set(s.state, s.onlineCount)
+    m.set(null, totals.value.unlocatedOnline)
+    return m
+  })
+
+  const settler = createOnlineSettler({ emit: (m) => pushMoment(m) })
+  let resyncing = true
+  let resyncTimer: ReturnType<typeof setTimeout> | null = null
+
+  /** Adopt current counts silently for a moment (reconnect, tab return). */
+  function beginResync() {
+    resyncing = true
+    if (resyncTimer) clearTimeout(resyncTimer)
+    resyncTimer = setTimeout(() => {
+      resyncTimer = null
+      settler.reset(onlineByKey.value)
+      resyncing = false
+    }, RESYNC_QUIET_MS)
+  }
+
+  watch(onlineByKey, (counts) => {
+    if (!mounted) return
+    if (resyncing) settler.reset(counts)
+    else settler.update(counts)
+  })
+
+  watch(isSocketConnected, (connected, was) => {
+    if (connected && was === false) beginResync()
+  })
+
+  function onVisibility() {
+    if (document.visibilityState !== 'visible' || !mounted) return
+    beginResync()
+    void fetchSummary()
+  }
+
+  const membersMapCallback: MembersMapCallback = {
+    onChanged(payload) {
+      scheduleRefetch()
+      if (payload.kind !== 'joined') return
+      const user = membersVisible.value ? (payload.user as MembersMapUser | undefined) : undefined
+      if (user) {
+        remember([user], payload.state)
+        if (bucket.value === (payload.state ?? 'none') && !bucketMembers.value.some((u) => u.id === user.id)) {
+          bucketMembers.value = [user, ...bucketMembers.value]
+        }
+      }
+      if (!resyncing) pushMoment({ kind: 'join', state: payload.state, count: 1, user })
+    },
+  }
+
   let subscribed = false
   async function start() {
     mounted = true
     seedPresence()
     addOnlineFeedCallback(feedCallback)
+    addMembersMapCallback(membersMapCallback)
+    subscribeMembersMap()
+    document.addEventListener('visibilitychange', onVisibility)
+    beginResync()
     if (!summary.value) await fetchSummary()
     await whenSocketConnected(12000)
     if (!subscribed) {
@@ -235,6 +334,11 @@ export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {})
   function stop() {
     if (refetchTimer) clearTimeout(refetchTimer)
     refetchTimer = null
+    if (resyncTimer) clearTimeout(resyncTimer)
+    settler.dispose()
+    document.removeEventListener('visibilitychange', onVisibility)
+    removeMembersMapCallback(membersMapCallback)
+    unsubscribeMembersMap()
     removeOnlineFeedCallback(feedCallback)
     if (subscribed) unsubscribeOnlineFeed()
     subscribed = false
@@ -251,6 +355,9 @@ export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {})
   return {
     summary,
     membersVisible,
+    moments,
+    reconnecting,
+    mapSoundsEnabled,
     states,
     totals,
     loading,

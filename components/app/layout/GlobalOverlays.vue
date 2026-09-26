@@ -11,6 +11,7 @@
       <AppLinkPreviewPopover />
       <AppOnlineCountPopover />
       <AppCallsCallHost v-if="isAuthed" />
+      <AppFollowOnlineToast v-if="isAuthed" />
       <AppSpaceLiveChatOverlay
         v-if="radioChatSheetOpen && radioHasStation && !showRadioChat"
         v-model="radioChatSheetOpen"

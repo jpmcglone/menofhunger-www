@@ -5,6 +5,7 @@ const PRESENCE_POST_SUB_REFS_KEY = 'presence-post-sub-refs'
 const PRESENCE_ARTICLE_SUB_REFS_KEY = 'presence-article-sub-refs'
 const PRESENCE_GROUP_FEED_SUB_REFS_KEY = 'presence-group-feed-sub-refs'
 const PRESENCE_BOARD_SUB_REFS_KEY = 'presence-board-sub-refs'
+const PRESENCE_MEMBERS_MAP_SUB_REFS_KEY = 'presence-members-map-sub-refs'
 
 function cleanIds(ids: string[]): string[] {
   return (ids ?? []).map((s) => String(s ?? '').trim()).filter(Boolean)
@@ -20,6 +21,7 @@ export function usePresenceSubscriptions(socketRef: Ref<Socket | null>) {
   const articleSubRefs = useState<Map<string, number>>(PRESENCE_ARTICLE_SUB_REFS_KEY, () => new Map())
   const groupFeedSubRefs = useState<Map<string, number>>(PRESENCE_GROUP_FEED_SUB_REFS_KEY, () => new Map())
   const boardSubRefs = useState<number>(PRESENCE_BOARD_SUB_REFS_KEY, () => 0)
+  const membersMapSubRefs = useState<number>(PRESENCE_MEMBERS_MAP_SUB_REFS_KEY, () => 0)
 
   function emitPostsSubscribe(postIds: string[]) {
     const socket = socketRef.value
@@ -138,9 +140,23 @@ export function usePresenceSubscriptions(socketRef: Ref<Socket | null>) {
     if (boardSubRefs.value === 0 && socketRef.value?.connected) socketRef.value.emit('board:unsubscribe')
   }
 
+  /** Members map room (the server picks counts-only or with faces from the socket's viewer). */
+  function subscribeMembersMap() {
+    if (!import.meta.client) return
+    membersMapSubRefs.value += 1
+    if (socketRef.value?.connected) socketRef.value.emit('members-map:subscribe')
+  }
+
+  function unsubscribeMembersMap() {
+    if (!import.meta.client) return
+    membersMapSubRefs.value = Math.max(0, membersMapSubRefs.value - 1)
+    if (membersMapSubRefs.value === 0 && socketRef.value?.connected) socketRef.value.emit('members-map:unsubscribe')
+  }
+
   /** Re-emit all live content subscriptions after (re)connect. */
   function syncContentSubscriptions() {
     if (boardSubRefs.value > 0) socketRef.value?.emit('board:subscribe')
+    if (membersMapSubRefs.value > 0) socketRef.value?.emit('members-map:subscribe')
     if (articleSubRefs.value.size > 0) emitArticlesSubscribe([...articleSubRefs.value.keys()])
     if (postSubRefs.value.size > 0) emitPostsSubscribe([...postSubRefs.value.keys()])
     if (groupFeedSubRefs.value.size > 0) emitGroupsSubscribe([...groupFeedSubRefs.value.keys()])
@@ -155,6 +171,8 @@ export function usePresenceSubscriptions(socketRef: Ref<Socket | null>) {
     unsubscribeGroups,
     subscribeBoard,
     unsubscribeBoard,
+    subscribeMembersMap,
+    unsubscribeMembersMap,
     syncContentSubscriptions,
   }
 }

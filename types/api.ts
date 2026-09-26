@@ -290,6 +290,8 @@ export type NotificationPreferences = {
   pushDailyContent: boolean
   /** 8pm ET reminder to complete today's check-in (at-risk streaks only). */
   pushCheckinReminder: boolean
+  /** In-app banner + chime when someone you follow comes online (throttled server-side). Never a push. */
+  inAppFollowOnline: boolean
   emailDigestWeekly: boolean
   emailNewNotifications: boolean
   emailInstantHighSignal: boolean
