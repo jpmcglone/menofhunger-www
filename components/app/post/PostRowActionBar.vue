@@ -1,7 +1,7 @@
 <template>
   <!-- Typing indicator: who is currently composing a reply -->
   <AppTypingIndicator
-    v-if="!isDeletedPost && !isPendingRow && typingUsers.length > 0"
+    v-if="showsThreadActivity && !isDeletedPost && !isPendingRow && typingUsers.length > 0"
     :users="typingUsers"
     verb="replying"
     size="compact"
@@ -11,7 +11,7 @@
 
   <!-- New-reply pill: transient "+N new" badge while viewing a feed row -->
   <div
-    v-if="!isDeletedPost && !isPendingRow && newRepliesSinceMount > 0 && !isOnPermalink"
+    v-if="showsThreadActivity && !isDeletedPost && !isPendingRow && newRepliesSinceMount > 0 && !isOnPermalink"
     class="mt-1"
     @click.stop
   >
@@ -26,10 +26,15 @@
 
   <div
     v-if="!isDeletedPost && !isOnlyMe"
-    class="moh-post-actions mt-2 flex items-center justify-between sm:justify-start moh-text-muted"
+    class="moh-post-actions flex items-center moh-text-muted"
+    :class="variant === 'post'
+      ? 'mt-2 justify-between sm:justify-start'
+      : variant === 'boardComment' ? 'h-8 justify-start' : 'justify-start'"
   >
+    <slot name="start" />
+
     <!-- Reply -->
-    <div class="inline-flex items-center">
+    <div v-if="showsReplyAndRepost" class="inline-flex items-center">
       <button
         v-tooltip.bottom="commentTooltip"
         type="button"
@@ -53,7 +58,7 @@
     </div>
 
     <!-- Repost button + menu -->
-    <div class="relative inline-flex items-center">
+    <div v-if="showsReplyAndRepost" class="relative inline-flex items-center">
       <button
         v-tooltip.bottom="repostTooltip"
         type="button"
@@ -84,8 +89,8 @@
       />
     </div>
 
-    <!-- Upvote -->
-    <div class="inline-flex items-center">
+    <!-- Upvote: Board rows boost from their own Board boost control instead. -->
+    <div v-if="variant === 'post'" class="inline-flex items-center">
       <button
         v-tooltip.bottom="upvoteTooltip"
         type="button"
@@ -106,10 +111,11 @@
     </div>
 
     <!-- Spacer: hidden on mobile (justify-between handles spacing), grows on desktop -->
-    <div class="hidden sm:block sm:flex-1" aria-hidden="true" />
+    <div v-if="variant === 'post'" class="hidden sm:block sm:flex-1" aria-hidden="true" />
 
     <!-- Bookmark + count: count right of icon on mobile, left of icon on desktop -->
     <div
+      v-if="variant !== 'boardLocked'"
       class="inline-flex items-center sm:flex-row-reverse"
       @click.capture="onMaybeGatedRightSideClick"
     >
@@ -122,6 +128,7 @@
         @bookmark-state-changed="$emit('bookmarkStateChanged', $event)"
       />
       <span
+        v-if="variant === 'post'"
         class="inline-block select-none text-left sm:text-right text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
         :class="bookmarkCountValue > 0 ? 'opacity-100' : 'opacity-0'"
         aria-hidden="true"
@@ -130,10 +137,11 @@
       </span>
     </div>
 
-    <!-- Share -->
+    <!-- Share: a locked Board teaser can still be shared, so it skips the gate guard. -->
     <div
-      class="inline-flex items-center sm:ml-2"
-      @click.capture="onMaybeGatedRightSideClick"
+      class="inline-flex items-center"
+      :class="variant === 'post' ? 'sm:ml-2' : ''"
+      @click.capture="variant === 'boardLocked' ? undefined : onMaybeGatedRightSideClick($event)"
     >
       <AppPostRowShareMenu
         :can-share="canShare"
@@ -141,6 +149,8 @@
         :items="shareMenuItems"
       />
     </div>
+
+    <slot name="end" />
   </div>
 </template>
 
@@ -149,7 +159,7 @@ import type { FeedPost } from '~/types/api'
 import { formatShortCount } from '~/utils/text'
 import { usePostRowInteractions } from '~/composables/post-row/usePostRowInteractions'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   /** Merged (cache-overlaid) post view. */
   post: FeedPost
   /** The original `post` prop of the row — used for quote/share/bookmark dialogs. */
@@ -157,7 +167,12 @@ const props = defineProps<{
   author: { id?: string | null; username?: string | null } | null
   viewerCanInteract: boolean
   isGatedPost: boolean
-}>()
+  /**
+   * `board`: reply, repost, bookmark, share (Board rows boost from their left column).
+   * `boardComment`: bookmark + share after the `start` slot. `boardLocked`: share only.
+   */
+  variant?: 'post' | 'board' | 'boardComment' | 'boardLocked'
+}>(), { variant: 'post' })
 
 const emit = defineEmits<{
   bookmarkCountDelta: [delta: number]
@@ -166,6 +181,9 @@ const emit = defineEmits<{
 }>()
 
 const formatCountOrBlank = (n: number) => n === 0 ? ' ' : formatShortCount(n)
+
+const showsReplyAndRepost = computed(() => props.variant === 'post' || props.variant === 'board')
+const showsThreadActivity = computed(() => props.variant === 'post' || props.variant === 'board')
 
 const postView = computed(() => props.post)
 const isDeletedPost = computed(() => Boolean(postView.value.deletedAt))

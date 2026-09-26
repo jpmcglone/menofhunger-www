@@ -1,15 +1,12 @@
 <template>
   <div
+    v-if="!boardVariant"
     ref="rowEl"
     :data-post-id="postView.id"
     :class="[
       'relative overflow-visible moh-gutter-x moh-post-row transition-colors',
       compact ? 'pt-3 pb-2' : 'pt-4 pb-2 sm:pt-6',
-      noBorderBottom
-        ? ''
-        : subtleBorderBottom
-          ? 'border-b border-gray-100 dark:border-white/[0.06]'
-          : 'border-b moh-border',
+      rowBorderClass,
       clickable ? 'cursor-pointer group' : '',
       highlight ? highlightClass : '',
       pendingStatus === 'posting' ? 'opacity-70' : '',
@@ -180,8 +177,6 @@
           Post deleted.
         </div>
 
-        <AppBoardFeedCard v-else-if="isBoardPost" :post="postView" :href="postPermalink" />
-
         <!-- Gated post: show partial body (mid-word cut, faded) then gate card -->
         <template v-else-if="isGatedPost">
           <div
@@ -246,10 +241,10 @@
           @updated="onPollUpdated"
         />
 
-        <AppPostMediaGrid v-if="!isDeletedPost && !isGatedPost && !isBoardPost && postView.media?.length" :media="postView.media" :post-id="postView.id" :row-in-view="rowInView" />
+        <AppPostMediaGrid v-if="!isDeletedPost && !isGatedPost && postView.media?.length" :media="postView.media" :post-id="postView.id" :row-in-view="rowInView" />
 
         <AppPostRowLinkPreview
-          v-if="!isDeletedPost && !isGatedPost && !isBoardPost"
+          v-if="!isDeletedPost && !isGatedPost"
           :post-id="postView.id"
           :body="postView.body"
           :has-media="Boolean(postView.media?.length)"
@@ -338,6 +333,114 @@
       </div>
     </div>
   </div>
+
+  <AppBoardFeedPostRow
+    v-else-if="boardVariant === 'post'"
+    :data-post-id="postView.id"
+    :class="rowBorderClass"
+    :post="postView"
+    :author="author"
+    :profile-path="authorProfilePath"
+    :href="postPermalink"
+    :age="createdAtShort"
+    :age-tooltip="createdAtTooltip"
+    :clickable="clickable"
+  >
+    <template #menu>
+      <button
+        v-if="showCatchUpButton && !isGatedPost"
+        v-tooltip.bottom="tinyTooltip(catchUpResultReady ? 'Catch me up — summary ready' : 'Catch me up — M.A.R.V summarizes this thread')"
+        type="button"
+        class="moh-tap moh-pressable inline-flex h-9 w-9 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+        aria-label="Catch me up with M.A.R.V"
+        @click.stop="onCatchMeUp"
+      >
+        <AppIconGlyph name="catchup" :size="20" :selected="catchUpResultReady" />
+      </button>
+      <div class="relative h-5 w-10">
+        <AppPostRowMoreMenu :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
+      </div>
+    </template>
+    <template #actions>
+      <AppPostRowActionBar
+        :variant="isGatedPost ? 'boardLocked' : 'board'"
+        :post="postView"
+        :source-post="post"
+        :author="author"
+        :viewer-can-interact="viewerCanInteract"
+        :is-gated-post="isGatedPost"
+        @bookmark-count-delta="onBookmarkCountDelta"
+        @bookmark-state-changed="onBookmarkStateChanged"
+        @open-reposters="repostersPostId = post.id"
+      >
+        <template v-if="!isGatedPost && displayViewerCount > 0" #end>
+          <AppPostRowViewerBreakdown
+            class="ml-auto shrink-0"
+            :entity-id="postView.id"
+            :breakdown-path="`/posts/${encodeURIComponent(postView.id)}/views/breakdown?fresh=1`"
+            :viewer-count="displayViewerCount"
+            :total-view-count="displayTotalViewCount"
+            :has-viewed="hasViewedPost"
+            @count-synced="onViewerCountSynced"
+          />
+        </template>
+      </AppPostRowActionBar>
+    </template>
+    <template v-if="$slots.threadFooter" #footer>
+      <slot name="threadFooter" />
+    </template>
+  </AppBoardFeedPostRow>
+
+  <AppBoardFeedCommentRow
+    v-else
+    :data-post-id="postView.id"
+    :class="rowBorderClass"
+    :post="postView"
+    :author="author"
+    :profile-path="authorProfilePath"
+    :href="postPermalink"
+    :age="createdAtShort"
+    :age-tooltip="createdAtTooltip"
+    :clickable="clickable"
+  >
+    <template #actions>
+      <AppPostRowActionBar
+        :variant="isGatedPost ? 'boardLocked' : 'boardComment'"
+        :post="postView"
+        :source-post="post"
+        :author="author"
+        :viewer-can-interact="viewerCanInteract"
+        :is-gated-post="isGatedPost"
+        @bookmark-count-delta="onBookmarkCountDelta"
+        @bookmark-state-changed="onBookmarkStateChanged"
+      >
+        <template #start>
+          <div class="inline-flex items-center">
+            <AppBoardBoostButton
+              :post-id="postView.id"
+              :points="postView.boostCount"
+              :viewer-has-boosted="Boolean(postView.viewerHasBoosted)"
+              :disabled="isGatedPost"
+            />
+          </div>
+          <div v-if="!isGatedPost" class="inline-flex items-center">
+            <NuxtLink
+              :to="postPermalink"
+              class="moh-tap moh-focus inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-[13px] font-medium moh-text-muted transition-colors hover:text-[var(--moh-text)]"
+            >
+              <AppIconGlyph name="reply" :size="16" />
+              Reply
+            </NuxtLink>
+          </div>
+        </template>
+        <template #end>
+          <div class="relative ml-auto h-5 w-10 self-center">
+            <AppPostRowMoreMenu :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
+          </div>
+        </template>
+      </AppPostRowActionBar>
+    </template>
+  </AppBoardFeedCommentRow>
 
 
   <AppEditPostDialog v-if="editOpen" v-model="editOpen" :post="postView" @edited="onEdited" />
@@ -493,6 +596,10 @@ const pendingStatus = computed<'posting' | 'failed' | null>(() => {
 const isPendingRow = computed(() => pendingStatus.value !== null)
 
 const clickable = computed(() => props.clickable !== false && !isPendingRow.value)
+const rowBorderClass = computed(() => {
+  if (props.noBorderBottom) return ''
+  return props.subtleBorderBottom ? 'border-b border-gray-100 dark:border-white/[0.06]' : 'border-b moh-border'
+})
 const highlightClass = computed(() => {
   if (!props.highlight) return ''
   const v = postView.value.visibility
@@ -700,22 +807,15 @@ const metaTags = computed(() => {
     })
   }
 
-  if (isBoardPost.value) {
-    out.push({
-      key: 'kind:board',
-      label: 'Board',
-      class: 'moh-border moh-text-muted',
-      tooltip: tinyTooltip('Posted on the Board'),
-      icon: 'tabler:layout-list',
-      to: '/b',
-    })
-  }
-
   return out
 })
 
 const postPermalink = computed(() => boardPostHref(postView.value) ?? `/p/${encodeURIComponent(postView.value.id)}`)
-const isBoardPost = computed(() => postView.value.kind === 'board')
+/** Board threads and comments render as Board rows; deleted or pending ones keep the post shell. */
+const boardVariant = computed<'post' | 'comment' | null>(() => {
+  if (postView.value.kind !== 'board' || isDeletedPost.value || isPendingRow.value) return null
+  return postView.value.parentId ? 'comment' : 'post'
+})
 
 function goToPost() {
   return navigateTo(postPermalink.value)

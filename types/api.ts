@@ -714,6 +714,8 @@ export type FeedPost = {
   kind?: 'regular' | 'checkin' | 'repost' | 'articleShare' | 'status' | 'fitnessShare' | 'board'
   /** kind=board: the Board thread root id (equals `id` for the thread). Routes to /b/:boardRootId. */
   boardRootId?: string
+  /** kind=board comments: the thread's title (trimmed for gated viewers). */
+  boardThreadTitle?: string
   /** kind=board thread roots: Board card fields (gated viewers get a trimmed title and no link). */
   board?: PostBoardPreview
   checkinDayKey?: string | null

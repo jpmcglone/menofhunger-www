@@ -26,9 +26,9 @@
     />
   </div>
 
-  <!-- Single post (no parent): render one row -->
+  <!-- Single post (no parent), or a Board comment (its row names the thread): render one row -->
   <div
-    v-else-if="chain.length === 1"
+    v-else-if="chain.length === 1 || isBoardComment"
     :ref="(el) => { captureWrapperEl(el); if (highlightedPostId === post.id) setHighlightedRef(el) }"
     :data-post-id="post.id"
     :class="keyboardFocusClass"
@@ -232,6 +232,7 @@ const postCache = usePostCache()
 // ── Flat repost detection ────────────────────────────────────────────────────
 const isFlatRepost = computed(() => props.post.kind === 'repost' && Boolean(props.post.repostedPost))
 const repostedPost = computed(() => props.post.repostedPost ?? null)
+const isBoardComment = computed(() => props.post.kind === 'board' && Boolean(props.post.parentId))
 
 
 /** Ordered chain [root, ..., post] by walking parent up. */
