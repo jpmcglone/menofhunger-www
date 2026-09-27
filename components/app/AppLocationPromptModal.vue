@@ -155,9 +155,8 @@ async function save() {
     if (updated?.user && user.value) {
       Object.assign(user.value, updated.user)
     }
-    if (preview.value.state) {
-      await navigateTo({ path: '/l', query: { state: preview.value.state } })
-    }
+    const state = preview.value?.state
+    if (state) await navigateTo({ path: '/l', query: { state } })
   } catch (_e) {
     console.error('Failed to save location:', getApiErrorMessage(_e))
   } finally {

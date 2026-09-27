@@ -42,9 +42,12 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
   }
   function installPictureInPictureAction() {
     const session = navigator.mediaSession
-    if (!session?.setActionHandler) return
+    const setAction = session?.setActionHandler as
+      | ((type: string, callback: (() => void) | null) => void)
+      | undefined
+    if (!setAction) return
     try {
-      session.setActionHandler('enterpictureinpicture', () => { void floatPlayingVideo() })
+      setAction.call(session, 'enterpictureinpicture', () => { void floatPlayingVideo() })
     } catch {
       // This browser has no media-session picture-in-picture action.
     }
