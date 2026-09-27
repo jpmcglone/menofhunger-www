@@ -30,7 +30,7 @@
       @click="$emit('check-in')"
     >
       <div class="space-y-3 p-4">
-        <AppCheckinPromptContext :prompt="prompt" metadata="Open until midnight ET · New prompt daily at 5pm ET" />
+        <AppCheckinPromptContext :prompt="prompt" metadata="The day here is Eastern. Open 5pm–midnight." />
         <p class="text-xs moh-text-muted">
           <template v-if="streak > 0">Answer to keep your {{ streak }}-day streak alive.</template>
           <template v-else>Answer today's check-in prompt to start your streak.</template>

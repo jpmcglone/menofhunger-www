@@ -195,16 +195,15 @@
         <template #helper>{{ bioCharCount.display }}</template>
       </AppFormField>
 
-      <AppFormField label="ZIP code">
+      <AppFormField label="Place">
         <InputText
           v-model="editLocationQuery"
           class="w-full"
-          :maxlength="5"
-          inputmode="numeric"
-          placeholder="e.g. 24011"
+          :maxlength="80"
+          placeholder="ZIP, or City, Country"
         />
         <template #helper>
-          Optional. Your state will be shown on your profile.
+          United States: your ZIP. Somewhere else: City, Country.
         </template>
       </AppFormField>
 
@@ -579,11 +578,16 @@ function handleAvatarSelectedFile(file: File) {
   openCropForAvatarFile(file)
 }
 
+function locationQueryFromProfile(profile: { locationZip?: string | null; locationCountry?: string | null; locationDisplay?: string | null } | null | undefined) {
+  if (profile?.locationCountry && profile.locationCountry !== 'US' && profile.locationDisplay) return profile.locationDisplay
+  return profile?.locationZip ?? ''
+}
+
 function hydrateEditFields() {
   editError.value = null
   editName.value = props.profile?.name || ''
   editBio.value = props.profile?.bio || ''
-  editLocationQuery.value = (props.profile?.locationZip ?? '') || ''
+  editLocationQuery.value = locationQueryFromProfile(props.profile)
   editWebsite.value = (props.profile?.website ?? '') || ''
   editXUsername.value = (props.profile?.xUsername ?? '') || ''
   editPickaxUsername.value = (props.profile?.pickaxUsername ?? '') || ''
@@ -593,7 +597,7 @@ function fillEmptyEditFieldsFromProfile() {
   if (!props.modelValue) return
   if (!editName.value && props.profile?.name) editName.value = props.profile.name
   if (!editBio.value && props.profile?.bio) editBio.value = props.profile.bio
-  if (!editLocationQuery.value && props.profile?.locationZip) editLocationQuery.value = props.profile.locationZip
+  if (!editLocationQuery.value) editLocationQuery.value = locationQueryFromProfile(props.profile)
   if (!editWebsite.value && props.profile?.website) editWebsite.value = props.profile.website
   if (!editXUsername.value && props.profile?.xUsername) editXUsername.value = props.profile.xUsername
   if (!editPickaxUsername.value && props.profile?.pickaxUsername) {

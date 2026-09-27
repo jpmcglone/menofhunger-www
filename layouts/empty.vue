@@ -1,5 +1,6 @@
 <template>
   <div class="min-h-screen flex flex-col moh-bg moh-texture moh-text">
+    <AppLayoutDayBanner />
     <ClientOnly>
       <AppUserPreviewPopover />
     </ClientOnly>

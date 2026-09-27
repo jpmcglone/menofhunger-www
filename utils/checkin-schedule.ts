@@ -1,6 +1,6 @@
 import { easternDateKey, ET_ZONE } from './eastern-time'
 
-export const CHECKIN_CLOSED_MESSAGE = 'Check-ins open at 5pm ET. Answer daily from 5pm–11:59pm ET.'
+export const CHECKIN_CLOSED_MESSAGE = 'The day here is Eastern. Check-ins open at 5pm.'
 
 export function isCheckinOpen(now: Date): boolean {
   const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: ET_ZONE, hour: 'numeric', hourCycle: 'h23' }).format(now))

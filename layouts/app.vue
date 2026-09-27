@@ -63,7 +63,8 @@
                 ref="titleBarEl" data-media-occluder
                 class="sticky top-0 z-50 shrink-0 moh-frosted"
               >
-                <!-- Admin impersonation sits above everything: it changes who "you" are. -->
+                <AppLayoutDayBanner />
+                <!-- Admin impersonation sits above the title: it changes who "you" are. -->
                 <AppLayoutImpersonationBanner />
                 <!-- Email verification banner should sit ABOVE the title bar (when title bar is shown). -->
                 <AppLayoutEmailUnverifiedBanner />
@@ -98,6 +99,7 @@
 
               <!-- If a page hides the title bar, keep the banners at the top of the scroller. -->
               <div v-if="hideTopBar" class="sticky top-0 z-50">
+                <AppLayoutDayBanner />
                 <AppLayoutImpersonationBanner />
                 <AppLayoutEmailUnverifiedBanner />
               </div>
@@ -270,6 +272,7 @@ import { personOnlyFeatureForPath } from '~/utils/person-only-routes'
 import { useAppLayoutComposer } from '~/composables/layout/useAppLayoutComposer'
 import AppLayoutGlobalOverlays from '~/components/app/layout/GlobalOverlays.vue'
 import AppLayoutConnectionBanners from '~/components/app/layout/ConnectionBanners.vue'
+import AppLayoutDayBanner from '~/components/app/layout/DayBanner.vue'
 import AppLayoutEmailUnverifiedBanner from '~/components/app/layout/EmailUnverifiedBanner.vue'
 import AppLayoutComposerModalOverlay from '~/components/app/layout/ComposerModalOverlay.vue'
 import AppLayoutLeftRail from '~/components/app/layout/LeftRail.vue'

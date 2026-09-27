@@ -32,7 +32,7 @@ describe('check-in submission snapshot', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-09-08T04:00:00Z'))
     const { service, wrapper } = render()
     await expect(service.create({ body: 'Answer', visibility: 'verifiedOnly',
-      prompt: 'Old question', dayKey: '2026-09-07' })).rejects.toThrow('Check-ins open at 5pm ET')
+      prompt: 'Old question', dayKey: '2026-09-07' })).rejects.toThrow('The day here is Eastern. Check-ins open at 5pm.')
     expect(mocks.fetch).not.toHaveBeenCalled()
     wrapper.unmount()
   })

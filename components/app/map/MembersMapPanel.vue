@@ -74,7 +74,7 @@
                 <span class="h-1.5 w-1.5 rounded-full bg-[var(--moh-online)]" aria-hidden="true" />{{ totals.unlocatedOnline }} online
               </span>
             </span>
-            <span class="mt-1.5 block text-xs moh-text-soft">Includes men outside the US and anyone who hasn't added a ZIP code.</span>
+            <span class="mt-1.5 block text-xs moh-text-soft">Includes men outside the United States and anyone who hasn't added a place.</span>
           </span>
           <span class="flex shrink-0 -space-x-2">
             <AppUserAvatar
@@ -94,7 +94,7 @@
 
       <div v-if="!viewerHasLocation" class="moh-gutter-x py-4">
         <NuxtLink to="/settings/account" class="text-sm font-semibold text-[var(--moh-brass)] hover:underline">
-          Add your ZIP code to put yourself on the map
+          Add your place to put yourself on the map
         </NuxtLink>
       </div>
     </template>

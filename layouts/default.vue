@@ -1,5 +1,6 @@
 <template>
   <div class="relative min-h-screen flex flex-col moh-bg moh-text">
+    <AppLayoutDayBanner />
     <!-- Background gradients (matches landing page) -->
     <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
       <div class="absolute -top-24 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-gradient-to-b from-orange-400/15 via-amber-400/10 to-transparent blur-3xl" />

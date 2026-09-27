@@ -28,7 +28,7 @@ export type OgMapCardInput = {
   headline: string
   /** Words after the number, e.g. "men across 30 states". */
   headlineRest: string
-  onlineLabel: string
+  onlineLabel?: string
   footnote?: string
   /** Per-state counts that shade the map. */
   states: OgMapState[]
@@ -131,23 +131,25 @@ export async function renderMapCardPng(input: OgMapCardInput): Promise<Buffer> {
         el('div', { marginTop: 18, fontSize: 20, fontWeight: 600, letterSpacing: 3, color: C.soft }, input.eyebrow.toUpperCase()),
         el('div', { marginTop: 22, fontSize: 132, fontWeight: 800, lineHeight: 1, letterSpacing: -5 }, input.headline),
         el('div', { marginTop: 12, fontSize: 38, fontWeight: 600, lineHeight: 1.2, color: C.text }, input.headlineRest),
-        el(
-          'div',
-          {
-            marginTop: 34,
-            alignSelf: 'flex-start',
-            alignItems: 'center',
-            gap: 12,
-            padding: '12px 22px',
-            borderRadius: 999,
-            background: C.onlineSoft,
-            border: '1.5px solid rgba(74,222,128,0.35)',
-          },
-          [
-            el('div', { width: 14, height: 14, borderRadius: 999, background: C.online, boxShadow: '0 0 16px rgba(74,222,128,0.8)' }),
-            el('div', { fontSize: 28, fontWeight: 600, color: C.online }, input.onlineLabel),
-          ],
-        ),
+        ...(input.onlineLabel
+          ? [el(
+              'div',
+              {
+                marginTop: 34,
+                alignSelf: 'flex-start',
+                alignItems: 'center',
+                gap: 12,
+                padding: '12px 22px',
+                borderRadius: 999,
+                background: C.onlineSoft,
+                border: '1.5px solid rgba(74,222,128,0.35)',
+              },
+              [
+                el('div', { width: 14, height: 14, borderRadius: 999, background: C.online, boxShadow: '0 0 16px rgba(74,222,128,0.8)' }),
+                el('div', { fontSize: 28, fontWeight: 600, color: C.online }, input.onlineLabel),
+              ],
+            )]
+          : []),
         el('div', { marginTop: 'auto', paddingTop: 28, fontSize: 22, fontWeight: 400, color: C.muted }, input.footnote ?? `menofhunger.com${input.path}`),
       ]),
       el('div', { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' }, [

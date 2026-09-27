@@ -1,6 +1,7 @@
 <template>
   <div class="min-h-screen moh-bg moh-text">
     <header class="sticky top-0 z-20 border-b moh-border moh-frosted backdrop-blur">
+      <AppLayoutDayBanner />
       <div class="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-5">
         <NuxtLink to="/api" class="flex items-center gap-2.5">
           <AppLogo

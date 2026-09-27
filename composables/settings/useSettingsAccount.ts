@@ -237,11 +237,16 @@ export function useSettingsAccount() {
   const websiteInput = ref('')
   const profileDetailsHelperText = ref<string | null>(null)
 
+  function savedLocationQuery(user: { locationZip?: string | null; locationCountry?: string | null; locationDisplay?: string | null } | null | undefined) {
+    if (user?.locationCountry && user.locationCountry !== 'US' && user.locationDisplay) return user.locationDisplay
+    return user?.locationZip ?? ''
+  }
+
   watch(
-    () => authUser.value?.locationZip ?? null,
+    () => savedLocationQuery(authUser.value),
     (v) => {
       if (locationQueryInput.value.trim()) return
-      if (typeof v !== 'string' || !v.trim()) return
+      if (!v.trim()) return
       locationQueryInput.value = v
     },
     { immediate: true },
@@ -258,7 +263,7 @@ export function useSettingsAccount() {
   )
 
   const profileDetailsDirty = computed(() => {
-    const currentLocation = (authUser.value?.locationZip ?? '').trim().toLowerCase()
+    const currentLocation = savedLocationQuery(authUser.value).trim().toLowerCase()
     const desiredLocation = locationQueryInput.value.trim().toLowerCase()
     if (currentLocation !== desiredLocation) return true
 

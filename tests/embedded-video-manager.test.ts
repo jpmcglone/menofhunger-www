@@ -100,9 +100,12 @@ describe('unified viewport playback', () => {
     coordinator.setHidden(true); expect(coordinator.activeId).toBe('a')
     coordinator.setHidden(false); coordinator.play('b'); expect(coordinator.activeId).toBe('b')
   })
-  it('suspends ordinary videos and recovers foreground without scrolling', async () => {
+  it('keeps a playing video running when the tab is hidden', async () => {
     const item = video('video'); await settle(); coordinator.setHidden(true); await settle()
-    expect(coordinator.activeId).toBeNull(); coordinator.setHidden(false); await settle(); expect(item.play).toHaveBeenCalledTimes(2)
+    expect(coordinator.activeId).toBe('video')
+    expect(item.pause).not.toHaveBeenCalled()
+    coordinator.setHidden(false); await settle()
+    expect(item.play).toHaveBeenCalledTimes(1)
   })
   it('keeps duplicate post instances independent and ignores old disposal', async () => {
     const old = video('post:instance1'); const duplicate = video('post:instance2', null); await settle()

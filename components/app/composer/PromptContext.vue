@@ -1,6 +1,6 @@
 <template>
   <section :aria-labelledby="headingId">
-    <AppCheckinPromptContext :prompt="prompt" heading-tag="h2" :heading-id="headingId" metadata="Open until midnight ET · New prompt daily at 5pm ET" />
+    <AppCheckinPromptContext :prompt="prompt" heading-tag="h2" :heading-id="headingId" metadata="The day here is Eastern. Open 5pm–midnight." />
   </section>
 </template>
 

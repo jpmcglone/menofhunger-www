@@ -17,7 +17,7 @@ v-for="topic in topics.slice(0, 6)" :key="topic.value" :to="categories ? `/explo
     </section>
     <section v-if="!isPageAccount" class="border-t moh-border pt-6 space-y-3">
       <h2 class="text-xs font-semibold uppercase text-[var(--moh-checkin)]">Daily check-in</h2>
-      <p class="font-semibold moh-text">{{ isOpen ? 'Check-ins are open' : 'Check-ins open at 5pm ET' }}</p>
+      <p class="font-semibold moh-text">{{ isOpen ? 'Check-ins are open' : 'The day here is Eastern. Check-ins open at 5pm.' }}</p>
       <p class="text-sm moh-text-muted">A fresh question every day. Answers close at midnight ET.</p>
       <NuxtLink to="/check-ins" class="inline-flex min-h-11 items-center text-sm font-semibold moh-focus">View check-ins</NuxtLink>
     </section>

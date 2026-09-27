@@ -10,23 +10,21 @@
   >
     <div class="moh-gutter-x py-5 flex flex-col gap-5">
       <p class="text-sm moh-text-muted leading-relaxed">
-        Add your ZIP code to see members in your state who are working on their faith, craft,
-        and body, and follow the ones worth knowing.
+        United States: your ZIP. Somewhere else: City, Country. Then you can see the men building near that place.
       </p>
 
       <!-- ZIP input -->
       <div class="flex flex-col gap-2">
-        <label for="location-zip-input" class="sr-only">ZIP code</label>
+        <label for="location-zip-input" class="sr-only">Place</label>
         <InputText
           id="location-zip-input"
           v-model="zipInput"
-          inputmode="numeric"
-          maxlength="5"
-          placeholder="5-digit ZIP code"
-          class="w-full text-center text-lg font-semibold tracking-widest"
+          maxlength="80"
+          placeholder="ZIP, or City, Country"
+          class="w-full text-center text-lg font-semibold"
           :invalid="previewNotFound"
           autofocus
-          @input="onZipInput"
+          @input="onPlaceInput"
         />
 
         <!-- State preview -->
@@ -62,9 +60,9 @@
     <template #footer>
       <div class="flex flex-col gap-2">
         <Button
-          label="Show my state"
+          label="Save my place"
           class="w-full"
-          :disabled="!preview || saving"
+          :disabled="!canSave || saving"
           :loading="saving"
           @click="save"
         />
@@ -101,7 +99,7 @@ const open = computed({
     const u = user.value
     if (!u?.id) return false
     if (needsOnboarding(u)) return false
-    return !u.locationZip && !u.locationPromptSkipped
+    return !u.locationZip && !u.locationCountry && !u.locationPromptSkipped
   },
   set: () => {},
 })
@@ -115,13 +113,18 @@ const skipping = ref(false)
 
 let previewDebounce: ReturnType<typeof setTimeout> | null = null
 
-function onZipInput() {
+const canSave = computed(() => {
+  const q = zipInput.value.trim()
+  if (/^\d{5}$/.test(q)) return Boolean(preview.value)
+  return q.includes(',') && q.length <= 80
+})
+
+function onPlaceInput() {
   preview.value = null
   previewNotFound.value = false
   if (previewDebounce) clearTimeout(previewDebounce)
-  const zip = zipInput.value.replace(/\D/g, '').slice(0, 5)
-  zipInput.value = zip
-  if (zip.length !== 5) return
+  const zip = zipInput.value.trim()
+  if (!/^\d{5}$/.test(zip)) return
   previewDebounce = setTimeout(() => void fetchPreview(zip), 300)
 }
 
@@ -142,7 +145,7 @@ async function fetchPreview(zip: string) {
 }
 
 async function save() {
-  if (!preview.value) return
+  if (!canSave.value) return
   saving.value = true
   try {
     const updated = await apiFetchData<{ user: UserDto }>('/users/me/profile', {

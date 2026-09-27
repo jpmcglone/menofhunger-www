@@ -88,16 +88,15 @@
 
     <div class="space-y-3">
       <AppFormField
-        label="ZIP code"
+        label="Place"
         optional
-        helper="Your state will be shown on your profile."
+        helper="United States: your ZIP. Somewhere else: City, Country."
       >
         <InputText
           v-model="locationQueryInput"
           class="w-full"
-          placeholder="e.g. 24011"
-          inputmode="numeric"
-          maxlength="5"
+          placeholder="ZIP, or City, Country"
+          maxlength="80"
           :disabled="profileDetailsSaving"
         />
       </AppFormField>

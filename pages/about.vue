@@ -47,8 +47,9 @@
       <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50">Who it's for</h2>
       <div class="space-y-3 text-gray-700 dark:text-gray-300">
         <p>
-          If you're building something — a career, a family, a mission — and you're tired of feeds that never
-          quite scratch the itch for real conversation, you'll fit here.
+          Men of Hunger is for American men. If you're building something — a career, a family, a mission —
+          and you're tired of feeds that never quite scratch the itch for real conversation, you'll fit here.
+          Men elsewhere are welcome. This house is American.
         </p>
         <p class="text-sm text-gray-500 dark:text-gray-400">
           Not a motivational feed. Not a highlight reel. Real dialogue with men who are actually trying.

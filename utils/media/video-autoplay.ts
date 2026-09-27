@@ -27,7 +27,6 @@ export class VideoAutoplayCoordinator {
   private manuallyPaused = new Set<string>()
   private active: string | null = null
   private pinned: string | null = null
-  private backgroundPinned = false
   private pending: string | null = null
   private pendingAt = 0
   private timer: ReturnType<typeof setTimeout> | null = null
@@ -75,15 +74,16 @@ export class VideoAutoplayCoordinator {
     this.onChange(this.active, this.audio)
   }
 
-  pin(id: string, pinned: boolean, background = false) {
-    if (pinned && this.active === id) { this.pinned = id; this.backgroundPinned = background }
+  pin(id: string, pinned: boolean, _background = false) {
+    if (pinned && this.active === id) this.pinned = id
     if (!pinned && this.pinned === id) this.pinned = null
     this.schedule()
   }
 
   setHidden(hidden: boolean) {
+    // Leaving the tab must not pause a video that is already playing.
+    // Autoplay still will not start a different video while the tab is hidden.
     this.hidden = hidden
-    if (hidden && !(this.active === this.pinned && this.backgroundPinned)) this.pauseActive('background')
     this.schedule()
   }
 

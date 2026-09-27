@@ -286,16 +286,16 @@ const seoDescription = computed(() => {
   if (seoStateName.value) {
     const s = selectedState.value
     const count = s?.memberCount ?? 0
-    return `${men(count)} in ${seoStateName.value}, ${(s?.onlineCount ?? 0).toLocaleString('en-US')} online right now. See where Men of Hunger members live across the United States, state by state, updated live.`
+    return `${men(count)} in ${seoStateName.value}. See where Men of Hunger members live across the United States, state by state.`
   }
-  if (!t.members) return 'See where Men of Hunger members live across the United States, state by state, and how many are online right now.'
-  return `${men(t.members)} across ${t.states} ${t.states === 1 ? 'state' : 'states'}, ${t.online.toLocaleString('en-US')} online right now. A live map of where the Men of Hunger brotherhood lives, state by state.`
+  if (!t.members) return 'See where Men of Hunger members live across the United States, state by state.'
+  return `${men(t.members)} across ${t.states} ${t.states === 1 ? 'state' : 'states'}. Where Men of Hunger members live, state by state.`
 })
 
 // The version changes with the numbers so share scrapers pick up a fresh card.
 const seoImage = computed(() => {
   const t = totals.value
-  const v = seoState.value ? `${selectedState.value?.memberCount ?? 0}-${selectedState.value?.onlineCount ?? 0}` : `${t.members}-${t.states}-${t.online}`
+  const v = seoState.value ? `${selectedState.value?.memberCount ?? 0}` : `${t.members}-${t.states}`
   return `/og/map.png?${new URLSearchParams({ ...(seoState.value ? { state: seoState.value } : {}), v }).toString()}`
 })
 

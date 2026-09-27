@@ -1,3 +1,4 @@
+import { americanDay } from '~/utils/american-day'
 import { easternDateKey } from '~/utils/eastern-time'
 
 // Keep in sync with menofhunger-api src/modules/checkins/checkin-prompts.ts
@@ -12,13 +13,13 @@ const CORE_CHECKIN_PROMPTS: string[] = [
   "What's one thing you learned today?",
   "What's one thing you can do for your health today?",
   "What's one thing you're committed to finishing this week?",
-  "What's one thing you wish you could tell your past self?",
+  "What do you owe someone today that you have not done?",
   "What's one thing you want accountability on?",
   "What's one thing you did today that aligns with your values?",
   "What's one thing you can simplify right now?",
   "What's one relationship you want to strengthen this week?",
   "What's one thought you need to let go of today?",
-  "What's one thing you're excited about?",
+  "What are you grateful for that you did not earn?",
   "What's one thing you can do today to make tomorrow easier?",
 
   "What did you do today that you didn't feel like doing?",
@@ -99,7 +100,7 @@ const CORE_CHECKIN_PROMPTS: string[] = [
 
   "Where did you lead well today — and where did you avoid leading?",
   "What responsibility are you tempted to dodge right now?",
-  "What did you do today that a boy would avoid but a man does anyway?",
+  "What did you do today because it was yours to do, not because you felt like it?",
   "What's one hard truth you need to face (and what will you do about it)?",
   "Where did you choose comfort over character today?",
   "What did you practice today: courage or convenience?",
@@ -146,6 +147,27 @@ const CORE_CHECKIN_PROMPTS: string[] = [
   "Who can you help this week without getting anything back?",
   "What's one relationship you need to invest in (mentorship, friendship, community)?",
   "Where do you need to be more direct instead of passive?",
+
+  "What did you owe someone today?",
+  "Where were you short with your wife or your kids?",
+  "What did you finish today?",
+  "What are you grateful for tonight?",
+  "Where did your conscience catch you today?",
+  "What did you do for your household that nobody will applaud?",
+  "Who needed you today, and did you show up?",
+  "What promise at home is still open?",
+  "Where did you choose comfort over the people who depend on you?",
+  "What will you make right before you sleep?",
+  "What work did you leave half-done that is yours to close?",
+  "Where were you impatient, and what will you do about it tomorrow?",
+  "What did you keep that you said you would keep?",
+  "What did you spend today that your family did not need?",
+  "Who did you fail to thank?",
+  "What is the next right thing at home, and when will you do it?",
+  "Where did you tell the truth today?",
+  "Where did you dodge the truth?",
+  "What are you building for the people under your roof?",
+  "What did you put in your mind today, and did it make you better?",
 ]
 
 const CONVERSATION_STARTER_PROMPTS: string[] = [
@@ -333,6 +355,8 @@ export function pickCheckinPrompt(now: Date = new Date()): { dayKey: string; pro
   const list = CHECKIN_PROMPTS.filter(Boolean)
   const fallback = 'How are you doing today?'
   const dayKey = easternDateKey(now)
+  const holiday = americanDay(now)?.prompt
+  if (holiday) return { dayKey, prompt: holiday }
   if (list.length === 0) return { dayKey, prompt: fallback }
   const dayIndex = dayIndexEastern(now) + 1
   const i = ((dayIndex % list.length) + list.length) % list.length

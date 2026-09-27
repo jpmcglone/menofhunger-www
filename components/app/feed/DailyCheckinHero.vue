@@ -16,7 +16,7 @@
       >
         {{ promptText }}
       </h1>
-      <p class="mt-1 text-[13px] moh-text-muted">Open until midnight ET · New prompt daily at 5pm ET</p>
+      <p class="mt-1 text-[13px] moh-text-muted">The day here is Eastern. Open 5pm–midnight.</p>
       <p class="mt-1 text-sm moh-text-muted">
         Verification unlocks check-ins and your streak.
       </p>
@@ -78,7 +78,7 @@
             >{{ missionFraction }}</NuxtLink>
           </template>
         </p>
-        <p class="mt-1 text-[13px] moh-text-muted">Next prompt tomorrow at 5pm ET.</p>
+        <p class="mt-1 text-[13px] moh-text-muted">Next prompt tomorrow at 5pm Eastern.</p>
         <p
           v-if="myCheckinSnippet"
           class="mt-0.5 text-[13px] leading-snug moh-text-muted line-clamp-1"
@@ -138,7 +138,7 @@
         >
           {{ promptText }}
         </h1>
-        <p class="mt-1 text-[13px] moh-text-muted">Open until midnight ET · New prompt daily at 5pm ET</p>
+        <p class="mt-1 text-[13px] moh-text-muted">The day here is Eastern. Open 5pm–midnight.</p>
         <div class="relative z-10 mt-2.5">
           <Button
             v-if="!isAuthed"

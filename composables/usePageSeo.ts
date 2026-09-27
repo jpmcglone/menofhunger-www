@@ -185,7 +185,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
               name: 'What is Men of Hunger?',
               acceptedAnswer: {
                 '@type': 'Answer',
-                text: 'Men of Hunger is a trusted online community for men who want measurable progress in life — covering discipline, ambition, fitness, leadership, faith, and family. It features structured conversations, daily check-ins, accountability tools, cohorts, and premium playbooks.',
+                text: 'Men of Hunger is a trusted community for American men who want real conversation. Men elsewhere are welcome. It is a house for discipline, ambition, fitness, leadership, faith, and family, with a daily check-in and conversations that stay on the record.',
               },
             },
             {

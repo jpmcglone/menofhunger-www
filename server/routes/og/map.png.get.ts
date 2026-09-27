@@ -1,6 +1,6 @@
 /**
- * GET /og/map.png[?state=VA] — live share card for /map. Fetched without the visitor's
- * cookies, so it only ever shows counts (the public, counts-only summary).
+ * GET /og/map.png[?state=VA] — still share card for /map. Member counts only.
+ * Fetched without the visitor's cookies. Online presence is not drawn here.
  */
 import type { MembersMapSummary } from '~/types/api'
 import { usStateShape } from '~/utils/us-state-shapes'
@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   const rawState = String(getQuery(event).state ?? '').trim().toUpperCase()
   const focus = /^[A-Z]{2}$/.test(rawState) && usStateShape(rawState) ? rawState : null
 
-  const png = await cachedPng(`map:${focus ?? 'all'}`, 120_000, async () => {
+  const png = await cachedPng(`map:${focus ?? 'all'}`, 900_000, async () => {
     const res = await $fetch<{ data: MembersMapSummary }>(`${apiBase}/users/map`).catch(() => null)
     const summary = res?.data
     const states = (summary?.states ?? []).map((s) => ({ state: s.state, count: s.memberCount }))
@@ -26,7 +26,6 @@ export default defineEventHandler(async (event) => {
         eyebrow: 'Member map',
         headline: count.toLocaleString('en-US'),
         headlineRest: `${men(count)} in ${row?.stateDisplay ?? usStateShape(focus)?.name ?? focus}`,
-        onlineLabel: `${(row?.onlineCount ?? 0).toLocaleString('en-US')} online right now`,
         states,
         focusState: focus,
         path: `/map?state=${focus}`,
@@ -39,7 +38,6 @@ export default defineEventHandler(async (event) => {
       eyebrow: 'Member map',
       headline: members.toLocaleString('en-US'),
       headlineRest: `${men(members)} across ${stateCount} ${stateCount === 1 ? 'state' : 'states'}`,
-      onlineLabel: `${(summary?.totals.online ?? 0).toLocaleString('en-US')} online right now`,
       states,
       path: '/map',
     })

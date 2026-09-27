@@ -30,7 +30,7 @@ export const siteConfig = {
   ],
   meta: {
     title: 'Men of Hunger',
-    description: "Men of Hunger is a trusted community for men who want measurable progress in life. Structured conversations, accountability, cohorts, workshops, and premium playbooks — not just a forum.",
+    description: "Men of Hunger is a trusted community for American men who want real conversation. Men elsewhere are welcome. Structured conversations, accountability, and a daily check-in — not just a forum.",
     keywords: 'men of hunger, community, measurable progress, personal growth, accountability, cohorts, workshops, leadership, ambition, driven men'
   }
 }

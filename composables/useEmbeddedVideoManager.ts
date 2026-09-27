@@ -1,6 +1,7 @@
 import { ref, type Ref } from 'vue'
 import { mediaFocus } from '~/utils/mediaFocus'
 import { VideoAutoplayCoordinator, type MediaPlayerAdapter, type PlaybackState, type VideoSound } from '~/utils/media/video-autoplay'
+import { requestEmbedPictureInPicture, requestVideoPictureInPicture } from '~/utils/media/video-picture-in-picture'
 import { measureVideo } from '~/utils/media/viewport'
 
 const runtimes = new WeakMap<object, ReturnType<typeof createRuntime>>()
@@ -10,6 +11,7 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
   const managed = new WeakSet<HTMLMediaElement>()
   const registrations = new Map<string, () => void>()
   const elements = new Map<string, HTMLElement>()
+  const videoElements = new Map<string, HTMLVideoElement>()
   const states = new Map<string, Ref<PlaybackState>>()
   const fallbackPlayers = new Map<HTMLMediaElement, { id: string; cleanup: () => void }>()
   let mounted = false
@@ -22,9 +24,39 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
     volume.value = sound.volume
   }
   const schedule = coordinator.schedule
+  function playingVideo(): HTMLVideoElement | null {
+    const id = coordinator.activeId
+    const el = id ? videoElements.get(id) : undefined
+    if (!el || el.ended) return null
+    return el
+  }
+  async function floatPlayingVideo() {
+    const el = playingVideo()
+    if (el) {
+      await requestVideoPictureInPicture(el)
+      return
+    }
+    const id = coordinator.activeId
+    const frame = id ? elements.get(id)?.querySelector('iframe') : null
+    if (frame instanceof HTMLIFrameElement) await requestEmbedPictureInPicture(frame)
+  }
+  function installPictureInPictureAction() {
+    const session = navigator.mediaSession
+    if (!session?.setActionHandler) return
+    try {
+      session.setActionHandler('enterpictureinpicture', () => { void floatPlayingVideo() })
+    } catch {
+      // This browser has no media-session picture-in-picture action.
+    }
+  }
   const visibility = () => {
-    coordinator.setHidden(document.visibilityState === 'hidden')
-    if (document.visibilityState === 'hidden') mediaFocus.suspendForeground(pipOwner)
+    const hidden = document.visibilityState === 'hidden'
+    coordinator.setHidden(hidden)
+    if (hidden) void floatPlayingVideo()
+    else {
+      const el = playingVideo()
+      if (el?.paused) void el.play().catch(() => {})
+    }
   }
   const onPlay = (event: Event) => {
     const el = event.target
@@ -75,6 +107,7 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
     window.addEventListener('resize', schedule)
     document.addEventListener('visibilitychange', visibility)
     document.addEventListener('play', onPlay, true)
+    installPictureInPictureAction()
     window.visualViewport?.addEventListener('resize', schedule)
     mutations = new MutationObserver(() => {
       for (const [el, entry] of fallbackPlayers) if (!el.isConnected) { entry.cleanup(); fallbackPlayers.delete(el) }
@@ -102,6 +135,7 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
   function registerVideo(id: string, el: HTMLVideoElement, container: HTMLElement = el, autoplay = true, playbackKey?: string) {
     const state = states.get(id) ?? ref<PlaybackState>('idle')
     states.set(id, state)
+    videoElements.set(id, el)
     managed.add(el)
     let expected: VideoSound = { muted: el.muted, volume: el.volume }
     let requested = false
@@ -142,6 +176,8 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
     }
     const pause = () => {
       if (programmaticPause) { programmaticPause = false; return }
+      // A background tab may freeze the element. Pausing from the PiP window still counts.
+      if (document.visibilityState === 'hidden' && document.pictureInPictureElement !== el) return
       if (!requested || el.ended || !el.isConnected || (!el.getAttribute('src') && !el.querySelector('source'))) return
       requested = false
       coordinator.report(id, 'paused', true)
@@ -165,6 +201,7 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
       document.removeEventListener('fullscreenchange', fullscreen)
       managed.delete(el)
       states.delete(id)
+      videoElements.delete(id)
       dispose()
     }
   }

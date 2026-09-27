@@ -51,7 +51,7 @@
       <details class="w-full space-y-3">
         <summary class="min-h-11 flex items-center cursor-pointer font-medium">More details <span class="ml-1 moh-text-muted">(optional)</span></summary>
         <label class="block space-y-2"><span>Recovery email</span><InputText v-model="email" type="email" autocomplete="email" class="w-full" :disabled="saving" /><span class="block text-xs moh-text-muted">Helps if you lose access to your phone number.</span></label>
-        <label class="block space-y-2"><span>ZIP code</span><InputText v-model="zipCode" inputmode="numeric" autocomplete="postal-code" maxlength="5" class="w-full" :disabled="saving" /></label>
+        <label class="block space-y-2"><span>Place</span><InputText v-model="zipCode" maxlength="80" placeholder="ZIP, or City, Country" class="w-full" :disabled="saving" /><span class="block text-xs moh-text-muted">United States: your ZIP. Somewhere else: City, Country.</span></label>
         <label v-if="!user?.hasRecruiter" class="block space-y-2"><span>Referral code</span><InputText v-model="referralCode" autocomplete="off" class="w-full" :disabled="saving" /></label>
         <label class="block space-y-2"><span>How did you hear about us?</span><Select v-model="heardAboutUs" :options="HEARD_ABOUT_US_OPTIONS" option-label="label" option-value="value" placeholder="Select one" show-clear class="w-full" :disabled="saving" /></label>
         <InputText v-if="heardAboutUs === 'other'" v-model="heardAboutOther" aria-label="How you found us" placeholder="Tell us how you found us" maxlength="80" class="w-full" :disabled="saving" />
