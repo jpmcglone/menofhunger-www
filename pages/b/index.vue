@@ -163,6 +163,7 @@ const router = useRouter()
 const api = useBoardApi()
 const toast = useAppToast()
 const { isAuthed, isPremium, isVerifiedMember } = useAuth()
+const { markBoardNotificationsRead } = useNotifications()
 const { requireMember } = useBoardAccess()
 const preview = useUserPreviewMultiTrigger()
 
@@ -376,9 +377,11 @@ onMounted(() => {
   void load(true)
   addBoardCallback(boardCb)
   subscribeBoard()
+  if (isAuthed.value) void markBoardNotificationsRead()
 })
 let activatedOnce = false
 onActivated(() => {
+  if (isAuthed.value) void markBoardNotificationsRead()
   if (!activatedOnce) {
     activatedOnce = true
     return

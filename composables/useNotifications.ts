@@ -28,7 +28,15 @@ export function useNotifications() {
   const route = useRoute()
   const { user: me } = useAuth()
   const usersStore = useUsersStore()
-  const { addNotificationsCallback, removeNotificationsCallback, setNotificationUndeliveredCount, groupsUnread, setGroupsUnread } = usePresence()
+  const {
+    addNotificationsCallback,
+    removeNotificationsCallback,
+    setNotificationUndeliveredCount,
+    groupsUnread,
+    setGroupsUnread,
+    notificationNavUnread,
+    setNotificationNavUnread,
+  } = usePresence()
 
   const stateKey = 'notifications:session'
   const accountId = useState<string | null>(`${stateKey}:account`, () => null)
@@ -280,6 +288,24 @@ export function useNotifications() {
     } catch (e: unknown) {
       if (import.meta.dev) {
         console.warn('[notifications] clearLockScreen failed', e)
+      }
+    }
+  }
+
+  async function markBoardNotificationsRead() {
+    if (!me.value?.id) return
+    setNotificationNavUnread({
+      boardUnreadCount: 0,
+      articlesUnreadCount: notificationNavUnread.value.articles,
+    })
+    try {
+      await apiFetch('/notifications/mark-read', {
+        method: 'POST',
+        body: { filter: 'board' },
+      })
+    } catch (e: unknown) {
+      if (import.meta.dev) {
+        console.warn('[notifications] markBoardNotificationsRead failed', e)
       }
     }
   }
@@ -949,6 +975,7 @@ export function useNotifications() {
     fetchList,
     markDelivered,
     clearLockScreen,
+    markBoardNotificationsRead,
     markReadBySubject,
     markGroupPostsSeen,
     markReadById,

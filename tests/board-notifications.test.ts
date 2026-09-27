@@ -39,6 +39,31 @@ describe('Board filters', () => {
   })
 })
 
+describe('visiting Board clears the nav dot', () => {
+  it('marks Board notifications read from the list page', () => {
+    const page = readFromRepo('pages/b/index.vue')
+    const notifications = readFromRepo('composables/useNotifications.ts')
+    expect(page).toContain('markBoardNotificationsRead()')
+    expect(notifications).toContain("filter: 'board'")
+    expect(notifications).toContain('boardUnreadCount: 0')
+  })
+})
+
+describe('Board list rows', () => {
+  it('hide avatars and the comment glyph when the count is zero', () => {
+    const row = readFromRepo('components/app/board/ThreadRow.vue')
+    expect(row).not.toContain('AppUserAvatar')
+    expect(row).toContain('v-if="liveCommentCount > 0"')
+  })
+})
+
+describe('Premium+ glow', () => {
+  it('never lights avatars or profile previews', () => {
+    expect(readFromRepo('components/app/UserAvatar.vue')).toContain(':premium-plus-glow="false"')
+    expect(readFromRepo('components/app/UserPreviewPopover.vue')).not.toContain('glowStyle')
+  })
+})
+
 describe('opening a Board thread reads its notifications', () => {
   it('marks the whole thread read from the thread and comment permalink pages', () => {
     for (const path of ['pages/b/[id]/index.vue', 'pages/b/[id]/c/[commentId].vue']) {

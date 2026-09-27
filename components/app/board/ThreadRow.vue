@@ -48,20 +48,21 @@
         <template v-if="thread.author">
           <NuxtLink
             :to="`/u/${encodeURIComponent(thread.author.username ?? '')}`"
-            class="pointer-events-auto inline-flex items-center gap-1 hover:underline"
+            class="pointer-events-auto hover:underline"
             :style="{ color: authorColor }"
             @mouseenter="(e: MouseEvent) => preview.onEnter(thread.author?.username, e)"
             @mousemove="preview.onMove"
             @mouseleave="preview.onLeave"
-          >
-            <AppUserAvatar :user="thread.author" size-class="h-5 w-5" :enable-preview="false" :show-presence="false" :show-status="false" />
-            {{ thread.author.username }}
-          </NuxtLink>
+          >{{ thread.author.username }}</NuxtLink>
         </template>
         <span :title="createdTitle">{{ age }}</span>
-        <span class="inline-flex items-center gap-1" :aria-label="`${liveCommentCount} comments`">
+        <span
+          v-if="liveCommentCount > 0"
+          class="inline-flex items-center gap-1"
+          :aria-label="`${liveCommentCount} comments`"
+        >
           <AppIconGlyph name="reply" :size="14" />
-          <AppAnimatedCount :value="liveCommentCount" :format="formatShortCount" blank-zero :min-ch="2" />
+          <AppAnimatedCount :value="liveCommentCount" :format="formatShortCount" :min-ch="2" />
         </span>
         <span
           v-if="newCommentCount"

@@ -14,7 +14,7 @@
       :size-class="sizeClass"
       :bg-class="bgClass"
       :round-class="roundClass"
-      :premium-plus-glow="isPremiumPlus"
+      :premium-plus-glow="false"
       :is-organization="isOrganization"
       :spaces-ring="showSpacesRing"
       :show-presence="showPresence"
@@ -143,7 +143,6 @@ const wrapEl = ref<HTMLElement | null>(null)
 const avatarUrl = computed(() => u.value?.avatarUrl ?? null)
 const name = computed(() => u.value?.name ?? null)
 const username = computed(() => u.value?.username ?? null)
-const isPremiumPlus = computed(() => Boolean(u.value?.premiumPlus))
 const isOrganization = computed(() => Boolean((u.value as any)?.isOrganization))
 const roundClass = computed(() => avatarRoundClass(isOrganization.value))
 const previewUsername = computed(() => (u.value?.username ?? '').trim())
