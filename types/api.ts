@@ -1917,6 +1917,7 @@ export type WsArticlesLiveUpdatedPayload = {
     totalViewCount: number
     boostCount: number
     reactions: ArticleReactionSummary[]
+    deletedAt: string
   }>
 }
 

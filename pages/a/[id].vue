@@ -719,6 +719,7 @@ const articlesCallback: import('~/composables/usePresence').ArticlesCallback = {
     }
     if (payload.patch.boostCount !== undefined) boostState.count.value = payload.patch.boostCount
     if (payload.patch.reactions !== undefined) reactionState.reactions.value = payload.patch.reactions
+    if (payload.reason === 'article_deleted' || payload.patch.deletedAt) article.value = null
   },
 }
 
