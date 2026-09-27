@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue'
 import { mediaFocus } from '~/utils/mediaFocus'
 import { VideoAutoplayCoordinator, type MediaPlayerAdapter, type PlaybackState, type VideoSound } from '~/utils/media/video-autoplay'
-import { requestEmbedPictureInPicture, requestVideoPictureInPicture } from '~/utils/media/video-picture-in-picture'
+import { requestVideoPictureInPicture } from '~/utils/media/video-picture-in-picture'
 import { measureVideo } from '~/utils/media/viewport'
 
 const runtimes = new WeakMap<object, ReturnType<typeof createRuntime>>()
@@ -12,6 +12,7 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
   const registrations = new Map<string, () => void>()
   const elements = new Map<string, HTMLElement>()
   const videoElements = new Map<string, HTMLVideoElement>()
+  const floaters = new Map<string, () => Promise<boolean>>()
   const states = new Map<string, Ref<PlaybackState>>()
   const fallbackPlayers = new Map<HTMLMediaElement, { id: string; cleanup: () => void }>()
   let mounted = false
@@ -37,8 +38,11 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
       return
     }
     const id = coordinator.activeId
-    const frame = id ? elements.get(id)?.querySelector('iframe') : null
-    if (frame instanceof HTMLIFrameElement) await requestEmbedPictureInPicture(frame)
+    if (id) await floaters.get(id)?.()
+  }
+  function setFloatHandler(id: string, handler: (() => Promise<boolean>) | null) {
+    if (handler) floaters.set(id, handler)
+    else floaters.delete(id)
   }
   function installPictureInPictureAction() {
     const session = navigator.mediaSession
@@ -218,7 +222,7 @@ function createRuntime(activeId: Ref<string | null>, soundOn: Ref<boolean>, volu
     window.visualViewport?.removeEventListener('resize', schedule)
     mounted = false
   }
-  return { coordinator, mount, dispose, register, registerVideo, states, managed, schedule }
+  return { coordinator, mount, dispose, register, registerVideo, setFloatHandler, states, managed, schedule }
 }
 
 export function useEmbeddedVideoManager() {
@@ -235,6 +239,7 @@ export function useEmbeddedVideoManager() {
     activeId, appWideSoundOn, appWideVolume,
     register: (id: string, el: HTMLElement, adapter: MediaPlayerAdapter, state?: (s: PlaybackState) => void, playbackKey?: string) => runtime?.register(id, el, adapter, state, true, playbackKey) ?? (() => {}),
     registerVideo: (id: string, el: HTMLVideoElement, container?: HTMLElement, playbackKey?: string) => runtime?.registerVideo(id, el, container, true, playbackKey) ?? (() => {}),
+    setFloatHandler: (id: string, handler: (() => Promise<boolean>) | null) => runtime?.setFloatHandler(id, handler),
     activate: (id: string) => runtime?.coordinator.play(id),
     report: (id: string, state: PlaybackState, user = false) => runtime?.coordinator.report(id, state, user),
     pin: (id: string, pinned: boolean) => runtime?.coordinator.pin(id, pinned),

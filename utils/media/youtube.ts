@@ -8,6 +8,7 @@ export interface YouTubePlayer {
   isMuted(): boolean
   getCurrentTime(): number
   getPlayerState(): number
+  seekTo(seconds: number, allowSeekAhead: boolean): void
   getIframe(): HTMLIFrameElement
   destroy(): void
 }

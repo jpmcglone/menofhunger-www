@@ -18,6 +18,7 @@ import { addBreadcrumb } from '@sentry/nuxt'
 import { loadYouTubeAPI, type YouTubePlayer } from '~/utils/media/youtube'
 import { rumbleDocument } from '~/utils/media/rumble-document'
 import { parseYouTubeUrl } from '~/utils/link-utils'
+import { openYouTubePictureInPicture } from '~/utils/media/video-picture-in-picture'
 import type { MediaPlayerAdapter, PlaybackState, PlayRequest, VideoSound } from '~/utils/media/video-autoplay'
 
 const props = defineProps<{ youtubeUrl?: string | null; rumbleUrl?: string | null; poster?: string | null; title?: string | null; author?: string | null; frameStyle?: Record<string, string> }>()
@@ -41,6 +42,12 @@ let ready = false
 let fallbackMuted = false
 let channel = ''
 let audioEchoUntil = 0
+let suppressProviderPause = false
+let suppressTimer: ReturnType<typeof setTimeout> | null = null
+let floatGeneration = 0
+let floating = false
+let floatedFrom: { seconds: number; at: number } | null = null
+let resumeAt: number | null = null
 
 function clearTimers() { if (poll) clearInterval(poll); if (timeout) clearTimeout(timeout); poll = null; timeout = null }
 function send(action: string, extra: Record<string, unknown> = {}) {
@@ -75,16 +82,84 @@ function blocked() {
     timeout = setTimeout(() => { if (request && !request.signal.aborted) report('blocked') }, 8000)
   } else report('blocked')
 }
+function armSuppress() {
+  suppressProviderPause = true
+  if (suppressTimer) clearTimeout(suppressTimer)
+  suppressTimer = null
+}
+function releaseSuppressSoon() {
+  if (suppressTimer) clearTimeout(suppressTimer)
+  suppressTimer = setTimeout(() => { suppressProviderPause = false }, 1500)
+}
+function providerPaused() {
+  if (suppressProviderPause || document.visibilityState === 'hidden') return
+  report('paused', true)
+}
 function started() {
   if (!request || request.signal.aborted) return
   if (timeout) clearTimeout(timeout)
   timeout = null
   painted.value = true
+  if (document.visibilityState === 'visible' && suppressProviderPause) releaseSuppressSoon()
   report('playing')
+}
+async function floatActiveEmbed(): Promise<boolean> {
+  if (floating) return true
+  const playing = state.value === 'playing' || state.value === 'buffering'
+  if (!playing || !yt || !ready || !props.youtubeUrl) return false
+  const info = parseYouTubeUrl(props.youtubeUrl)
+  if (!info) return false
+  floating = true
+  armSuppress()
+  const generation = ++floatGeneration
+  const startSeconds = yt.getCurrentTime() || position
+  floatedFrom = { seconds: startSeconds, at: Date.now() }
+  const boxEl = box.value
+  const opened = await openYouTubePictureInPicture({
+    videoId: info.id,
+    startSeconds,
+    muted: expected.muted,
+    width: boxEl?.clientWidth,
+    height: boxEl?.clientHeight,
+    onClose: seconds => { if (generation === floatGeneration) resumeAt = seconds },
+  })
+  if (!opened) { floating = false; floatedFrom = null }
+  return opened
+}
+function resumeAfterHide() {
+  if (document.visibilityState !== 'visible' || !suppressProviderPause) return
+  const time = resumeAt ?? (floatedFrom ? floatedFrom.seconds + (Date.now() - floatedFrom.at) / 1000 : null)
+  resumeAt = null
+  floatedFrom = null
+  floating = false
+  floatGeneration++
+  if (yt && ready) {
+    try {
+      if (time != null) yt.seekTo(Math.max(0, time), true)
+      applyAudio(expected)
+      yt.playVideo()
+    } catch { /* The player may already be gone. */ }
+  } else if (rumble && ready) send('play', { ...expected, time: time ?? position })
+  releaseSuppressSoon()
+}
+function onVisibility() {
+  if (document.visibilityState === 'hidden') {
+    if (state.value === 'playing' || state.value === 'buffering') armSuppress()
+    return
+  }
+  resumeAfterHide()
 }
 function disposePlayer() {
   generation++
+  floatGeneration++
+  manager.setFloatHandler(id, null)
   clearTimers()
+  if (suppressTimer) clearTimeout(suppressTimer)
+  suppressTimer = null
+  suppressProviderPause = false
+  resumeAt = null
+  floatedFrom = null
+  floating = false
   if (yt) { try { position = yt.getCurrentTime() || position; yt.pauseVideo(); yt.destroy() } catch { /* Provider may already have torn down. */ } }
   if (rumble) { send('pause'); rumble.remove() }
   yt = null; rumble = null; ready = false; request = null; painted.value = false
@@ -111,6 +186,7 @@ const adapter: MediaPlayerAdapter = {
           onReady: () => {
             if (version !== generation || request?.signal.aborted) return
             ready = true; applyAudio(expected)
+            manager.setFloatHandler(id, floatActiveEmbed)
             const frame = yt?.getIframe(); frame?.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture; encrypted-media'); frame?.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin')
             yt?.playVideo()
             poll = setInterval(() => { if (yt && ready) { position = yt.getCurrentTime() || position; receiveAudio(yt.isMuted(), yt.getVolume() / 100) } }, 250)
@@ -118,7 +194,7 @@ const adapter: MediaPlayerAdapter = {
           onStateChange: event => {
             if (version !== generation || request?.signal.aborted) return
             if (event.data === 1) started()
-            else if (event.data === 2 && painted.value) report('paused', true)
+            else if (event.data === 2 && painted.value) providerPaused()
             else if (event.data === 0) { report('ended'); position = 0 }
             else if (event.data === 3) report('buffering')
           },
@@ -150,7 +226,7 @@ function onMessage(event: MessageEvent) {
   if (typeof data.time === 'number' && Number.isFinite(data.time)) position = data.time
   if (data.state === 'ready') { ready = true; applyAudio(expected); send('play', { ...expected, time: position }) }
   else if (data.state === 'play') started()
-  else if (data.state === 'pause' && painted.value) report('paused', true)
+  else if (data.state === 'pause' && painted.value) providerPaused()
   else if (data.state === 'videoEnd') { report('ended'); position = 0 }
   else if (data.state === 'error') report('failed')
   else if (data.state === 'fullscreen') manager.pin(id, data.value === true)
@@ -163,6 +239,6 @@ watch([box, () => props.youtubeUrl, () => props.rumbleUrl], ([el], _old, cleanup
   cleanup(manager.register(id, el, adapter, next => { state.value = next }, props.youtubeUrl ? `youtube:${parseYouTubeUrl(props.youtubeUrl)?.id ?? props.youtubeUrl}` : `rumble:${props.rumbleUrl}`))
 }, { flush: 'post' })
 function fullscreen() { manager.pin(id, !!document.fullscreenElement && !!box.value?.contains(document.fullscreenElement)) }
-onMounted(() => { window.addEventListener('message', onMessage); document.addEventListener('fullscreenchange', fullscreen) })
-onBeforeUnmount(() => { window.removeEventListener('message', onMessage); document.removeEventListener('fullscreenchange', fullscreen); disposePlayer() })
+onMounted(() => { window.addEventListener('message', onMessage); document.addEventListener('fullscreenchange', fullscreen); document.addEventListener('visibilitychange', onVisibility) })
+onBeforeUnmount(() => { window.removeEventListener('message', onMessage); document.removeEventListener('fullscreenchange', fullscreen); document.removeEventListener('visibilitychange', onVisibility); disposePlayer() })
 </script>
