@@ -66,7 +66,7 @@
 
     <template v-if="thread.viewerCanAccess">
       <p v-if="thread.body" class="mt-2.5 whitespace-pre-wrap break-words text-[15px] leading-relaxed moh-text">{{ thread.body }}</p>
-      <AppPostMediaGrid v-if="thread.image?.url && !thread.articleId" :media="[thread.image]" :post-id="thread.id" />
+      <AppPostMediaGrid v-if="thread.image?.url && !thread.articleId" :media="[thread.image]" :post-id="thread.id" direct />
       <!-- Same embeds as post rows (Spotify, YouTube, X, sites…); the post's link wins over body links. -->
       <AppPostRowLinkPreview
         v-if="previewBody"
@@ -74,6 +74,7 @@
         :body="previewBody"
         :has-media="Boolean(thread.image?.url)"
         :row-in-view="true"
+        direct
       />
 
       <div class="mt-2 flex flex-wrap items-center gap-x-4 text-xs moh-text-muted">

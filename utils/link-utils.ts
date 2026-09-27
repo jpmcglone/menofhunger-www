@@ -407,6 +407,17 @@ export function sameNormalizedUrl(a: string | null | undefined, b: string | null
   }
 }
 
+/** Drop autoplay so a cached embed URL stays paused until the viewer starts it. */
+export function pausedRumbleEmbedUrl(embedUrl: string): string {
+  try {
+    const u = new URL(embedUrl)
+    u.searchParams.delete('autoplay')
+    return u.toString()
+  } catch {
+    return embedUrl
+  }
+}
+
 /** Rumble `autoplay=2` is muted autoplay (1 is with sound). */
 export function withRumbleAutoplay(
   embedUrl: string,

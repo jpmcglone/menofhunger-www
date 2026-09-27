@@ -15,8 +15,19 @@
     >
       <!-- YouTube: 16:9 landscape or 9:16 portrait for Shorts.
            Rumble: encoded file size from the API (fallback 854x480). -->
+      <iframe
+        v-if="direct && !previewOnly && directEmbedSrc"
+        :src="directEmbedSrc"
+        class="block w-full border-0"
+        :style="videoBoxStyle"
+        allow="fullscreen; encrypted-media; picture-in-picture"
+        allowfullscreen
+        referrerpolicy="strict-origin-when-cross-origin"
+        :title="youtubeOEmbed?.title || 'Video'"
+      />
+      <div v-else-if="direct && !previewOnly" class="w-full bg-black" :style="videoBoxStyle" />
       <AppEmbeddedVideoPlayer
-        v-if="!previewOnly"
+        v-else-if="!previewOnly"
         :youtube-url="youtubeEmbedUrl ? previewLink : null"
         :rumble-url="rumbleEmbedUrl"
         :poster="youtubePosterSrc || rumblePosterUrl"
@@ -177,7 +188,7 @@
 </template>
 
 <script setup lang="ts">
-import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
+import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, pausedRumbleEmbedUrl, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata, peekLinkMetadata } from '~/utils/link-metadata'
 import type { RumbleEmbedInfo } from '~/utils/rumble-embed'
@@ -199,6 +210,8 @@ const props = defineProps<{
   activateVideoOnMount?: boolean
   /** Drafts share the exact card layout without participating in feed autoplay. */
   previewOnly?: boolean
+  /** One video on a page, with no feed of others. The provider's own player, paused, with sound. */
+  direct?: boolean
   /** Composer-only: show a dismiss control on generic website cards. */
   dismissible?: boolean
   /** When provided, used immediately as the article preview — no fetch needed. */
@@ -400,6 +413,11 @@ const rumbleEmbedInfo = computed<RumbleEmbedInfo | null>(() => {
   return fetched && fetched.url === previewLink.value ? fetched.info : null
 })
 const rumbleEmbedUrl = computed(() => rumbleEmbedInfo.value?.src ?? null)
+const directEmbedSrc = computed(() => {
+  if (!props.direct || !previewLink.value) return null
+  if (youtubeEmbedUrl.value) return getYouTubeEmbedUrl(previewLink.value)
+  return rumbleEmbedUrl.value ? pausedRumbleEmbedUrl(rumbleEmbedUrl.value) : null
+})
 const rumbleAspectRatio = computed(() => {
   const w = rumbleEmbedInfo.value?.width ?? 854
   const h = rumbleEmbedInfo.value?.height ?? 480

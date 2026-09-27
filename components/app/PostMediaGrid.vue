@@ -14,7 +14,23 @@
       :style="[singleBoxStyle, mediaFrameStyle]"
     >
       <video
-        v-if="interactive && items[0]?.url"
+        v-if="interactive && direct && items[0]?.url"
+        data-media-managed
+        :src="items[0].url"
+        :poster="posterFor(items[0])"
+        class="absolute inset-0 h-full w-full object-contain"
+        controls
+        controlsList="nodownload"
+        playsinline
+        preload="metadata"
+        aria-label="Video"
+        @play="claimDirectPlayback"
+        @pause="releaseDirectPlayback"
+        @ended="releaseDirectPlayback"
+        @contextmenu.prevent
+      />
+      <video
+        v-else-if="interactive && items[0]?.url"
         ref="singleVideoEl"
         data-media-managed
         :src="singleVideoSrc"
@@ -41,7 +57,7 @@
         decoding="async"
       />
       <button
-        v-if="interactive && singleVideoActive && singleVideoMuted"
+        v-if="interactive && !direct && singleVideoActive && singleVideoMuted"
         type="button"
         class="absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
         aria-label="Tap for sound"
@@ -50,7 +66,7 @@
         <Icon name="tabler:volume-off" class="text-base" aria-hidden="true" />
       </button>
       <button
-        v-else-if="interactive && singleVideoActive && !singleVideoMuted"
+        v-else-if="interactive && !direct && singleVideoActive && !singleVideoMuted"
         type="button"
         class="absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
         aria-label="Mute"
@@ -59,7 +75,7 @@
         <Icon name="tabler:volume" class="text-base" aria-hidden="true" />
       </button>
       <span
-        v-if="interactive && items[0]?.durationSeconds != null && items[0].durationSeconds > 0"
+        v-if="interactive && !direct && items[0]?.durationSeconds != null && items[0].durationSeconds > 0"
         class="pointer-events-none absolute right-2 bottom-2 rounded bg-black/65 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white"
         aria-hidden="true"
       >
@@ -250,6 +266,7 @@
 
 <script setup lang="ts">
 import AppImg from '~/components/app/AppImg.vue'
+import { mediaFocus } from '~/utils/mediaFocus'
 import type { PostMedia } from '~/types/api'
 import type { LightboxMediaItem } from '~/composables/useImageLightbox'
 import type { CSSProperties } from 'vue'
@@ -265,14 +282,27 @@ const props = withDefaults(
     compact?: boolean
     /** When false, media is display-only (no lightbox, no video playback). Clicks pass through to parent (e.g. embedded preview). */
     interactive?: boolean
+    /** One video, no feed beside it. Native controls, paused, with sound. */
+    direct?: boolean
   }>(),
-  { compact: false, postId: null, rowInView: true, interactive: true }
+  { compact: false, postId: null, rowInView: true, interactive: true, direct: false }
 )
 
 const viewer = useImageLightbox()
 const videoManager = useEmbeddedVideoManager()
 const { activeId, reportPlayerAudio } = videoManager
 const videoInstanceId = `upload:${useId()}`
+const directFocusId = `direct:${videoInstanceId}`
+
+function claimDirectPlayback(event: Event) {
+  const el = event.target
+  if (!(el instanceof HTMLVideoElement)) return
+  mediaFocus.claim(directFocusId, () => { el.pause() }, { exclusive: true })
+}
+
+function releaseDirectPlayback() {
+  mediaFocus.release(directFocusId)
+}
 
 // Declared before any watch/computed that reads it — a later `const items`
 // left watchEffect in the TDZ (`Cannot access 'items' before initialization`)
@@ -344,8 +374,8 @@ function toLightboxItems(): LightboxMediaItem[] {
   }))
 }
 
-watch([singleVideoEl, () => props.interactive, () => items.value[0]?.url], ([el, interactive], _old, onCleanup) => {
-  if (!import.meta.client || !interactive || !el || items.value.length !== 1) return
+watch([singleVideoEl, () => props.interactive, () => props.direct, () => items.value[0]?.url], ([el, interactive, direct], _old, onCleanup) => {
+  if (!import.meta.client || direct || !interactive || !el || items.value.length !== 1) return
   onCleanup(videoManager.registerVideo(videoInstanceId, el, singleVideoContainerRef.value ?? el, `file:${items.value[0]?.url}`))
 }, { flush: 'post' })
 watch(() => videoManager.appWideSoundOn.value, on => { singleVideoMuted.value = !on })

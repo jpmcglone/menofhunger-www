@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, withRumbleAutoplay, youtubeMuteCommand, youtubePlayCommand, youtubeListeningCommand, youtubeVolumeCommand, postYouTubeIframeCommand, rumbleMuteCommand, rumbleVolumeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, clampMediaVolume, mediaVolumeToPercent, portraitEmbedFrameStyle, sameNormalizedUrl } from '../utils/link-utils'
+import { parseYouTubeUrl, getYouTubeEmbedUrl, getYouTubePosterUrls, youtubeOEmbedRequestUrl, parseMediaPreviewUrl, vimeoOEmbedRequestUrl, pausedRumbleEmbedUrl, withRumbleAutoplay, youtubeMuteCommand, youtubePlayCommand, youtubeListeningCommand, youtubeVolumeCommand, postYouTubeIframeCommand, rumbleMuteCommand, rumbleVolumeCommand, postRumbleIframeCommand, postRumbleIframeVolume, parseEmbedPlayerAudio, clampMediaVolume, mediaVolumeToPercent, portraitEmbedFrameStyle, sameNormalizedUrl } from '../utils/link-utils'
 
 const VIDEO_ID = 'dQw4w9WgXcQ'
 
@@ -91,9 +91,10 @@ describe('getYouTubeEmbedUrl', () => {
     expect(url).toContain('youtube-nocookie.com')
   })
 
-  it('defaults to autoplay=0', () => {
+  it('defaults to a paused embed with sound', () => {
     const url = getYouTubeEmbedUrl(`https://youtu.be/${VIDEO_ID}`)
     expect(url).toContain('autoplay=0')
+    expect(url).toContain('mute=0')
   })
 
   it('sets autoplay=1 when requested', () => {
@@ -170,6 +171,14 @@ describe('parseMediaPreviewUrl', () => {
     expect(parseMediaPreviewUrl('https://i.imgur.com/abc.jpg')).toEqual({ kind: 'image', provider: 'Imgur' })
     expect(parseMediaPreviewUrl('https://cdn.example.com/shot.webp')).toEqual({ kind: 'image', provider: 'cdn.example.com' })
     expect(parseMediaPreviewUrl('https://example.com/article')).toBeNull()
+  })
+})
+
+describe('pausedRumbleEmbedUrl', () => {
+  it('removes autoplay and keeps the rest of the embed', () => {
+    const url = pausedRumbleEmbedUrl('https://rumble.com/embed/v123abc/?pub=7a20&autoplay=2')
+    expect(url).not.toContain('autoplay')
+    expect(url).toContain('pub=7a20')
   })
 })
 
