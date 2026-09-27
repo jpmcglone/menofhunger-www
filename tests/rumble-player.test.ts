@@ -2,7 +2,7 @@ import { runInNewContext } from 'node:vm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { rumbleDocument } from '~/utils/media/rumble-document'
 
-function player(initialize = true) {
+function player(initialize = true, paused = false) {
   const calls: string[] = []
   const events: Record<string, (value?: unknown) => void> = {}
   let receiver: (event: unknown) => void = () => {}
@@ -15,7 +15,7 @@ function player(initialize = true) {
     pause: () => calls.push('pause'), mute: () => calls.push('mute'), unmute: () => calls.push('unmute'),
     setVolume: (v: number) => calls.push(`volume:${v}`), setCurrentTime: (v: number) => calls.push(`seek:${v}`),
     autoplay: (sound: boolean) => calls.push(`play:${sound}`),
-    getMuted: () => true, getVolume: () => 0, getCurrentTime: () => 12, getPaused: () => false,
+    getMuted: () => true, getVolume: () => 0, getCurrentTime: () => 12, getPaused: () => paused,
     on: (name: string, callback: () => void) => { events[name] = callback },
   }
   const Rumble = (_command: string, options: { api: typeof ready }) => { ready = options.api }
@@ -52,6 +52,15 @@ describe('Rumble player bridge', () => {
     p.send({ channel: 'instance', action: 'pause' })
     vi.runAllTimers()
     expect(p.calls.filter(c => c.startsWith('play:'))).toHaveLength(1)
+  })
+  it('resumes a hidden-tab pause without seeking or changing audio', () => {
+    const playing = player()
+    playing.send({ channel: 'instance', action: 'continue' })
+    expect(playing.calls).toEqual(['mute'])
+
+    const paused = player(true, true)
+    paused.send({ channel: 'instance', action: 'continue' })
+    expect(paused.calls).toEqual(['mute', 'play:false'])
   })
   it('rejects foreign messages and preserves an explicit publisher', () => {
     const p = player()

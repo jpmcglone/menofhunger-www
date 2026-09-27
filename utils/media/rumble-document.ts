@@ -18,6 +18,7 @@ Rumble('play',{video:${json(video)},div:'player',resize:'full',api:function(play
 }});
 addEventListener('message',function(event){ if(event.source!==parent||event.origin!==parentOrigin||event.data?.channel!==channel||!api)return;
  const d=event.data; if(d.action==='pause'){clearTimeout(startTimer);api.pause();}
+ if(d.action==='continue'){ if(api.getPaused()) api.autoplay(!api.getMuted()); }
  if(d.action==='audio'||d.action==='play'){ if(Number.isFinite(d.volume))api.setVolume(Math.max(0,Math.min(1,d.volume))); if(d.muted)api.mute();else api.unmute(); }
  if(d.action==='play'){ clearTimeout(startTimer); startTimer=setTimeout(function(){ if(Number.isFinite(d.time)&&d.time>0)api.setCurrentTime(d.time); api.autoplay(!d.muted); },Math.max(0,readyAt-Date.now())); }
 });

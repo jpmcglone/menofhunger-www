@@ -18,7 +18,6 @@ import { addBreadcrumb } from '@sentry/nuxt'
 import { loadYouTubeAPI, type YouTubePlayer } from '~/utils/media/youtube'
 import { rumbleDocument } from '~/utils/media/rumble-document'
 import { parseYouTubeUrl } from '~/utils/link-utils'
-import { openYouTubePictureInPicture } from '~/utils/media/video-picture-in-picture'
 import type { MediaPlayerAdapter, PlaybackState, PlayRequest, VideoSound } from '~/utils/media/video-autoplay'
 
 const props = defineProps<{ youtubeUrl?: string | null; rumbleUrl?: string | null; poster?: string | null; title?: string | null; author?: string | null; frameStyle?: Record<string, string> }>()
@@ -44,10 +43,7 @@ let channel = ''
 let audioEchoUntil = 0
 let suppressProviderPause = false
 let suppressTimer: ReturnType<typeof setTimeout> | null = null
-let floatGeneration = 0
-let floating = false
-let floatedFrom: { seconds: number; at: number } | null = null
-let resumeAt: number | null = null
+let continuing = false
 
 function clearTimers() { if (poll) clearInterval(poll); if (timeout) clearTimeout(timeout); poll = null; timeout = null }
 function send(action: string, extra: Record<string, unknown> = {}) {
@@ -92,7 +88,10 @@ function releaseSuppressSoon() {
   suppressTimer = setTimeout(() => { suppressProviderPause = false }, 1500)
 }
 function providerPaused() {
-  if (suppressProviderPause || document.visibilityState === 'hidden') return
+  if (suppressProviderPause || document.visibilityState === 'hidden') {
+    if (document.visibilityState === 'visible') continueEmbed()
+    return
+  }
   report('paused', true)
 }
 function started() {
@@ -103,43 +102,17 @@ function started() {
   if (document.visibilityState === 'visible' && suppressProviderPause) releaseSuppressSoon()
   report('playing')
 }
-async function floatActiveEmbed(): Promise<boolean> {
-  if (floating) return true
-  const playing = state.value === 'playing' || state.value === 'buffering'
-  if (!playing || !yt || !ready || !props.youtubeUrl) return false
-  const info = parseYouTubeUrl(props.youtubeUrl)
-  if (!info) return false
-  floating = true
-  armSuppress()
-  const generation = ++floatGeneration
-  const startSeconds = yt.getCurrentTime() || position
-  floatedFrom = { seconds: startSeconds, at: Date.now() }
-  const boxEl = box.value
-  const opened = await openYouTubePictureInPicture({
-    videoId: info.id,
-    startSeconds,
-    muted: expected.muted,
-    width: boxEl?.clientWidth,
-    height: boxEl?.clientHeight,
-    onClose: seconds => { if (generation === floatGeneration) resumeAt = seconds },
-  })
-  if (!opened) { floating = false; floatedFrom = null }
-  return opened
-}
-function resumeAfterHide() {
-  if (document.visibilityState !== 'visible' || !suppressProviderPause) return
-  const time = resumeAt ?? (floatedFrom ? floatedFrom.seconds + (Date.now() - floatedFrom.at) / 1000 : null)
-  resumeAt = null
-  floatedFrom = null
-  floating = false
-  floatGeneration++
-  if (yt && ready) {
-    try {
-      if (time != null) yt.seekTo(Math.max(0, time), true)
-      applyAudio(expected)
-      yt.playVideo()
-    } catch { /* The player may already be gone. */ }
-  } else if (rumble && ready) send('play', { ...expected, time: time ?? position })
+/** Resume a provider that paused itself while the tab was hidden. Do not seek or touch audio. */
+function continueEmbed() {
+  if (continuing || document.visibilityState !== 'visible' || !suppressProviderPause) return
+  continuing = true
+  try {
+    if (yt && ready) {
+      try { if (yt.getPlayerState() === 2) yt.playVideo() } catch { /* The player may already be gone. */ }
+    } else if (rumble && ready) send('continue')
+  } finally {
+    continuing = false
+  }
   releaseSuppressSoon()
 }
 function onVisibility() {
@@ -147,20 +120,16 @@ function onVisibility() {
     if (state.value === 'playing' || state.value === 'buffering') armSuppress()
     return
   }
-  resumeAfterHide()
+  continueEmbed()
 }
 function disposePlayer() {
   generation++
-  floatGeneration++
-  manager.setFloatHandler(id, null)
   clearTimers()
   if (suppressTimer) clearTimeout(suppressTimer)
   suppressTimer = null
   suppressProviderPause = false
-  resumeAt = null
-  floatedFrom = null
-  floating = false
-  if (yt) { try { position = yt.getCurrentTime() || position; yt.pauseVideo(); yt.destroy() } catch { /* Provider may already have torn down. */ } }
+  continuing = false
+  if (yt) { try { position = yt.getCurrentTime() || position; yt.pauseVideo(); yt.destroy() } catch { /* Provider may already be torn down. */ } }
   if (rumble) { send('pause'); rumble.remove() }
   yt = null; rumble = null; ready = false; request = null; painted.value = false
   surface.value?.replaceChildren()
@@ -186,8 +155,7 @@ const adapter: MediaPlayerAdapter = {
           onReady: () => {
             if (version !== generation || request?.signal.aborted) return
             ready = true; applyAudio(expected)
-            manager.setFloatHandler(id, floatActiveEmbed)
-            const frame = yt?.getIframe(); frame?.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture; encrypted-media'); frame?.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin')
+            const frame = yt?.getIframe(); frame?.setAttribute('allow', 'autoplay; fullscreen; encrypted-media'); frame?.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin')
             yt?.playVideo()
             poll = setInterval(() => { if (yt && ready) { position = yt.getCurrentTime() || position; receiveAudio(yt.isMuted(), yt.getVolume() / 100) } }, 250)
           },
@@ -207,7 +175,7 @@ const adapter: MediaPlayerAdapter = {
       rumble = document.createElement('iframe')
       rumble.className = 'h-full w-full border-0'
       rumble.title = props.title || 'Rumble video'
-      rumble.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media'
+      rumble.allow = 'autoplay; fullscreen; encrypted-media'
       rumble.allowFullscreen = true
       rumble.referrerPolicy = 'strict-origin-when-cross-origin'
       rumble.setAttribute('sandbox', 'allow-scripts allow-popups allow-presentation')
