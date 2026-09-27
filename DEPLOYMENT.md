@@ -17,15 +17,16 @@ If the service is not picking up Blueprint fields, set them once in the Render D
 ### Build memory
 
 Nuxt typechecking runs `vue-tsc` in a child process. The project [.npmrc](.npmrc)
-sets `node-options=--max-old-space-size=6144` so both `npx nuxi typecheck` and
-the `npm run build` prebuild checks inherit the same heap budget as the build.
-An option on the `build` script alone does not reach a preceding typecheck.
+sets `node-options=--max-old-space-size=6144` so `npm run typecheck` and other
+npm-spawned Node processes inherit the same heap ceiling as the build script.
+An option on the `build` script alone does not reach a separate typecheck.
 This addresses the V8 heap-limit failure around 2 GB without skipping checks.
 
 Use `npm ci --no-audit --no-fund && npm run build` in Render. The prebuild hook
-already performs typechecking, API contract validation, and tests; listing
-those checks again before `npm run build` duplicates the work. Existing dashboard
-commands that invoke `npx nuxi typecheck` separately also inherit the project setting.
+stamps the service-worker version. Typecheck, contract validation, and tests run
+in GitHub Actions and in the local `npm run check`; repeating them in the Render
+build spends pipeline minutes. Existing dashboard commands that invoke
+`npx nuxi typecheck` separately also inherit the project setting.
 
 The heap budget is for build tooling. Render starts the server directly with
 `node .output/server/index.mjs`, which does not read `.npmrc`. Do not set a

@@ -1,4 +1,4 @@
-name: Lint
+name: CI
 
 on:
   push:
@@ -20,3 +20,16 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npm run lint
+
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run validate-api-types
+      - run: npm run typecheck
+      - run: npm test
