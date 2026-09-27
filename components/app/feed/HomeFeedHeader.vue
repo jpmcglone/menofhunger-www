@@ -1,6 +1,6 @@
 <template>
   <div
-    class="sticky top-0 z-20 moh-surface border-b moh-border flex items-center gap-2 pr-3 sm:pr-4"
+    class="sticky top-[var(--moh-title-bar-height,0px)] z-20 moh-surface border-b moh-border flex items-center gap-2 pr-3 sm:pr-4"
   >
     <AppFeedScopeSelector
       :model-value="scope"

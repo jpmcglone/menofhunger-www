@@ -1,35 +1,48 @@
-<!-- Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=890-4573 -->
+<!-- Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=928-553 -->
 <template>
   <AppPageContent bottom="standard">
-    <div class="flex items-center justify-between moh-gutter-x pt-4 pb-3">
+    <!-- Same header as iOS: title, then icon actions. Filters and the RSS link live in the Filter menu. -->
+    <div class="flex items-center justify-between moh-gutter-x pt-3 pb-1">
       <h1 class="moh-h1">Board</h1>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center">
         <button
-          v-tooltip.bottom="feedCopyLabel"
+          v-tooltip.bottom="'Search'"
           type="button"
           class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-text-muted hover:text-[var(--moh-text)] moh-surface-hover transition-colors"
-          :aria-label="feedCopyLabel"
-          @click="copyBoardFeed"
-        >
-          <Icon name="tabler:rss" class="text-base" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-text-muted moh-surface-hover"
           :aria-expanded="searchOpen"
           aria-label="Search the Board"
           @click="toggleSearch"
         >
-          <AppIconGlyph name="search" :size="20" />
+          <AppIconGlyph name="search" :size="20" :selected="searchOpen" />
         </button>
+        <AppBoardFiltersBar
+          icon-only
+          :show-range="view === 'top'"
+          :range="range"
+          :scope="scope"
+          :tags="tags"
+          :show-hidden="showHidden"
+          :is-authed="isAuthed"
+          :viewer-is-verified="isVerifiedMember"
+          :viewer-is-premium="isPremium"
+          :quick-tags="quickTags"
+          :feed-label="feedCopyLabel"
+          @update:range="setQuery({ range: $event ?? undefined })"
+          @update:scope="setQuery({ scope: $event === 'all' ? undefined : $event })"
+          @update:tags="setTags"
+          @update:show-hidden="setQuery({ hidden: $event ? '1' : undefined })"
+          @toggle-quick-tag="toggleQuickTag"
+          @copy-feed="copyBoardFeed"
+          @reset="clearFilters"
+        />
         <NuxtLink
+          v-tooltip.bottom="'New post'"
           to="/b/new"
-          class="moh-tap moh-focus inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-[15px] font-semibold transition-opacity hover:opacity-90"
-          style="background-color: var(--moh-marv); color: var(--moh-button-brand-label)"
+          class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-text-muted hover:text-[var(--moh-text)] moh-surface-hover transition-colors"
+          aria-label="New post"
           @click="onPostClick"
         >
-          <AppIconGlyph name="write" :size="16" />
-          Post
+          <AppIconGlyph name="write" :size="20" />
         </NuxtLink>
       </div>
     </div>
@@ -45,56 +58,27 @@
       >
     </form>
 
-    <div class="flex flex-wrap items-center gap-2 moh-gutter-x pb-3 border-b moh-border">
-      <AppTabSelector
+    <div class="border-b moh-border">
+      <AppUnderlineTabs
         :model-value="view"
         aria-label="Board view"
         :tabs="viewTabs"
         @update:model-value="setView($event as 'new' | 'top' | 'comments')"
       />
-      <AppBoardFiltersBar
-        v-if="view !== 'comments'"
-        :show-range="view === 'top'"
-        :range="range"
-        :scope="scope"
-        :tags="tags"
-        :show-hidden="showHidden"
-        :is-authed="isAuthed"
-        :viewer-is-verified="isVerifiedMember"
-        :viewer-is-premium="isPremium"
-        @update:range="setQuery({ range: $event ?? undefined })"
-        @update:scope="setQuery({ scope: $event === 'all' ? undefined : $event })"
-        @update:tags="setTags"
-        @update:show-hidden="setQuery({ hidden: $event ? '1' : undefined })"
-        @reset="clearFilters"
-      />
-      <!-- Quick filters over AI-set tags. -->
-      <template v-if="view !== 'comments'">
-        <button
-          v-for="quick in quickTags"
-          :key="quick.tag"
-          type="button"
-          class="moh-tap moh-focus inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-semibold transition-colors"
-          :class="tags.includes(quick.tag) ? 'moh-text border-[var(--moh-text)]' : 'moh-border moh-text-muted hover:text-[var(--moh-text)]'"
-          :aria-pressed="tags.includes(quick.tag)"
-          :title="quick.hint"
-          @click="toggleQuickTag(quick.tag)"
-        >{{ quick.label }}</button>
-      </template>
-      <span
-        v-if="domain"
-        class="inline-flex items-center gap-1 rounded-full border moh-border px-3 py-1 text-xs moh-text-muted"
-      >
-        from {{ domain }}
-        <button type="button" aria-label="Clear site filter" @click="setQuery({ domain: undefined })"><Icon name="tabler:x" class="text-[11px]" aria-hidden="true" /></button>
-      </span>
-      <span
-        v-if="q"
-        class="inline-flex items-center gap-1 rounded-full border moh-border px-3 py-1 text-xs moh-text-muted"
-      >
-        “{{ q }}”
-        <button type="button" aria-label="Clear search" @click="setQuery({ q: undefined })"><Icon name="tabler:x" class="text-[11px]" aria-hidden="true" /></button>
-      </span>
+      <!-- Chips appear only while a filter is on; each one clears itself. -->
+      <div v-if="isFiltered && view !== 'comments'" class="flex flex-wrap items-center gap-2 moh-gutter-x pt-2 pb-2.5">
+        <AppFilterChip v-if="view === 'top' && range" :label="rangeLabel" @clear="setQuery({ range: undefined })" />
+        <AppFilterChip
+          v-if="scope !== 'all'"
+          :label="scope === 'verifiedOnly' ? 'Verified only' : 'Premium only'"
+          :tone="scope === 'verifiedOnly' ? '--moh-verified' : '--moh-premium'"
+          @clear="setQuery({ scope: undefined })"
+        />
+        <AppFilterChip v-for="tag in tags" :key="tag" :label="tagChipLabel(tag)" @clear="setTags(tags.filter((t) => t !== tag))" />
+        <AppFilterChip v-if="showHidden" label="Hidden posts" @clear="setQuery({ hidden: undefined })" />
+        <AppFilterChip v-if="domain" :label="`from ${domain}`" @clear="setQuery({ domain: undefined })" />
+        <AppFilterChip v-if="q" :label="`“${q}”`" @clear="clearSearch" />
+      </div>
     </div>
 
     <div v-if="newThreadCount > 0 && view === 'new'" class="pointer-events-none sticky top-2 z-20 flex h-0 justify-center overflow-visible">
@@ -260,6 +244,18 @@ function toggleQuickTag(tag: string) {
 
 function setTags(next: string[]) {
   setQuery({ tags: next.length ? next.join(',') : undefined })
+}
+
+const rangeLabels: Record<BoardRange, string> = { day: 'Past day', week: 'Past week', month: 'Past month', year: 'Past year', all: 'All time' }
+const rangeLabel = computed(() => (range.value ? rangeLabels[range.value] : 'Front page'))
+
+function tagChipLabel(tag: string) {
+  return quickTags.find((quick) => quick.tag === tag)?.label ?? `#${tag}`
+}
+
+function clearSearch() {
+  searchDraft.value = ''
+  setQuery({ q: undefined })
 }
 
 function clearFilters() {

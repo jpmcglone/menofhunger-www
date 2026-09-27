@@ -97,12 +97,16 @@
                 </div>
               </div>
 
-              <!-- If a page hides the title bar, keep the banners at the top of the scroller. -->
-              <div v-if="hideTopBar" class="sticky top-0 z-50">
+              <!-- hideTopBar pages own their sticky header. The day line scrolls away
+                   with the page so that header can pin to the top. Status banners stay
+                   pinned; their height is --moh-title-bar-height so page stickies sit below them. -->
+              <template v-if="hideTopBar">
                 <AppLayoutDayBanner />
-                <AppLayoutImpersonationBanner />
-                <AppLayoutEmailUnverifiedBanner />
-              </div>
+                <div ref="pinnedBannerEl" class="sticky top-0 z-50">
+                  <AppLayoutImpersonationBanner />
+                  <AppLayoutEmailUnverifiedBanner />
+                </div>
+              </template>
 
             <div
               ref="middleContentEl"
@@ -630,6 +634,7 @@ watch(
 // ── Scrollers + title bar height ──────────────────────────────────────────────
 
 const titleBarEl = ref<HTMLElement | null>(null)
+const pinnedBannerEl = ref<HTMLElement | null>(null)
 const layoutViewportEl = ref<HTMLElement | null>(null)
 const leftRailRef = ref<{ el: HTMLElement | null } | null>(null)
 const rightRailRef = ref<{ el: HTMLElement | null } | null>(null)
@@ -645,8 +650,11 @@ function updateTitleBarHeightVar() {
   if (!main) return
   if (!hideTopBar.value && bar) {
     main.style.setProperty('--moh-title-bar-height', `${bar.offsetHeight}px`)
+  } else if (hideTopBar.value) {
+    // Status banners only. The day line scrolls away and is not part of this offset.
+    const pinned = pinnedBannerEl.value?.offsetHeight ?? 0
+    main.style.setProperty('--moh-title-bar-height', `${pinned}px`)
   } else {
-    // Reset so sticky tab bars on hideTopBar pages use top: 0.
     main.style.setProperty('--moh-title-bar-height', '0px')
   }
   updateToastClearanceVar()
@@ -673,7 +681,7 @@ function updateToastClearanceVar() {
   }
   document.documentElement.style.setProperty('--moh-toast-clearance', `${clearancePx}px`)
 }
-watch([titleBarEl, hideTopBar, () => route.path], () => {
+watch([titleBarEl, pinnedBannerEl, hideTopBar, () => route.path], () => {
   nextTick(() => {
     updateTitleBarHeightVar()
     updateToastClearanceVar()
@@ -682,15 +690,16 @@ watch([titleBarEl, hideTopBar, () => route.path], () => {
 
 let titleBarRo: ResizeObserver | null = null
 watch(
-  titleBarEl,
-  (el) => {
+  [titleBarEl, pinnedBannerEl],
+  (elements) => {
     if (!import.meta.client) return
     titleBarRo?.disconnect()
     titleBarRo = null
-    if (!el) return
+    const observed = elements.filter((el): el is HTMLElement => el != null)
+    if (!observed.length) return
     updateTitleBarHeightVar()
     titleBarRo = new ResizeObserver(() => updateTitleBarHeightVar())
-    titleBarRo.observe(el)
+    for (const el of observed) titleBarRo.observe(el)
   },
   { immediate: true },
 )

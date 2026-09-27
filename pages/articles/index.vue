@@ -1,37 +1,39 @@
 <template>
   <AppPageContent bottom="standard">
-    <!-- Header -->
-    <div class="flex items-center justify-between moh-gutter-x pt-4 pb-3">
+    <!-- Same header as iOS: title, then icon actions. Sort, audience, and the RSS link live in the Filter menu. -->
+    <div class="flex items-center justify-between moh-gutter-x pt-3 pb-1">
       <h1 class="moh-h1">Articles</h1>
-      <div class="flex items-center gap-2">
-        <button
-          v-tooltip.bottom="'Copy RSS feed link'"
-          type="button"
-          class="moh-tap moh-focus inline-flex items-center justify-center size-11 rounded-full moh-text-muted hover:text-[var(--moh-text)] moh-surface-hover transition-colors"
-          aria-label="Copy RSS feed link"
-          @click="copyArticlesRss"
-        >
-          <Icon name="tabler:rss" class="text-base" aria-hidden="true" />
-        </button>
+      <div class="flex items-center">
+        <AppFeedFiltersBar
+          icon-only
+          :sort="sort"
+          :filter="visibilityFilter"
+          :viewer-is-verified="isVerified"
+          :viewer-is-premium="isPremium"
+          :hide-sort="activeTab === 'drafts'"
+          feed-label="Copy RSS feed link"
+          @update:sort="onArticlesSortChange"
+          @update:filter="onArticlesFilterChange"
+          @copy-feed="copyArticlesRss"
+        />
         <NuxtLink
           v-if="isVerifiedMember"
+          v-tooltip.bottom="'Write an article'"
           to="/articles/new"
-          class="moh-tap moh-focus inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
-          :style="{ backgroundColor: activeTabColor }"
+          class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-text-muted hover:text-[var(--moh-text)] moh-surface-hover transition-colors"
+          aria-label="Write an article"
         >
-          <AppIconGlyph name="write" :size="16" />
-          Write
+          <AppIconGlyph name="write" :size="20" />
         </NuxtLink>
       </div>
     </div>
 
-    <!-- Scope + Filter bar -->
-    <div class="flex items-center justify-between gap-2 moh-gutter-x pb-3 border-b moh-border">
-      <!-- All / Following scope toggle — always rendered when authed, fades out on drafts tab -->
+    <div class="border-b moh-border">
+      <!-- All / Following scope — rendered when authed, fades out on drafts tab -->
       <ClientOnly>
         <div
           v-if="isAuthed"
-          class="transition-opacity duration-200"
+          class="moh-gutter-x pb-3 pt-1 transition-opacity duration-200"
           :class="activeTab === 'drafts' ? 'opacity-0 pointer-events-none' : 'opacity-100'"
           :aria-hidden="activeTab === 'drafts'"
         >
@@ -42,42 +44,20 @@
             @update:model-value="onArticlesScopeChange($event as 'all' | 'following')"
           />
         </div>
-        <div v-else class="flex-1" />
-        <template #fallback><div class="flex-1" /></template>
       </ClientOnly>
 
-      <AppFeedFiltersBar
-        :sort="sort"
-        :filter="visibilityFilter"
-        :viewer-is-verified="isVerified"
-        :viewer-is-premium="isPremium"
-        :hide-sort="activeTab === 'drafts'"
-        @update:sort="onArticlesSortChange"
-        @update:filter="onArticlesFilterChange"
-      />
-    </div>
-
-    <!-- Active tag filter banner -->
-    <Transition name="tag-banner">
-      <div
-        v-if="activeTag"
-        class="flex items-center gap-2 moh-gutter-x py-2 border-b moh-border moh-surface-2"
-      >
-        <Icon name="tabler:tag" class="text-xs moh-text-soft shrink-0" aria-hidden="true" />
-        <span class="text-xs moh-text-muted">Filtered by tag:</span>
-        <span class="inline-flex items-center gap-1 rounded-full border moh-border moh-surface pl-2.5 pr-1.5 py-0.5 text-xs font-medium moh-text">
-          {{ activeTag }}
-          <button
-            type="button"
-            class="flex h-3.5 w-3.5 items-center justify-center rounded-full moh-text-soft hover:bg-[var(--moh-surface-hover)] hover:text-[var(--moh-text)] transition-colors"
-            aria-label="Clear tag filter"
-            @click="clearTagFilter"
-          >
-            <Icon name="tabler:x" class="text-[9px]" aria-hidden="true" />
-          </button>
-        </span>
+      <!-- Chips appear only while a filter is on; each one clears itself. -->
+      <div v-if="showsFilterChips" class="flex flex-wrap items-center gap-2 moh-gutter-x pb-2.5" :class="{ 'pt-2': !isAuthed }">
+        <AppFilterChip v-if="activeTab !== 'drafts' && sort === 'trending'" label="Trending" @clear="onArticlesSortChange('new')" />
+        <AppFilterChip
+          v-if="visibilityFilter !== 'all'"
+          :label="visibilityChipLabel"
+          :tone="visibilityFilter === 'premiumOnly' ? '--moh-premium' : '--moh-verified'"
+          @clear="onArticlesFilterChange('all')"
+        />
+        <AppFilterChip v-if="activeTag" :label="`#${activeTag}`" @clear="clearTagFilter" />
       </div>
-    </Transition>
+    </div>
 
     <!-- Content tabs (Published | Drafts) for verified+ users -->
     <div v-if="isVerifiedMember" ref="tabBarEl" role="tablist" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b moh-border">
@@ -249,8 +229,6 @@ const {
   filter: visibilityFilter,
   sort,
   scope,
-  isFiltered,
-  resetFilters,
 } = useUrlFeedFilters()
 
 const scopeTabs = [
@@ -265,6 +243,18 @@ const activeTag = computed<string | null>(() => {
   const t = route.query.tag
   return typeof t === 'string' && t.trim() ? t.trim() : null
 })
+
+const visibilityChipLabel = computed(() => {
+  if (visibilityFilter.value === 'public') return 'Public'
+  if (visibilityFilter.value === 'premiumOnly') return 'Premium only'
+  return 'Verified only'
+})
+
+const showsFilterChips = computed(() =>
+  (activeTab.value !== 'drafts' && sort.value === 'trending')
+  || visibilityFilter.value !== 'all'
+  || Boolean(activeTag.value),
+)
 
 function clearTagFilter() {
   const { tag: _tag, ...rest } = route.query
@@ -407,11 +397,6 @@ function onArticlesFilterChange(next: ProfilePostsFilter) {
   scrollFeedToTop()
 }
 
-function onArticlesReset() {
-  resetFilters()
-  scrollFeedToTop()
-}
-
 function onArticlesTabChange(key: TabKey) {
   setTab(key)
   scrollFeedToTop()
@@ -419,18 +404,6 @@ function onArticlesTabChange(key: TabKey) {
 </script>
 
 <style scoped>
-.tag-banner-enter-active,
-.tag-banner-leave-active {
-  transition: opacity 0.15s ease, max-height 0.15s ease;
-  max-height: 3rem;
-  overflow: hidden;
-}
-.tag-banner-enter-from,
-.tag-banner-leave-to {
-  opacity: 0;
-  max-height: 0;
-}
-
 .articles-list-enter-active,
 .articles-list-leave-active {
   transition: opacity 0.2s ease;

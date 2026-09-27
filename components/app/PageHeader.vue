@@ -1,7 +1,7 @@
 <template>
   <header
     :class="[
-      sticky ? 'sticky top-0 z-40 moh-frosted border-b moh-border space-y-0.5' : 'space-y-1.5',
+      sticky ? 'sticky top-[var(--moh-title-bar-height,0px)] z-40 moh-frosted border-b moh-border space-y-0.5' : 'space-y-1.5',
     ]"
   >
     <div v-if="$slots.badges" class="flex flex-wrap items-center gap-2">

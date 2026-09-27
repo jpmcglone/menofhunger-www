@@ -17,6 +17,7 @@
     "/admin/assistant",
     "/explore",
     "/articles",
+    "/b",
     "/feeds",
     "/api",
     "/api/posts",

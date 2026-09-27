@@ -1,7 +1,7 @@
 <template>
   <div ref="editorRootEl" class="flex min-h-screen flex-col">
     <!-- Top bar -->
-    <div ref="topBarEl" class="sticky top-0 z-20 flex items-center gap-2 border-b moh-border moh-frosted px-4 pb-2.5 pt-[calc(var(--moh-safe-top,0px)+0.5rem)] sm:gap-3 sm:py-3">
+    <div ref="topBarEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-20 flex items-center gap-2 border-b moh-border moh-frosted px-4 pb-2.5 pt-[calc(var(--moh-safe-top,0px)+0.5rem)] sm:gap-3 sm:py-3">
       <!-- Back -->
       <NuxtLink to="/articles" class="flex-shrink-0 rounded-lg p-1.5 moh-text-muted hover:bg-[var(--moh-surface-hover)]">
         <Icon name="tabler:arrow-left" class="text-lg" aria-hidden="true" />

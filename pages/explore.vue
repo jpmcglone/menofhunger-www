@@ -3,7 +3,7 @@
     <AppRefreshIndicator :loading="(discoverLoading && !discoverInitialLoading) || (topicLoading && !topicLoadingInitial) || (categoryLoading && !categoryLoadingInitial)" />
   <div class="w-full explore-page">
     <!-- Sticky search bar (replaces layout title bar) -->
-    <div class="sticky top-0 z-10 border-b moh-border moh-frosted">
+    <div class="sticky top-[var(--moh-title-bar-height,0px)] z-10 border-b moh-border moh-frosted">
       <div class="px-4 py-4 sm:px-6 sm:py-6 space-y-3">
         <h1 class="text-[28px] leading-9 font-semibold moh-text">Explore</h1>
         <p v-if="!isSearching && !searchActive" class="text-[15px] moh-text-muted">Find your people. Find your next conversation.</p>

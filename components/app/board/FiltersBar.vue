@@ -2,19 +2,22 @@
   <div ref="wrapEl" class="inline-flex shrink-0 items-center py-1">
     <button
       ref="triggerEl"
+      v-tooltip.bottom="iconOnly ? 'Filters' : undefined"
       type="button"
-      class="filter-trigger"
-      :class="{ 'is-active': activeCount > 0, 'is-open': open }"
+      :class="[iconOnly ? 'filter-icon-trigger' : 'filter-trigger', { 'is-active': activeCount > 0, 'is-open': open }]"
       :aria-label="`Board filters: ${summary}`"
       :aria-controls="open ? menuId : undefined"
       aria-haspopup="menu"
       :aria-expanded="open"
       @click="toggle"
     >
-      <Icon name="tabler:adjustments-horizontal" class="size-[18px] shrink-0" aria-hidden="true" />
-      <span>Filters</span>
-      <span v-if="activeCount" class="filter-count" aria-hidden="true">{{ activeCount }}</span>
-      <Icon v-else name="tabler:chevron-down" class="size-3" aria-hidden="true" />
+      <AppIconGlyph v-if="iconOnly" name="filter" :size="20" :selected="activeCount > 0" />
+      <template v-else>
+        <Icon name="tabler:adjustments-horizontal" class="size-[18px] shrink-0" aria-hidden="true" />
+        <span>Filters</span>
+        <span v-if="activeCount" class="filter-count" aria-hidden="true">{{ activeCount }}</span>
+        <Icon v-else name="tabler:chevron-down" class="size-3" aria-hidden="true" />
+      </template>
     </button>
     <Teleport to="body">
       <div v-if="open" :id="menuId" ref="menuEl" class="filter-menu" :style="menuStyle" role="menu" aria-label="Board filters" @keydown="onMenuKey">
@@ -51,6 +54,22 @@
           <Icon v-else-if="option.locked" name="tabler:lock" class="size-4 moh-text-muted" aria-hidden="true" />
         </button>
 
+        <template v-if="quickTags.length">
+          <p class="filter-section-label filter-divider">Show</p>
+          <button
+            v-for="quick in quickTags"
+            :key="quick.tag"
+            type="button"
+            class="filter-option"
+            role="menuitemcheckbox"
+            :aria-checked="tags.includes(quick.tag)"
+            @click="emit('toggleQuickTag', quick.tag)"
+          >
+            <span class="min-w-0 flex-1"><span class="block">{{ quick.label }}</span><span class="filter-hint">{{ quick.hint }}</span></span>
+            <Icon v-if="tags.includes(quick.tag)" name="tabler:check" class="size-4" aria-hidden="true" />
+          </button>
+        </template>
+
         <p class="filter-section-label filter-divider">Tags <span class="normal-case tracking-normal font-normal">· matches any, up to 3</span></p>
         <div class="px-3 pb-2">
           <AppBoardTagPicker :model-value="tags" placeholder="Add a tag…" inline-suggestions @update:model-value="emit('update:tags', $event)" />
@@ -65,6 +84,9 @@
           </button>
         </template>
 
+        <button v-if="feedLabel" type="button" class="filter-reset" role="menuitem" @click="copyFeed">
+          <Icon name="tabler:rss" class="size-4" aria-hidden="true" /> {{ feedLabel }}
+        </button>
         <button v-if="activeCount" type="button" class="filter-reset" role="menuitem" @click="reset">
           <Icon name="tabler:rotate-clockwise" class="size-4" aria-hidden="true" /> Reset filters
         </button>
@@ -78,7 +100,7 @@ import type { BoardRange } from '~/types/api'
 
 type Scope = 'all' | 'verifiedOnly' | 'premiumOnly'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   showRange: boolean
   range: BoardRange | null
   scope: Scope
@@ -87,13 +109,24 @@ const props = defineProps<{
   isAuthed: boolean
   viewerIsVerified: boolean
   viewerIsPremium: boolean
-}>()
+  /** Header toolbar trigger: a 44px filter icon instead of the labeled pill. */
+  iconOnly?: boolean
+  quickTags?: ReadonlyArray<{ tag: string; label: string; hint: string }>
+  /** When set, the menu offers copying the RSS feed link with this label. */
+  feedLabel?: string
+}>(), {
+  iconOnly: false,
+  quickTags: () => [],
+  feedLabel: undefined,
+})
 
 const emit = defineEmits<{
   'update:range': [value: BoardRange | null]
   'update:scope': [value: Scope]
   'update:tags': [value: string[]]
   'update:showHidden': [value: boolean]
+  toggleQuickTag: [tag: string]
+  copyFeed: []
   reset: []
 }>()
 
@@ -153,7 +186,7 @@ function toggle(e: MouseEvent) {
     close()
     return
   }
-  place(e.currentTarget as HTMLElement, { align: 'start', menuWidth: 320, menuHeight: 560 })
+  place(e.currentTarget as HTMLElement, { align: props.iconOnly ? 'end' : 'start', menuWidth: 320, menuHeight: 560 })
   open.value = true
   void nextTick(() => menuEl.value?.querySelector<HTMLButtonElement>('button[aria-checked="true"], button')?.focus({ preventScroll: true }))
 }
@@ -170,6 +203,11 @@ function setScope(value: Scope) {
 
 function reset() {
   emit('reset')
+  close()
+}
+
+function copyFeed() {
+  emit('copyFeed')
   close()
 }
 
@@ -208,6 +246,9 @@ watch(
 .filter-trigger::before { content: ""; position: absolute; inset: -4px 0; }
 .filter-trigger:hover, .filter-trigger.is-open { background: var(--moh-surface-2); color: var(--moh-text); }
 .filter-trigger.is-active { color: var(--moh-text); }
+.filter-icon-trigger { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 9999px; color: var(--moh-text-muted); cursor: pointer; transition: background-color .15s, color .15s; }
+.filter-icon-trigger:hover, .filter-icon-trigger.is-open { background: var(--moh-surface-hover); color: var(--moh-text); }
+.filter-icon-trigger.is-active { color: var(--moh-text); }
 .filter-count { display: grid; place-items: center; min-width: 20px; height: 20px; border-radius: 50%; background: var(--moh-text); color: var(--moh-bg); font-size: 11px; }
 .filter-menu { position: fixed; z-index: 9999; width: 320px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 8px; border-radius: 20px; border: 1px solid var(--moh-border); background: var(--moh-bg); color: var(--moh-text); box-shadow: 0 16px 48px #0003; }
 .filter-menu-title { padding: 12px 12px 16px; font-size: 17px; font-weight: 600; }

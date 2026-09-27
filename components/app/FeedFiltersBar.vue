@@ -1,10 +1,13 @@
 <template>
   <div ref="filterWrapEl" class="inline-flex shrink-0 items-center py-1">
-    <button ref="triggerEl" type="button" class="filter-trigger" :class="{ 'is-active': isNonDefault, 'is-open': filterPopoverOpen }" :aria-label="`Feed filters: ${summary}`" :aria-controls="filterPopoverOpen ? menuId : undefined" aria-haspopup="menu" :aria-expanded="filterPopoverOpen" @click="toggleFilterPopover">
-      <Icon name="tabler:adjustments-horizontal" class="size-[18px] shrink-0" aria-hidden="true" />
-      <span>{{ showVisibilityFilter ? 'Filters' : effectiveSort === 'trending' ? 'Trending' : 'Recent' }}</span>
-      <span v-if="activeCount" class="filter-count" aria-hidden="true">{{ activeCount }}</span>
-      <Icon v-else name="tabler:chevron-down" class="size-3" aria-hidden="true" />
+    <button ref="triggerEl" v-tooltip.bottom="iconOnly ? 'Filters' : undefined" type="button" :class="[iconOnly ? 'filter-icon-trigger' : 'filter-trigger', { 'is-active': isNonDefault, 'is-open': filterPopoverOpen }]" :aria-label="`Feed filters: ${summary}`" :aria-controls="filterPopoverOpen ? menuId : undefined" aria-haspopup="menu" :aria-expanded="filterPopoverOpen" @click="toggleFilterPopover">
+      <AppIconGlyph v-if="iconOnly" name="filter" :size="20" :selected="isNonDefault" />
+      <template v-else>
+        <Icon name="tabler:adjustments-horizontal" class="size-[18px] shrink-0" aria-hidden="true" />
+        <span>{{ showVisibilityFilter ? 'Filters' : effectiveSort === 'trending' ? 'Trending' : 'Recent' }}</span>
+        <span v-if="activeCount" class="filter-count" aria-hidden="true">{{ activeCount }}</span>
+        <Icon v-else name="tabler:chevron-down" class="size-3" aria-hidden="true" />
+      </template>
     </button>
     <Teleport to="body">
       <div v-if="filterPopoverOpen" :id="menuId" ref="filterMenuEl" class="filter-menu" :style="filterMenuStyle" role="menu" aria-label="Feed filters" @keydown="onMenuKey">
@@ -26,6 +29,7 @@
             <Icon v-else-if="option.locked" name="tabler:lock" class="size-4 moh-text-muted" aria-hidden="true" />
           </button>
         </template>
+        <button v-if="feedLabel" type="button" class="filter-reset" role="menuitem" @click="copyFeed"><Icon name="tabler:rss" class="size-4" aria-hidden="true" /> {{ feedLabel }}</button>
         <button v-if="isNonDefault" type="button" class="filter-reset" role="menuitem" @click="clearFilters"><Icon name="tabler:rotate-clockwise" class="size-4" aria-hidden="true" /> Reset filters</button>
       </div>
     </Teleport>
@@ -54,6 +58,10 @@ const props = withDefaults(
     showVisibilityFilter?: boolean
     /** When true, hide the sort section in the menu (For You, drafts). Icon defaults to clock. */
     hideSort?: boolean
+    /** Header toolbar trigger: a 44px filter icon instead of the labeled pill. */
+    iconOnly?: boolean
+    /** When set, the menu offers copying the RSS feed link with this label. */
+    feedLabel?: string
   }>(),
   {
     label: undefined,
@@ -61,12 +69,15 @@ const props = withDefaults(
     sortCount: null,
     showVisibilityFilter: true,
     hideSort: false,
+    iconOnly: false,
+    feedLabel: undefined,
   },
 )
 
 const emit = defineEmits<{
   (e: 'update:sort', v: 'new' | 'trending'): void
   (e: 'update:filter', v: ProfilePostsFilter): void
+  (e: 'copyFeed'): void
 }>()
 
 const filterWrapEl = ref<HTMLElement | null>(null)
@@ -104,7 +115,7 @@ const scopeOptions = computed(() => [
   { value: 'premiumOnly', title: 'Premium', hint: viewerIsPremium.value ? 'Posts for premium members' : 'Premium membership required', icon: 'tabler:rosette-discount-check', locked: !viewerIsPremium.value },
 ] as const)
 const summary = computed(() => [!props.hideSort ? formatSortLabel(effectiveSort.value) : '', props.showVisibilityFilter ? scopeOptions.value.find(o => o.value === filter.value)?.title ?? filter.value : ''].filter(Boolean).join(', '))
-const filterMenuHeight = computed(() => 72 + (props.hideSort ? 0 : 140) + (props.showVisibilityFilter ? 292 : 0) + (activeCount.value ? 52 : 0))
+const filterMenuHeight = computed(() => 72 + (props.hideSort ? 0 : 140) + (props.showVisibilityFilter ? 292 : 0) + (activeCount.value ? 52 : 0) + (props.feedLabel ? 52 : 0))
 
 function focusOption(direction: number) {
   const items = Array.from(filterMenuEl.value?.querySelectorAll<HTMLButtonElement>('button') ?? [])
@@ -155,6 +166,11 @@ const isNonDefault = computed(
   () => activeCount.value > 0,
 )
 
+function copyFeed() {
+  emit('copyFeed')
+  closeFilterPopover()
+}
+
 function clearFilters() {
   if (!props.hideSort && sort.value !== 'new') emit('update:sort', 'new')
   if (props.showVisibilityFilter && filter.value !== 'all') emit('update:filter', 'all')
@@ -197,6 +213,9 @@ watch(
 .filter-trigger::before { content: ""; position: absolute; inset: -4px 0; }
 .filter-trigger:hover, .filter-trigger.is-open { background: var(--moh-surface-2); color: var(--moh-text); }
 .filter-trigger.is-active { color: var(--moh-text); }
+.filter-icon-trigger { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 9999px; color: var(--moh-text-muted); cursor: pointer; transition: background-color .15s, color .15s; }
+.filter-icon-trigger:hover, .filter-icon-trigger.is-open { background: var(--moh-surface-hover); color: var(--moh-text); }
+.filter-icon-trigger.is-active { color: var(--moh-text); }
 .filter-count { display: grid; place-items: center; min-width: 20px; height: 20px; border-radius: 50%; background: var(--moh-text); color: var(--moh-bg); font-size: 11px; }
 .filter-menu { position: fixed; z-index: 9999; width: 288px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 8px; border-radius: 20px; border: 1px solid var(--moh-border); background: var(--moh-bg); color: var(--moh-text); box-shadow: 0 16px 48px #0003; }
 .filter-menu-title { padding: 12px 12px 16px; font-size: 17px; font-weight: 600; }
