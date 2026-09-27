@@ -34,7 +34,7 @@ export type AppNavItem = {
   menuSection?: 'main' | 'footer'
 }
 
-/** Member floor. Everything else stays behind More. Explore is search, not a peer tab. */
+/** Phone tab floor. The left rail shows as many ordered items as fit; overflow uses More. */
 export const APP_NAV_FLOOR_KEYS = ['home', 'board', 'notifications', 'messages'] as const
 
 export function isAppNavFloorKey(key: string): boolean {
@@ -93,11 +93,10 @@ export function useAppNav() {
 
   const allItems = computed<AppNavItem[]>(() => [
     { key: 'home', label: 'Home', to: '/home', icon: 'tabler:home', iconActive: 'tabler:home-filled', showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInPrimaryNav: true, menuSection: 'main' },
     { key: 'board', label: 'Board', to: '/b', icon: 'tabler:layout-list', iconActive: 'tabler:layout-list-filled', showInPrimaryNav: true, menuSection: 'main' },
     { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'tabler:bell', iconActive: 'tabler:bell-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
-    // Search lives behind More. The desktop right rail is the detached search field.
-    { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInPrimaryNav: true, menuSection: 'main' },
     {
       key: 'spaces',
       label: 'Spaces',

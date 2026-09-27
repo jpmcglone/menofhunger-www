@@ -145,6 +145,12 @@
                 </ClientOnly>
               </span>
             </NuxtLink>
+            <div
+              v-if="item.key === 'explore'"
+              class="mx-3 my-2 border-t moh-border"
+              role="separator"
+              aria-hidden="true"
+            />
 
           </template>
 
@@ -331,9 +337,9 @@ import { siteConfig } from '~/config/site'
 import { boardNavPopAction, isModifiedNavClick, shouldInterceptSameNavClick } from '~/config/routes'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { ClientOnly, NuxtLink } from '#components'
-import { isAppNavFloorKey } from '~/composables/useAppNav'
 import type { AppNavItem } from '~/composables/useAppNav'
 import type { AppLayoutComposerApi } from '~/composables/layout/useAppLayoutComposer'
+import { splitNavByCapacity } from '~/utils/app-nav-overflow'
 
 const props = defineProps<{
   /** Icon-only mode (no labels). */
@@ -385,23 +391,11 @@ const {
 } = useMenuPosition()
 const leftNavViewportRef = ref<HTMLElement | null>(null)
 const leftNavLogoRef = ref<HTMLElement | null>(null)
-const leftNavCapacity = ref(99)
+const leftNavCapacity = ref(8)
 const leftRailNavItems = computed(() => primaryNavItems.value.filter((item) => item.menuSection !== 'footer'))
-const leftFloorNavItems = computed(() => leftRailNavItems.value.filter((item) => isAppNavFloorKey(item.key)))
-const leftBehindMoreNavItems = computed(() => leftRailNavItems.value.filter((item) => !isAppNavFloorKey(item.key)))
-const leftVisibleNavItems = computed<AppNavItem[]>(() => {
-  const floor = leftFloorNavItems.value
-  const needsMore = leftBehindMoreNavItems.value.length > 0 || floor.length > leftNavCapacity.value
-  const room = needsMore ? Math.max(0, leftNavCapacity.value - 1) : leftNavCapacity.value
-  return floor.slice(0, room)
-})
-const leftOverflowNavItems = computed<AppNavItem[]>(() => {
-  const visible = new Set(leftVisibleNavItems.value.map((item) => item.key))
-  return [
-    ...leftFloorNavItems.value.filter((item) => !visible.has(item.key)),
-    ...leftBehindMoreNavItems.value,
-  ]
-})
+const leftNavSplit = computed(() => splitNavByCapacity(leftRailNavItems.value, leftNavCapacity.value))
+const leftVisibleNavItems = computed<AppNavItem[]>(() => leftNavSplit.value.visible)
+const leftOverflowNavItems = computed<AppNavItem[]>(() => leftNavSplit.value.overflow)
 const moreNavHasActiveRoute = computed(() => leftOverflowNavItems.value.some((item) => isActiveNav(item.to)))
 
 watch(morePopoverOpen, (isOpen) => {
@@ -432,10 +426,13 @@ function updateLeftNavCapacity() {
   const viewport = leftNavViewportRef.value
   if (!viewport) return
   const itemHeight = 52 // h-12 plus space-y-1 gap.
+  const dividerHeight = 17
   const logo = leftNavLogoRef.value
   const logoHeight = logo ? logo.offsetHeight + Number.parseFloat(getComputedStyle(logo).marginBottom) : 0
   const available = Math.max(0, viewport.clientHeight - logoHeight)
-  leftNavCapacity.value = Math.max(1, Math.floor((available + 4) / itemHeight))
+  const reserveDivider = leftRailNavItems.value.some((item) => item.key === 'explore')
+  const usable = reserveDivider ? Math.max(0, available - dividerHeight) : available
+  leftNavCapacity.value = Math.max(1, Math.floor((usable + 4) / itemHeight))
 }
 
 let leftNavResizeObserver: ResizeObserver | null = null
