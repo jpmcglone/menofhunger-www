@@ -50,7 +50,7 @@
         :model-value="view"
         aria-label="Board view"
         :tabs="viewTabs"
-        @update:model-value="setView($event as 'top' | 'new' | 'comments')"
+        @update:model-value="setView($event as 'new' | 'top' | 'comments')"
       />
       <AppBoardFiltersBar
         v-if="view !== 'comments'"
@@ -183,13 +183,13 @@ const { requireMember } = useBoardAccess()
 const preview = useUserPreviewMultiTrigger()
 
 const viewTabs = [
-  { key: 'top', label: 'Top' },
   { key: 'new', label: 'New' },
+  { key: 'top', label: 'Top' },
   { key: 'comments', label: 'Comments' },
 ]
 
 const qs = (key: string) => (typeof route.query[key] === 'string' ? String(route.query[key]).trim() : '')
-const view = computed<'top' | 'new' | 'comments'>(() => (qs('view') === 'comments' ? 'comments' : qs('sort') === 'new' ? 'new' : 'top'))
+const view = computed<'new' | 'top' | 'comments'>(() => (qs('view') === 'comments' ? 'comments' : qs('sort') === 'top' ? 'top' : 'new'))
 const range = computed<BoardRange | null>(() => {
   const r = qs('range')
   return (['day', 'week', 'month', 'year', 'all'] as const).includes(r as BoardRange) ? (r as BoardRange) : null
@@ -245,9 +245,9 @@ function setQuery(patch: Record<string, string | undefined>) {
   void router.replace({ path: '/b', query: next })
 }
 
-function setView(next: 'top' | 'new' | 'comments') {
+function setView(next: 'new' | 'top' | 'comments') {
   if (next === 'comments') setQuery({ view: 'comments', sort: undefined, range: undefined })
-  else setQuery({ view: undefined, sort: next === 'new' ? 'new' : undefined, range: next === 'new' ? undefined : range.value ?? undefined })
+  else setQuery({ view: undefined, sort: next === 'top' ? 'top' : undefined, range: next === 'top' ? range.value ?? undefined : undefined })
 }
 
 const quickTags = [
@@ -263,7 +263,7 @@ function setTags(next: string[]) {
 }
 
 function clearFilters() {
-  void router.replace({ path: '/b', query: view.value === 'new' ? { sort: 'new' } : {} })
+  void router.replace({ path: '/b', query: view.value === 'top' ? { sort: 'top' } : {} })
 }
 
 const searchOpen = ref(Boolean(q.value))
