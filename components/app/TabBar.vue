@@ -152,7 +152,7 @@
                   aria-hidden="true"
                 />
                 <div
-                  v-if="mi.key === 'articles' || mi.isNew"
+                  v-if="mi.isNew"
                   class="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 z-20"
                 >
                   <AppNewBadge small />

@@ -34,6 +34,13 @@ export type AppNavItem = {
   menuSection?: 'main' | 'footer'
 }
 
+/** Member floor. Everything else stays behind More. Explore is search, not a peer tab. */
+export const APP_NAV_FLOOR_KEYS = ['home', 'board', 'notifications', 'messages'] as const
+
+export function isAppNavFloorKey(key: string): boolean {
+  return (APP_NAV_FLOOR_KEYS as readonly string[]).includes(key)
+}
+
 export function useAppNav() {
   const { user, isAuthed, isVerified: isVerifiedBase, isPremium, isPageAccount } = useAuth()
   const { hasFeature } = useAppFeatures()
@@ -86,13 +93,11 @@ export function useAppNav() {
 
   const allItems = computed<AppNavItem[]>(() => [
     { key: 'home', label: 'Home', to: '/home', icon: 'tabler:home', iconActive: 'tabler:home-filled', showInPrimaryNav: true, menuSection: 'main' },
-
-    // Authed-only core items
-    // Use Tabler magnifying glass for Explore (Tabler doesn't provide a filled variant for search).
-    { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInPrimaryNav: true, menuSection: 'main' },
-    { key: 'board', label: 'Board', to: '/b', icon: 'tabler:layout-list', iconActive: 'tabler:layout-list-filled', isNew: true, showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'board', label: 'Board', to: '/b', icon: 'tabler:layout-list', iconActive: 'tabler:layout-list-filled', showInPrimaryNav: true, menuSection: 'main' },
     { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'tabler:bell', iconActive: 'tabler:bell-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
+    // Search lives behind More. The desktop right rail is the detached search field.
+    { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInPrimaryNav: true, menuSection: 'main' },
     {
       key: 'spaces',
       label: 'Spaces',
@@ -143,9 +148,12 @@ export function useAppNav() {
 
   const primaryItems = computed(() => allItems.value.filter((i) => i.showInPrimaryNav && visible(i)))
   const tabItems = computed(() => {
-    const items = primaryItems.value
-    if (items.length <= 5) return items
-    return [...items.slice(0, 4), moreItem.value]
+    const items = primaryItems.value.filter((item) => item.menuSection !== 'footer')
+    const floor = APP_NAV_FLOOR_KEYS
+      .map((key) => items.find((item) => item.key === key))
+      .filter((item): item is AppNavItem => Boolean(item))
+    const behindMore = items.some((item) => !isAppNavFloorKey(item.key))
+    return behindMore ? [...floor, moreItem.value] : floor
   })
 
   return { isAuthed, profileTo, allItems, primaryItems, tabItems, moreItem, isItemVisible: visible }

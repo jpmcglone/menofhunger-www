@@ -73,13 +73,6 @@
             <span class="landing-stat-label">posts</span>
           </AppLandingStatBreakdown>
           <AppLandingStatBreakdown
-            v-if="landingSnapshot.stats.articles" :title="`${landingSnapshot.stats.articles.total.toLocaleString('en-US')} articles`" subtitle="Authorship and readership"
-            :trigger-label="`${formatLandingCount(landingSnapshot.stats.articles.total)}+ articles — show breakdown`" :sections="articlesBreakdownSections"
-          >
-            <span class="landing-stat-value">{{ formatLandingCount(landingSnapshot.stats.articles.total) }}+ <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span>
-            <span class="landing-stat-label">articles</span>
-          </AppLandingStatBreakdown>
-          <AppLandingStatBreakdown
             v-if="landingSnapshot.stats.views" :title="`${landingSnapshot.stats.views.total.toLocaleString('en-US')} total views`" subtitle="Views across the community"
             :trigger-label="`${formatLandingCount(landingSnapshot.stats.views.total)}+ views — show breakdown`" :rows="viewsBreakdownRows"
           >
@@ -89,29 +82,10 @@
         </div>
       </section>
 
-      <section class="landing-shell landing-section landing-benefits" aria-labelledby="landing-benefits-heading">
-        <h2 id="landing-benefits-heading" class="landing-eyebrow">A place to show up</h2>
-        <div class="landing-feature-grid">
-          <div v-for="feature in landingFeatures" :key="feature.title" class="landing-feature" :data-testid="feature.icon === 'spaces' ? 'landing-calls-card' : undefined">
-            <AppIconGlyph :name="feature.icon" :selected="feature.selected" :size="28" />
-            <h3>{{ feature.title }}</h3>
-            <p>{{ feature.body }}</p>
-          </div>
-        </div>
-      </section>
-
-      <section v-if="dailyQuote" class="landing-quote-band" aria-label="Daily quote">
-        <figure class="landing-shell landing-quote">
-          <p class="landing-eyebrow">A moment to think</p>
-          <blockquote class="moh-serif">“{{ dailyQuote.text }}”</blockquote>
-          <figcaption>{{ dailyQuoteAttribution }}<span v-if="dailyQuote.isParaphrase"> · paraphrase</span></figcaption>
-        </figure>
-      </section>
-
       <section class="landing-shell landing-section landing-how" aria-labelledby="landing-how-heading">
         <div class="landing-how-heading">
           <p class="landing-eyebrow">How it works</p>
-          <h2 id="landing-how-heading">Simple. Focused. Effective.</h2>
+          <h2 id="landing-how-heading">Join, verify, say something, show up.</h2>
         </div>
         <ol class="landing-steps">
           <li v-for="(step, index) in joiningSteps" :key="step.title">
@@ -166,23 +140,6 @@
             </div>
           </div>
         </TransitionGroup>
-      </section>
-
-      <section v-if="landingArticlePreviews.length > 0" class="landing-shell landing-section landing-articles" aria-labelledby="landing-articles-heading">
-        <div class="landing-articles-inner">
-          <div class="landing-section-heading">
-            <div><p class="landing-eyebrow">Read next</p><h2 id="landing-articles-heading">Articles worth opening</h2></div>
-            <NuxtLink to="/articles?sort=trending" class="landing-text-link">See all <Icon name="tabler:arrow-right" aria-hidden="true" /></NuxtLink>
-          </div>
-          <div class="landing-article-grid">
-            <NuxtLink v-for="article in landingArticlePreviews" :key="article.id" :to="`/a/${article.id}`" class="landing-article">
-              <p class="landing-eyebrow">{{ article.readingTimeMinutes ? `${article.readingTimeMinutes} min read` : 'Article' }}</p>
-              <h3>{{ article.title }}</h3>
-              <p v-if="article.excerpt" class="landing-article-excerpt">{{ article.excerpt }}</p>
-              <div class="landing-article-footer"><span>{{ article.author.name || article.author.username }}</span><span class="landing-read-link">Read <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span></div>
-            </NuxtLink>
-          </div>
-        </div>
       </section>
 
       <section class="landing-merch-band" aria-labelledby="landing-merch-heading">
@@ -318,10 +275,9 @@
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
-import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 import { avatarRoundClass } from '~/utils/avatar-rounding'
 import type { BreakdownRow, BreakdownSection } from '~/components/app/LandingStatBreakdown.vue'
-import type { DailyContentToday, DailyQuote, LandingSnapshot, LandingTopPost } from '~/types/api'
+import type { LandingSnapshot, LandingTopPost } from '~/types/api'
 
 definePageMeta({
   layout: 'empty'
@@ -337,27 +293,17 @@ const isRoanokeOpen = ref(false)
 const isMobileMenuOpen = ref(false)
 useOverlayDismiss(isMobileMenuOpen, () => { isMobileMenuOpen.value = false })
 
-const landingFeatures = [
-  { icon: 'verified', selected: true, title: 'Verified members', body: 'Trust comes first. Every member is verified.' },
-  { icon: 'checkin', selected: false, title: 'Daily check-ins', body: 'Simple daily prompts keep you consistent.' },
-  { icon: 'premium', selected: false, title: 'Premium groups', body: 'Smaller groups for deeper conversations.' },
-  { icon: 'spaces', selected: false, title: 'Voice & video calls', body: 'Peer-to-peer encrypted. Calls travel directly between devices — our servers only help you connect and never see or store them.' },
-] as const
 const joiningSteps = [
-  { title: 'Join', body: 'Verify and create your profile.' },
-  { title: 'Engage', body: 'Post, reply, and check in every day.' },
-  { title: 'Grow', body: 'Stay accountable. It compounds.' },
+  { title: 'Join', body: 'Create your profile.' },
+  { title: 'Verify', body: 'Trust comes first.' },
+  { title: 'Say something', body: 'Post and reply.' },
+  { title: 'Show up', body: 'Come back and stand with the men beside you.' },
 ]
 const landingNavLinks = [
   { label: 'About', to: '/about' },
-  { label: 'Roadmap', to: '/roadmap' },
-  { label: 'Articles', to: '/articles' },
 ]
 const landingFooterLinks = [
   { label: 'About', to: '/about' },
-  { label: 'Tiers', to: '/tiers' },
-  { label: 'Articles', to: '/articles' },
-  { label: 'Roadmap', to: '/roadmap' },
   { label: 'Status', to: '/status' },
   { label: 'RSS', to: '/feeds' },
 ]
@@ -398,28 +344,6 @@ const taglineParts = computed(() => {
 
 const { apiFetchData } = useApiClient()
 
-const {
-  data: dailyContent,
-  refresh: refreshDailyContent,
-} = await useAsyncData<DailyContentToday>(
-  'landing:daily-content:today',
-  () => apiFetchData<DailyContentToday>('/meta/daily-content/today', { method: 'GET' }),
-  { server: true },
-)
-const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
-const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value) : ''))
-
-// Refresh when the next publish boundary (9:00am ET for word, 9:30am ET for quote) is crossed.
-const { scheduleFromNextPublishAt: scheduleLandingRefresh } = usePublishBoundaryRollover(() => refreshDailyContent())
-
-if (import.meta.client) {
-  watch(
-    () => dailyContent.value?.nextPublishAt ?? null,
-    (nextPublishAt) => scheduleLandingRefresh(nextPublishAt),
-    { immediate: true },
-  )
-}
-
 const { data: landingSnapshotData } = await useAsyncData<LandingSnapshot>(
   'landing:snapshot',
   () => apiFetchData<LandingSnapshot>('/meta/landing', { method: 'GET' }),
@@ -428,8 +352,6 @@ const { data: landingSnapshotData } = await useAsyncData<LandingSnapshot>(
 const landingSnapshot = computed(() => landingSnapshotData.value ?? null)
 const recentlyActiveMen = computed(() => landingSnapshot.value?.recentlyActiveMen ?? [])
 const topPostsThisWeek = computed(() => landingSnapshot.value?.topPostsThisWeek ?? [])
-const trendingArticles = computed(() => landingSnapshot.value?.trendingArticles ?? [])
-const landingArticlePreviews = computed(() => trendingArticles.value.slice(0, 3))
 
 function pickDistinctAuthorPosts(pool: LandingTopPost[], count: number): LandingTopPost[] {
   const seen = new Set<string>()
@@ -551,23 +473,6 @@ const postsBreakdownSections = computed<BreakdownSection[]>(() => {
   ]
 })
 
-const articlesBreakdownSections = computed<BreakdownSection[]>(() => {
-  const s = landingSnapshot.value?.stats.articles
-  if (!s) return []
-  return [
-    [
-      { key: 'authors', label: 'Authors', count: s.authors ?? 0 },
-      { key: 'views', label: 'Total views', count: s.views ?? 0 },
-      { key: 'unique', label: 'Unique views', count: s.unique ?? 0 },
-    ],
-    [
-      { key: 'public', label: 'Public', count: s.public, dotClass: 'bg-gray-400' },
-      { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
-      { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
-    ],
-  ]
-})
-
 const viewsBreakdownRows = computed<BreakdownRow[]>(() => {
   const s = landingSnapshot.value?.stats.views
   if (!s) return []
@@ -652,18 +557,10 @@ usePageSeo({
 .landing-stat-value :deep(.iconify) { width: 18px; height: 18px; color: var(--moh-text-muted); }
 .landing-stat-label { color: var(--moh-text-muted); font-size: 14px; font-weight: 500; }
 .landing-section { padding-top: 40px; padding-bottom: 64px; }
-.landing-feature-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; margin-top: 32px; }
-.landing-feature { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
-.landing-feature h3 { font-size: 20px; font-weight: 600; line-height: 1.45; }
-.landing-feature p { color: var(--moh-text-muted); font-size: 15px; line-height: 1.45; }
-.landing-quote-band, .landing-merch-band { background: var(--moh-surface-1); }
-.landing-quote { display: flex; flex-direction: column; align-items: center; gap: 24px; padding-block: 64px; text-align: center; }
-.landing-quote .landing-eyebrow { font-size: 11px; }
-.landing-quote blockquote { max-width: 890px; font-size: 32px; line-height: 1.45; }
-.landing-quote figcaption { font-size: 13px; font-weight: 500; color: var(--moh-text-muted); }
+.landing-merch-band { background: var(--moh-surface-1); }
 .landing-how { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 80px; padding-block: 80px; }
 .landing-how-heading h2 { margin-top: 12px; font-size: 36px; font-weight: 700; line-height: 1.08; }
-.landing-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.landing-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
 .landing-step-number { display: block; color: var(--moh-brass); font-size: 13px; font-weight: 600; padding-bottom: 16px; border-bottom: 1px solid var(--moh-border); }
 .landing-steps h3 { margin-top: 16px; font-size: 24px; font-weight: 600; }
 .landing-steps p { margin-top: 16px; color: var(--moh-text-muted); font-size: 16px; line-height: 1.45; }
@@ -686,13 +583,6 @@ usePageSeo({
 .landing-post-metrics > span, .landing-read-link { display: inline-flex; align-items: center; gap: 6px; }
 .landing-read-link { color: var(--moh-text); font-weight: 600; white-space: nowrap; }
 .landing-post-metrics > .landing-read-link { margin-left: auto; }
-.landing-articles-inner { padding-top: 28px; border-top: 1px solid var(--moh-border); }
-.landing-article-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
-.landing-article { display: flex; min-width: 0; flex-direction: column; gap: 16px; border-radius: 4px; }
-.landing-article h3 { font-size: 24px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
-.landing-article-excerpt { color: var(--moh-text-muted); font-size: 15px; line-height: 1.45; }
-.landing-article-footer { display: flex; gap: 24px; color: var(--moh-text-muted); font-size: 13px; font-weight: 500; }
-.landing-article:hover h3 { text-decoration: underline; text-underline-offset: 4px; }
 .landing-merch { display: flex; align-items: center; justify-content: space-between; gap: 40px; padding-block: 40px; }
 .landing-merch h2 { margin-top: 8px; font-size: 28px; font-weight: 700; line-height: 1.45; }
 .landing-merch h2 + p { margin-top: 8px; color: var(--moh-text-muted); font-size: 15px; line-height: 1.45; }
@@ -729,9 +619,10 @@ usePageSeo({
   .landing-hero { grid-template-columns: minmax(0, 1fr); gap: 32px; }
   .landing-intro h1 { max-width: 700px; }
   .landing-hero-image { max-height: 560px; }
-  .landing-stats, .landing-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .landing-how { grid-template-columns: 1fr; gap: 32px; }
-  .landing-post-grid, .landing-article-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .landing-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-post-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
 }
 @media (max-width: 599px) {
   .landing-shell { padding-inline: 24px; }
@@ -748,16 +639,11 @@ usePageSeo({
   .landing-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding-block: 20px; }
   .landing-stat-value { font-size: 28px; }
   .landing-section { padding-block: 40px; }
-  .landing-benefits { padding-top: 32px; }
-  .landing-feature-grid { grid-template-columns: 1fr; }
-  .landing-quote { padding-block: 40px; }
-  .landing-quote blockquote { font-size: 26px; }
   .landing-how-heading h2 { font-size: 30px; }
   .landing-steps { grid-template-columns: 1fr; }
   .landing-section-heading { flex-direction: column; gap: 16px; }
   .landing-section-heading h2 { font-size: 28px; }
   .landing-post-grid { gap: 16px; }
-  .landing-article-grid { gap: 32px; }
   .landing-merch { flex-direction: column; align-items: flex-start; gap: 24px; }
   .landing-final { padding-block: 40px; }
   .landing-final h2 { font-size: 32px; }

@@ -331,6 +331,7 @@ import { siteConfig } from '~/config/site'
 import { boardNavPopAction, isModifiedNavClick, shouldInterceptSameNavClick } from '~/config/routes'
 import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { ClientOnly, NuxtLink } from '#components'
+import { isAppNavFloorKey } from '~/composables/useAppNav'
 import type { AppNavItem } from '~/composables/useAppNav'
 import type { AppLayoutComposerApi } from '~/composables/layout/useAppLayoutComposer'
 
@@ -386,15 +387,20 @@ const leftNavViewportRef = ref<HTMLElement | null>(null)
 const leftNavLogoRef = ref<HTMLElement | null>(null)
 const leftNavCapacity = ref(99)
 const leftRailNavItems = computed(() => primaryNavItems.value.filter((item) => item.menuSection !== 'footer'))
+const leftFloorNavItems = computed(() => leftRailNavItems.value.filter((item) => isAppNavFloorKey(item.key)))
+const leftBehindMoreNavItems = computed(() => leftRailNavItems.value.filter((item) => !isAppNavFloorKey(item.key)))
 const leftVisibleNavItems = computed<AppNavItem[]>(() => {
-  const items = leftRailNavItems.value
-  if (items.length <= leftNavCapacity.value) return items
-  return items.slice(0, Math.max(0, leftNavCapacity.value - 1))
+  const floor = leftFloorNavItems.value
+  const needsMore = leftBehindMoreNavItems.value.length > 0 || floor.length > leftNavCapacity.value
+  const room = needsMore ? Math.max(0, leftNavCapacity.value - 1) : leftNavCapacity.value
+  return floor.slice(0, room)
 })
 const leftOverflowNavItems = computed<AppNavItem[]>(() => {
-  const items = leftRailNavItems.value
-  if (items.length <= leftNavCapacity.value) return []
-  return items.slice(Math.max(0, leftNavCapacity.value - 1))
+  const visible = new Set(leftVisibleNavItems.value.map((item) => item.key))
+  return [
+    ...leftFloorNavItems.value.filter((item) => !visible.has(item.key)),
+    ...leftBehindMoreNavItems.value,
+  ]
 })
 const moreNavHasActiveRoute = computed(() => leftOverflowNavItems.value.some((item) => isActiveNav(item.to)))
 

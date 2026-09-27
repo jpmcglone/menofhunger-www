@@ -67,20 +67,21 @@ describe('scripture verse presentation', () => {
 })
 
 describe('primary app navigation order', () => {
-  it('orders Home, Explore, Board, Notifications, then Chat', () => {
+  it('keeps the floor at Home, Board, Notifications, and Chat, with Explore behind More', () => {
     const source = readFromRepo('composables/useAppNav.ts')
     const home = source.indexOf("key: 'home'")
-    const explore = source.indexOf("key: 'explore'")
     const board = source.indexOf("key: 'board'")
     const notifications = source.indexOf("key: 'notifications'")
     const messages = source.indexOf("key: 'messages'")
+    const explore = source.indexOf("key: 'explore'")
 
     expect(home).toBeGreaterThan(-1)
-    expect(home).toBeLessThan(explore)
-    expect(explore).toBeLessThan(board)
+    expect(home).toBeLessThan(board)
     expect(board).toBeLessThan(notifications)
     expect(notifications).toBeLessThan(messages)
-    expect(source).toMatch(/items\.slice\(0, 4\)/)
+    expect(messages).toBeLessThan(explore)
+    expect(source).toMatch(/APP_NAV_FLOOR_KEYS = \['home', 'board', 'notifications', 'messages'\]/)
+    expect(source).not.toMatch(/isNew: true/)
   })
 
   it('exposes quote and word in overflow nav after bookmarks', () => {
