@@ -1,6 +1,7 @@
 <template>
   <div v-if="canSwitch && currentAccount" :class="compact ? 'pb-1' : 'border-b moh-border'">
     <button
+      ref="triggerRef"
       type="button"
       class="moh-tap moh-surface-hover moh-focus flex min-h-11 w-full items-center gap-2.5 px-3.5 py-2 text-left"
       :disabled="Boolean(switchingId)"
@@ -17,7 +18,7 @@
       </span>
       <Icon :name="switchingId ? 'tabler:loader-2' : 'tabler:chevron-down'" size="16" :class="switchingId ? 'animate-spin' : ''" aria-hidden="true" />
     </button>
-    <Menu :id="menuId" ref="menuRef" :model="menuItems" popup class="max-h-[60vh] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto" @show="menuOpen = true" @hide="menuOpen = false">
+    <Menu :id="menuId" ref="menuRef" :model="menuItems" popup append-to="body" :base-z-index="OVERLAY_LAYERS.nestedMenu" class="max-h-[60vh] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto" @show="menuOpen = true" @hide="menuOpen = false">
       <template #item="{ item, props: menuProps }">
         <a v-bind="menuProps.action" class="moh-tap flex min-h-11 items-center gap-2.5 px-3 py-2" :aria-label="accountActionLabel(item.account)">
       <AppUserAvatar
@@ -64,11 +65,17 @@
 <script setup lang="ts">
 import type { SwitchableAccount } from '~/types/api'
 import Menu from 'primevue/menu'
+import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 const formatBadge = (n: number) => (n > 99 ? '99+' : String(n))
 
 const { accounts, canSwitch, switchingId, refresh, switchTo } = useAccountSwitcher()
 const menuRef = ref<InstanceType<typeof Menu>>()
 const menuOpen = ref(false)
+const triggerRef = ref<HTMLButtonElement>()
+useOverlayDismiss(menuOpen, () => {
+  menuRef.value?.hide()
+  triggerRef.value?.focus()
+})
 const menuId = useId()
 const currentAccount = computed(() => accounts.value.find((account) => account.isCurrent))
 const menuItems = computed(() => accounts.value.map((account) => ({

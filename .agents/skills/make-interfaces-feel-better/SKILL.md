@@ -9,7 +9,8 @@ Use the [product and visual policy](../../../docs/engineering-policy.md#product-
 for hierarchy, tokens, and simplification decisions. Review only the relevant reference:
 
 - [Typography](typography.md): semantic roles, wrapping, and stable numbers.
-- [Surfaces](surfaces.md): separation, elevation, radii, and touch targets.
+- [Surfaces](surfaces.md): separation, elevation, radii, touch targets, and nested overlay stacking.
+  Always read this reference when changing a menu, dropdown, sheet, dialog, or popover.
 - [Animations](animations.md): Vue transitions and native SwiftUI feedback.
 - [Performance](performance.md): explicit properties and bounded animation work.
 

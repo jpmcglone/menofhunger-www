@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
+import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import Switcher from '~/components/app/AccountSwitcher.vue'
 
@@ -58,4 +59,44 @@ describe('collapsed account selector', () => {
     expect(wrapper.text()).not.toContain('My Page')
     wrapper.unmount()
   })
+})
+
+
+describe('real account popup stacking', () => {
+  it.each([OVERLAY_LAYERS.accountMenu, OVERLAY_LAYERS.bottomSheet])(
+    'portals above parent layer %i and keeps account options operable', async (parentLayer) => {
+      const parent = document.createElement('div')
+      parent.style.cssText = `position:fixed;z-index:${parentLayer};overflow:auto;isolation:isolate`
+      document.body.append(parent)
+      const wrapper = await mountSuspended(Switcher, {
+        attachTo: parent,
+        global: { stubs: { AppUserAvatar: true, AppAnimatedCount: true, Icon: true,
+          Menu: false, Transition: false } },
+      })
+      try {
+        await wrapper.get('button[aria-label="Switch account"]').trigger('click')
+        await vi.waitFor(() => {
+          const popup = document.querySelector<HTMLElement>('[data-pc-name="menu"]')
+          expect(popup).not.toBeNull()
+          expect(popup!.parentElement).toBe(document.body)
+          expect(Number(popup!.style.zIndex)).toBeGreaterThan(parentLayer)
+        })
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+        await vi.waitFor(() => expect(document.querySelector('[data-pc-name="menu"]')).toBeNull())
+        expect(document.activeElement).toBe(wrapper.get('button[aria-label="Switch account"]').element)
+        await wrapper.get('button[aria-label="Switch account"]').trigger('click')
+        await vi.waitFor(() => expect(document.querySelector('[data-pc-name="menu"]')).not.toBeNull())
+        const popup = document.querySelector<HTMLElement>('[data-pc-name="menu"]')!
+        expect(popup.textContent).toContain('My Page')
+        spies.switchTo.mockClear()
+        popup.querySelector<HTMLElement>('a[aria-label="Switch to My Page"]')!.click()
+        await nextTick()
+        expect(spies.switchTo).toHaveBeenCalledExactlyOnceWith('page')
+        await vi.waitFor(() => expect(document.querySelector('[data-pc-name="menu"]')).toBeNull())
+      } finally {
+        wrapper.unmount()
+        parent.remove()
+      }
+    },
+  )
 })

@@ -11,7 +11,7 @@
       <div
         v-if="visible"
         class="fixed inset-0 flex flex-col justify-end"
-        style="z-index: 10000; isolation: isolate;"
+        :style="{ zIndex: OVERLAY_LAYERS.bottomSheet, isolation: 'isolate' }"
         role="presentation"
       >
         <!-- Backdrop: covers app; tap to close -->
@@ -75,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 const props = withDefaults(
   defineProps<{
     modelValue: boolean

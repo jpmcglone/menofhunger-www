@@ -92,15 +92,16 @@
     <Teleport v-if="!hideMenu" to="body">
       <div
         v-if="menuOpen"
-        class="fixed inset-0 z-[9998]"
+        class="fixed inset-0"
+        :style="{ zIndex: OVERLAY_LAYERS.accountBackdrop }"
         aria-hidden="true"
         @click="closeMenu"
       />
       <div
         v-if="menuOpen"
         ref="menuEl"
-        class="fixed z-[9999] w-[min(18rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-xl border moh-border moh-surface shadow-lg"
-        :style="menuStyle"
+        class="fixed w-[min(18rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-xl border moh-border moh-surface shadow-lg"
+        :style="[menuStyle, { zIndex: OVERLAY_LAYERS.accountMenu }]"
         role="menu"
         aria-label="Account menu"
         @click.stop
@@ -156,6 +157,7 @@
 
 <script setup lang="ts">
 const { pending: pendingVerifications } = useAdminVerificationCount()
+import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 import type catalog from '~/design/icon-catalog.json'
 import type { MenuItem } from 'primevue/menuitem'
 import { getApiErrorMessage } from '~/utils/api-error'
