@@ -6,6 +6,7 @@
       <h1 class="moh-h1">Board</h1>
       <div class="flex items-center">
         <button
+          v-if="view !== 'activity'"
           v-tooltip.bottom="'Search'"
           type="button"
           class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-text-muted hover:text-[var(--moh-text)] moh-surface-hover transition-colors"
@@ -16,6 +17,7 @@
           <AppIconGlyph name="search" :size="20" :selected="searchOpen" />
         </button>
         <AppBoardFiltersBar
+          v-if="view !== 'activity'"
           icon-only
           :show-range="view === 'top'"
           :range="range"
@@ -47,7 +49,7 @@
       </div>
     </div>
 
-    <form v-if="searchOpen" class="moh-gutter-x pb-3" role="search" @submit.prevent="applySearch">
+    <form v-if="searchOpen && view !== 'activity'" class="moh-gutter-x pb-3" role="search" @submit.prevent="applySearch">
       <input
         ref="searchEl"
         v-model="searchDraft"
@@ -63,10 +65,10 @@
         :model-value="view"
         aria-label="Board view"
         :tabs="viewTabs"
-        @update:model-value="setView($event as 'new' | 'top' | 'comments')"
+        @update:model-value="setView($event as 'new' | 'top' | 'comments' | 'activity')"
       />
       <!-- Chips appear only while a filter is on; each one clears itself. -->
-      <div v-if="isFiltered && view !== 'comments'" class="flex flex-wrap items-center gap-2 moh-gutter-x pt-2 pb-2.5">
+      <div v-if="isFiltered && view !== 'comments' && view !== 'activity'" class="flex flex-wrap items-center gap-2 moh-gutter-x pt-2 pb-2.5">
         <AppFilterChip v-if="view === 'top' && range" :label="rangeLabel" @clear="setQuery({ range: undefined })" />
         <AppFilterChip
           v-if="scope !== 'all'"
@@ -91,7 +93,8 @@
       />
     </div>
 
-    <AppSubtleSectionLoader :loading="initialLoading" :refreshing="refreshing" min-height-class="min-h-[240px]">
+    <AppBoardActivity v-if="view === 'activity' && isAuthed" :key="user?.id" />
+    <AppSubtleSectionLoader v-else :loading="initialLoading" :refreshing="refreshing" min-height-class="min-h-[240px]">
       <template v-if="view === 'comments'">
         <TransitionGroup tag="div" name="moh-list" class="relative moh-divide">
           <article v-for="c in latestComments" :key="c.id" class="moh-gutter-x py-3">
@@ -162,19 +165,20 @@ const route = useRoute()
 const router = useRouter()
 const api = useBoardApi()
 const toast = useAppToast()
-const { isAuthed, isPremium, isVerifiedMember } = useAuth()
-const { markBoardNotificationsRead } = useNotifications()
+const { user, isAuthed, isPremium, isVerifiedMember } = useAuth()
+const { notificationNavUnread } = usePresence()
 const { requireMember } = useBoardAccess()
 const preview = useUserPreviewMultiTrigger()
 
-const viewTabs = [
+const viewTabs = computed(() => [
+  ...(isAuthed.value ? [{ key: 'activity', label: 'Activity' }] : []),
   { key: 'new', label: 'New' },
   { key: 'top', label: 'Top' },
   { key: 'comments', label: 'Comments' },
-]
+])
 
 const qs = (key: string) => (typeof route.query[key] === 'string' ? String(route.query[key]).trim() : '')
-const view = computed<'new' | 'top' | 'comments'>(() => (qs('view') === 'comments' ? 'comments' : qs('sort') === 'top' ? 'top' : 'new'))
+const view = computed<'new' | 'top' | 'comments' | 'activity'>(() => (qs('view') === 'activity' && isAuthed.value ? 'activity' : qs('view') === 'comments' ? 'comments' : qs('sort') === 'top' ? 'top' : 'new'))
 const range = computed<BoardRange | null>(() => {
   const r = qs('range')
   return (['day', 'week', 'month', 'year', 'all'] as const).includes(r as BoardRange) ? (r as BoardRange) : null
@@ -230,7 +234,8 @@ function setQuery(patch: Record<string, string | undefined>) {
   void router.replace({ path: '/b', query: next })
 }
 
-function setView(next: 'new' | 'top' | 'comments') {
+function setView(next: 'new' | 'top' | 'comments' | 'activity') {
+  if (next === 'activity') { setQuery({ view: 'activity' }); return }
   if (next === 'comments') setQuery({ view: 'comments', sort: undefined, range: undefined })
   else setQuery({ view: undefined, sort: next === 'top' ? 'top' : undefined, range: next === 'top' ? range.value ?? undefined : undefined })
 }
@@ -308,6 +313,7 @@ function listQuery(cursor: string | null) {
 }
 
 async function load(reset = true) {
+  if (view.value === 'activity') return
   const seq = ++loadSeq
   const kind = contentKind.value
   if (reset) loading.value = true
@@ -373,15 +379,21 @@ function showNewThreads() {
   void load(true)
 }
 
+function openEntryActivity() {
+  if (isAuthed.value && notificationNavUnread.value.board > 0 && Object.keys(route.query).length === 0) {
+    void router.replace({ path: '/b', query: { view: 'activity' } })
+  }
+}
+
 onMounted(() => {
   void load(true)
   addBoardCallback(boardCb)
   subscribeBoard()
-  if (isAuthed.value) void markBoardNotificationsRead()
+  openEntryActivity()
 })
 let activatedOnce = false
 onActivated(() => {
-  if (isAuthed.value) void markBoardNotificationsRead()
+  openEntryActivity()
   if (!activatedOnce) {
     activatedOnce = true
     return

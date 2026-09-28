@@ -39,13 +39,11 @@ describe('Board filters', () => {
   })
 })
 
-describe('visiting Board clears the nav dot', () => {
-  it('marks Board notifications read from the list page', () => {
+describe('visiting Board preserves unread activity', () => {
+  it('shows Activity without acknowledging notifications on mount', () => {
     const page = readFromRepo('pages/b/index.vue')
-    const notifications = readFromRepo('composables/useNotifications.ts')
-    expect(page).toContain('markBoardNotificationsRead()')
-    expect(notifications).toContain("filter: 'board'")
-    expect(notifications).toContain('boardUnreadCount: 0')
+    expect(page).not.toContain('markBoardNotificationsRead()')
+    expect(page).toContain('<AppBoardActivity')
   })
 })
 
