@@ -1,25 +1,27 @@
 <template>
-  <div v-if="canSwitch" :class="compact ? 'pb-1' : 'border-b border-gray-200 dark:border-zinc-700'">
-    <div
-      :class="compact
-        ? 'px-3.5 pt-2.5 pb-1 text-[11px] font-semibold moh-text-muted'
-        : 'px-5 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400'"
-    >
-      {{ compact ? 'Accounts' : 'Switch account' }}
-    </div>
+  <div v-if="canSwitch && currentAccount" :class="compact ? 'pb-1' : 'border-b moh-border'">
     <button
-      v-for="account in accounts"
-      :key="account.id"
       type="button"
-      class="moh-tap flex w-full items-center gap-2.5 moh-surface-hover moh-focus text-left"
-      :class="compact ? 'px-3.5 py-2' : 'px-5 py-2.5'"
+      class="moh-tap moh-surface-hover moh-focus flex min-h-11 w-full items-center gap-2.5 px-3.5 py-2 text-left"
       :disabled="Boolean(switchingId)"
-      :aria-current="account.isCurrent ? 'true' : undefined"
-      :aria-label="accountActionLabel(account)"
-      @click="onPick(account)"
+      aria-haspopup="menu"
+      :aria-expanded="menuOpen"
+      :aria-controls="menuId"
+      aria-label="Switch account"
+      @click="menuRef?.toggle($event)"
     >
+      <AppUserAvatar :user="currentAccount" size-class="h-8 w-8 shrink-0" :enable-preview="false" :show-status="false" />
+      <span class="min-w-0 flex-1">
+        <span class="block truncate text-sm font-semibold">{{ currentAccount.name || currentAccount.username || 'Account' }}</span>
+        <span v-if="currentAccount.username" class="moh-text-muted block truncate text-xs">@{{ currentAccount.username }}</span>
+      </span>
+      <Icon :name="switchingId ? 'tabler:loader-2' : 'tabler:chevron-down'" size="16" :class="switchingId ? 'animate-spin' : ''" aria-hidden="true" />
+    </button>
+    <Menu :id="menuId" ref="menuRef" :model="menuItems" popup class="max-h-[60vh] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto" @show="menuOpen = true" @hide="menuOpen = false">
+      <template #item="{ item, props: menuProps }">
+        <a v-bind="menuProps.action" class="moh-tap flex min-h-11 items-center gap-2.5 px-3 py-2" :aria-label="accountActionLabel(item.account)">
       <AppUserAvatar
-        :user="account"
+        :user="item.account"
         :size-class="compact ? 'h-7 w-7 shrink-0' : 'h-8 w-8 shrink-0'"
         :enable-preview="false"
         :show-status="false"
@@ -30,40 +32,49 @@
             class="truncate text-gray-900 dark:text-gray-50"
             :class="compact ? 'text-sm font-medium' : 'text-sm font-semibold'"
           >
-            {{ account.name || account.username || 'Account' }}
+            {{ item.account.name || item.account.username || 'Account' }}
           </div>
           <span
-            v-if="account.accountKind === 'person'"
+            v-if="item.account.accountKind === 'person'"
             class="shrink-0 rounded-full px-1.5 py-px text-[10px] font-semibold tracking-wide text-[var(--moh-brass)] bg-[rgba(var(--moh-brass-rgb),0.14)]"
           >Primary</span>
         </div>
-        <div v-if="account.username" class="text-xs text-gray-500 dark:text-gray-400 truncate">
-          @{{ account.username }}
+        <div v-if="item.account.username" class="text-xs text-gray-500 dark:text-gray-400 truncate">
+          @{{ item.account.username }}
         </div>
       </div>
       <span
-        v-if="account.unreadBadgeCount > 0 && !account.isCurrent"
+        v-if="item.account.unreadBadgeCount > 0 && !item.account.isCurrent"
         class="shrink-0 flex min-w-[1.125rem] h-[1.125rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white"
         aria-hidden="true"
-      ><AppAnimatedCount :value="account.unreadBadgeCount" :format="formatBadge" /></span>
+      ><AppAnimatedCount :value="item.account.unreadBadgeCount" :format="formatBadge" /></span>
       <Icon
-        v-else-if="account.isCurrent"
+        v-else-if="item.account.isCurrent"
         name="tabler:check"
         size="16"
         class="shrink-0 text-gray-900 dark:text-gray-50"
         aria-hidden="true"
       />
-    </button>
+
+        </a>
+      </template>
+    </Menu>
   </div>
 </template>
-
 <script setup lang="ts">
 import type { SwitchableAccount } from '~/types/api'
-import { isOwnUserProfilePath } from '~/config/routes'
+import Menu from 'primevue/menu'
 const formatBadge = (n: number) => (n > 99 ? '99+' : String(n))
 
 const { accounts, canSwitch, switchingId, refresh, switchTo } = useAccountSwitcher()
-const route = useRoute()
+const menuRef = ref<InstanceType<typeof Menu>>()
+const menuOpen = ref(false)
+const menuId = useId()
+const currentAccount = computed(() => accounts.value.find((account) => account.isCurrent))
+const menuItems = computed(() => accounts.value.map((account) => ({
+  label: accountActionLabel(account), account, disabled: Boolean(switchingId.value),
+  command: () => onPick(account),
+})))
 const emit = defineEmits<{ close: [] }>()
 
 const props = withDefaults(
@@ -92,23 +103,13 @@ function accountLabel(account: SwitchableAccount): string {
 }
 
 function accountActionLabel(account: SwitchableAccount): string {
-  if (account.isCurrent) return `View ${accountLabel(account)} profile`
+  if (account.isCurrent) return `${accountLabel(account)}, current account`
   return `Switch to ${accountLabel(account)}`
 }
 
 function onPick(account: SwitchableAccount) {
-  emit('close')
-  if (account.isCurrent) {
-    openOwnProfileIfNeeded(account.username)
-    return
-  }
+  menuRef.value?.hide()
+  if (account.isCurrent || switchingId.value) return
   void switchTo(account.id)
-}
-
-function openOwnProfileIfNeeded(username: string | null | undefined) {
-  const handle = username?.trim()
-  if (!handle) return
-  if (isOwnUserProfilePath(route.path, handle)) return
-  void navigateTo(`/u/${encodeURIComponent(handle)}`)
 }
 </script>
