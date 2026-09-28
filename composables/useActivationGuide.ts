@@ -1,8 +1,8 @@
-import type { ActivationDto } from '~/types/api'
+import type { ActivationCompletionDto, ActivationDto } from '~/types/api'
 import type { FollowsCallback, PostsCallback, UsersCallback } from '~/composables/usePresence'
 import { WELCOME_PROGRESS_EVENT } from '~/utils/welcome-progress'
 
-/** Progress comes from committed API state; local storage only controls presentation. */
+/** Progress comes from committed API state; local storage only controls guide dismissal. */
 export function useActivationGuide() {
   const { user, isVerified } = useAuth()
   const { apiFetchData } = useApiClient()
@@ -23,6 +23,7 @@ export function useActivationGuide() {
   let viewedKey = ''
   let syncing = false
   let queued = false
+  let claiming = false
 
   function restore() {
     generation++
@@ -60,6 +61,24 @@ export function useActivationGuide() {
       if (queued && alive) { queued = false; void sync() }
     }
   }
+  async function claimCompletion(): Promise<boolean> {
+    if (!alive || claiming || dismissed.value || phase.value !== 'approved'
+      || completedCount.value !== 3 || progress.value?.completionSeen !== false) return false
+    claiming = true
+    const version = generation
+    const owner = user.value?.id
+    try {
+      const result = await apiFetchData<ActivationCompletionDto>('/users/me/activation/completion', { method: 'POST' })
+      if (!alive || generation !== version || user.value?.id !== owner || dismissed.value) return false
+      if (progress.value) progress.value = { ...progress.value, completionSeen: true }
+      return result.present === true
+    } catch {
+      // Never flash completion after a failed or ambiguous claim; retry on a later sync.
+      return false
+    } finally {
+      claiming = false
+    }
+  }
   const users: UsersCallback = { onMeUpdated: () => { void sync() } }
   const follows: FollowsCallback = { onChanged: p => { if (p.actorUserId === user.value?.id) void sync() } }
   const posts: PostsCallback = {
@@ -91,5 +110,5 @@ export function useActivationGuide() {
     presence.removeFollowsCallback(follows)
     presence.removePostsCallback(posts)
   })
-  return { progress, phase, dismissed, completedCount, syncError, sync, dismiss, track }
+  return { progress, phase, dismissed, completedCount, syncError, sync, dismiss, track, claimCompletion }
 }

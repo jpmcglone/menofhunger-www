@@ -10,7 +10,7 @@ mockNuxtImport('useActivationGuide', () => () => state.guide)
 mockNuxtImport('useAuth', () => () => ({ user: state.user }))
 mockNuxtImport('useFirstRunFlow', () => () => ({ addPhoto: state.addPhoto, step: ref('none') }))
 mockNuxtImport('useReplyModal', () => () => state.reply)
-const pending = { phase: 'before_approval', verificationRequested: true, verificationPending: true, followed: false, contributed: false, replied: false, returned: false }
+const pending = { completionSeen: false, phase: 'before_approval', verificationRequested: true, verificationPending: true, followed: false, contributed: false, replied: false, returned: false }
 let progress: Ref<typeof pending>
 let phase: Ref<string>
 const cleanups: Array<() => void> = []
@@ -22,6 +22,7 @@ beforeEach(() => {
   const dismissed = ref(false)
   state.guide = {
     progress, phase, dismissed, syncError: ref(false), sync: vi.fn(), dismiss: vi.fn(() => { dismissed.value = true }), track: vi.fn(),
+    claimCompletion: vi.fn(async () => { progress.value = { ...progress.value, completionSeen: true }; return true }),
     completedCount: computed(() => phase.value === 'approved' ? Number(progress.value.contributed) + Number(progress.value.replied) + Number(progress.value.returned) : Number(progress.value.verificationRequested) + Number(progress.value.followed)),
   }
 })
@@ -56,11 +57,13 @@ it('opens verification and people in place without a route link', async () => {
   expect(view.get('[role="dialog"]').text()).toContain('People list')
 })
 it('waits for confirmed completion and an open action to close, then celebrates only once', async () => {
+  phase.value = 'approved'
+  progress.value = { ...pending, phase: 'approved', contributed: true, replied: true }
   const view = await render()
-  await view.findAll('button').find(b => b.text() === 'Find people')!.trigger('click')
-  progress.value.followed = true
+  await view.findAll('button').find(b => b.text() === 'Find a conversation')!.trigger('click')
+  progress.value = { ...pending, phase: 'approved', contributed: true, replied: true, returned: true }
   await nextTick()
-  expect(view.get('[role="dialog"]').text()).toContain('People list')
+  expect(view.get('[role="dialog"]').text()).toContain('Conversation list')
   await view.findAll('button').find(b => b.text() === 'Close')!.trigger('click')
   await flushPromises()
   expect(view.get('[role="dialog"]').text()).toContain('Good work. You’re all set.')
@@ -83,7 +86,8 @@ it('keeps return-on-another-day server owned and opens replies in place', async 
 it('defers celebration while the main composer is open', async () => {
   const composerOpen = ref(true)
   const view = await render(composerOpen)
-  progress.value.followed = true
+  phase.value = 'approved'
+  progress.value = { ...pending, phase: 'approved', contributed: true, replied: true, returned: true }
   await nextTick()
   expect(view.find('[role="dialog"]').exists()).toBe(false)
   composerOpen.value = false
@@ -93,7 +97,8 @@ it('defers celebration while the main composer is open', async () => {
 
 it.each(['Back to feed', 'Close'])('dismisses the completed guide when celebration closes with %s', async (label) => {
   const view = await render()
-  progress.value.followed = true
+  phase.value = 'approved'
+  progress.value = { ...pending, phase: 'approved', contributed: true, replied: true, returned: true }
   await flushPromises()
   const dialog = view.get('[role="dialog"]')
   await dialog.findAll('button').find(button => button.text() === label)!.trigger('click')
@@ -101,4 +106,42 @@ it.each(['Back to feed', 'Close'])('dismisses the completed guide when celebrati
   expect(view.find('[role="dialog"]').exists()).toBe(false)
   expect(view.find('[aria-label="Getting started"]').exists()).toBe(false)
   expect((state.guide as { dismiss: ReturnType<typeof vi.fn> }).dismiss).toHaveBeenCalledTimes(1)
+})
+
+
+it('does not celebrate the before-approval checklist', async () => {
+  const view = await render()
+  progress.value = { ...pending, followed: true }
+  await flushPromises()
+  expect(view.find('[role="dialog"]').exists()).toBe(false)
+  expect((state.guide as { claimCompletion: ReturnType<typeof vi.fn> }).claimCompletion).not.toHaveBeenCalled()
+})
+it('does not flash completion when another device already claimed it', async () => {
+  const view = await render()
+  const claim = (state.guide as { claimCompletion: ReturnType<typeof vi.fn> }).claimCompletion
+  claim.mockResolvedValue(false)
+  phase.value = 'approved'
+  progress.value = { ...pending, phase: 'approved', contributed: true, replied: true, returned: true }
+  await flushPromises()
+  expect(claim).toHaveBeenCalledTimes(1)
+  expect(view.find('[role="dialog"]').exists()).toBe(false)
+})
+
+it('drops an old account claim and lets the newly selected account celebrate', async () => {
+  const view = await render()
+  const claim = (state.guide as { claimCompletion: ReturnType<typeof vi.fn> }).claimCompletion
+  let resolve!: (value: boolean) => void
+  claim.mockImplementationOnce(() => new Promise<boolean>(done => { resolve = done }))
+  phase.value = 'approved'
+  progress.value = { ...pending, phase: 'approved', contributed: true, replied: true, returned: true }
+  await flushPromises()
+  expect(claim).toHaveBeenCalledTimes(1)
+  ;(state.user as Ref<{ id: string }>).value = { id: 'two' }
+  progress.value = { ...progress.value, completionSeen: false }
+  await flushPromises()
+  expect(view.find('[role="dialog"]').exists()).toBe(false)
+  resolve(false)
+  await flushPromises()
+  expect(claim).toHaveBeenCalledTimes(2)
+  expect(view.get('[role="dialog"]').text()).toContain('Good work. You’re all set.')
 })

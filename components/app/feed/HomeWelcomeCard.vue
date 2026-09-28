@@ -39,7 +39,7 @@ const { addPhoto, step: profileStep } = useFirstRunFlow()
 const composerOpen = inject(MOH_COMPOSER_OPEN_KEY, ref(false))
 const props = defineProps<{ showCheckinCta?: boolean; checkinPrompt?: string; hasPosted?: boolean }>()
 const emit = defineEmits<{ 'check-in': []; compose: [] }>()
-const { progress, phase, dismissed, completedCount, syncError, sync, dismiss, track } = useActivationGuide()
+const { progress, phase, dismissed, completedCount, syncError, sync, dismiss, track, claimCompletion } = useActivationGuide()
 const approved = computed(() => phase.value === 'approved')
 watch(() => props.hasPosted, () => { void sync() })
 const heading = computed(() => !approved.value ? progress.value?.verificationPending ? 'Your request is in.' : 'You’re in. Take a look around.'
@@ -62,8 +62,9 @@ const { user } = useAuth()
 const replyModal = useReplyModal()
 const active = ref<string | null>(null)
 const complete = computed(() => Boolean(progress.value) && completedCount.value === (approved.value ? 3 : 2))
-const celebrationKey = computed(() => `moh.activation.celebrated.v1.${user.value?.id}.${phase.value}`)
-const celebrated = ref(false)
+const celebrationOwner = computed(() => `${user.value?.id}.${phase.value}`)
+let claimingCompletion = false
+let alive = true
 const modalOpen = computed({ get: () => active.value !== null, set: (open) => { if (!open) { if (active.value === 'complete') finishGuide(); else active.value = null } } })
 const modalTitle = computed(() => ({ verification: 'Verification', people: 'Find your people', conversations: 'Find a conversation', complete: 'Good work. You’re all set.' })[active.value ?? ''] ?? '')
 function finishGuide() {
@@ -80,23 +81,27 @@ async function reply(post: FeedPost) {
   await nextTick()
   replyModal.show(post)
 }
-function restoreCelebration() {
-  active.value = null
-  try { celebrated.value = localStorage.getItem(celebrationKey.value) === '1' } catch { celebrated.value = false }
+function canCelebrate() {
+  return approved.value && complete.value && !dismissed.value && !active.value
+    && !replyModal.open.value && !composerOpen.value && profileStep.value === 'none'
 }
-function celebrate() {
-  if (!complete.value || dismissed.value || celebrated.value || active.value || replyModal.open.value || composerOpen.value || profileStep.value !== 'none') return
-  try { if (localStorage.getItem(celebrationKey.value) === '1') { celebrated.value = true; return } } catch { /* Storage is optional. */ }
-  celebrated.value = true
-  try { localStorage.setItem(celebrationKey.value, '1') } catch { /* Retain for this session. */ }
-  active.value = 'complete'
+async function celebrate() {
+  if (!canCelebrate() || claimingCompletion || progress.value?.completionSeen !== false) return
+  claimingCompletion = true
+  const owner = celebrationOwner.value
+  try {
+    const present = await claimCompletion()
+    if (present && alive && owner === celebrationOwner.value && canCelebrate()) active.value = 'complete'
+  } finally {
+    claimingCompletion = false
+    if (alive && owner !== celebrationOwner.value) void celebrate()
+  }
 }
-onMounted(() => { restoreCelebration(); celebrate() })
-watch(celebrationKey, restoreCelebration)
-watch([complete, active, dismissed, replyModal.open, composerOpen, profileStep], celebrate, { flush: 'post' })
+watch(celebrationOwner, () => { active.value = null })
+watch([progress, complete, active, dismissed, replyModal.open, composerOpen, profileStep], celebrate, { flush: 'post' })
 watch(active, (value, previous) => { if (!value && previous) void sync() })
 const unregisterReply = replyModal.registerOnReplyPosted(() => { void sync() })
-onBeforeUnmount(unregisterReply)
+onBeforeUnmount(() => { alive = false; unregisterReply() })
 </script>
 
 <style scoped>
