@@ -264,28 +264,10 @@ const {
 } = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
-const stickyHighlightedItemKeys = ref<Set<string>>(new Set())
+const visitHighlights = useNotificationVisitHighlights(notifications)
+const stickyHighlightedItemKeys = visitHighlights.keys
+visitHighlights.begin()
 
-// When a post is viewed elsewhere, applyClearedPostIds sets readAt — drop sticky highlight.
-watch(
-  notifications,
-  (list) => {
-    const next = new Set(stickyHighlightedItemKeys.value)
-    let changed = false
-    for (const item of list) {
-      if (item.type === 'single' && item.notification.readAt) {
-        const key = itemKey(item)
-        if (next.delete(key)) changed = true
-      }
-      if (item.type === 'group' && item.group.readAt) {
-        const key = itemKey(item)
-        if (next.delete(key)) changed = true
-      }
-    }
-    if (changed) stickyHighlightedItemKeys.value = next
-  },
-  { deep: true },
-)
 const showInitialLoader = computed(() => !hasFetched.value && !fetchError.value && notifications.value.length === 0)
 
 function chipHasUnseenNotifications(kind: NotificationKind | 'other' | 'board' | null): boolean {
@@ -310,26 +292,6 @@ function itemKey(item: (typeof notifications.value)[number]): string {
   if (item.type === 'single') return `single:${item.notification.id}`
   if (item.type === 'group') return `group:${item.group.id}`
   return `rollup:${item.rollup.id}`
-}
-
-function itemDeliveredAt(item: (typeof notifications.value)[number]): string | null {
-  if (item.type === 'single') return item.notification.deliveredAt
-  if (item.type === 'group') return item.group.deliveredAt
-  return item.rollup.deliveredAt
-}
-
-function pinEntryHighlights(count: number) {
-  const targetCount = Math.max(0, Math.floor(count))
-  if (targetCount === 0) return
-
-  const undelivered = notifications.value.filter(item => !itemDeliveredAt(item))
-  const delivered = notifications.value.filter(item => itemDeliveredAt(item))
-  const next = new Set(stickyHighlightedItemKeys.value)
-  const candidates = [...undelivered, ...delivered].filter(item => !next.has(itemKey(item)))
-  for (const item of candidates.slice(0, targetCount)) {
-    next.add(itemKey(item))
-  }
-  stickyHighlightedItemKeys.value = next
 }
 
 // Only show the "Nudge back" action on the newest nudge row/group per actor.
@@ -445,7 +407,7 @@ async function onMarkAllRead() {
   try {
     await markAllRead()
     clearUnreadKind('all')
-    stickyHighlightedItemKeys.value = new Set()
+    visitHighlights.clear()
     const now = new Date().toISOString()
     notifications.value = notifications.value.map((item) => {
       if (item.type === 'single') {
@@ -496,7 +458,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 /**
  * Optimistically mark a feed item as read+seen in local state and on the server.
  * Used when the user opens a notification (including new-tab opens) so the row
- * stops showing as unread immediately, instead of waiting for the destination
+ * updates read counts immediately, instead of waiting for the destination
  * page to fire markReadBySubject + the websocket to round-trip.
  *
  * Groups/rollups carry a representative id; markReadById on that id won't clear
@@ -505,10 +467,6 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
  * page's `markReadBySubject` will then clear the rest server-side.
  */
 function markItemReadOptimistic(item: (typeof notifications.value)[number]) {
-  const nextHighlights = new Set(stickyHighlightedItemKeys.value)
-  nextHighlights.delete(itemKey(item))
-  stickyHighlightedItemKeys.value = nextHighlights
-
   const now = new Date().toISOString()
   let id: string | null = null
   let unreadKind: NotificationKind | null = null
@@ -624,7 +582,6 @@ function syncNotificationsOnEntry() {
       await fetchList({ forceRefresh: true })
       notificationsTabReturnGate.markSuccess()
     }
-    pinEntryHighlights(badgeCountAtEntry)
     markDeliveredInBackground(true)
   })().finally(() => {
     entrySyncPromise = null
@@ -637,7 +594,16 @@ onMounted(() => {
 })
 
 onActivated(() => {
+  visitHighlights.begin()
   void syncNotificationsOnEntry()
+})
+
+onDeactivated(() => visitHighlights.end())
+onBeforeUnmount(() => visitHighlights.end())
+const { user: notificationViewer } = useAuth()
+watch(() => notificationViewer.value?.id, () => {
+  visitHighlights.end()
+  if (route.path === '/notifications') visitHighlights.begin()
 })
 
 watch(() => route.query.kind, async () => {
@@ -663,9 +629,7 @@ watch(notificationUndeliveredCount, (newVal, oldVal) => {
     // a hard refresh. Only treat arrivals as seen while this route is open.
     if (route.path !== '/notifications') return
     if (import.meta.client && document.visibilityState !== 'visible') return
-    const addedCount = newVal - oldVal
     void fetchList({ forceRefresh: true }).then(() => {
-      pinEntryHighlights(addedCount)
       markDeliveredInBackground(true)
     })
   }
