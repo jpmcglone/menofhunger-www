@@ -97,6 +97,7 @@
 
     <!-- Published articles feed -->
     <div v-if="tabActivated.published" v-show="activeTab === 'published'" role="tabpanel">
+      <AppArticlesActivity v-if="isAuthed" />
       <AppSubtleSectionLoader :loading="publishedInitialLoading" :refreshing="publishedFeed.loading.value && !publishedInitialLoading" min-height-class="min-h-[220px]">
         <div v-if="publishedFeed.error.value" class="py-12 text-center">
           <p class="moh-body">Couldn't load articles.</p>
