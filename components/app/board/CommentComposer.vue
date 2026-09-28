@@ -1,7 +1,7 @@
 <template>
   <form class="flex items-start gap-2.5" @submit.prevent="submit">
     <AppUserAvatar v-if="showAvatar && user" :user="user" size-class="h-7 w-7" :enable-preview="false" :show-status="false" />
-    <div class="min-w-0 flex-1">
+    <div class="relative min-w-0 flex-1">
       <textarea
         ref="inputEl"
         v-model="body"
@@ -12,9 +12,9 @@
         :aria-label="placeholder"
         @focus="onFocus"
         @input="autosize"
-        @keydown.meta.enter.prevent="submit"
-        @keydown.ctrl.enter.prevent="submit"
+        @keydown.capture="onKeydown"
       />
+      <AppMentionAutocompletePopover v-bind="mention.popoverProps" @select="mention.onSelect" @highlight="mention.onHighlight" @request-close="mention.onRequestClose" />
       <p v-if="error" class="mt-1 text-xs text-red-500">{{ error }}</p>
       <div v-if="body.trim() || autofocus" class="mt-2 flex items-center justify-end gap-2">
         <button v-if="cancellable" type="button" class="moh-tap px-3 text-sm moh-text-muted hover:text-[var(--moh-text)]" @click="emit('cancel')">Cancel</button>
@@ -51,6 +51,20 @@ const submitting = ref(false)
 const error = ref<string | null>(null)
 const inputEl = ref<HTMLTextAreaElement | null>(null)
 const maxLength = computed(() => (isPremium.value ? 1000 : 500))
+
+const mention = useMentionAutocomplete({
+  el: inputEl,
+  getText: () => body.value,
+  setText: (text) => { body.value = text; nextTick(autosize) },
+})
+
+function onKeydown(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    void submit()
+  }
+}
 
 function autosize() {
   const el = inputEl.value

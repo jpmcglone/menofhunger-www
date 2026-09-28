@@ -65,7 +65,7 @@
     </div>
 
     <template v-if="thread.viewerCanAccess">
-      <p v-if="thread.body" class="mt-2.5 whitespace-pre-wrap break-words text-[15px] leading-relaxed moh-text">{{ thread.body }}</p>
+      <AppPostRowBody v-if="thread.body" :body="thread.body" :mentions="thread.mentions" :has-media="true" :visibility="thread.visibility" class="mt-2.5 text-[15px] leading-relaxed" />
       <AppPostMediaGrid v-if="thread.image?.url && !thread.articleId" :media="[thread.image]" :post-id="thread.id" direct />
       <!-- Same embeds as post rows (Spotify, YouTube, X, sites…); the post's link wins over body links. -->
       <AppPostRowLinkPreview
@@ -123,7 +123,7 @@
       <form v-if="editing" class="mt-4 space-y-3 rounded-xl border moh-border p-3" @submit.prevent="saveEdit">
         <input v-model="editTitle" maxlength="80" class="w-full rounded-lg border moh-border bg-transparent px-3 py-2 text-sm moh-text outline-none" aria-label="Title">
         <input v-if="!thread.articleId" v-model="editUrl" type="url" placeholder="https://… (optional)" class="w-full rounded-lg border moh-border bg-transparent px-3 py-2 text-sm moh-text outline-none" aria-label="Link">
-        <textarea v-model="editBody" rows="4" class="w-full rounded-lg border moh-border bg-transparent px-3 py-2 text-sm moh-text outline-none" aria-label="Text" />
+        <AppArticleCommentTextarea v-model="editBody" placeholder="Text" @submit="saveEdit" />
         <p v-if="editError" class="text-xs text-red-500">{{ editError }}</p>
         <div class="flex justify-end gap-2">
           <button type="button" class="moh-tap px-3 text-sm moh-text-muted" @click="editing = false">Cancel</button>

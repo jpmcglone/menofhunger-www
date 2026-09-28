@@ -58,7 +58,7 @@
         </div>
 
         <template v-if="!collapsed">
-          <p v-if="!comment.deleted" class="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed moh-text">{{ comment.body }}</p>
+          <AppPostRowBody v-if="!comment.deleted" :body="comment.body" :mentions="comment.mentions" :has-media="true" class="mt-1 text-sm leading-relaxed" />
           <AppPostRowLinkPreview
             v-if="hasLink"
             :post-id="comment.id"

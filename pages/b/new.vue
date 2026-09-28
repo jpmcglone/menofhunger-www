@@ -65,12 +65,12 @@
 
         <label class="block">
           <span class="mb-1.5 block text-sm font-medium moh-text-muted">Text <span class="moh-text-soft">(optional if you add a link)</span></span>
-          <textarea
+          <AppArticleCommentTextarea
             v-model="body"
-            rows="5"
             :maxlength="bodyMax"
             placeholder="Add context, or ask your question"
-            class="w-full rounded-xl border moh-border bg-transparent px-3 py-2.5 text-[15px] moh-text outline-none focus:border-[var(--moh-text-muted)]"
+            hide-count
+            @submit="submit"
           />
           <span class="mt-1 block text-right text-xs moh-text-soft tabular-nums">{{ body.length }} / {{ bodyMax }}</span>
         </label>
