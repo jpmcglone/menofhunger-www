@@ -87,7 +87,7 @@
       </NuxtLink>
       <a
         v-if="pickaxUrl"
-        v-tooltip.bottom="'Also on Pickax — opens in a new tab'"
+        v-tooltip.bottom="tinyTooltip('Also on Pickax')"
         :href="pickaxUrl"
         target="_blank"
         rel="noopener nofollow"

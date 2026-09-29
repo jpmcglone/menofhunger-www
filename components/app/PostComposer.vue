@@ -1612,8 +1612,16 @@ const previewPost = computed<FeedPost | null>(() => {
     communityGroupId: effectiveGroupId.value,
     author,
   })
-  // Drop the pending markers: this is a preview, not an in-flight post.
-  return { ...built, _localId: undefined, _pending: null, _pendingError: null }
+  // Drop the pending markers (this is a preview, not an in-flight post) and show the view
+  // counters a real post starts with, so the row looks complete.
+  return {
+    ...built,
+    _localId: undefined,
+    _pending: null,
+    _pendingError: null,
+    viewerCount: 1,
+    totalViewCount: 1,
+  }
 })
 
 /** Null hides the destinations section. Scheduled posts show it disabled: the API never cross-posts them. */

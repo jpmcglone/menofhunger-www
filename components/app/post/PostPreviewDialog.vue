@@ -11,9 +11,10 @@
       <span class="text-lg font-bold text-[var(--moh-text)]">{{ scheduledLabel ? 'Schedule post' : 'Ready to post?' }}</span>
     </template>
 
-    <!-- The real post row, exactly as it will publish. Inert: no taps, no view tracking. -->
+    <!-- The real post row, exactly as it will publish. Inert except the images, which open
+         full screen so the author can check them. -->
     <div class="overflow-hidden rounded-2xl border moh-border bg-[var(--moh-surface-hover)]">
-      <div class="pointer-events-none select-none [--moh-gutter-x:0.875rem]" aria-hidden="true">
+      <div class="pointer-events-none select-none [--moh-gutter-x:0.875rem] [&_[data-media-open]]:pointer-events-auto">
         <AppPostRow
           v-if="post"
           :post="post"

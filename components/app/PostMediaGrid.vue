@@ -96,6 +96,7 @@
     >
       <button
         type="button"
+        data-media-open
         class="absolute inset-0 m-0 block h-full w-full cursor-zoom-in select-none border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
         aria-label="View image"
         @click.stop="openAt($event, 0)"
@@ -169,6 +170,7 @@
           <button
             v-if="m.url && interactive"
             type="button"
+            data-media-open
             class="relative m-0 block min-h-0 min-w-0 cursor-zoom-in overflow-hidden border-0 moh-surface p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20"
             :class="itemClass(idx)"
             :aria-label="m.kind === 'video' ? `View video ${idx + 1} of ${items.length}` : `View image ${idx + 1} of ${items.length}`"

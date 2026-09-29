@@ -113,7 +113,7 @@
           <time v-if="article.editedAt" :datetime="article.editedAt" class="text-xs moh-text-soft">· Edited {{ editedLabel }}</time>
           <a
             v-if="article.pickaxUrl"
-            v-tooltip.bottom="'Also on Pickax — opens in a new tab'"
+            v-tooltip.bottom="tinyTooltip('Also on Pickax')"
             :href="article.pickaxUrl"
             target="_blank"
             rel="noopener nofollow"
