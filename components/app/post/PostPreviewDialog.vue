@@ -31,22 +31,19 @@
     </p>
 
     <div v-if="pickax" class="mt-4">
-      <p class="mb-2 text-[11px] font-semibold tracking-wide moh-text-muted">ALSO POST TO</p>
-      <div
-        class="flex items-center gap-3 rounded-xl border p-3 transition-colors"
-        :class="pickax.disabled ? 'moh-border opacity-60' : pickaxOn ? 'border-sky-400/80' : 'moh-border'"
-      >
+      <p class="mb-1 text-[11px] font-semibold tracking-wide moh-text-muted">ALSO POST TO</p>
+      <div class="flex min-h-11 items-center gap-3 py-2" :class="pickax.disabled ? 'opacity-50' : ''">
         <img
           src="/images/brands/pickax.png"
           alt=""
-          width="28"
-          height="28"
-          class="h-7 w-7 rounded-md"
-          :class="pickaxOn && !pickax.disabled ? '' : 'opacity-40 grayscale'"
+          width="22"
+          height="22"
+          class="h-[22px] w-[22px] shrink-0 rounded-md"
+          :class="pickaxOn && !pickax.disabled ? '' : 'opacity-50 grayscale'"
         >
-        <label for="post-preview-pickax" class="min-w-0 flex-1 cursor-pointer">
-          <span class="block text-sm font-semibold moh-text">Pickax</span>
-          <span class="block text-xs moh-text-muted">{{ pickax.disabled ? pickax.note : pickaxOn ? 'Posting a copy with a link back to your profile' : 'Not posting to Pickax' }}</span>
+        <label for="post-preview-pickax" class="flex-1 cursor-pointer">
+          <span class="block text-sm font-semibold moh-text">Also post to Pickax</span>
+          <span class="block text-xs moh-text-muted">{{ pickax.disabled ? pickax.note : 'Publishes a copy with a link back to your profile.' }}</span>
         </label>
         <ToggleSwitch v-model="pickaxOn" input-id="post-preview-pickax" :disabled="pickax.disabled" />
       </div>
