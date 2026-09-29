@@ -23,16 +23,36 @@
         </label>
         <ToggleSwitch v-model="shareToFeed" input-id="article-board-to-feed" :disabled="!postToBoard" />
       </div>
-      <div v-if="pickaxAvailable" class="flex min-h-11 items-center justify-between gap-3 py-2">
-        <label for="article-cross-post-pickax" class="flex-1 cursor-pointer">
-          <span class="block text-sm font-semibold moh-text">Also post to Pickax</span>
-          <span class="block text-xs moh-text-muted">Publishes a copy with a link back to your profile. Later edits update it.</span>
-        </label>
-        <ToggleSwitch v-model="crossPostToPickax" input-id="article-cross-post-pickax" />
-      </div>
     </div>
 
-    <div class="mt-5 flex justify-end gap-2">
+    <div class="mt-5 flex items-center gap-2">
+      <button
+        v-if="pickaxAvailable"
+        v-tooltip.top="crossPostToPickax ? 'Also posting to Pickax. Click to keep this on Men of Hunger only.' : 'Not posting to Pickax. Click to also post there.'"
+        type="button"
+        class="moh-focus moh-tap relative mr-auto inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors"
+        :class="crossPostToPickax ? 'ring-1 ring-sky-400/80' : ''"
+        :aria-pressed="crossPostToPickax"
+        :aria-label="crossPostToPickax ? 'Also posting to Pickax' : 'Not posting to Pickax'"
+        @click="crossPostToPickax = !crossPostToPickax"
+      >
+        <span class="relative inline-flex h-6 w-6">
+          <img
+            src="/images/brands/pickax.png"
+            alt=""
+            width="24"
+            height="24"
+            class="h-6 w-6 rounded-md transition"
+            :class="crossPostToPickax ? '' : 'opacity-40 grayscale'"
+          >
+          <span
+            v-if="!crossPostToPickax"
+            aria-hidden="true"
+            class="absolute left-1/2 top-1/2 h-[2px] w-[30px] -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-[var(--moh-text)]"
+          />
+        </span>
+      </button>
+      <span v-else class="mr-auto" />
       <button type="button" class="moh-tap min-h-11 px-4 text-sm moh-text-muted hover:text-[var(--moh-text)]" @click="emit('close')">Cancel</button>
       <AppActionButton label="Publish" kind="brand" :loading="publishing" @click="emit('confirm', { postToBoard, shareToFeed, crossPostToPickax: pickaxAvailable && crossPostToPickax })" />
     </div>

@@ -50,14 +50,40 @@
           <h1 class="text-3xl font-bold leading-snug text-[var(--moh-text)] sm:text-4xl">
             {{ article.title }}
           </h1>
-          <NuxtLink
-            v-if="viewerIsAuthor"
-            :to="`/articles/edit/${article.id}`"
-            class="mt-1.5 flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border moh-border px-3 py-1 text-xs font-medium moh-text-muted hover:border-[var(--moh-text-muted)] hover:text-[var(--moh-text)] transition-colors"
+          <div v-if="viewerIsAuthor" class="mt-1.5 flex flex-shrink-0 items-center gap-2">
+            <NuxtLink
+              :to="`/articles/edit/${article.id}`"
+              class="inline-flex items-center gap-1.5 rounded-full border moh-border px-3 py-1 text-xs font-medium moh-text-muted hover:border-[var(--moh-text-muted)] hover:text-[var(--moh-text)] transition-colors"
+            >
+              <AppIconGlyph name="write" :size="16" />
+              Edit
+            </NuxtLink>
+            <button
+              type="button"
+              class="inline-flex items-center rounded-full border border-red-500/60 px-3 py-1 text-xs font-medium text-red-500 transition-colors hover:bg-red-500/10"
+              @click="confirmingArticleDelete = true"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+
+        <div
+          v-if="viewerIsAuthor && confirmingArticleDelete"
+          class="mt-3 flex items-center gap-3 rounded-xl bg-[var(--moh-surface-hover)] px-3 py-2"
+          role="alertdialog"
+          aria-label="Delete this article?"
+        >
+          <span class="flex-1 text-sm text-[var(--moh-text)]">Delete this article? This cannot be undone.</span>
+          <button
+            type="button"
+            class="rounded-full bg-red-600 px-3.5 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+            :disabled="deletingArticle"
+            @click="deleteArticle"
           >
-            <AppIconGlyph name="write" :size="16" />
-            Edit
-          </NuxtLink>
+            {{ deletingArticle ? 'Deleting…' : 'Delete' }}
+          </button>
+          <button type="button" class="text-xs font-medium moh-text-muted" :disabled="deletingArticle" @click="confirmingArticleDelete = false">Cancel</button>
         </div>
 
         <!-- Meta: author, date, read time -->
@@ -911,6 +937,20 @@ function scrollToComments() {
 
 // Share menu — using the same PrimeVue Menu popup pattern as PostRowShareMenu
 const toast = useAppToast()
+const confirmingArticleDelete = ref(false)
+const deletingArticle = ref(false)
+async function deleteArticle() {
+  if (deletingArticle.value) return
+  deletingArticle.value = true
+  try {
+    await apiFetchData(`/articles/${id.value}`, { method: 'DELETE' })
+    toast.push({ title: 'Article deleted', tone: 'success' })
+    await navigateTo('/articles')
+  } catch (e: any) {
+    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not delete the article.', tone: 'error', durationMs: 3000 })
+    deletingArticle.value = false
+  }
+}
 const sharing = ref(false)
 const shareCommentModalOpen = ref(false)
 useOverlayDismiss(shareCommentModalOpen, () => (shareCommentModalOpen.value = false))
