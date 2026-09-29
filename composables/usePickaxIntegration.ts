@@ -5,6 +5,7 @@ export type PickaxIntegrationStatus = {
   needsAttention: boolean
   needsUsername: boolean
   verificationCode: string | null
+  lastError?: string | null
 }
 
 const EMPTY: PickaxIntegrationStatus = {

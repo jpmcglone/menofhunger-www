@@ -39,6 +39,13 @@
       >
         Pickax stopped accepting this key, so cross-posting is paused. Disconnect and connect again with a new key.
       </p>
+      <p
+        v-else-if="status.lastError"
+        role="alert"
+        class="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3 text-sm dark:border-amber-500/30 dark:bg-amber-500/10"
+      >
+        Pickax rejected the last cross-post: {{ status.lastError }}
+      </p>
       <p class="text-sm text-gray-600 dark:text-gray-300">
         Your Pickax profile link on Men of Hunger comes from this connection. Disconnecting stops future
         cross-posts and updates and keeps what is already on Pickax.
