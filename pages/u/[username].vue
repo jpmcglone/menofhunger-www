@@ -70,10 +70,12 @@
           :show-follow-counts="showFollowCounts"
           :follower-count="followSummary?.followerCount ?? 0"
           :following-count="followSummary?.followingCount ?? 0"
+          :followed-by="followSummary?.followedBy ?? null"
           @open-image="onOpenProfileImage"
           @edit="editOpen = true"
           @open-followers="goToFollowers"
           @open-following="goToFollowing"
+          @open-affiliates="goToAffiliates"
           @followed="onFollowed"
           @unfollowed="onUnfollowed"
           @nudge-updated="onNudgeUpdated"
@@ -452,6 +454,18 @@
         @load-more="loadMoreFollowing"
       />
 
+      <AppProfileFollowListDialog
+        v-model="affiliatesOpen"
+        header="Affiliates"
+        :users="affiliates"
+        :loading="affiliatesLoading"
+        :error="affiliatesError"
+        empty-text="No affiliates yet."
+        :next-cursor="affiliatesNextCursor"
+        :expected-total-count="profile?.affiliateCount ?? null"
+        @load-more="loadMoreAffiliates"
+      />
+
       <AppProfileEditProfileDialog
         v-model="editOpen"
         :profile="profile"
@@ -499,6 +513,7 @@ definePageMeta({
     '/u/:username/media',
     '/u/:username/followers',
     '/u/:username/following',
+    '/u/:username/affiliates',
   ],
 })
 
@@ -552,6 +567,7 @@ async function pushProfilePath(path: string) {
 
 const isFollowersRoute = computed(() => /\/followers\/?$/.test(currentPathname.value))
 const isFollowingRoute = computed(() => /\/following\/?$/.test(currentPathname.value))
+const isAffiliatesRoute = computed(() => /\/affiliates\/?$/.test(currentPathname.value))
 
 const { user: authUser, me: refetchMe, isPageAccount } = useAuth()
 
@@ -1196,6 +1212,13 @@ const {
   openFollowing,
   loadMoreFollowers,
   loadMoreFollowing,
+  affiliatesOpen,
+  affiliates,
+  affiliatesNextCursor,
+  affiliatesLoading,
+  affiliatesError,
+  openAffiliates,
+  loadMoreAffiliates,
 } = useProfileFollowDialogs(normalizedUsername)
 
 function goToFollowers() {
@@ -1204,26 +1227,38 @@ function goToFollowers() {
 function goToFollowing() {
   pushProfilePath(`${baseProfilePath.value}/following`)
 }
+function goToAffiliates() {
+  pushProfilePath(`${baseProfilePath.value}/affiliates`)
+}
 
 // Route-driven modal state:
 // - Visiting /u/:username/followers or /following opens the correct modal immediately.
 // - Closing the modal navigates back to /u/:username.
 watch(
-  [isFollowersRoute, isFollowingRoute],
-  ([followersRoute, followingRoute]) => {
+  [isFollowersRoute, isFollowingRoute, isAffiliatesRoute],
+  ([followersRoute, followingRoute, affiliatesRoute]) => {
     if (followersRoute) {
       followingOpen.value = false
+      affiliatesOpen.value = false
       openFollowers()
       return
     }
     if (followingRoute) {
       followersOpen.value = false
+      affiliatesOpen.value = false
       openFollowing()
       return
     }
-    // Base route: ensure both are closed.
+    if (affiliatesRoute) {
+      followersOpen.value = false
+      followingOpen.value = false
+      openAffiliates()
+      return
+    }
+    // Base route: ensure all three are closed.
     followersOpen.value = false
     followingOpen.value = false
+    affiliatesOpen.value = false
   },
   { immediate: true },
 )
@@ -1240,6 +1275,13 @@ watch(
   (open) => {
     if (open) return
     if (isFollowingRoute.value) pushProfilePath(baseProfilePath.value)
+  },
+)
+watch(
+  affiliatesOpen,
+  (open) => {
+    if (open) return
+    if (isAffiliatesRoute.value) pushProfilePath(baseProfilePath.value)
   },
 )
 

@@ -226,14 +226,34 @@
           </AppActionButton>
           <Button as="NuxtLink" to="/settings" label="Settings" severity="secondary" rounded class="min-h-11" />
           </div>
-      </div>
-      <div v-if="!isSelf" class="profile-visitor-actions flex flex-wrap items-center gap-2 mt-4">
-          <AppActionButton
+        <!-- Visitor actions sit top-right, next to the banner: notifications, more, message, follow. -->
+        <div v-if="!isSelf" class="profile-visitor-actions flex flex-wrap items-center justify-end gap-2">
+          <Button
+            v-if="showPostBell"
+            v-tooltip.bottom="tinyTooltip(`Notifications: ${notificationLabel}`)"
+            rounded text severity="secondary"
+            class="!h-11 !w-11 !border moh-border"
+            :aria-label="`Notifications: ${notificationLabel}`"
+            aria-haspopup="dialog"
+            @click="notificationPreferencesOpen = true"
+          ><Icon :name="notificationPreference === 'off' ? 'tabler:bell-off' : notificationPreference === 'all' ? 'tabler:bell-filled' : 'tabler:bell'" class="text-xl" aria-hidden="true" /></Button>
+          <Button
+            v-if="canOpenMenu"
+            v-tooltip.bottom="tinyTooltip('More')"
+            rounded text severity="secondary"
+            class="!h-11 !w-11 !border moh-border"
+            aria-label="More"
+            aria-haspopup="menu"
+            @click="toggleMenu"
+          ><Icon name="tabler:dots" class="text-xl" aria-hidden="true" /></Button>
+          <Button
             v-if="showChatButton"
-            label="Message"
-            kind="secondary"
+            v-tooltip.bottom="tinyTooltip('Message')"
+            rounded text severity="secondary"
+            class="!h-11 !w-11 !border moh-border"
+            aria-label="Message"
             @click="onChatClick"
-          />
+          ><Icon name="tabler:message-circle" class="text-xl" aria-hidden="true" /></Button>
           <AppFollowButton
             v-if="isAuthed && profile?.id && !isSelf"
             :user-id="profile.id"
@@ -248,25 +268,9 @@
             v-else-if="!isAuthed && profile?.id"
             label="Follow"
             rounded
-            size="small"
             @click="showAuthActionModal({ kind: 'login', action: 'follow' })"
           />
-          <Button
-            v-if="showPostBell"
-            v-tooltip.bottom="`Notifications: ${notificationLabel}`"
-            rounded text severity="secondary"
-            class="!h-11 !w-11 !border moh-border"
-            :aria-label="`Notifications: ${notificationLabel}`"
-            aria-haspopup="dialog"
-            @click="notificationPreferencesOpen = true"
-          ><Icon :name="notificationPreference === 'off' ? 'tabler:bell-off' : notificationPreference === 'all' ? 'tabler:bell-filled' : 'tabler:bell'" class="text-xl" aria-hidden="true" /></Button>
-          <AppActionButton
-            v-if="canOpenMenu"
-            label="More"
-            kind="ghost"
-            aria-haspopup="menu"
-            @click="toggleMenu"
-          />
+        </div>
       </div>
       <div class="flex flex-wrap items-start gap-x-4 gap-y-2 mt-6">
         <div class="min-w-0" style="flex: 1 1 10rem">
@@ -389,11 +393,31 @@
           <span class="font-semibold text-gray-900 dark:text-gray-50"><AppAnimatedCount :value="followerCountN" /></span>
           <span class="ml-1 text-gray-600 dark:text-gray-400">{{ followerLabel }}</span>
         </button>
+        <button
+          v-if="affiliateCount !== null"
+          type="button"
+          class="cursor-pointer hover:underline"
+          @click="emit('openAffiliates')"
+        >
+          <span class="font-semibold text-gray-900 dark:text-gray-50"><AppAnimatedCount :value="affiliateCount" /></span>
+          <span class="ml-1 text-gray-600 dark:text-gray-400">{{ affiliateCount === 1 ? 'Affiliate' : 'Affiliates' }}</span>
+        </button>
         <NuxtLink v-if="boardPoints > 0" to="/leaderboard?tab=board" class="hover:underline">
           <span class="font-semibold text-gray-900 dark:text-gray-50"><AppAnimatedCount :value="boardPoints" /></span>
           <span class="ml-1 text-gray-600 dark:text-gray-400">Board {{ boardPoints === 1 ? 'point' : 'points' }}</span>
         </NuxtLink>
       </div>
+
+      <!-- Social proof: people the viewer follows who also follow this profile. -->
+      <button
+        v-if="followedByLabelText"
+        type="button"
+        class="mt-3 flex w-full items-center gap-2 text-left text-sm moh-text-muted hover:text-[var(--moh-text)]"
+        @click="emit('openFollowers')"
+      >
+        <AppAvatarFacepile :authors="followedByAuthors" size-class="h-5 w-5" overlap-class="-ml-1.5" />
+        <span class="min-w-0 flex-1">{{ followedByLabelText }}</span>
+      </button>
 
       <div class="mt-4 flex flex-wrap items-center gap-2">
       <NuxtLink
@@ -509,7 +533,8 @@
 
 <script setup lang="ts">
 import { userNotificationOptions, userNotificationPreference } from '~/utils/user-notification-preference'
-import type { FollowRelationship, NudgeState, PublicProfile } from '~/types/api'
+import type { FollowedByPreview, FollowRelationship, NudgeState, PublicProfile } from '~/types/api'
+import { followedByLabel } from '~/utils/followed-by'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { buildSocialLinks } from '~/utils/social-links'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
@@ -544,9 +569,29 @@ const props = defineProps<{
   showFollowCounts: boolean
   followerCount: number | null
   followingCount: number | null
+  /** Accounts the viewer follows who also follow this profile (from the follow summary). */
+  followedBy?: FollowedByPreview | null
 }>()
 
 const boardPoints = computed(() => props.profile?.boardPoints ?? 0)
+/** Organization accounts only: the API sends null for people, which hides the count. */
+const affiliateCount = computed(() => {
+  const count = props.profile?.affiliateCount
+  return typeof count === 'number' ? count : null
+})
+const followedByAuthors = computed(() =>
+  (props.followedBy?.users ?? []).map((u) => ({
+    id: u.id,
+    username: u.username,
+    name: u.name,
+    avatarUrl: u.avatarUrl,
+    avatarVideo: u.avatarVideo ?? null,
+    isOrganization: u.isOrganization,
+  })),
+)
+const followedByLabelText = computed(() =>
+  props.followedBy ? followedByLabel(props.followedBy.users, props.followedBy.total) : null,
+)
 
 const emit = defineEmits<{
   (
@@ -560,7 +605,7 @@ const emit = defineEmits<{
       originRect?: { left: number; top: number; width: number; height: number }
     },
   ): void
-  (e: 'edit' | 'followed' | 'unfollowed' | 'openFollowers' | 'openFollowing'): void
+  (e: 'edit' | 'followed' | 'unfollowed' | 'openFollowers' | 'openFollowing' | 'openAffiliates'): void
   (e: 'nudge-updated', payload: NudgeState | null): void
 }>()
 

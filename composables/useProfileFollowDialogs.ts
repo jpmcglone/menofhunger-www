@@ -18,6 +18,13 @@ export function useProfileFollowDialogs(normalizedUsername: Ref<string>) {
   const followingLoading = ref(false)
   const followingError = ref<string | null>(null)
 
+  // Organizations only: members who represent the org ("Affiliates").
+  const affiliatesOpen = ref(false)
+  const affiliates = ref<FollowListUser[]>([])
+  const affiliatesNextCursor = ref<string | null>(null)
+  const affiliatesLoading = ref(false)
+  const affiliatesError = ref<string | null>(null)
+
   async function loadFollowers(reset = false) {
     if (followersLoading.value) return
     followersLoading.value = true
@@ -62,6 +69,28 @@ export function useProfileFollowDialogs(normalizedUsername: Ref<string>) {
     }
   }
 
+  async function loadAffiliates(reset = false) {
+    if (affiliatesLoading.value) return
+    affiliatesLoading.value = true
+    affiliatesError.value = null
+    try {
+      const cursor = reset ? null : affiliatesNextCursor.value
+      const res = await apiFetch<GetFollowsListData>(
+        `/users/${encodeURIComponent(normalizedUsername.value)}/affiliates`,
+        { method: 'GET', query: { limit: 30, ...(cursor ? { cursor } : {}) } }
+      )
+      const users = res.data ?? []
+      followState.ingest(users)
+      if (reset) affiliates.value = users
+      else affiliates.value = [...affiliates.value, ...users]
+      affiliatesNextCursor.value = res.pagination?.nextCursor ?? null
+    } catch (e: unknown) {
+      affiliatesError.value = getApiErrorMessage(e) || 'Failed to load affiliates.'
+    } finally {
+      affiliatesLoading.value = false
+    }
+  }
+
   function openFollowers() {
     followersOpen.value = true
     if (followers.value.length === 0) void loadFollowers(true)
@@ -70,6 +99,11 @@ export function useProfileFollowDialogs(normalizedUsername: Ref<string>) {
   function openFollowing() {
     followingOpen.value = true
     if (following.value.length === 0) void loadFollowing(true)
+  }
+
+  function openAffiliates() {
+    affiliatesOpen.value = true
+    if (affiliates.value.length === 0) void loadAffiliates(true)
   }
 
   function loadMoreFollowers() {
@@ -82,7 +116,19 @@ export function useProfileFollowDialogs(normalizedUsername: Ref<string>) {
     void loadFollowing(false)
   }
 
+  function loadMoreAffiliates() {
+    if (!affiliatesNextCursor.value) return
+    void loadAffiliates(false)
+  }
+
   return {
+    affiliatesOpen,
+    affiliates,
+    affiliatesNextCursor,
+    affiliatesLoading,
+    affiliatesError,
+    openAffiliates,
+    loadMoreAffiliates,
     followersOpen,
     followers,
     followersNextCursor,

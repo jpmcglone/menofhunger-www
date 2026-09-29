@@ -622,6 +622,8 @@ export type PublicProfile = {
   articleCount?: number
   /** Boosts received across the member's live Board posts and comments. */
   boardPoints?: number
+  /** Organization accounts only: how many members represent this org. Null for people. */
+  affiliateCount?: number | null
   orgAffiliations?: OrgAffiliation[]
   /** True when the viewer has blocked this user. */
   viewerHasBlockedUser?: boolean
@@ -1307,6 +1309,21 @@ export type FollowSummaryResponse = FollowRelationship & {
   followerCount: number | null
   followingCount: number | null
   nudge: NudgeState | null
+  /** Accounts the viewer follows who also follow this user. Null when signed out or on your own profile. */
+  followedBy?: FollowedByPreview | null
+}
+
+/** Social proof preview: a few names/avatars plus the full count behind them. */
+export type FollowedByPreview = {
+  users: Array<{
+    id: string
+    username: string | null
+    name: string | null
+    avatarUrl: string | null
+    avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
+    isOrganization: boolean
+  }>
+  total: number
 }
 
 export type FollowListUser = {
