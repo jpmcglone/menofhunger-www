@@ -84,6 +84,7 @@
       <AppPostRowRepostMenu
         ref="repostMenuRef"
         :is-reposted="isReposted"
+        :quote-label="isOwnQuote ? 'Quote (Follow-up)' : 'Quote'"
         @repost="onRepostMenuRepost"
         @quote="onRepostMenuQuote"
       />
@@ -194,6 +195,7 @@ const isPendingRow = computed(() => {
 
 const { user } = useAuth()
 const route = useRoute()
+const isOwnQuote = computed(() => Boolean(user.value?.id) && user.value?.id === props.author?.id)
 
 const repostMenuRef = ref<{ toggleAt: (anchorEl: HTMLElement) => void } | null>(null)
 

@@ -319,24 +319,32 @@
                 {{ scheduledCount > 99 ? '99+' : scheduledCount }}
               </span>
             </div>
-            <Button
+            <button
               v-if="pickaxEligible"
-              v-tooltip.bottom="tinyTooltip(crossPostToPickax ? 'Also posting to Pickax' : 'Not posting to Pickax')"
-              text
-              rounded
-              size="small"
-              severity="secondary"
-              class="moh-focus !min-h-11 !px-3 !text-xs !font-semibold"
-              :class="crossPostToPickax ? '' : 'opacity-60'"
+              v-tooltip.bottom="tinyTooltip(crossPostToPickax ? 'Also posting to Pickax. Click to keep this on Men of Hunger only.' : 'Not posting to Pickax. Click to also post there.')"
+              type="button"
+              class="moh-focus moh-tap relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors"
+              :class="crossPostToPickax ? 'ring-1 ring-sky-400/80' : ''"
               :aria-pressed="crossPostToPickax"
-              :aria-label="crossPostToPickax ? 'Pickax cross-post on' : 'Pickax cross-post off'"
+              :aria-label="crossPostToPickax ? 'Also posting to Pickax' : 'Not posting to Pickax'"
               @click="crossPostToPickax = !crossPostToPickax"
             >
-              <template #icon>
-                <AppIconGlyph name="link" :size="18" />
-              </template>
-              <span class="ml-1">Pickax</span>
-            </Button>
+              <span class="relative inline-flex h-6 w-6">
+                <img
+                  src="/images/brands/pickax.png"
+                  alt=""
+                  width="24"
+                  height="24"
+                  class="h-6 w-6 rounded-md transition"
+                  :class="crossPostToPickax ? '' : 'opacity-40 grayscale'"
+                >
+                <span
+                  v-if="!crossPostToPickax"
+                  aria-hidden="true"
+                  class="absolute left-1/2 top-1/2 h-[2px] w-[30px] -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-[var(--moh-text)]"
+                />
+              </span>
+            </button>
             </template>
             <template #count>
             <div

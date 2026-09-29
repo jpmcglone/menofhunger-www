@@ -26,16 +26,18 @@
         @click.stop="onQuote"
       >
         <Icon name="tabler:quote" class="text-base shrink-0" aria-hidden="true" />
-        Quote
+        {{ quoteLabel }}
       </button>
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   isReposted: boolean
-}>()
+  /** Quoting your own post is a follow-up. */
+  quoteLabel?: string
+}>(), { quoteLabel: 'Quote' })
 
 const emit = defineEmits<{
   repost: []
