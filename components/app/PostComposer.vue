@@ -551,11 +551,7 @@
 
   <AppPostPreviewDialog
     v-if="previewOpen"
-    :author="previewAuthor"
-    :body="draft"
-    :visibility-label="previewVisibilityLabel"
-    :media-thumbs="previewMediaThumbs"
-    :poll-option-count="previewPollOptionCount"
+    :post="previewPost"
     :scheduled-label="scheduledAt ? scheduledAtDisplay : null"
     :pickax="previewPickax"
     :busy="submitting"
@@ -577,6 +573,7 @@ import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { buildOptimisticPost } from '~/utils/optimistic-post'
+import { pickaxCrosspostEligible, pickaxCrosspostWanted, type PickaxCrosspostDraft } from '~/utils/pickax-crosspost'
 import { makePendingLocalId } from '~/composables/usePendingPostsManager'
 import {
   PRIMARY_GROUP_SKY,
@@ -1564,20 +1561,32 @@ function pickaxMediaOk(media: CreateMediaPayload[]): boolean {
   return media.every((m) => m.source === 'upload' && m.kind === 'image')
 }
 
-// Mirrors the server's eligibility so the toggle only appears when Pickax can take the post.
+/** Draft shape the shared eligibility rules read (mirrors the server's blocker list). */
+function pickaxDraft(media: CreateMediaPayload[]): PickaxCrosspostDraft {
+  return {
+    connected: pickaxIntegration.connected.value,
+    visibility: effectiveVisibility.value,
+    body: draft.value,
+    mediaCount: media.length,
+    mediaAllUploadedImages: pickaxMediaOk(media),
+    hasPoll: hasPoll.value,
+    isReply: Boolean(props.replyTo),
+    isQuote: Boolean(props.quotedPost),
+    isCheckin: Boolean(props.checkinPrompt),
+    groupId: effectiveGroupId.value,
+    scheduled: Boolean(scheduledAt.value),
+  }
+}
+
+// Mirrors the server's eligibility so the choice only appears when Pickax can take the post.
 const pickaxEligible = computed(() => {
-  if (!pickaxIntegration.connected.value) return false
-  if (mode.value !== 'create' || props.replyTo || props.quotedPost || props.checkinPrompt || props.createPost) return false
-  if (effectiveGroupId.value || props.groupComposer || scheduledAt.value || hasPoll.value) return false
-  if (effectiveVisibility.value !== 'public') return false
-  const text = draft.value.trim()
-  if (!text && composerMedia.value.length === 0) return false
-  if (text.length > 1000) return false
-  return pickaxMediaOk(toCreatePayload(composerMedia.value))
+  if (mode.value !== 'create' || props.createPost || props.groupComposer) return false
+  return pickaxCrosspostEligible(pickaxDraft(toCreatePayload(composerMedia.value)))
 })
 
 function pickaxWanted(media: CreateMediaPayload[]): boolean {
-  return pickaxEligible.value && crossPostToPickax.value && pickaxMediaOk(media)
+  if (mode.value !== 'create' || props.createPost || props.groupComposer) return false
+  return pickaxCrosspostWanted(pickaxDraft(media), crossPostToPickax.value)
 }
 
 /**
@@ -1590,28 +1599,22 @@ const previewSupported = computed(
   () => mode.value === 'create' && !props.replyTo && !props.quotedPost && !scheduledEditId.value,
 )
 
-const VISIBILITY_LABELS: Record<string, string> = {
-  public: 'Public',
-  verifiedOnly: 'Verified',
-  premiumOnly: 'Premium',
-  onlyMe: 'Only me',
-}
-
-const previewAuthor = computed(() => ({
-  name: (user.value as any)?.name ?? null,
-  username: user.value?.username ?? null,
-  avatarUrl: (user.value as any)?.avatarUrl ?? null,
-}))
-const previewVisibilityLabel = computed(() => {
-  if (effectiveGroupId.value) return 'Group'
-  return VISIBILITY_LABELS[effectiveVisibility.value] ?? 'Public'
+/** The post exactly as it will publish, so the dialog can render a real feed row. */
+const previewPost = computed<FeedPost | null>(() => {
+  const author = makeOptimisticAuthor()
+  if (!author) return null
+  const built = buildOptimisticPost({
+    localId: 'preview',
+    body: buildSubmitBody(),
+    visibility: effectiveVisibility.value,
+    media: composerMedia.value,
+    poll: poll.value ? poll.value : null,
+    communityGroupId: effectiveGroupId.value,
+    author,
+  })
+  // Drop the pending markers: this is a preview, not an in-flight post.
+  return { ...built, _localId: undefined, _pending: null, _pendingError: null }
 })
-const previewMediaThumbs = computed(() =>
-  composerMedia.value.map((m) => m.previewUrl || m.url || '').filter(Boolean),
-)
-const previewPollOptionCount = computed(() =>
-  hasPoll.value ? (poll.value?.options ?? []).filter((o) => Boolean(o?.text?.trim())).length : 0,
-)
 
 /** Null hides the destinations section. Scheduled posts show it disabled: the API never cross-posts them. */
 const previewPickax = computed<{ disabled: boolean; note: string } | null>(() => {

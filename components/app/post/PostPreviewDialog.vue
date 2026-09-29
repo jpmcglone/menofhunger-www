@@ -3,7 +3,7 @@
     :visible="true"
     modal
     :closable="true"
-    :style="{ width: '29rem', maxWidth: '95vw' }"
+    :style="{ width: '32rem', maxWidth: '95vw' }"
     :pt="{ root: { class: '!rounded-2xl' } }"
     @update:visible="emit('close')"
   >
@@ -11,45 +11,28 @@
       <span class="text-lg font-bold text-[var(--moh-text)]">{{ scheduledLabel ? 'Schedule post' : 'Ready to post?' }}</span>
     </template>
 
-    <div class="flex gap-3 rounded-2xl border moh-border bg-[var(--moh-surface-hover)] p-3.5">
-      <AppAvatarCircle
-        :src="author.avatarUrl ?? null"
-        :name="author.name || author.username || ''"
-        :username="author.username ?? null"
-        size-class="h-10 w-10"
-        :show-presence="false"
-      />
-      <div class="min-w-0 flex-1">
-        <p class="flex flex-wrap items-center gap-x-1.5 text-sm">
-          <span class="font-bold moh-text">{{ author.name || author.username }}</span>
-          <span class="text-xs moh-text-muted">@{{ author.username }} · {{ visibilityLabel }}</span>
-        </p>
-        <p v-if="body.trim()" class="mt-1 whitespace-pre-wrap break-words text-[15px] moh-text">{{ body }}</p>
-        <p v-else class="mt-1 text-[15px] italic moh-text-muted">No text</p>
-        <div v-if="mediaThumbs.length" class="mt-2 flex gap-2">
-          <img
-            v-for="(thumb, i) in mediaThumbs"
-            :key="i"
-            :src="thumb"
-            alt=""
-            class="h-14 w-14 rounded-lg object-cover"
-          >
-        </div>
-        <p v-if="pollOptionCount" class="mt-2 text-xs moh-text-muted">Poll · {{ pollOptionCount }} choices</p>
-        <span
-          v-if="scheduledLabel"
-          class="mt-2 inline-flex rounded-full bg-[var(--moh-surface)] px-2.5 py-1 text-xs font-medium moh-text"
-        >Scheduled for {{ scheduledLabel }}</span>
+    <!-- The real post row, exactly as it will publish. Inert: no taps, no view tracking. -->
+    <div class="overflow-hidden rounded-2xl border moh-border bg-[var(--moh-surface-hover)]">
+      <div class="pointer-events-none select-none [--moh-gutter-x:0.875rem]" aria-hidden="true">
+        <AppPostRow
+          v-if="post"
+          :post="post"
+          :clickable="false"
+          :track-views="false"
+          no-border-bottom
+          compact
+        />
       </div>
     </div>
+    <p v-if="scheduledLabel" class="mt-3 text-sm moh-text-muted">
+      Publishes {{ scheduledLabel }}
+    </p>
 
     <div v-if="pickax" class="mt-4">
       <p class="mb-2 text-[11px] font-semibold tracking-wide moh-text-muted">ALSO POST TO</p>
       <div
         class="flex items-center gap-3 rounded-xl border p-3 transition-colors"
-        :class="[
-          pickax.disabled ? 'moh-border opacity-60' : pickaxOn ? 'border-sky-400/80' : 'moh-border',
-        ]"
+        :class="pickax.disabled ? 'moh-border opacity-60' : pickaxOn ? 'border-sky-400/80' : 'moh-border'"
       >
         <img
           src="/images/brands/pickax.png"
@@ -86,24 +69,22 @@
 </template>
 
 <script setup lang="ts">
-const props = withDefaults(defineProps<{
-  author: { name?: string | null; username?: string | null; avatarUrl?: string | null }
-  body: string
-  visibilityLabel: string
-  mediaThumbs?: string[]
-  pollOptionCount?: number
+import type { FeedPost } from '~/types/api'
+
+withDefaults(defineProps<{
+  /** The post as it will publish, shaped exactly like a feed row. */
+  post: FeedPost | null
   scheduledLabel?: string | null
   /** Null hides the destinations section entirely (private, group, check-in, reply). */
   pickax?: { disabled: boolean; note: string } | null
   busy?: boolean
-}>(), { mediaThumbs: () => [], pollOptionCount: 0, scheduledLabel: null, pickax: null, busy: false })
+}>(), { scheduledLabel: null, pickax: null, busy: false })
 
 const emit = defineEmits<{
   close: []
   confirm: [options: { crossPostToPickax: boolean }]
 }>()
 
-const mediaThumbs = computed(() => props.mediaThumbs ?? [])
 const pickaxOn = ref(false)
 
 useOverlayDismiss(() => true, () => emit('close'))

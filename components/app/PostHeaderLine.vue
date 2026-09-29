@@ -85,6 +85,24 @@
       >
         {{ createdAtShort }}
       </NuxtLink>
+      <a
+        v-if="pickaxUrl"
+        v-tooltip.bottom="'Also on Pickax — opens in a new tab'"
+        :href="pickaxUrl"
+        target="_blank"
+        rel="noopener nofollow"
+        class="ml-1 inline-flex shrink-0 items-center"
+        aria-label="View this post on Pickax"
+        @click.stop
+      >
+        <img
+          src="/images/brands/pickax.png"
+          alt=""
+          width="14"
+          height="14"
+          class="h-3.5 w-3.5 rounded-[3px] opacity-70 transition-opacity hover:opacity-100"
+        >
+      </a>
       <span
         v-if="isEdited"
         class="ml-1 shrink-0 text-[11px] font-normal text-gray-400 dark:text-gray-500"
@@ -110,6 +128,8 @@ const props = defineProps<{
   orgAffiliations?: OrgAffiliation[] | null
   isBot?: boolean
   editedAt?: string | null
+  /** Public Pickax permalink; renders a small logo link out to the cross-posted copy. */
+  pickaxUrl?: string | null
   /** Hide the inline "edited" marker (e.g. for onlyMe notes/drafts). */
   hideEditedBadge?: boolean
   profilePath: string | null

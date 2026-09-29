@@ -127,6 +127,7 @@
             :org-affiliations="(author as any).orgAffiliations ?? postView.author?.orgAffiliations"
             :is-bot="postView.author?.isBot ?? false"
             :edited-at="postView.editedAt ?? null"
+            :pickax-url="postView.pickaxUrl ?? null"
             :hide-edited-badge="postView.visibility === 'onlyMe'"
             :profile-path="authorProfilePath"
             :post-id="postView.id"
@@ -269,6 +270,20 @@
         />
 
         <AppPostRowPendingBanner v-if="pendingStatus" :post="postView" :status="pendingStatus" />
+
+        <!-- Author-only: Pickax refused the cross-post. The post itself is live here. -->
+        <div
+          v-if="pickaxError"
+          class="relative z-10 mt-2 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2"
+        >
+          <img src="/images/brands/pickax.png" alt="" width="16" height="16" class="mt-0.5 h-4 w-4 rounded-[3px]">
+          <p class="min-w-0 flex-1 text-xs moh-text">
+            Pickax did not take this post: {{ pickaxError }}
+            <NuxtLink to="/settings/integrations" class="font-semibold underline underline-offset-2" @click.stop>
+              Check your connection
+            </NuxtLink>
+          </p>
+        </div>
 
         <div
           v-if="!isDeletedPost && !isGatedPost && (metaTags.length || displayViewerCount > 0)"
@@ -701,6 +716,12 @@ onBeforeUnmount(() => {
 })
 
 const { user, isAuthed } = useAuth()
+/** Author-only cross-post failure: the API sends `pickaxError` only to the author. */
+const pickaxError = computed(() => {
+  const message = (postView.value.pickaxError ?? '').trim()
+  if (!message) return null
+  return user.value?.id && user.value.id === postView.value.author?.id ? message : null
+})
 const { show: showAuthActionModal } = useAuthActionModal()
 const isSelf = computed(() => {
   const viewerId = user.value?.id ?? null

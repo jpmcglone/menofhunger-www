@@ -86,6 +86,17 @@
           <button type="button" class="text-xs font-medium moh-text-muted" :disabled="deletingArticle" @click="confirmingArticleDelete = false">Cancel</button>
         </div>
 
+        <div
+          v-if="viewerIsAuthor && article.pickaxError"
+          class="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2"
+        >
+          <img src="/images/brands/pickax.png" alt="" width="16" height="16" class="mt-0.5 h-4 w-4 rounded-[3px]">
+          <p class="min-w-0 flex-1 text-xs moh-text">
+            Pickax did not take this article: {{ article.pickaxError }}
+            <NuxtLink to="/settings/integrations" class="font-semibold underline underline-offset-2">Check your connection</NuxtLink>
+          </p>
+        </div>
+
         <!-- Meta: author, date, read time -->
         <div class="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm moh-text-muted">
           <span>by</span>
@@ -100,6 +111,25 @@
           <time :datetime="article.publishedAt ?? article.createdAt">{{ publishedLabel }}</time>
           <span v-if="readingTime && article.viewerCanAccess !== false">· {{ readingTime }}</span>
           <time v-if="article.editedAt" :datetime="article.editedAt" class="text-xs moh-text-soft">· Edited {{ editedLabel }}</time>
+          <a
+            v-if="article.pickaxUrl"
+            v-tooltip.bottom="'Also on Pickax — opens in a new tab'"
+            :href="article.pickaxUrl"
+            target="_blank"
+            rel="noopener nofollow"
+            class="inline-flex items-center gap-1 text-xs moh-text-muted hover:text-[var(--moh-text)]"
+            aria-label="Read this article on Pickax"
+          >
+            <span aria-hidden="true">·</span>
+            <img
+              src="/images/brands/pickax.png"
+              alt=""
+              width="14"
+              height="14"
+              class="h-3.5 w-3.5 rounded-[3px] opacity-70"
+            >
+            On Pickax
+          </a>
           <button
             v-if="article.viewerCanAccess !== false && displayCommentCount > 0"
             type="button"
