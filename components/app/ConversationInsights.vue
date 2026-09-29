@@ -1,5 +1,5 @@
 <template>
-  <section v-if="postId || data?.posts.length || error || open" class="border-b moh-border">
+  <section v-if="postId || data?.posts.length || error || open" class="border-b moh-border" :class="!postId && 'border-t bg-[var(--moh-surface)]'">
     <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 965:1594 -->
     <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-11 w-full flex-col justify-center gap-1 py-2 text-left" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
       <span class="flex min-w-0 items-center gap-2">

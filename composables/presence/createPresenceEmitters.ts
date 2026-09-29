@@ -1,3 +1,4 @@
+import type { SfuAckDto, SfuRequestDto } from '~/types/api-contracts.gen'
 import type { Ref } from 'vue'
 import type { Socket } from 'socket.io-client'
 import type { CallsAck, CallType, RtcIceCandidate, RtcSessionDescription } from '~/types/api'
@@ -225,15 +226,21 @@ export function createPresenceEmitters(socketRef: Ref<Socket | null>) {
     },
 
     // ── DM calling (acked) ────────────────────────────────────────────
+    async emitCallsSfu(payload: SfuRequestDto): Promise<SfuAckDto> {
+      const socket = socketRef.value
+      if (!socket?.connected) throw new Error('Signaling offline')
+      return await socket.timeout(15_000).emitWithAck('calls:sfu', payload) as SfuAckDto
+    },
     emitCallsStart(conversationId: string, type: CallType): Promise<CallsAck> {
       return emitCallsWithAck(socketRef.value, 'calls:start', {
         conversationId: String(conversationId ?? '').trim(),
         type,
         sessionId: tabCallSessionId(),
+        sfuCapable: true,
       })
     },
     emitCallsJoin(callId: string): Promise<CallsAck> {
-      return emitCallsWithAck(socketRef.value, 'calls:join', { callId: String(callId ?? '').trim(), sessionId: tabCallSessionId() })
+      return emitCallsWithAck(socketRef.value, 'calls:join', { callId: String(callId ?? '').trim(), sessionId: tabCallSessionId(), sfuCapable: true })
     },
     /** Current state of one call (resyncs a ring whose `calls:updated` was missed offline). */
     emitCallsStatus(callId: string): Promise<CallsAck> {

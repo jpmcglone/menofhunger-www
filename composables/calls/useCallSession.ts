@@ -1,3 +1,4 @@
+import { CloudflareSfuCallTransport } from './transport/CloudflareSfuCallTransport'
 import { mediaFocus } from '~/utils/mediaFocus'
 import { shallowRef, type ShallowRef } from 'vue'
 import type {
@@ -30,7 +31,7 @@ import { enterCallPictureInPicture, exitCallPictureInPicture } from './callPictu
 import { callMediaLog, callMediaTrackInfo } from './callMediaLog'
 import { acquireAudioTrack, acquireCallMedia, acquireVideoTrack, canScreenShare, shouldStartCallWithCamera, stopTrack } from './useCallDevices'
 import { SpeakingMonitor } from './speakingDetector'
-import type { CallTransport, PeerMediaState } from './transport/CallTransport'
+import type { CallTransportOptions, CallTransport, PeerMediaState } from './transport/CallTransport'
 import { DEFAULT_RECONNECT_GRACE_MS, PeerToPeerCallTransport } from './transport/PeerToPeerCallTransport'
 
 export type { CallPhase } from './callSessionReducer'
@@ -195,8 +196,7 @@ export function useCallSession() {
     })
     speakingMonitor.setStream(meId.value, localStream.value)
     speakingMonitor.setMuted(meId.value, !isMicEnabled.value)
-    transport = new PeerToPeerCallTransport(
-      {
+    const options: CallTransportOptions = {
         callId,
         selfUserId: meId.value,
         iceServers,
@@ -230,11 +230,13 @@ export function useCallSession() {
             icePaths.value = next
           },
         },
-      },
-      () => {
-        qualityTier.value = (transport as PeerToPeerCallTransport | null)?.qualityManager.worstTier() ?? 0
-      },
-    )
+      }
+    const onTierChange = () => {
+      qualityTier.value = (transport as PeerToPeerCallTransport | CloudflareSfuCallTransport | null)?.qualityManager.worstTier() ?? 0
+    }
+    transport = call.value?.mediaTransport === 'sfu'
+      ? new CloudflareSfuCallTransport(options, request => presence.emitCallsSfu(request), onTierChange)
+      : new PeerToPeerCallTransport(options, onTierChange)
     void transport.setLocalTrack('audio', isMicEnabled.value ? localAudioTrack() : null)
     void transport.setLocalTrack('video', isCameraEnabled.value ? localVideoTrack() : null)
     void transport.setLocalTrack('screen', localScreenTrack())

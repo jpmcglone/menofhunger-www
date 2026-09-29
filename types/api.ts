@@ -1249,6 +1249,8 @@ export type PostStreakReward = {
 export type CreatePostData = {
   post: FeedPost
   streakReward: PostStreakReward | null
+  /** Set when the client asked to cross-post to Pickax. */
+  pickax?: { status: 'queued' } | { status: 'skipped'; reason: string } | null
 }
 
 /** Response for POST /posts/:id/repost */

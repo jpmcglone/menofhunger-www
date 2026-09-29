@@ -1,0 +1,54 @@
+export type PickaxIntegrationStatus = {
+  available: boolean
+  connected: boolean
+  username: string | null
+  needsAttention: boolean
+  needsUsername: boolean
+}
+
+const EMPTY: PickaxIntegrationStatus = {
+  available: false,
+  connected: false,
+  username: null,
+  needsAttention: false,
+  needsUsername: false,
+}
+
+/**
+ * The signed-in account's Pickax connection. Fetched on demand (composer open, settings mount)
+ * and patched locally after connect and disconnect.
+ */
+export function usePickaxIntegration() {
+  const { apiFetch } = useApiClient()
+  const status = useState<PickaxIntegrationStatus | null>('pickax-integration', () => null)
+  const loading = ref(false)
+
+  async function refresh(): Promise<PickaxIntegrationStatus> {
+    if (loading.value) return status.value ?? EMPTY
+    loading.value = true
+    try {
+      const res = await apiFetch<PickaxIntegrationStatus>('/me/integrations/pickax', { method: 'GET' })
+      status.value = res?.data ?? EMPTY
+    } catch {
+      status.value = status.value ?? EMPTY
+    } finally {
+      loading.value = false
+    }
+    return status.value ?? EMPTY
+  }
+
+  async function connect(input: { clientId: string; clientSecret: string; username?: string }): Promise<PickaxIntegrationStatus> {
+    const res = await apiFetch<PickaxIntegrationStatus>('/me/integrations/pickax', { method: 'POST', body: input })
+    status.value = res?.data ?? EMPTY
+    return status.value
+  }
+
+  async function disconnect(): Promise<void> {
+    const res = await apiFetch<PickaxIntegrationStatus>('/me/integrations/pickax', { method: 'DELETE' })
+    status.value = res?.data ?? EMPTY
+  }
+
+  const connected = computed(() => Boolean(status.value?.connected && !status.value.needsAttention))
+
+  return { status, loading, connected, refresh, connect, disconnect }
+}

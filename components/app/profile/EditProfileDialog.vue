@@ -232,19 +232,6 @@
         </template>
       </AppFormField>
 
-      <AppFormField label="Pickax">
-        <InputText
-          v-model="editPickaxUsername"
-          class="w-full"
-          :maxlength="200"
-          placeholder="@yourhandle"
-          autocomplete="off"
-        />
-        <template #helper>
-          Optional. Leave blank to hide. You can paste your full profile URL.
-        </template>
-      </AppFormField>
-
       <AppInlineAlert v-if="editError" severity="danger">
         {{ editError }}
       </AppInlineAlert>
@@ -320,7 +307,6 @@ const editBio = ref('')
 const editLocationQuery = ref('')
 const editWebsite = ref('')
 const editXUsername = ref('')
-const editPickaxUsername = ref('')
 const nameCharCount = useFormCharCount(editName, 50)
 const bioCharCount = useFormCharCount(editBio, 160)
 const editError = ref<string | null>(null)
@@ -590,7 +576,6 @@ function hydrateEditFields() {
   editLocationQuery.value = locationQueryFromProfile(props.profile)
   editWebsite.value = (props.profile?.website ?? '') || ''
   editXUsername.value = (props.profile?.xUsername ?? '') || ''
-  editPickaxUsername.value = (props.profile?.pickaxUsername ?? '') || ''
 }
 
 function fillEmptyEditFieldsFromProfile() {
@@ -600,9 +585,6 @@ function fillEmptyEditFieldsFromProfile() {
   if (!editLocationQuery.value) editLocationQuery.value = locationQueryFromProfile(props.profile)
   if (!editWebsite.value && props.profile?.website) editWebsite.value = props.profile.website
   if (!editXUsername.value && props.profile?.xUsername) editXUsername.value = props.profile.xUsername
-  if (!editPickaxUsername.value && props.profile?.pickaxUsername) {
-    editPickaxUsername.value = props.profile.pickaxUsername
-  }
 }
 
 watch(
@@ -635,7 +617,6 @@ watch(
     props.profile?.locationZip,
     props.profile?.website,
     props.profile?.xUsername,
-    props.profile?.pickaxUsername,
   ] as const,
   () => fillEmptyEditFieldsFromProfile(),
 )
@@ -782,7 +763,6 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           locationQuery: editLocationQuery.value,
           website: editWebsite.value,
           xUsername: editXUsername.value,
-          pickaxUsername: editPickaxUsername.value,
         }
       })
       emit('patchProfile', {
@@ -807,7 +787,6 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           locationQuery: editLocationQuery.value,
           website: editWebsite.value,
           xUsername: editXUsername.value,
-          pickaxUsername: editPickaxUsername.value,
         }
       })
       const u = result.user

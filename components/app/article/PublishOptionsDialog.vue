@@ -23,35 +23,46 @@
         </label>
         <ToggleSwitch v-model="shareToFeed" input-id="article-board-to-feed" :disabled="!postToBoard" />
       </div>
+      <div v-if="pickaxAvailable" class="flex min-h-11 items-center justify-between gap-3 py-2">
+        <label for="article-cross-post-pickax" class="flex-1 cursor-pointer">
+          <span class="block text-sm font-semibold moh-text">Also post to Pickax</span>
+          <span class="block text-xs moh-text-muted">Publishes a copy with a link back to your profile. Later edits update it.</span>
+        </label>
+        <ToggleSwitch v-model="crossPostToPickax" input-id="article-cross-post-pickax" />
+      </div>
     </div>
 
     <div class="mt-5 flex justify-end gap-2">
       <button type="button" class="moh-tap min-h-11 px-4 text-sm moh-text-muted hover:text-[var(--moh-text)]" @click="emit('close')">Cancel</button>
-      <AppActionButton label="Publish" kind="brand" :loading="publishing" @click="emit('confirm', { postToBoard, shareToFeed })" />
+      <AppActionButton label="Publish" kind="brand" :loading="publishing" @click="emit('confirm', { postToBoard, shareToFeed, crossPostToPickax: pickaxAvailable && crossPostToPickax })" />
     </div>
   </Dialog>
 </template>
 
 <script setup lang="ts">
-defineProps<{ publishing?: boolean }>()
+const props = defineProps<{ publishing?: boolean; visibility?: string | null }>()
 const emit = defineEmits<{
   close: []
-  confirm: [options: { postToBoard: boolean; shareToFeed: boolean }]
+  confirm: [options: { postToBoard: boolean; shareToFeed: boolean; crossPostToPickax: boolean }]
 }>()
 
 const api = useBoardApi()
 const postToBoard = ref(true)
-const shareToFeed = ref(true)
+const shareToFeed = ref(false)
+const crossPostToPickax = ref(true)
+const pickaxIntegration = usePickaxIntegration()
+const pickaxAvailable = computed(() => pickaxIntegration.connected.value && props.visibility === 'public')
 
 useOverlayDismiss(() => true, () => emit('close'))
 
 onMounted(async () => {
+  void pickaxIntegration.refresh()
   try {
     const prefs = await api.getPreferences()
     postToBoard.value = prefs.articlePostToBoardDefault
     shareToFeed.value = prefs.shareToFeedDefault
   } catch {
-    // Keep defaults (both on).
+    // Board cross-post stays on. Feed cross-post stays off.
   }
 })
 </script>

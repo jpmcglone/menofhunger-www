@@ -133,7 +133,7 @@ const memory = useVisibilityMemory('board')
 const title = ref('')
 const url = ref('')
 const body = ref('')
-const showInFeed = ref(true)
+const showInFeed = ref(false)
 const visibility = ref<BoardVisibility>('public')
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
@@ -206,7 +206,7 @@ onMounted(async () => {
     const prefs = await api.getPreferences()
     showInFeed.value = prefs.shareToFeedDefault
   } catch {
-    // Keep the default (on).
+    // Keep the default (off).
   }
 })
 </script>

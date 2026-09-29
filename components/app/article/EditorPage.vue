@@ -144,6 +144,7 @@
     <AppArticlePublishOptionsDialog
       v-if="publishOptionsOpen"
       :publishing="editor.publishing.value"
+      :visibility="editor.visibility.value"
       @close="publishOptionsOpen = false"
       @confirm="onPublishConfirm"
     />
@@ -286,9 +287,9 @@ const titleToneClass = computed(() => {
 const router = useRouter()
 
 const publishOptionsOpen = ref(false)
-const lastPublishOptions = ref<{ postToBoard: boolean; shareToFeed: boolean } | null>(null)
+const lastPublishOptions = ref<{ postToBoard: boolean; shareToFeed: boolean; crossPostToPickax?: boolean } | null>(null)
 
-async function onPublishConfirm(options: { postToBoard: boolean; shareToFeed: boolean }) {
+async function onPublishConfirm(options: { postToBoard: boolean; shareToFeed: boolean; crossPostToPickax: boolean }) {
   lastPublishOptions.value = options
   await handlePublish(options)
   publishOptionsOpen.value = false
@@ -319,7 +320,7 @@ function onTitleInput() {
   if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` }
 }
 
-async function handlePublish(options?: { postToBoard: boolean; shareToFeed: boolean }) {
+async function handlePublish(options?: { postToBoard: boolean; shareToFeed: boolean; crossPostToPickax?: boolean }) {
   try {
     const published = await editor.publish(options)
     if (published) {

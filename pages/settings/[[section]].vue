@@ -123,6 +123,8 @@
 
               <SettingsAiConnectionSection v-if="showsBlock('ai')" />
 
+              <SettingsIntegrationsSection v-if="showsBlock('integrations')" />
+
               <div v-if="showsBlock('danger')" class="space-y-4">
                 <div class="border-t moh-border pt-6 -mt-2">
                   <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
@@ -152,6 +154,7 @@ import SettingsNotificationsSection from '~/components/settings/sections/Setting
 import SettingsDangerZoneSection from '~/components/settings/sections/SettingsDangerZoneSection.vue'
 import SettingsFitnessSection from '~/components/settings/sections/SettingsFitnessSection.vue'
 import SettingsAiConnectionSection from '~/components/settings/sections/SettingsAiConnectionSection.vue'
+import SettingsIntegrationsSection from '~/components/settings/sections/SettingsIntegrationsSection.vue'
 
 // Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=414-12178
 definePageMeta({
@@ -168,7 +171,7 @@ usePageSeo({
 
 // Verification has its own destination so signup and verification prompts open
 // the agreement flow directly instead of burying it among account fields.
-type SettingsSection = 'account' | 'verification' | 'notifications' | 'privacy' | 'billing' | 'marv' | 'ai' | 'fitness'
+type SettingsSection = 'account' | 'verification' | 'notifications' | 'privacy' | 'billing' | 'marv' | 'ai' | 'fitness' | 'integrations'
 type SettingsBlock =
   | 'ai'
   | 'account'
@@ -181,6 +184,7 @@ type SettingsBlock =
   | 'marv'
   | 'danger'
   | 'fitness'
+  | 'integrations'
 
 const { ensureLoaded, me, isPageAccount } = useAuth()
 const route = useRoute()
@@ -224,8 +228,8 @@ onMounted(() => {
 
 const allowedSections = computed<SettingsSection[]>(() =>
   isPageAccount.value
-    ? ['account', 'notifications', 'privacy', 'marv', 'fitness']
-    : ['account', 'verification', 'notifications', 'privacy', 'billing', 'marv', 'ai', 'fitness'],
+    ? ['account', 'notifications', 'privacy', 'marv', 'fitness', 'integrations']
+    : ['account', 'verification', 'notifications', 'privacy', 'billing', 'marv', 'ai', 'fitness', 'integrations'],
 )
 
 // Old narrower URL keys redirect into one of the top-level sections.
@@ -327,6 +331,12 @@ const sections = computed(() => {
       icon: 'fitness' as const,
       description: 'Apple Health · HealthKit, fitness connections, and units.',
     },
+    {
+      key: 'integrations' as const,
+      label: 'Integrations',
+      icon: 'link' as const,
+      description: 'Cross-post to Pickax.',
+    },
   ]
   return all.filter((s) => allowedSections.value.includes(s.key))
 })
@@ -343,6 +353,7 @@ const sectionToBlocks: Record<SettingsSection, ReadonlyArray<SettingsBlock>> = {
   marv: ['marv'],
   ai: ['ai'],
   fitness: ['fitness'],
+  integrations: ['integrations'],
 }
 
 const composedBlocks = computed<ReadonlyArray<SettingsBlock>>(() => {

@@ -319,6 +319,24 @@
                 {{ scheduledCount > 99 ? '99+' : scheduledCount }}
               </span>
             </div>
+            <Button
+              v-if="pickaxEligible"
+              v-tooltip.bottom="tinyTooltip(crossPostToPickax ? 'Also posting to Pickax' : 'Not posting to Pickax')"
+              text
+              rounded
+              size="small"
+              severity="secondary"
+              class="moh-focus !min-h-11 !px-3 !text-xs !font-semibold"
+              :class="crossPostToPickax ? '' : 'opacity-60'"
+              :aria-pressed="crossPostToPickax"
+              :aria-label="crossPostToPickax ? 'Pickax cross-post on' : 'Pickax cross-post off'"
+              @click="crossPostToPickax = !crossPostToPickax"
+            >
+              <template #icon>
+                <AppIconGlyph name="link" :size="18" />
+              </template>
+              <span class="ml-1">Pickax</span>
+            </Button>
             </template>
             <template #count>
             <div
@@ -1398,6 +1416,9 @@ function registerUnsavedGuardIfNeeded() {
 
 onMounted(() => {
   registerUnsavedGuardIfNeeded()
+  if (isAuthed.value && mode.value === 'create' && !props.replyTo && !pickaxIntegration.status.value) {
+    void pickaxIntegration.refresh()
+  }
   if (isAuthed.value && !props.communityGroupId) {
     loadMyGroups()
   }
@@ -1508,7 +1529,13 @@ function buildSubmitBody(): string {
   return [draft.value.trim(), quotedUrl].filter(Boolean).join('\n\n')
 }
 
-function performCreate(submitBody: string, vis: PostVisibility, mediaPayload: CreateMediaPayload[], pollPayload: ComposerPollPayload | null) {
+function performCreate(
+  submitBody: string,
+  vis: PostVisibility,
+  mediaPayload: CreateMediaPayload[],
+  pollPayload: ComposerPollPayload | null,
+  pickax = false,
+) {
   if (props.createPost) {
     return props.createPost(submitBody, vis, mediaPayload, pollPayload)
   }
@@ -1529,8 +1556,38 @@ function performCreate(submitBody: string, vis: PostVisibility, mediaPayload: Cr
           media: mediaPayload,
           ...(pollPayload ? { poll: pollPayload } : {}),
           ...(effectiveGroupId.value ? { community_group_id: effectiveGroupId.value } : {}),
+          ...(pickax ? { crossPostToPickax: true } : {}),
         },
   })
+}
+
+const pickaxIntegration = usePickaxIntegration()
+const crossPostToPickax = ref(true)
+
+function pickaxMediaOk(media: CreateMediaPayload[]): boolean {
+  return media.every((m) => m.source === 'upload' && m.kind === 'image')
+}
+
+// Mirrors the server's eligibility so the toggle only appears when Pickax can take the post.
+const pickaxEligible = computed(() => {
+  if (!pickaxIntegration.connected.value) return false
+  if (mode.value !== 'create' || props.replyTo || props.quotedPost || props.checkinPrompt || props.createPost) return false
+  if (effectiveGroupId.value || props.groupComposer || scheduledAt.value || hasPoll.value) return false
+  if (effectiveVisibility.value !== 'public') return false
+  const text = draft.value.trim()
+  if (!text && composerMedia.value.length === 0) return false
+  if (text.length > 1000) return false
+  return pickaxMediaOk(toCreatePayload(composerMedia.value))
+})
+
+function pickaxWanted(media: CreateMediaPayload[]): boolean {
+  return pickaxEligible.value && crossPostToPickax.value && pickaxMediaOk(media)
+}
+
+function notifyPickaxSkipped(created: unknown) {
+  const pickax = (created as CreatePostData | null | undefined)?.pickax
+  if (pickax?.status !== 'skipped') return
+  toast.push({ title: 'Posted here. Pickax could not take this post.', durationMs: 3500 })
 }
 
 function unwrapCreated(created: unknown): { post: FeedPost | null; streakReward: PostStreakReward | null } {
@@ -1630,8 +1687,9 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
       return
     }
 
-    const created = await performCreate(submitBody, vis, mediaPayload, pollPayload)
+    const created = await performCreate(submitBody, vis, mediaPayload, pollPayload, pickaxWanted(mediaPayload))
     const { post, streakReward } = unwrapCreated(created)
+    notifyPickaxSkipped(created)
 
     clearComposer()
 
@@ -1691,14 +1749,16 @@ function submitOptimistic(): boolean {
     vis,
     mediaPayload,
     pollPayload,
+    pickax: pickaxWanted(mediaPayload),
   }
 
   emit('pending', {
     localId,
     optimisticPost,
     perform: async () => {
-      const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload)
+      const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload, snapshot.pickax)
       const { post } = unwrapCreated(created)
+      notifyPickaxSkipped(created)
       if (post) seedPermalinkPost(post)
       return post
     },
