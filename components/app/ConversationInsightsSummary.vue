@@ -1,19 +1,38 @@
 <template>
-  <div class="space-y-2">
-    <dl class="grid grid-cols-2 gap-x-3 gap-y-3">
-      <div v-if="weekly" class="min-w-0">
-        <dt class="sr-only">Posts</dt>
-        <dd class="flex items-center gap-1.5">
-          <AppIconGlyph name="write" :size="16" class="moh-text-muted" />
-          <span class="text-xl font-semibold tabular-nums tracking-tight">{{ number(data.postCount) }}</span>
-        </dd>
-        <p class="mt-0.5 text-[11px] moh-text-muted">Posts</p>
-      </div>
+  <div class="space-y-3">
+    <template v-if="weekly">
+      <p class="text-xs moh-text-muted">{{ range ? `${range} · Private to you` : 'Private to you' }}</p>
+      <h3 class="text-sm font-semibold">This week</h3>
+      <dl class="grid grid-cols-2 gap-2">
+        <div class="rounded-xl border moh-border moh-surface-2 p-3">
+          <dd class="text-[22px] font-semibold tabular-nums tracking-tight">{{ number(data.postCount) }}</dd>
+          <dt class="mt-1 text-[13px] moh-text-muted">{{ data.postCount === 1 ? 'Post' : 'Posts' }}</dt>
+        </div>
+        <div class="rounded-xl border moh-border moh-surface-2 p-3">
+          <dd class="text-[22px] font-semibold tabular-nums tracking-tight">+{{ number(data.participantCount) }}</dd>
+          <dt class="mt-1 text-[13px] moh-text-muted">{{ participantNoun }}</dt>
+          <p v-if="data.newParticipantCount" class="mt-1 text-xs moh-text-muted">{{ number(data.newParticipantCount) }} new</p>
+        </div>
+        <template v-if="data.reach?.scope === 'lifetime'">
+          <div class="rounded-xl border moh-border moh-surface-2 p-3">
+            <dd class="text-[22px] font-semibold tabular-nums tracking-tight">{{ number(data.reach.people) }}</dd>
+            <dt class="mt-1 text-[13px] moh-text-muted">Reached</dt>
+            <p class="mt-1 text-xs moh-text-muted">Lifetime</p>
+          </div>
+          <div class="rounded-xl border moh-border moh-surface-2 p-3">
+            <dd class="text-[22px] font-semibold tabular-nums tracking-tight">{{ number(data.reach.impressions) }}</dd>
+            <dt class="mt-1 text-[13px] moh-text-muted">Impressions</dt>
+            <p class="mt-1 text-xs moh-text-muted">Lifetime</p>
+          </div>
+        </template>
+      </dl>
+    </template>
+    <dl v-else class="grid grid-cols-2 gap-x-3 gap-y-3">
       <div class="min-w-0">
         <dt class="sr-only">{{ participantLabel }}</dt>
         <dd class="flex items-center gap-1.5">
           <AppIconGlyph name="members" :size="16" class="moh-text-muted" />
-          <span class="text-xl font-semibold tabular-nums tracking-tight">{{ weekly ? '+' : '' }}{{ number(data.participantCount) }}</span>
+          <span class="text-xl font-semibold tabular-nums tracking-tight">{{ number(data.participantCount) }}</span>
         </dd>
         <p class="mt-0.5 text-[11px] moh-text-muted">
           Participants<span v-if="data.newParticipantCount"> · {{ number(data.newParticipantCount) }} new</span>
@@ -48,9 +67,21 @@
 import type { ConversationInsights } from '~/types/api'
 const props = defineProps<{ data: ConversationInsights; weekly: boolean }>()
 const number = (value: number) => value.toLocaleString('en-US')
+const participantNoun = computed(() => props.data.participantCount === 1 ? 'Participant' : 'Participants')
 const participantLabel = computed(() => {
   const n = props.data.newParticipantCount
-  const label = props.weekly ? 'Other participants, excluding you' : 'Participants'
+  const label = 'Participants'
   return n ? `${label}, ${n} new` : label
 })
+const range = computed(() => {
+  const start = formatDay(props.data.from)
+  const end = formatDay(props.data.to)
+  return start && end ? `${start}–${end}` : ''
+})
+function formatDay(value?: string) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' }).format(date)
+}
 </script>

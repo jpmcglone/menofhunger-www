@@ -1,17 +1,40 @@
 <template>
   <section v-if="postId || data?.posts.length || error || open" class="border-b moh-border">
-    <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 155:21 -->
-    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-11 w-full items-center gap-2 py-2 text-left text-[13px]" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
-      <AppIconGlyph name="analytics" :size="16" class="shrink-0 moh-text-muted" />
-      <span class="shrink-0 font-semibold">Last 7 days</span>
-      <span class="min-w-0 flex-1 truncate moh-text-muted tabular-nums" aria-hidden="true">
-        <template v-if="error">Activity unavailable</template>
-        <template v-else-if="data">
-          +{{ formatShortCount(data.participantCount) }} {{ data.participantCount === 1 ? 'participant' : 'participants' }}
-          · {{ formatShortCount(data.postCount) }} {{ data.postCount === 1 ? 'post' : 'posts' }}
-        </template>
+    <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 965:1594 -->
+    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex w-full flex-col items-stretch gap-3 pt-3 text-left" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
+      <span class="flex flex-col gap-0.5">
+        <span class="text-[15px] font-semibold">Last 7 days</span>
+        <span class="inline-flex items-center gap-1 text-xs moh-text-muted">
+          <AppIconGlyph name="private" :size="14" />
+          Private to you
+        </span>
       </span>
-      <Icon name="tabler:chevron-right" class="shrink-0 text-sm moh-text-soft" aria-hidden="true" />
+      <span v-if="error" class="text-xs moh-text-muted">Activity unavailable</span>
+      <span v-else-if="data" class="grid gap-3" :class="data.reach?.scope === 'lifetime' ? 'grid-cols-3' : 'grid-cols-2'">
+        <span class="min-w-0">
+          <span class="flex items-center gap-1.5">
+            <AppIconGlyph name="write" :size="16" class="moh-text-muted" />
+            <span class="text-base font-semibold tabular-nums">{{ formatCount(data.postCount) }}</span>
+          </span>
+          <span class="mt-0.5 block text-xs moh-text-muted">{{ data.postCount === 1 ? 'Post' : 'Posts' }}</span>
+        </span>
+        <span class="min-w-0">
+          <span class="flex items-center gap-1.5">
+            <AppIconGlyph name="members" :size="16" class="moh-text-muted" />
+            <span class="text-base font-semibold tabular-nums">+{{ formatCount(data.participantCount) }}</span>
+          </span>
+          <span class="mt-0.5 block text-xs moh-text-muted">{{ data.participantCount === 1 ? 'Participant' : 'Participants' }}</span>
+        </span>
+        <span v-if="data.reach?.scope === 'lifetime'" class="min-w-0">
+          <span class="flex items-center gap-1.5">
+            <AppIconGlyph name="visibility" :size="16" class="moh-text-muted" />
+            <span class="text-base font-semibold tabular-nums">{{ formatCount(data.reach.impressions) }}</span>
+          </span>
+          <span class="mt-0.5 block text-xs moh-text-muted">Impressions</span>
+        </span>
+      </span>
+      <span v-else class="text-xs moh-text-muted">Conversation activity</span>
+      <span class="border-t moh-border py-2.5 text-center text-[13px] font-medium">Show all →</span>
     </button>
     <button v-else type="button" class="moh-gutter-x flex min-h-12 w-full items-center gap-3 py-3 text-left" :aria-expanded="open" @click="open = !open">
       <Icon name="tabler:chart-bar" class="text-lg moh-text-muted" aria-hidden="true" />
@@ -66,7 +89,6 @@
 </template>
 <script setup lang="ts">
 import Dialog from 'primevue/dialog'
-import { formatShortCount } from '~/utils/text'
 import type { ConversationInsights } from '~/types/api'
 import type { PostsCallback } from '~/composables/usePresence'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
@@ -76,6 +98,9 @@ const { apiFetchData } = useApiClient()
 const route = useRoute()
 const open = ref(Boolean(props.postId && route.query.insights === '1'))
 const data = ref<ConversationInsights | null>(null)
+function formatCount(value: number) {
+  return value.toLocaleString('en-US')
+}
 const entryLabel = computed(() => {
   if (error.value) return 'Last 7 days. Activity unavailable'
   const recap = data.value
