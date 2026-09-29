@@ -61,15 +61,22 @@
       <AppFormField v-if="needsUsername" label="Pickax username">
         <InputText v-model="username" class="w-full" :maxlength="200" placeholder="@yourhandle" autocomplete="off" />
         <template #helper>
-          Your key does not name your account, so enter your Pickax username. We confirm it matches the key.
+          Your key does not name your account, so enter your Pickax username and we will confirm it is yours.
         </template>
       </AppFormField>
+      <div v-if="verificationCode" class="space-y-2 rounded-xl border moh-border p-3 text-sm">
+        <p class="text-gray-700 dark:text-gray-300">
+          To prove this account is yours, paste this code anywhere in your Pickax bio, save it, then press Verify.
+          You can remove it afterward.
+        </p>
+        <code class="block select-all rounded-lg bg-gray-100 px-3 py-2 font-mono text-sm dark:bg-white/10">{{ verificationCode }}</code>
+      </div>
 
       <AppInlineAlert v-if="error" severity="danger">{{ error }}</AppInlineAlert>
 
       <Button
         type="submit"
-        label="Connect Pickax"
+        :label="verificationCode ? 'Verify and connect' : 'Connect Pickax'"
         :loading="busy"
         :disabled="!clientId.trim() || !clientSecret.trim() || (needsUsername && !username.trim())"
       />
@@ -86,6 +93,7 @@ const clientId = ref('')
 const clientSecret = ref('')
 const username = ref('')
 const needsUsername = ref(false)
+const verificationCode = ref<string | null>(null)
 const busy = ref(false)
 const error = ref('')
 
@@ -100,6 +108,7 @@ async function onConnect() {
       ...(needsUsername.value ? { username: username.value.trim() } : {}),
     })
     needsUsername.value = result.needsUsername
+    verificationCode.value = result.verificationCode
     if (result.connected) {
       clientId.value = ''
       clientSecret.value = ''
@@ -120,6 +129,7 @@ async function onDisconnect() {
   try {
     await disconnect()
     needsUsername.value = false
+    verificationCode.value = null
   } catch (e) {
     error.value = getApiErrorMessage(e) || 'Pickax could not be disconnected. Please try again.'
   } finally {

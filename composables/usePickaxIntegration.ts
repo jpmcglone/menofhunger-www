@@ -4,6 +4,7 @@ export type PickaxIntegrationStatus = {
   username: string | null
   needsAttention: boolean
   needsUsername: boolean
+  verificationCode: string | null
 }
 
 const EMPTY: PickaxIntegrationStatus = {
@@ -12,6 +13,7 @@ const EMPTY: PickaxIntegrationStatus = {
   username: null,
   needsAttention: false,
   needsUsername: false,
+  verificationCode: null,
 }
 
 /**
