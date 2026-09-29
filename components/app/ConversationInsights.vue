@@ -1,40 +1,34 @@
 <template>
   <section v-if="postId || data?.posts.length || error || open" class="border-b moh-border">
     <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 965:1594 -->
-    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex w-full flex-col items-stretch gap-3 pt-3 text-left" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
-      <span class="flex flex-col gap-0.5">
-        <span class="text-[15px] font-semibold">Last 7 days</span>
-        <span class="inline-flex items-center gap-1 text-xs moh-text-muted">
-          <AppIconGlyph name="private" :size="14" />
+    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-11 w-full flex-col justify-center gap-1 py-2 text-left" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
+      <span class="flex min-w-0 items-center gap-2">
+        <span class="shrink-0 text-[13px] font-semibold">Last 7 days</span>
+        <span class="inline-flex min-w-0 items-center gap-1 truncate text-xs moh-text-muted">
+          <AppIconGlyph name="private" :size="12" />
           Private to you
         </span>
+        <span class="ml-auto shrink-0 text-[13px] font-medium">Show all →</span>
       </span>
-      <span v-if="error" class="text-xs moh-text-muted">Activity unavailable</span>
-      <span v-else-if="data" class="grid gap-3" :class="data.reach?.scope === 'lifetime' ? 'grid-cols-3' : 'grid-cols-2'">
-        <span class="min-w-0">
-          <span class="flex items-center gap-1.5">
-            <AppIconGlyph name="write" :size="16" class="moh-text-muted" />
-            <span class="text-base font-semibold tabular-nums">{{ formatCount(data.postCount) }}</span>
-          </span>
-          <span class="mt-0.5 block text-xs moh-text-muted">{{ data.postCount === 1 ? 'Post' : 'Posts' }}</span>
+      <span v-if="error" class="truncate text-xs moh-text-muted">Activity unavailable</span>
+      <span v-else-if="data" class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-0.5 text-[13px]">
+        <span class="inline-flex items-center gap-1">
+          <AppIconGlyph name="write" :size="14" class="moh-text-muted" />
+          <span class="font-semibold tabular-nums">{{ formatCount(data.postCount) }}</span>
+          <span class="moh-text-muted">{{ data.postCount === 1 ? 'Post' : 'Posts' }}</span>
         </span>
-        <span class="min-w-0">
-          <span class="flex items-center gap-1.5">
-            <AppIconGlyph name="members" :size="16" class="moh-text-muted" />
-            <span class="text-base font-semibold tabular-nums">+{{ formatCount(data.participantCount) }}</span>
-          </span>
-          <span class="mt-0.5 block text-xs moh-text-muted">{{ data.participantCount === 1 ? 'Participant' : 'Participants' }}</span>
+        <span class="inline-flex items-center gap-1">
+          <AppIconGlyph name="members" :size="14" class="moh-text-muted" />
+          <span class="font-semibold tabular-nums">+{{ formatCount(data.participantCount) }}</span>
+          <span class="moh-text-muted">{{ data.participantCount === 1 ? 'Participant' : 'Participants' }}</span>
         </span>
-        <span v-if="data.reach?.scope === 'lifetime'" class="min-w-0">
-          <span class="flex items-center gap-1.5">
-            <AppIconGlyph name="visibility" :size="16" class="moh-text-muted" />
-            <span class="text-base font-semibold tabular-nums">{{ formatCount(data.reach.impressions) }}</span>
-          </span>
-          <span class="mt-0.5 block text-xs moh-text-muted">Impressions</span>
+        <span v-if="data.reach?.scope === 'lifetime'" class="inline-flex items-center gap-1">
+          <AppIconGlyph name="visibility" :size="14" class="moh-text-muted" />
+          <span class="font-semibold tabular-nums">{{ formatCount(data.reach.impressions) }}</span>
+          <span class="moh-text-muted">Impressions</span>
         </span>
       </span>
-      <span v-else class="text-xs moh-text-muted">Conversation activity</span>
-      <span class="border-t moh-border py-2.5 text-center text-[13px] font-medium">Show all →</span>
+      <span v-else class="truncate text-xs moh-text-muted">Conversation activity</span>
     </button>
     <button v-else type="button" class="moh-gutter-x flex min-h-12 w-full items-center gap-3 py-3 text-left" :aria-expanded="open" @click="open = !open">
       <Icon name="tabler:chart-bar" class="text-lg moh-text-muted" aria-hidden="true" />
