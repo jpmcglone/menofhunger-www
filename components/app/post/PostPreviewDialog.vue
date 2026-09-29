@@ -20,6 +20,7 @@
           :post="post"
           :clickable="false"
           :track-views="false"
+          preview
           no-border-bottom
           compact
         />

@@ -108,6 +108,18 @@ Sentry.init({
     // a promise. No stack trace, no user-visible effect; not our code and not actionable.
     /CustomEvent.*type=unhandledrejection/,
     /Object captured as promise rejection with keys: \[object has no keys\]/,
+    // Browser extensions that reject their own promises at our URL. PayPal Honey's Safari
+    // extension throws UnavailableError when its backend is unreachable (MENOFHUNGER-WWW-1W).
+    'UnavailableError',
+  ],
+
+  // Anything whose stack lives in an extension bundle is not our code.
+  denyUrls: [
+    /safari-(web-)?extension:\/\//i,
+    /chrome-extension:\/\//i,
+    /moz-extension:\/\//i,
+    /\.safariextension\//i,
+    /\/PlugIns\/.*\.appex\//i,
   ],
 
   debug: false,

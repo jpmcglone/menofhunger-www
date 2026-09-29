@@ -152,7 +152,7 @@
             </button>
           </div>
 
-          <AppPostRowMoreMenu v-if="!isPendingRow" :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
+          <AppPostRowMoreMenu v-if="!isPendingRow && !preview" :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
         </div>
 
         <component
@@ -372,7 +372,7 @@
       >
         <AppIconGlyph name="catchup" :size="20" :selected="catchUpResultReady" />
       </button>
-      <div class="relative h-5 w-10">
+      <div v-if="!preview" class="relative h-5 w-10">
         <AppPostRowMoreMenu :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
       </div>
     </template>
@@ -525,6 +525,11 @@ const props = withDefaults(defineProps<{
    * observes the wrapper for the full chain — avoids duplicate observers).
    */
   trackViews?: boolean
+  /**
+   * Composer preview: render the row exactly as it will publish, minus the controls that act on a
+   * post that does not exist yet (Catch me up, the more menu). Images stay openable.
+   */
+  preview?: boolean
 }>(), {
   clickable: true,
   trackViews: true,
@@ -736,7 +741,7 @@ const isSelf = computed(() => {
 // sees an upsell).
 const { show: showCatchUp, post: catchUpPost, result: catchUpResult } = useMarvCatchUp()
 const showCatchUpButton = computed(
-  () => isAuthed.value && !isPendingRow.value && !isDeletedPost.value,
+  () => isAuthed.value && !props.preview && !isPendingRow.value && !isDeletedPost.value,
 )
 // In-session signal: this post's summary is already loaded in global state.
 const catchUpSessionReady = computed(
