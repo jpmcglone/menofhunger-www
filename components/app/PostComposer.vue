@@ -1562,7 +1562,7 @@ function performCreate(
 }
 
 const pickaxIntegration = usePickaxIntegration()
-const crossPostToPickax = ref(true)
+const crossPostToPickax = ref(false)
 
 function pickaxMediaOk(media: CreateMediaPayload[]): boolean {
   return media.every((m) => m.source === 'upload' && m.kind === 'image')

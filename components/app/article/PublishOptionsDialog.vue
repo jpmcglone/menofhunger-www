@@ -49,7 +49,7 @@ const emit = defineEmits<{
 const api = useBoardApi()
 const postToBoard = ref(true)
 const shareToFeed = ref(false)
-const crossPostToPickax = ref(true)
+const crossPostToPickax = ref(false)
 const pickaxIntegration = usePickaxIntegration()
 const pickaxAvailable = computed(() => pickaxIntegration.connected.value && props.visibility === 'public')
 
