@@ -319,32 +319,6 @@
                 {{ scheduledCount > 99 ? '99+' : scheduledCount }}
               </span>
             </div>
-            <button
-              v-if="pickaxEligible"
-              v-tooltip.bottom="tinyTooltip(crossPostToPickax ? 'Also posting to Pickax. Click to keep this on Men of Hunger only.' : 'Not posting to Pickax. Click to also post there.')"
-              type="button"
-              class="moh-focus moh-tap relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors"
-              :class="crossPostToPickax ? 'ring-1 ring-sky-400/80' : ''"
-              :aria-pressed="crossPostToPickax"
-              :aria-label="crossPostToPickax ? 'Also posting to Pickax' : 'Not posting to Pickax'"
-              @click="crossPostToPickax = !crossPostToPickax"
-            >
-              <span class="relative inline-flex h-6 w-6">
-                <img
-                  src="/images/brands/pickax.png"
-                  alt=""
-                  width="24"
-                  height="24"
-                  class="h-6 w-6 rounded-md transition"
-                  :class="crossPostToPickax ? '' : 'opacity-40 grayscale'"
-                >
-                <span
-                  v-if="!crossPostToPickax"
-                  aria-hidden="true"
-                  class="absolute left-1/2 top-1/2 h-[2px] w-[30px] -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-[var(--moh-text)]"
-                />
-              </span>
-            </button>
             </template>
             <template #count>
             <div
@@ -574,6 +548,20 @@
       </div>
     </template>
   </Dialog>
+
+  <AppPostPreviewDialog
+    v-if="previewOpen"
+    :author="previewAuthor"
+    :body="draft"
+    :visibility-label="previewVisibilityLabel"
+    :media-thumbs="previewMediaThumbs"
+    :poll-option-count="previewPollOptionCount"
+    :scheduled-label="scheduledAt ? scheduledAtDisplay : null"
+    :pickax="previewPickax"
+    :busy="submitting"
+    @close="previewOpen = false"
+    @confirm="onPreviewConfirm"
+  />
   </div>
 </template>
 
@@ -1592,6 +1580,56 @@ function pickaxWanted(media: CreateMediaPayload[]): boolean {
   return pickaxEligible.value && crossPostToPickax.value && pickaxMediaOk(media)
 }
 
+/**
+ * Post and Schedule open a preview first (same shape as publishing an article): the post as it
+ * will look, plus every other place it can go. Replies, quotes and edits stay one tap.
+ */
+const previewOpen = ref(false)
+const previewApproved = ref(false)
+const previewSupported = computed(
+  () => mode.value === 'create' && !props.replyTo && !props.quotedPost && !scheduledEditId.value,
+)
+
+const VISIBILITY_LABELS: Record<string, string> = {
+  public: 'Public',
+  verifiedOnly: 'Verified',
+  premiumOnly: 'Premium',
+  onlyMe: 'Only me',
+}
+
+const previewAuthor = computed(() => ({
+  name: (user.value as any)?.name ?? null,
+  username: user.value?.username ?? null,
+  avatarUrl: (user.value as any)?.avatarUrl ?? null,
+}))
+const previewVisibilityLabel = computed(() => {
+  if (effectiveGroupId.value) return 'Group'
+  return VISIBILITY_LABELS[effectiveVisibility.value] ?? 'Public'
+})
+const previewMediaThumbs = computed(() =>
+  composerMedia.value.map((m) => m.previewUrl || m.url || '').filter(Boolean),
+)
+const previewPollOptionCount = computed(() =>
+  hasPoll.value ? (poll.value?.options ?? []).filter((o) => Boolean(o?.text?.trim())).length : 0,
+)
+
+/** Null hides the destinations section. Scheduled posts show it disabled: the API never cross-posts them. */
+const previewPickax = computed<{ disabled: boolean; note: string } | null>(() => {
+  if (!pickaxIntegration.connected.value) return null
+  if (scheduledAt.value) {
+    if (effectiveVisibility.value !== 'public' || effectiveGroupId.value) return null
+    return { disabled: true, note: 'Scheduled posts stay on Men of Hunger only' }
+  }
+  return pickaxEligible.value ? { disabled: false, note: '' } : null
+})
+
+async function onPreviewConfirm(options: { crossPostToPickax: boolean }) {
+  crossPostToPickax.value = options.crossPostToPickax
+  previewApproved.value = true
+  previewOpen.value = false
+  await submit()
+}
+
 function notifyPickaxSkipped(created: unknown) {
   const pickax = (created as CreatePostData | null | undefined)?.pickax
   if (pickax?.status !== 'skipped') return
@@ -1834,8 +1872,14 @@ const submit = async () => {
     }
   }
 
-  submitError.value = null
   emojiPickerEl.value?.close()
+
+  if (previewSupported.value && !previewApproved.value) {
+    previewOpen.value = true
+    return
+  }
+  previewApproved.value = false
+  submitError.value = null
 
   // Scheduling (new or edit) must use the sync path, not the optimistic path.
   const isScheduling = Boolean(
