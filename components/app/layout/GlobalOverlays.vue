@@ -43,7 +43,7 @@
        Covers both the spaces page and the radio bar in the layout. -->
   <ClientOnly>
     <Teleport to="body">
-      <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index: 9990;" aria-hidden="true">
+      <div class="fixed inset-0 pointer-events-none overflow-hidden" style="z-index: var(--moh-z-celebration);" aria-hidden="true">
         <span
           v-for="r in allPositionedFloating"
           :key="r.key"

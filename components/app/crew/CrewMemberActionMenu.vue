@@ -4,7 +4,7 @@
       <div
         v-if="open && target"
         ref="menuEl"
-        class="fixed z-[9999] min-w-[200px] overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
+        class="fixed z-[var(--moh-z-menu)] min-w-[200px] overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
         :style="style"
         role="menu"
         @click.stop

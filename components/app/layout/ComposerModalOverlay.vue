@@ -17,7 +17,7 @@
     >
       <div
         v-if="composerModalOpen"
-        class="z-[1000]"
+        class="z-[var(--moh-z-modal)]"
         :style="overlayStyle"
         aria-label="Post composer overlay"
         role="dialog"

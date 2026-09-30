@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-[9996] flex flex-col bg-zinc-950 text-white" role="dialog" aria-modal="true" aria-label="Leave a video message">
+  <div class="fixed inset-0 z-[var(--moh-z-call)] flex flex-col bg-zinc-950 text-white" role="dialog" aria-modal="true" aria-label="Leave a video message">
     <div class="relative flex-1 overflow-hidden bg-black">
       <video
         v-if="previewUrl"

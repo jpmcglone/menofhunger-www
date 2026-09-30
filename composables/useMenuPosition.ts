@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'vue'
+import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 
 type Align = 'start' | 'end'
 
@@ -68,6 +69,7 @@ export function useMenuPosition() {
       const width = opts.matchAnchorWidth ? rect.width : (menuEl.value?.getBoundingClientRect().width || opts.menuWidth || 200)
       const bottomEdge = Math.max(margin, Math.min(rect.top - gap, window.innerHeight - margin))
       style.value = {
+        zIndex: OVERLAY_LAYERS.menu,
         bottom: `${window.innerHeight - bottomEdge}px`,
         left: `${Math.max(margin, Math.min(align === 'end' ? rect.right - width : rect.left, window.innerWidth - width - margin))}px`,
         maxHeight: `${Math.max(0, Math.min(opts.maxHeight ?? Infinity, bottomEdge - margin))}px`,
@@ -99,6 +101,7 @@ export function useMenuPosition() {
     }
 
     const next: CSSProperties = {
+      zIndex: OVERLAY_LAYERS.menu,
       top: `${Math.floor(top)}px`,
       left: `${Math.floor(left)}px`,
     }

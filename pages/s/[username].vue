@@ -114,7 +114,7 @@
               <div
                 class="w-full"
                 :class="pinWatchPlayerForChat
-                  ? 'fixed left-0 right-0 z-[10001] rounded-none'
+                  ? 'fixed left-0 right-0 z-[var(--moh-z-pinned-player)] rounded-none'
                   : 'relative max-h-full aspect-video'"
                 :style="pinWatchPlayerForChat
                   ? { top: 'var(--moh-safe-top, 0px)', height: WATCH_PLAYER_PINNED_HEIGHT }

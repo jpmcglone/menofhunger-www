@@ -11,7 +11,7 @@
       >
         <div
           v-if="open"
-          class="fixed inset-0 z-[9999] flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
+          class="fixed inset-0 z-[var(--moh-z-modal)] flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
           role="presentation"
           @click.self="close"
         >

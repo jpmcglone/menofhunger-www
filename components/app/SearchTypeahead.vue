@@ -366,7 +366,7 @@ defineExpose({
         v-if="open"
         ref="menuEl"
         role="listbox"
-        class="fixed z-[2000] overflow-y-auto rounded-xl border moh-border bg-white dark:bg-zinc-950 shadow-xl"
+        class="fixed z-[var(--moh-z-menu)] overflow-y-auto rounded-xl border moh-border bg-white dark:bg-zinc-950 shadow-xl"
         :style="menuStyle"
       >
         <!-- Recents panel (query empty) -->

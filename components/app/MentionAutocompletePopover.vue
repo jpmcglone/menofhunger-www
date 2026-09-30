@@ -5,7 +5,7 @@
         v-if="open"
         ref="panelEl"
         :id="listboxId || undefined"
-        class="fixed z-[10100] w-[min(22rem,92vw)] border moh-border bg-white shadow-2xl dark:bg-zinc-950 rounded-xl overflow-hidden"
+        class="fixed z-[var(--moh-z-menu)] w-[min(22rem,92vw)] border moh-border bg-white shadow-2xl dark:bg-zinc-950 rounded-xl overflow-hidden"
         :style="panelStyle"
         role="listbox"
         aria-label="Mention suggestions"

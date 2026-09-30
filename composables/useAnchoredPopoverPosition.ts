@@ -1,4 +1,5 @@
 import type { CSSProperties, Ref } from 'vue'
+import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 
 type Size = { w: number; h: number }
 
@@ -61,7 +62,7 @@ export function useAnchoredPopoverPosition(params: {
       : clamp(x + offset, margin, maxLeft)
     const top = clamp(y + offset, margin, maxTop)
 
-    return { left: `${Math.floor(left)}px`, top: `${Math.floor(top)}px` }
+    return { zIndex: OVERLAY_LAYERS.menu, left: `${Math.floor(left)}px`, top: `${Math.floor(top)}px` }
   })
 
   return { style, measure, measured }

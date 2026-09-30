@@ -4,7 +4,7 @@
       <div
         v-if="toast"
         :key="toast.id"
-        class="moh-follow-online-toast pointer-events-auto fixed left-3 right-3 z-[10040] sm:right-auto sm:w-[22rem] md:left-6"
+        class="moh-follow-online-toast pointer-events-auto fixed left-3 right-3 z-[var(--moh-z-toast)] sm:right-auto sm:w-[22rem] md:left-6"
         role="status"
         aria-live="polite"
       >

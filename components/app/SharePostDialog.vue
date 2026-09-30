@@ -14,7 +14,7 @@
           class="fixed"
           :class="isCheckin
             ? ['pointer-events-none bottom-[calc(var(--moh-tabbar-height,4rem)+var(--moh-safe-bottom,0px))] z-[80] px-3 pb-3 md:bottom-0 md:px-4 md:pb-4', alignStyle ? '' : 'inset-x-0']
-            : 'inset-0 z-[9999] flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6'"
+            : 'inset-0 z-[var(--moh-z-modal)] flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6'"
           :style="isCheckin ? alignStyle : undefined"
           role="presentation"
           @click.self="!isCheckin && close()"

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="currentId" ref="bar" data-media-occluder class="fixed inset-x-0 top-0 z-[2000]" :style="{ top: `${viewportOffsetTop}px` }">
+  <div v-if="currentId" ref="bar" data-media-occluder class="fixed inset-x-0 top-0 z-[var(--moh-z-media-bar)]" :style="{ top: `${viewportOffsetTop}px` }">
     <AppVoicePlayerBar />
   </div>
 </template>

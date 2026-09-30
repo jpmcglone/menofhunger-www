@@ -1,6 +1,6 @@
 <template>
   <div
-    class="fixed left-1/2 top-[calc(env(safe-area-inset-top)+0.75rem)] z-[9996] w-[calc(100%-1.5rem)] max-w-sm -translate-x-1/2"
+    class="fixed left-1/2 top-[calc(env(safe-area-inset-top)+0.75rem)] z-[var(--moh-z-call)] w-[calc(100%-1.5rem)] max-w-sm -translate-x-1/2"
     role="alertdialog"
     aria-live="assertive"
     :aria-label="`${callerName} is calling`"

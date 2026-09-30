@@ -1,6 +1,7 @@
 /// <reference types="node" />
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { siteConfig } from './config/site'
+import { OVERLAY_LAYERS } from './utils/overlay-layers'
 
 function hostFromUrl(raw: string | undefined | null): string | null {
   const s = String(raw || '').trim()
@@ -481,7 +482,13 @@ export default defineNuxtConfig({
 
   primevue: {
     options: {
-      ripple: true
+      ripple: true,
+      zIndex: {
+        modal: OVERLAY_LAYERS.modal,
+        overlay: OVERLAY_LAYERS.menu,
+        menu: OVERLAY_LAYERS.menu,
+        tooltip: OVERLAY_LAYERS.tooltip,
+      },
     },
     importTheme: {
       from: '~/config/primevue.theme',

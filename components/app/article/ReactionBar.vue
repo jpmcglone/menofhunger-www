@@ -32,7 +32,7 @@
       <div
         v-if="pickerOpen"
         ref="menuEl"
-        class="fixed z-[2000] flex items-center gap-1 rounded-xl border moh-border moh-surface p-2 shadow-lg"
+        class="fixed z-[var(--moh-z-menu)] flex items-center gap-1 rounded-xl border moh-border moh-surface p-2 shadow-lg"
         :style="menuStyle"
         role="menu"
         aria-label="Pick a reaction"

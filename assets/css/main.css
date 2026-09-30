@@ -11,6 +11,25 @@
   --font-serif: var(--moh-font-serif);
 }
 
+/* Keep in sync with utils/overlay-layers.ts. Portaled UI uses these, not raw numbers. */
+:root {
+  --moh-z-drag-ghost: 2000;
+  --moh-z-media-bar: 2100;
+  --moh-z-chrome: 3000;
+  --moh-z-celebration: 8000;
+  --moh-z-account-backdrop: 9900;
+  --moh-z-account-menu: 9950;
+  --moh-z-bottom-sheet: 10000;
+  --moh-z-gate: 10400;
+  --moh-z-modal: 11000;
+  --moh-z-pinned-player: 11100;
+  --moh-z-menu: 12000;
+  --moh-z-tooltip: 13000;
+  --moh-z-call-chrome: 14000;
+  --moh-z-call: 14100;
+  --moh-z-toast: 14200;
+}
+
 /* Shared Inter / Literata typography, bundled with the application. */
 :root {
   /* Inter first, then system fallbacks (fast + consistent). */
@@ -1021,10 +1040,7 @@ input[type="reset"] {
   }
 }
 
-/* Tooltips are rendered to <body> but need to clear full-screen overlays (z-9999) */
-.p-tooltip {
-  z-index: 99999 !important;
-}
+/* Tooltip color only. Stacking comes from PrimeVue's tooltip layer. */
 
 /* PrimeVue tooltip (used by verified badge): simple black + small white text */
 .p-tooltip.moh-tooltip .p-tooltip-text {

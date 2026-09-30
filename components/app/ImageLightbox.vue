@@ -4,7 +4,7 @@
       <div
         v-if="visible && src && target"
         ref="rootEl"
-        class="fixed inset-0 z-[9999] touch-none"
+        class="fixed inset-0 z-[var(--moh-z-modal)] touch-none"
         role="dialog"
         aria-modal="true"
         :aria-label="alt"

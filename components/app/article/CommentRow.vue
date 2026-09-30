@@ -179,7 +179,7 @@
                   <div
                     v-if="moreOpen"
                     ref="moreMenuEl"
-                    class="fixed z-[9999] w-36 overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
+                    class="fixed z-[var(--moh-z-menu)] w-36 overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
                     :style="moreMenuStyle"
                   >
                     <button
@@ -241,7 +241,7 @@
       <div
         v-if="reactPickerOpen"
         ref="reactionPickerEl"
-        class="fixed z-[10020] flex items-center gap-1 rounded-xl border moh-border moh-surface p-2 shadow-lg"
+        class="fixed z-[var(--moh-z-menu)] flex items-center gap-1 rounded-xl border moh-border moh-surface p-2 shadow-lg"
         :style="reactionPickerStyle"
         role="menu"
         aria-label="Pick a reaction"

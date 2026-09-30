@@ -25,7 +25,7 @@ describe('anchored menus – viewport positioning', () => {
     const source = src(path)
     expect(source).toContain('<Teleport to="body">')
     expect(source).toContain('useMenuPosition')
-    expect(source).toContain('class="fixed z-[2000]')
+    expect(source).toContain('z-[var(--moh-z-menu)]')
     expect(source).not.toMatch(/class="[^"]*(?:absolute[^"]*(?:top-full|bottom-full)|(?:top-full|bottom-full)[^"]*absolute)/)
   })
 

@@ -272,7 +272,7 @@ function relationshipLabel(u: FollowListUser): string {
       <div
         v-if="open && !modelValue"
         ref="menuEl"
-        class="fixed z-[2000] overflow-y-auto border moh-border bg-white dark:bg-zinc-950 rounded-xl shadow-xl"
+        class="fixed z-[var(--moh-z-menu)] overflow-y-auto border moh-border bg-white dark:bg-zinc-950 rounded-xl shadow-xl"
         :style="menuStyle"
       >
         <button

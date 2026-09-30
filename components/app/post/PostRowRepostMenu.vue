@@ -2,13 +2,13 @@
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 z-[9998]"
+      class="fixed inset-0 z-[var(--moh-z-modal)]"
       @click.stop="open = false"
     />
     <div
       v-if="open"
       ref="menuEl"
-      class="fixed z-[9999] min-w-[160px] rounded-xl border moh-border moh-surface shadow-lg overflow-hidden"
+      class="fixed z-[var(--moh-z-menu)] min-w-[160px] rounded-xl border moh-border moh-surface shadow-lg overflow-hidden"
       :style="style"
       @click.stop
     >

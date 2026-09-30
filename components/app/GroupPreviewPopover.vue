@@ -11,7 +11,7 @@
       <div
         v-if="open && shell"
         ref="cardEl"
-        class="fixed z-[1300] w-[340px] max-w-[calc(100vw-24px)] rounded-2xl transition-[left,top] duration-150 ease-out motion-reduce:transition-none will-change-[left,top] overflow-hidden"
+        class="fixed z-[var(--moh-z-menu)] w-[340px] max-w-[calc(100vw-24px)] rounded-2xl transition-[left,top] duration-150 ease-out motion-reduce:transition-none will-change-[left,top] overflow-hidden"
         :style="posStyle"
         @mouseenter="onCardEnter"
         @mouseleave="onCardLeave"

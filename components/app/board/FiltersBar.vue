@@ -250,7 +250,7 @@ watch(
 .filter-icon-trigger:hover, .filter-icon-trigger.is-open { background: var(--moh-surface-hover); color: var(--moh-text); }
 .filter-icon-trigger.is-active { color: var(--moh-text); }
 .filter-count { display: grid; place-items: center; min-width: 20px; height: 20px; border-radius: 50%; background: var(--moh-text); color: var(--moh-bg); font-size: 11px; }
-.filter-menu { position: fixed; z-index: 9999; width: 320px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 8px; border-radius: 20px; border: 1px solid var(--moh-border); background: var(--moh-bg); color: var(--moh-text); box-shadow: 0 16px 48px #0003; }
+.filter-menu { position: fixed; z-index: var(--moh-z-menu); width: 320px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 8px; border-radius: 20px; border: 1px solid var(--moh-border); background: var(--moh-bg); color: var(--moh-text); box-shadow: 0 16px 48px #0003; }
 .filter-menu-title { padding: 12px 12px 16px; font-size: 17px; font-weight: 600; }
 .filter-section-label { padding: 8px 12px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--moh-text-muted); }
 .filter-divider { border-top: 1px solid var(--moh-border); margin-top: 8px; padding-top: 16px; }

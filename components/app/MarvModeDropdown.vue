@@ -36,7 +36,7 @@
           ref="menuEl"
           role="listbox"
           :aria-label="ariaLabel"
-          class="fixed z-[2000] min-w-[280px] origin-top-right rounded-2xl moh-surface-1 p-1 shadow-2xl ring-1 ring-black/[0.06] dark:ring-white/[0.07]"
+          class="fixed z-[var(--moh-z-menu)] min-w-[280px] origin-top-right rounded-2xl moh-surface-1 p-1 shadow-2xl ring-1 ring-black/[0.06] dark:ring-white/[0.07]"
           :style="menuStyle"
         >
           <li

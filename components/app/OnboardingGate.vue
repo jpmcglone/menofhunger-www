@@ -137,7 +137,7 @@ async function continuePage() {
 </script>
 
 <style scoped>
-.onboarding-screen { position: fixed; inset: 0; z-index: 10000; overflow-y: auto; padding: 24px; }
+.onboarding-screen { position: fixed; inset: 0; z-index: var(--moh-z-gate); overflow-y: auto; padding: 24px; }
 .onboarding-column { max-width: 400px; margin: 0 auto; min-height: calc(100dvh - 48px); display: flex; flex-direction: column; gap: 24px; }
 .onboarding-form { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; }
 .onboarding-content { display: flex; flex-direction: column; gap: 20px; margin: auto 0; padding: 24px 0; }

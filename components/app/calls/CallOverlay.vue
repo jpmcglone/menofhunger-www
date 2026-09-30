@@ -1,6 +1,6 @@
 <template>
   <div
-    class="fixed inset-0 z-[9995] flex flex-col bg-black text-white"
+    class="fixed inset-0 z-[var(--moh-z-call)] flex flex-col bg-black text-white"
     role="dialog"
     aria-modal="true"
     :aria-label="`${call.type === 'video' ? 'Video' : 'Voice'} call`"

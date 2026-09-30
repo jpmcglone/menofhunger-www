@@ -61,7 +61,7 @@
             v-if="showDropdown && suggestions.length > 0"
             ref="menuEl"
             role="listbox"
-            class="fixed z-[2000] max-h-48 w-48 overflow-y-auto rounded-xl border moh-border moh-surface py-1 shadow-lg"
+            class="fixed z-[var(--moh-z-menu)] max-h-48 w-48 overflow-y-auto rounded-xl border moh-border moh-surface py-1 shadow-lg"
             :style="menuStyle"
           >
             <li

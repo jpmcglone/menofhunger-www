@@ -2,11 +2,11 @@
   <Teleport to="body">
     <section
       v-if="visible"
-      class="fixed inset-x-0 bottom-0 z-[9999] flex flex-col moh-bg moh-text"
+      class="fixed inset-x-0 bottom-0 z-[var(--moh-z-modal)] flex flex-col moh-bg moh-text"
       :class="keepWatchPlayerVisible ? '' : 'inset-0'"
       :style="keepWatchPlayerVisible
-        ? { top: WATCH_CHAT_PINNED_TOP, zIndex: 9999 }
-        : { top: 0, zIndex: 9999 }"
+        ? { top: WATCH_CHAT_PINNED_TOP, zIndex: 'var(--moh-z-modal)' }
+        : { top: 0, zIndex: 'var(--moh-z-modal)' }"
       role="dialog"
       aria-modal="true"
       :aria-labelledby="titleId"

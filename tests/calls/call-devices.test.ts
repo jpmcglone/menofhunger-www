@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 import {
   describeMediaError,
   videoConstraints,
@@ -93,7 +94,9 @@ describe('call chrome wiring', () => {
   it('surfaces camera errors on the overlay, not only a toast under it', () => {
     const overlay = read('components/app/calls/CallOverlay.vue')
     expect(overlay).toContain('cameraError')
+    expect(overlay).toContain('z-[var(--moh-z-call)]')
     const toast = read('components/app/ToastStack.vue')
-    expect(toast).toContain('z-[10050]')
+    expect(toast).toContain('z-[var(--moh-z-toast)]')
+    expect(OVERLAY_LAYERS.toast).toBeGreaterThan(OVERLAY_LAYERS.call)
   })
 })

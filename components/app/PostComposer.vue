@@ -2085,7 +2085,7 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
 
 .moh-drag-ghost {
   position: fixed;
-  z-index: 2000;
+  z-index: var(--moh-z-drag-ghost);
   pointer-events: none;
   transform: translateZ(0);
   will-change: left, top;

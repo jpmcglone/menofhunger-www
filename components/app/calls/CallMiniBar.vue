@@ -1,6 +1,6 @@
 <template>
   <div
-    class="fixed bottom-[calc(var(--moh-safe-bottom,0px)+4.5rem)] right-3 z-[9994] sm:bottom-4 sm:right-4"
+    class="fixed bottom-[calc(var(--moh-safe-bottom,0px)+4.5rem)] right-3 z-[var(--moh-z-call-chrome)] sm:bottom-4 sm:right-4"
     role="status"
   >
     <div class="flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900/95 py-1.5 pl-3 pr-1.5 text-white shadow-xl shadow-black/40 backdrop-blur">

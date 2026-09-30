@@ -192,7 +192,7 @@
               <div
                 v-if="morePopoverOpen"
                 ref="morePopoverRef"
-                class="fixed z-[2000] min-w-[12rem] max-h-[min(20rem,70vh)] overflow-y-auto rounded-xl border moh-border bg-white p-1.5 shadow-lg dark:bg-zinc-900"
+                class="fixed z-[var(--moh-z-menu)] min-w-[12rem] max-h-[min(20rem,70vh)] overflow-y-auto rounded-xl border moh-border bg-white p-1.5 shadow-lg dark:bg-zinc-900"
                 :style="moreMenuStyle"
               >
                 <NuxtLink

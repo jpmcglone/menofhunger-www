@@ -10,7 +10,7 @@
     >
       <div
         v-if="replyModal.open.value && parentPost"
-        class="z-[1000]"
+        class="z-[var(--moh-z-modal)]"
         :style="overlayStyle"
         aria-label="Reply modal"
         role="dialog"

@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-[9995] flex flex-col bg-zinc-950 text-white" role="dialog" aria-modal="true" aria-label="Calling">
+  <div class="fixed inset-0 z-[var(--moh-z-call)] flex flex-col bg-zinc-950 text-white" role="dialog" aria-modal="true" aria-label="Calling">
     <!-- Local preview fills the background when the camera is on -->
     <div class="absolute inset-0">
       <CallVideoTile

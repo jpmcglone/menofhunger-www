@@ -19,7 +19,7 @@
     <div
       v-if="open"
       ref="menuEl"
-      class="fixed z-[2000] w-56 overflow-y-auto rounded-xl border moh-border moh-bg shadow-lg"
+      class="fixed z-[var(--moh-z-menu)] w-56 overflow-y-auto rounded-xl border moh-border moh-bg shadow-lg"
       :style="menuStyle"
       role="menu"
       aria-label="Select folder"
