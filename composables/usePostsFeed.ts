@@ -578,7 +578,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
   let pendingForYouRefresh = false
 
   async function refresh(opts?: { forYouRefresh?: boolean }) {
-    const wantForYouRefresh = Boolean(opts?.forYouRefresh && forYou.value)
+    const wantForYouRefresh = Boolean(forYou.value && opts?.forYouRefresh !== false)
     const requestKey = currentRequestKey()
     if (hardRefreshPromise && hardRefreshPromiseKey === requestKey) return await hardRefreshPromise
     if (

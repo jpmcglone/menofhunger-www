@@ -108,10 +108,10 @@ function revealPending() {
 useBoardThreadSeo(computed(() => ctxData.value?.thread), computed(() => ctxData.value?.comment))
 
 // Opening a comment permalink counts a view of that comment, like a post permalink.
-const { markEngaged } = usePostViewTracker()
+const { markOpened } = usePostViewTracker()
 watch(
   () => (ctxData.value?.thread.viewerCanAccess ? ctxData.value.comment?.id ?? null : null),
-  (id) => { if (id && import.meta.client) markEngaged(id) },
+  (id) => { if (id && import.meta.client) void markOpened(id) },
   { immediate: true },
 )
 

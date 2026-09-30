@@ -193,10 +193,10 @@ function onThreadDeleted() {
 useBoardThreadSeo(thread)
 
 // Opening a thread counts as a view, exactly like a post permalink (unique + impression).
-const { markEngaged } = usePostViewTracker()
+const { markOpened } = usePostViewTracker()
 watch(
   () => (thread.value?.viewerCanAccess ? thread.value.id : null),
-  (id) => { if (id && import.meta.client) markEngaged(id) },
+  (id) => { if (id && import.meta.client) void markOpened(id) },
   { immediate: true },
 )
 

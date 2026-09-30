@@ -138,7 +138,7 @@ describe('unique people + total views', () => {
     expect(watchBody).toContain('onActivated(() => { reportPermalinkViews(post.value) })')
     expect(watchBody).toContain('viewerCanAccess !== false')
     expect(watchBody).toContain('markEngaged(chainIds)')
-    expect(tracker).toContain("source: 'permalink_engaged'")
+    expect(tracker).toContain("source: 'post_open'")
     expect(tracker.includes(`if (!${'import'}.meta.client) return`)).toBe(true)
   })
 

@@ -367,6 +367,7 @@
 
   <AppBoardFeedPostRow
     v-else-if="!hiddenByBlock && boardVariant === 'post'"
+    :ref="captureBoardRow"
     :data-post-id="postView.id"
     :class="rowBorderClass"
     :post="postView"
@@ -424,6 +425,7 @@
 
   <AppBoardFeedCommentRow
     v-else-if="!hiddenByBlock"
+    :ref="captureBoardRow"
     :data-post-id="postView.id"
     :class="rowBorderClass"
     :post="postView"
@@ -701,6 +703,10 @@ const {
 const { observe: observeView, noteAlreadyViewed, hasViewedLocally } = usePostViewTracker()
 let stopViewObserve: (() => void) | null = null
 
+function captureBoardRow(value: unknown) {
+  rowEl.value = (value as { $el?: HTMLElement } | null)?.$el ?? null
+}
+
 function bindViewObserve() {
   stopViewObserve?.()
   stopViewObserve = null
@@ -710,7 +716,6 @@ function bindViewObserve() {
     rowEl.value
     && postView.value.id
     && postView.value.viewerCanAccess !== false
-    && postView.value.kind !== 'board'
     && !isPendingLocalId(postView.value.id)
   ) {
     if (postView.value.viewerHasViewed === true) {

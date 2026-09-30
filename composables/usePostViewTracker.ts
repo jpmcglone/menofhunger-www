@@ -49,6 +49,13 @@ const optimisticGroupBadgeApplied = new Set<string>()
 const locallyViewedPostIds = new Set<string>()
 let applyAcksFn: ((acks: import('~/types/api').PostViewAck[]) => void) | null = null
 
+let persistenceKey = ''
+const sendingPostIds = new Set<string>()
+function persistPending() {
+  if (!import.meta.client || !persistenceKey) return
+  try { sessionStorage.setItem(persistenceKey, JSON.stringify({ at: Date.now(), ids: [...new Set([...pendingPostIds, ...sendingPostIds])] })) } catch { /* Storage is optional. */ }
+}
+
 function canReport(id: string, now = Date.now()): boolean {
   const last = sessionReportedAt.get(id)
   return last == null || now - last >= REREPORT_INTERVAL_MS
@@ -63,10 +70,11 @@ function enqueuePosts(ids: string[]): string[] {
     if (!pendingPostIds.has(id)) added.push(id)
     pendingPostIds.add(id)
   }
+  persistPending()
   return added
 }
 
-async function flushPending(
+async function flushBatch(
   apiFetchData: (url: string, opts: Record<string, unknown>) => Promise<unknown>,
   opts: {
     isAuthed: boolean
@@ -80,8 +88,10 @@ async function flushPending(
   // identities can merge, but they can flush on the session cookie alone.
   if (!opts.isAuthed && !opts.anonId) return
 
+  const reportIdentity = persistenceKey
   const ids = [...pendingPostIds].slice(0, BATCH_MAX)
-  for (const id of ids) pendingPostIds.delete(id)
+  for (const id of ids) { pendingPostIds.delete(id); sendingPostIds.add(id) }
+  persistPending()
 
   try {
     const acks = await apiFetchData('/posts/views', {
@@ -94,13 +104,33 @@ async function flushPending(
         ...(opts.anonId ? { anon_id: opts.anonId } : {}),
       },
     }) as import('~/types/api').PostViewAck[] | undefined
-    if (Array.isArray(acks)) applyAcksFn?.(acks)
+    if (reportIdentity === persistenceKey && Array.isArray(acks)) applyAcksFn?.(acks)
   } catch {
     // Keep the batch queued so the 4s timer retries. sessionReportedAt already
     // blocks a second enqueue, so losing pending here meant "scroll away and
     // back" could never record the permalink target.
-    for (const id of ids) pendingPostIds.add(id)
+    if (reportIdentity === persistenceKey) for (const id of ids) pendingPostIds.add(id)
+  } finally {
+    if (reportIdentity === persistenceKey) {
+      for (const id of ids) sendingPostIds.delete(id)
+      persistPending()
+    }
   }
+}
+
+let inFlightFlush: Promise<void> | null = null
+async function flushPending(...args: Parameters<typeof flushBatch>) {
+  const previous = inFlightFlush
+  const identity = persistenceKey
+  const pass = Promise.resolve().then(async () => {
+    await previous
+    if (identity !== persistenceKey) return
+    // Snapshot the batch count so a failed request does not spin forever.
+    const batchCount = Math.ceil(pendingPostIds.size / BATCH_MAX)
+    for (let index = 0; index < batchCount; index++) await flushBatch(...args)
+  })
+  inFlightFlush = pass
+  try { await pass } finally { if (inFlightFlush === pass) inFlightFlush = null }
 }
 
 /**
@@ -127,10 +157,29 @@ function optimisticDecrementGroupBadge(
 
 export function usePostViewTracker() {
   const { apiFetchData } = useApiClient()
-  const { isAuthed } = useAuth()
+  const { isAuthed, user } = useAuth()
   const anonViewId = useAnonViewId()
   const { groupsUnread, setGroupsUnread } = usePresence()
   const postCache = usePostCache()
+  if (import.meta.client) {
+    watch(() => user.value?.id ?? anonViewId.value, (identity) => {
+      const key = identity ? `moh-pending-impressions:${identity}` : ''
+      if (persistenceKey === key) return
+      persistenceKey = key
+      pendingPostIds.clear()
+      sendingPostIds.clear()
+      sessionReportedAt.clear()
+      locallyViewedPostIds.clear()
+      optimisticGroupBadgeApplied.clear()
+      if (!key) return
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(key) ?? 'null')
+        if (saved && Date.now() - saved.at < 86_400_000 && Array.isArray(saved.ids)) {
+          for (const id of saved.ids.slice(0, 500)) if (typeof id === 'string') pendingPostIds.add(id)
+        }
+      } catch { /* Ignore unavailable or invalid storage. */ }
+    }, { immediate: true, flush: 'sync' })
+  }
 
   function applyAcks(acks: import('~/types/api').PostViewAck[]) {
     for (const ack of acks) {
@@ -209,6 +258,7 @@ export function usePostViewTracker() {
         ? requestedRoot
         : null
 
+    let visibleEnoughNow = false
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0]
@@ -220,10 +270,12 @@ export function usePostViewTracker() {
           = entry.intersectionRatio >= VISIBILITY_THRESHOLD
           || entry.intersectionRect.height >= VISIBLE_PX_FALLBACK
 
-        if (entry.isIntersecting && visibleEnough) {
+        visibleEnoughNow = entry.isIntersecting && visibleEnough
+        if (visibleEnoughNow && document.visibilityState !== 'hidden') {
           if (!dwellTimer) {
             dwellTimer = setTimeout(() => {
               dwellTimer = null
+              if (document.visibilityState === 'hidden') return
               const pendingIds = ids.filter((id) => canReport(id))
               if (pendingIds.length === 0) return
               const added = enqueuePosts(pendingIds)
@@ -254,8 +306,16 @@ export function usePostViewTracker() {
     )
 
     observer.observe(el)
+    const onVisibilityChange = () => {
+      if (dwellTimer) clearTimeout(dwellTimer)
+      dwellTimer = null
+      // Reobserve on return to obtain a fresh visibility entry and a full dwell.
+      if (document.visibilityState !== 'hidden') { observer.unobserve(el); observer.observe(el) }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       observer.disconnect()
       if (dwellTimer) {
         clearTimeout(dwellTimer)
@@ -281,8 +341,23 @@ export function usePostViewTracker() {
     void flushPending(apiFetchData as any, {
       isAuthed: isAuthed.value,
       anonId: anonViewId.value,
-      source: 'permalink_engaged',
+      source: 'feed_scroll',
     })
+  }
+
+  const openedAt = new Map<string, number>()
+  async function markOpened(postId: string) {
+    if (!import.meta.client || !postId) return
+    const now = Date.now()
+    if (now - (openedAt.get(postId) ?? 0) < REREPORT_INTERVAL_MS) return
+    openedAt.set(postId, now)
+    try {
+      const acks = await apiFetchData('/posts/views', {
+        method: 'POST', keepalive: true, mohUnauthorized: 'ignore',
+        body: { postIds: [postId], source: 'post_open', ...(anonViewId.value ? { anon_id: anonViewId.value } : {}) },
+      }) as import('~/types/api').PostViewAck[]
+      if (Array.isArray(acks)) applyAcks(acks)
+    } catch { openedAt.delete(postId) }
   }
 
   /**
@@ -316,5 +391,5 @@ export function usePostViewTracker() {
     for (const id of ids) locallyViewedPostIds.add(id)
   }
 
-  return { observe, markEngaged, flush, hasViewedLocally, noteAlreadyViewed }
+  return { observe, markEngaged, markOpened, flush, hasViewedLocally, noteAlreadyViewed }
 }
