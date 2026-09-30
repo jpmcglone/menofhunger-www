@@ -32,15 +32,9 @@
         <AppLogoLoader />
       </div>
 
-      <div
-        v-else-if="error"
-        class="py-16 text-center space-y-3"
-      >
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ error }}</p>
-        <button type="button" class="text-sm font-medium text-orange-600 dark:text-orange-400" @click="load">
-          Try again
-        </button>
-      </div>
+      <AppScreenState
+        v-else-if="error" title="Couldn’t load activity" icon="warning" error
+        :description="error" action-label="Try again" @action="load" />
 
       <template v-else-if="activity">
         <div>

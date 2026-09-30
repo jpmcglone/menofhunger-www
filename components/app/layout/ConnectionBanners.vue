@@ -52,38 +52,21 @@
   >
     <div
       v-if="apiUnreachable && !apiJustReconnected"
-      class="fixed inset-0 z-[80] flex items-center justify-center moh-bg moh-texture px-4"
-      role="alert"
-      aria-live="assertive"
+      v-focus-trap
+      class="moh-recovery-overlay z-[80] overflow-y-auto moh-bg moh-texture"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Connection unavailable"
     >
-      <div class="w-full max-w-md text-center space-y-5">
-        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border moh-border moh-surface">
-          <Icon name="tabler:cloud-off" class="text-2xl moh-text-muted" aria-hidden="true" />
-        </div>
-        <div class="space-y-2">
-          <h1 class="text-xl font-semibold tracking-tight moh-text">
-            Can't reach the server
-          </h1>
-          <p class="text-sm moh-text-muted">
-            We're having trouble connecting right now. Your session is safe — try again in a moment.
-          </p>
-        </div>
-        <div class="flex flex-wrap items-center justify-center gap-3">
-          <Button
-            label="Retry"
-            :loading="apiRetrying"
-            :disabled="apiRetrying"
-            @click="onApiRetryClick"
-          />
-          <Button
-            as="NuxtLink"
-            to="/status"
-            label="Check status"
-            severity="secondary"
-            text
-          />
-        </div>
-      </div>
+      <AppScreenState
+        title="Let’s reconnect" icon="globe" prominent
+        description="We can’t reach Men of Hunger. Check your connection and try again."
+        action-label="Try again" :busy="apiRetrying" @action="onApiRetryClick"
+      >
+        <template #actions>
+          <NuxtLink to="/status" class="inline-flex items-center text-sm font-medium moh-text-muted">Check status</NuxtLink>
+        </template>
+      </AppScreenState>
     </div>
   </Transition>
 
@@ -107,6 +90,9 @@
 </template>
 
 <script setup lang="ts">
+import FocusTrap from 'primevue/focustrap'
+
+const vFocusTrap = FocusTrap
 const { me: fetchMe, apiUnreachable } = useAuth()
 const { isAuthed } = useAppNav()
 const {
@@ -161,12 +147,28 @@ watch(apiUnreachable, (unreachable, wasUnreachable) => {
   }
 })
 
-// Lock scroll while the API-down overlay covers the app shell.
+// Keep keyboard focus and scroll ownership within the blocking recovery screen.
+let overlayPreviousFocus: HTMLElement | null = null
+let overlayPreviousOverflow: string | null = null
+function restoreOverlayContext() {
+  if (!import.meta.client || overlayPreviousOverflow === null) return
+  document.documentElement.style.overflow = overlayPreviousOverflow
+  overlayPreviousOverflow = null
+  if (overlayPreviousFocus?.isConnected) overlayPreviousFocus.focus({ preventScroll: true })
+  overlayPreviousFocus = null
+}
+
 watch(
   () => apiUnreachable.value && !apiJustReconnected.value,
   (showOverlay) => {
     if (!import.meta.client) return
-    document.documentElement.style.overflow = showOverlay ? 'hidden' : ''
+    if (showOverlay) {
+      if (overlayPreviousOverflow === null) {
+        overlayPreviousOverflow = document.documentElement.style.overflow
+        overlayPreviousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      }
+      document.documentElement.style.overflow = 'hidden'
+    } else restoreOverlayContext()
   },
   { immediate: true },
 )
@@ -176,7 +178,7 @@ onBeforeUnmount(() => {
     clearTimeout(apiReconnectedTimer)
     apiReconnectedTimer = null
   }
-  if (import.meta.client) document.documentElement.style.overflow = ''
+  restoreOverlayContext()
 })
 
 function onScrollOrTapReconnect() {
@@ -203,3 +205,9 @@ watch(
   { immediate: true },
 )
 </script>
+
+<style scoped>
+/* The texture utility is positioned relatively; the blocking screen must own the viewport. */
+.moh-recovery-overlay { position: fixed; inset: 0; }
+.moh-recovery-overlay :deep(.moh-screen-state) { min-height: 100dvh; }
+</style>

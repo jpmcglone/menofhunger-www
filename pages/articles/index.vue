@@ -99,19 +99,9 @@
     <div v-if="tabActivated.published" v-show="activeTab === 'published'" role="tabpanel">
       <AppArticlesActivity v-if="isAuthed" />
       <AppSubtleSectionLoader :loading="publishedInitialLoading" :refreshing="publishedFeed.loading.value && !publishedInitialLoading" min-height-class="min-h-[220px]">
-        <div v-if="publishedFeed.error.value" class="py-12 text-center">
-          <p class="moh-body">Couldn't load articles.</p>
-          <p
-            v-if="publishedFeed.error.value !== 'Couldn\'t load articles.'"
-            class="mt-1 moh-meta"
-          >{{ publishedFeed.error.value }}</p>
-          <AppActionButton
-            class="mt-3"
-            label="Retry"
-            kind="secondary"
-            @click="publishedFeed.load({ force: true })"
-          />
-        </div>
+        <AppScreenState
+          v-if="publishedFeed.error.value" title="Couldn’t load articles" icon="warning" error
+          :description="publishedFeed.error.value" action-label="Try again" :busy="publishedFeed.loading.value" @action="publishedFeed.load({ force: true })" />
         <div v-else>
           <TransitionGroup name="articles-list" tag="div" class="moh-divide">
             <AppArticleListCard
@@ -129,12 +119,10 @@
           >
             {{ publishedFeed.loadingMore.value ? 'Loading…' : 'Load more' }}
           </button>
-          <p v-if="publishedFeed.hasLoadedOnce.value && publishedFeed.articles.value.length === 0" class="py-12 text-center moh-meta">
-            No articles found.
-            <template v-if="isVerifiedMember">
-              <NuxtLink to="/articles/new" class="hover:underline" :style="{ color: activeTabColor }">Write the first one!</NuxtLink>
-            </template>
-          </p>
+          <AppScreenState
+            v-if="publishedFeed.hasLoadedOnce.value && publishedFeed.articles.value.length === 0"
+            title="No articles yet" icon="article" description="New articles will appear here."
+            :action-label="isVerifiedMember ? 'Write an article' : undefined" action-to="/articles/new" />
         </div>
       </AppSubtleSectionLoader>
     </div>
@@ -142,19 +130,9 @@
     <!-- Drafts -->
     <div v-if="tabActivated.drafts" v-show="activeTab === 'drafts'" role="tabpanel">
       <AppSubtleSectionLoader :loading="draftsInitialLoading" :refreshing="draftsState.loading.value && !draftsInitialLoading" min-height-class="min-h-[220px]">
-        <div v-if="draftsState.error.value" class="py-12 text-center">
-          <p class="moh-body">Couldn't load articles.</p>
-          <p
-            v-if="draftsState.error.value !== 'Couldn\'t load articles.'"
-            class="mt-1 moh-meta"
-          >{{ draftsState.error.value }}</p>
-          <AppActionButton
-            class="mt-3"
-            label="Retry"
-            kind="secondary"
-            @click="draftsState.load()"
-          />
-        </div>
+        <AppScreenState
+          v-if="draftsState.error.value" title="Couldn’t load articles" icon="warning" error
+          :description="draftsState.error.value" action-label="Try again" :busy="draftsState.loading.value" @action="draftsState.load()" />
         <div v-else>
           <TransitionGroup name="articles-list" tag="div" class="moh-divide">
             <AppArticleListCard
@@ -164,10 +142,10 @@
               @delete="confirmDelete"
             />
           </TransitionGroup>
-          <p v-if="draftsState.hasLoadedOnce.value && draftsState.drafts.value.length === 0" class="py-12 text-center moh-meta">
-            No drafts found.
-            <NuxtLink to="/articles/new" class="hover:underline" :style="{ color: activeTabColor }">Start writing!</NuxtLink>
-          </p>
+          <AppScreenState
+            v-if="draftsState.hasLoadedOnce.value && draftsState.drafts.value.length === 0"
+            title="No drafts yet" icon="write" description="Start an article and come back to it whenever you’re ready."
+            action-label="Start writing" action-to="/articles/new" />
         </div>
       </AppSubtleSectionLoader>
     </div>

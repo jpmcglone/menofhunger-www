@@ -1,36 +1,18 @@
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black px-4">
-    <div class="max-w-md w-full text-center space-y-6">
-      <h1 class="text-2xl font-bold tracking-tight moh-text">
-        {{ error?.statusCode === 404 ? 'Page not found' : 'Something went wrong' }}
-      </h1>
-      <p class="text-sm moh-text-muted">
-        {{ error?.statusCode === 404 ? 'The page you’re looking for doesn’t exist or was moved.' : getSafeUserErrorMessage(props.error, 'An unexpected error occurred. Please try again.') }}
-      </p>
-      <div class="flex flex-wrap items-center justify-center gap-3">
-        <NuxtLink
-          to="/"
-          class="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium moh-text border border-[var(--moh-text)] hover:opacity-90"
-        >
-          Go home
-        </NuxtLink>
-        <NuxtLink
-          to="/status"
-          class="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium moh-text-muted hover:opacity-90 underline underline-offset-2"
-        >
-          Check status
-        </NuxtLink>
-        <button
-          v-if="!is404"
-          type="button"
-          class="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium moh-text-muted hover:opacity-90 underline underline-offset-2"
-          @click="handleTryAgain"
-        >
-          Try again
-        </button>
-      </div>
-    </div>
-  </div>
+  <main class="min-h-dvh flex moh-bg moh-texture">
+    <AppScreenState
+      :title="is404 ? 'Page not found' : 'Something went wrong'"
+      :icon="is404 ? 'search' : 'warning'" prominent
+      :description="is404 ? 'This page may have moved or is no longer available.' : getSafeUserErrorMessage(props.error, 'We couldn’t load this page. Please try again.')"
+      :action-label="is404 ? 'Go home' : 'Try again'" :action-to="is404 ? '/' : undefined"
+      @action="handleTryAgain"
+    >
+      <template #actions>
+        <NuxtLink v-if="!is404" to="/" class="inline-flex items-center text-sm font-medium moh-text-muted">Go home</NuxtLink>
+        <NuxtLink to="/status" class="inline-flex items-center text-sm font-medium moh-text-muted">Check status</NuxtLink>
+      </template>
+    </AppScreenState>
+  </main>
 </template>
 
 <script setup lang="ts">

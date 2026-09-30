@@ -95,15 +95,13 @@
       <AppLogoLoader compact />
     </div>
 
-    <div v-else-if="displayList.length === 0" class="px-4 pt-2 pb-4 text-sm text-gray-500 dark:text-gray-400">
-      <template v-if="searchEmptyMessage">{{ searchEmptyMessage }}</template>
-      <template v-else-if="!canStartNew && activeTab === 'primary'">
-        <span>No chats yet. </span>
-        <NuxtLink to="/settings/verification" class="underline">Verify your account</NuxtLink>
-        <span> to start chatting.</span>
-      </template>
-      <template v-else>{{ activeTab === 'requests' ? 'No chat requests yet.' : 'No chats yet.' }}</template>
-    </div>
+    <AppScreenState
+      v-else-if="displayList.length === 0"
+      :title="searchEmptyMessage ? 'No matching chats' : activeTab === 'requests' ? 'No chat requests' : 'No chats yet'"
+      :icon="searchEmptyMessage ? 'search' : 'messages'"
+      :description="searchEmptyMessage || (activeTab === 'requests' ? 'When someone new messages you, their request will show up here.' : !canStartNew ? 'Verify your account to start chatting.' : 'Start a conversation with someone on Men of Hunger.')"
+      :action-label="!searchEmptyMessage && !canStartNew && activeTab === 'primary' ? 'Get verified' : undefined"
+      action-to="/settings/verification" />
 
     <!--
       TransitionGroup gives FLIP `move` transitions when socket events reorder

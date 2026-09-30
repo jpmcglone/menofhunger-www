@@ -4,12 +4,9 @@
       <AppLogoLoader />
     </div>
 
-    <div v-else-if="loadError && !fitnessPage" class="moh-gutter-x py-16 text-center space-y-3">
-      <p class="text-sm text-gray-500 dark:text-gray-400">{{ loadError }}</p>
-      <button type="button" class="text-sm font-medium text-orange-600 dark:text-orange-400" @click="loadPage">
-        Try again
-      </button>
-    </div>
+    <AppScreenState
+      v-else-if="loadError && !fitnessPage" title="Couldn’t load fitness" icon="warning" error
+      :description="loadError" action-label="Try again" :busy="loading" @action="loadPage" />
 
     <template v-else-if="fitnessPage">
       <!-- ─── This week ─────────────────────────────────────────────────── -->

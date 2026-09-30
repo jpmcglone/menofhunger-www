@@ -210,8 +210,12 @@
       </div>
 
       <template v-else>
-        <AppInlineAlert v-if="error" class="mx-3 mt-3 sm:mx-4 sm:mt-4" severity="danger">
-          <!-- Demonstrates wrapping AppUserErrorMessage for prominent alert style while reusing sanitization -->
+        <AppScreenState
+          v-if="error && !posts.length" title="Couldn’t load your feed" icon="warning" error
+          action-label="Try again" :busy="loading" @action="refresh">
+          <AppUserErrorMessage :error="error" fallback="Failed to load feed." />
+        </AppScreenState>
+        <AppInlineAlert v-else-if="error" class="mx-3 mt-3 sm:mx-4 sm:mt-4" severity="danger">
           <AppUserErrorMessage :error="error" fallback="Failed to load feed." />
         </AppInlineAlert>
 
@@ -277,12 +281,9 @@
                 </div>
               </div>
 
-              <p
-                v-if="initialFeedResolved && activeHomeFeedDisplayItems.length === 0"
-                class="px-4 py-12 text-center text-sm text-gray-400 dark:text-zinc-500"
-              >
-                No posts in this filter yet.
-              </p>
+              <AppScreenState
+                v-if="initialFeedResolved && !error && activeHomeFeedDisplayItems.length === 0 && !showFollowingEmptyState && !showAllEmptyState && !showForYouEmptyState"
+                title="No posts in this filter" icon="filter" description="Try another filter to see more conversations." />
             </div>
 
             <!-- Lazy-load sentinel + loader -->

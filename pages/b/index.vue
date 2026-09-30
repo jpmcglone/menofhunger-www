@@ -116,7 +116,8 @@
             <p class="mt-1 whitespace-pre-wrap break-words text-sm moh-text">{{ c.body }}</p>
           </article>
         </TransitionGroup>
-        <p v-if="!loading && !latestComments.length" class="py-12 text-center moh-meta">No comments yet.</p>
+        <AppScreenState
+          v-if="!loading && !latestComments.length" title="No comments yet" icon="reply" />
       </template>
 
       <template v-else>
@@ -130,11 +131,9 @@
             @toggle-hide="onToggleHide"
           />
         </TransitionGroup>
-        <div v-if="!loading && !visibleThreads.length" class="py-12 text-center">
-          <p class="text-sm font-semibold moh-text">Nothing here yet</p>
-          <p class="mt-1 text-sm moh-text-muted">{{ emptyLabel }}</p>
-          <button v-if="isFiltered" type="button" class="mt-2 text-sm hover:underline" style="color: var(--moh-verified)" @click="clearFilters">Clear filters</button>
-        </div>
+        <AppScreenState
+          v-if="!loading && !visibleThreads.length" title="Nothing here yet" icon="board"
+          :description="emptyLabel" :action-label="isFiltered ? 'Clear filters' : undefined" @action="clearFilters" />
       </template>
 
       <div v-if="loadingMore" class="py-8 text-center moh-meta">Loading…</div>

@@ -1,9 +1,8 @@
 <template>
   <div :aria-busy="loading || loadingMore">
-    <div v-if="error" class="px-4 py-6 space-y-3" role="alert">
-      <AppInlineAlert severity="danger">{{ error }}</AppInlineAlert>
-      <Button label="Try again" severity="secondary" rounded @click="$emit('retry')" />
-    </div>
+    <AppScreenState
+      v-if="error" title="Couldn’t load results" icon="warning" error
+      :description="error" action-label="Try again" :busy="loading || loadingMore" @action="$emit('retry')" />
     <div v-if="loading && !total" class="px-4 py-6 space-y-6" role="status" aria-label="Searching">
       <div v-for="n in 3" :key="n" class="flex gap-3" aria-hidden="true">
         <Skeleton shape="circle" size="2.5rem" />
@@ -38,13 +37,15 @@ v-for="post in posts" :key="post.id" :post="post" collapse-ancestors
             @deleted="$emit('deleted', $event)" @edited="$emit('edited', $event)" />
         </div>
       </section>
-      <div v-if="searched && !loading && !visibleSections.length && !error" class="px-6 py-10 text-center space-y-3" role="status">
-        <Icon name="tabler:search" size="28" class="moh-text-muted" aria-hidden="true" />
-        <h2 class="text-xl font-semibold moh-text">No {{ category === 'all' ? 'results' : category }} found</h2>
-        <p class="text-[15px] moh-text-muted">Nothing matches “{{ query }}”. Try a different name or keyword.</p>
-        <Button label="Clear search" severity="secondary" rounded @click="$emit('clear')" />
-        <Button v-if="category !== 'all' && total > 0" label="See all results" text @click="$emit('category', 'all')" />
-      </div>
+      <AppScreenState
+        v-if="searched && !loading && !visibleSections.length && !error"
+        :title="`No ${category === 'all' ? 'results' : category} found`" icon="search"
+        :description="`Nothing matches “${query}”. Try a different name or keyword.`"
+        action-label="Clear search" @action="$emit('clear')">
+        <template #actions>
+          <AppActionButton v-if="category !== 'all' && total > 0" label="See all results" kind="ghost" @click="$emit('category', 'all')" />
+        </template>
+      </AppScreenState>
       <div v-if="gatedCount > 0 && !isVerifiedMember && !loading" class="px-6 py-5 space-y-3">
         <h2 class="font-semibold moh-text">More conversations for verified members</h2>
         <p class="text-sm moh-text-muted">{{ gatedCount }} more result{{ gatedCount === 1 ? '' : 's' }} are available after verification.</p>

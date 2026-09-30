@@ -8,22 +8,14 @@
 
     <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[220px]">
       <!-- Error -->
-      <div v-if="error" class="moh-gutter-x mt-4">
-        <AppInlineAlert severity="danger">{{ error }}</AppInlineAlert>
-      </div>
+      <AppScreenState
+        v-if="error" title="Couldn’t load scheduled posts" icon="warning" error
+        :description="error" action-label="Try again" :busy="loading" @action="fetchScheduled({ reset: true })" />
 
       <!-- Empty state -->
-      <div v-else-if="items.length === 0" class="moh-gutter-x py-8 text-center">
-        <Icon name="tabler:calendar-time" class="text-3xl moh-text-muted mb-2" aria-hidden="true" />
-        <p class="text-sm moh-text-muted">Nothing scheduled yet.</p>
-        <div class="mt-4 flex justify-center">
-          <Button
-            :label="VOICE.actions.post"
-            rounded
-            @click="openScheduleComposer"
-          />
-        </div>
-      </div>
+      <AppScreenState
+        v-else-if="items.length === 0" title="Nothing scheduled" icon="scheduled"
+        description="Posts you schedule from the composer will appear here." :action-label="VOICE.actions.post" @action="openScheduleComposer" />
 
       <!-- List — each row owns its own border-b moh-border -->
       <TransitionGroup v-else name="moh-scheduled-row" tag="div" class="relative">
@@ -85,7 +77,7 @@ function openScheduleComposer() {
   openComposer?.()
 }
 
-const { items, nextCursor, loading, error, loadMore, deleteScheduled, patchItem } = useScheduledPosts()
+const { items, nextCursor, loading, error, fetchScheduled, loadMore, deleteScheduled, patchItem } = useScheduledPosts()
 
 const showInitialLoader = useInitialLoading(loading, () => items.value.length > 0, error)
 

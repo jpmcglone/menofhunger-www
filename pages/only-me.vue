@@ -12,16 +12,15 @@
         />
       </div>
 
-      <div v-if="notesError" class="px-4 mt-4">
-        <AppInlineAlert severity="danger">
-          {{ notesError }}
-        </AppInlineAlert>
-      </div>
+      <AppScreenState
+        v-if="notesError && !notes.length" title="Couldn’t load private notes" icon="warning" error
+        :description="notesError" action-label="Try again" :busy="notesLoading" @action="refreshNotes" />
+      <AppInlineAlert v-else-if="notesError" severity="danger" class="mx-4 mt-4">{{ notesError }}</AppInlineAlert>
 
       <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="notesLoading && !showInitialLoader" min-height-class="min-h-[220px]">
-        <div v-if="notes.length === 0 && !notesError" class="px-4 py-6 text-sm moh-text-muted">
-          No “Only me” posts yet.
-        </div>
+        <AppScreenState
+          v-if="notes.length === 0 && !notesError" title="No private notes" icon="private"
+          description="Private notes you write will appear here." />
 
         <div v-else class="relative mt-2 transition-opacity duration-150">
           <div v-for="p in notes" :key="p.id">

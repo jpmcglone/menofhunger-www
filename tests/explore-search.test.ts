@@ -8,7 +8,7 @@ import type { CommunityGroupPreview, SearchUserResult } from '~/types/api'
 
 mockNuxtImport('useAuth', () => () => ({ isAuthed: ref(true), isVerifiedMember: ref(true) }))
 mockNuxtImport('useGroupPreviewPopover', () => () => ({ close: vi.fn() }))
-const button = { props: ['label', 'disabled'], template: '<button :disabled="disabled">{{ label }}</button>' }
+const button = { props: ['label', 'disabled'], template: '<button :disabled="disabled"><slot>{{ label }}</slot></button>' }
 const global = { stubs: { Button: button, Icon: true, Skeleton: true, AppUserRow: true, AppFeedPostRow: true, AppArticleListCard: true, AppGroupPreviewCard: true, AppGroupsGroupAvatar: true } }
 const props = {
   users: [{ id: 'person-1', username: 'jordan' } as SearchUserResult], groups: [], posts: [], articles: [],

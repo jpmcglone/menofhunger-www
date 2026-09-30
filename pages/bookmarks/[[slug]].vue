@@ -37,19 +37,18 @@
       </div>
     </div>
 
-    <div v-if="error" class="mt-4 px-4">
-      <AppInlineAlert severity="danger">
-        {{ error }}
-      </AppInlineAlert>
-    </div>
+    <AppScreenState
+      v-if="error" title="Couldn’t load saved posts" icon="warning" error
+      :description="error" action-label="Try again" :busy="loading" @action="refresh" />
 
     <div v-else class="mt-4">
       <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[220px]">
-        <div v-if="folderNotFound" class="px-4 moh-text-muted text-sm">
-          Folder not found.
-        </div>
-
-        <div v-else-if="!items.length" class="px-4 moh-text-muted text-sm">No saved posts yet.</div>
+        <AppScreenState
+          v-if="folderNotFound" title="Folder not found" icon="search"
+          description="This folder may have been removed." action-label="All saved posts" action-to="/bookmarks" />
+        <AppScreenState
+          v-else-if="!items.length" :title="q ? 'No matching saved posts' : 'No saved posts yet'" icon="bookmark"
+          :description="q ? 'Try a different word or clear your search.' : 'Save a post to come back to it here.'" />
 
         <TransitionGroup v-else name="bookmarks-list" tag="div" class="space-y-0 transition-opacity duration-150">
           <div v-for="b in items" :key="b.bookmarkId">

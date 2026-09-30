@@ -44,36 +44,18 @@
     </div>
 
     <AppSubtleSectionLoader :loading="showInitialLoader" :refreshing="loading && !showInitialLoader" min-height-class="min-h-[220px]">
-      <div v-if="fetchError && !notifications.length" class="px-3 py-6 sm:px-4 sm:py-8">
-        <AppInlineAlert severity="danger">
-          <AppUserErrorMessage :error="fetchError" fallback="Could not load notifications." />
-        </AppInlineAlert>
-        <div class="mt-4 flex justify-center">
-          <Button
-            label="Try again"
-            severity="secondary"
-            rounded
-            :loading="loading"
-            :disabled="loading"
-            @click="retryFetch"
-          />
-        </div>
-      </div>
-      <div
-        v-else-if="!notifications.length"
-        class="px-3 py-6 sm:px-4 sm:py-8 text-center"
-      >
-        <p class="text-[13px] sm:text-sm text-gray-500 dark:text-gray-400">
-          No notifications yet.
-        </p>
-        <p class="mt-1 text-[13px] sm:text-sm moh-text-muted">
-          {{ VOICE.feed.emptyBody }}
-        </p>
-        <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
-          <Button as="NuxtLink" to="/explore" :label="VOICE.actions.explore" severity="secondary" rounded size="small" />
-          <Button as="NuxtLink" to="/who-to-follow" :label="VOICE.actions.findPeople" severity="secondary" rounded size="small" />
-        </div>
-      </div>
+      <AppScreenState
+        v-if="fetchError && !notifications.length" title="Couldn’t load notifications" icon="warning" error
+        action-label="Try again" :busy="loading" @action="retryFetch">
+        <AppUserErrorMessage :error="fetchError" fallback="Could not load notifications." />
+      </AppScreenState>
+      <AppScreenState
+        v-else-if="!notifications.length" title="No notifications yet" icon="notifications"
+        :description="VOICE.feed.emptyBody" :action-label="VOICE.actions.explore" action-to="/explore">
+        <template #actions>
+          <NuxtLink to="/who-to-follow" class="inline-flex items-center text-sm font-medium moh-text-muted">{{ VOICE.actions.findPeople }}</NuxtLink>
+        </template>
+      </AppScreenState>
       <div v-else class="relative z-0">
         <TransitionGroup name="notifications-list" tag="div" class="moh-divide transition-opacity duration-150">
           <div

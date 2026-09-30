@@ -144,9 +144,8 @@
               {{ postsFeedError }}
             </AppInlineAlert>
             <AppSubtleSectionLoader :loading="postsFeedInitialLoading" :refreshing="postsFeedLoading && !postsFeedInitialLoading" min-height-class="min-h-[200px]">
-              <div v-if="!postsFeedPosts.length" class="px-3 py-10 text-center text-sm moh-text-muted sm:px-4">
-                No posts in your groups yet.
-              </div>
+              <AppScreenState
+                v-if="!postsFeedPosts.length && !postsFeedError" title="No posts in your groups yet" icon="group" />
               <div v-else class="relative mt-3">
                 <template v-for="item in postsFeedDisplayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
                   <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
@@ -185,9 +184,8 @@
               {{ repliesFeedError }}
             </AppInlineAlert>
             <AppSubtleSectionLoader :loading="repliesFeedInitialLoading" :refreshing="repliesFeedLoading && !repliesFeedInitialLoading" min-height-class="min-h-[200px]">
-              <div v-if="!repliesFeedPosts.length" class="px-3 py-10 text-center text-sm moh-text-muted sm:px-4">
-                No posts in your groups yet.
-              </div>
+              <AppScreenState
+                v-if="!repliesFeedPosts.length && !repliesFeedError" title="No posts in your groups yet" icon="group" />
               <div v-else class="relative mt-3">
                 <template v-for="item in repliesFeedDisplayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
                   <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
@@ -262,9 +260,8 @@
                     <AppLogoLoader compact />
                   </div>
                 </div>
-                <p v-if="mediaFeed.hasLoadedOnce.value && mediaFeed.items.value.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-zinc-500">
-                  No photos or videos in your groups yet.
-                </p>
+                <AppScreenState
+                  v-if="mediaFeed.hasLoadedOnce.value && mediaFeed.items.value.length === 0" title="No photos or videos yet" icon="image" description="Media shared in your groups will appear here." />
               </div>
             </AppSubtleSectionLoader>
           </div>

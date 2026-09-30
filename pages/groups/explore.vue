@@ -88,21 +88,12 @@
         </div>
 
         <!-- Empty state: search returned nothing -->
-        <div
+        <AppScreenState
           v-else-if="hasQuery && !searchLoading && searchResults.length === 0"
-          class="moh-gutter-x py-10 text-center text-sm moh-text-muted"
-        >
-          No groups match “{{ trimmedQuery }}”.
-        </div>
-
-        <!-- Empty state: server returned nothing (only happens when the
-             viewer is genuinely a member of every group, or there are none). -->
-        <div
-          v-else-if="!hasQuery && discoverRows.length === 0"
-          class="moh-gutter-x py-10 text-center text-sm moh-text-muted"
-        >
-          {{ isAuthed ? 'You’re in every group we have right now. Nice.' : 'No groups yet — check back soon.' }}
-        </div>
+          title="No matching groups" icon="search" :description="`No groups match “${trimmedQuery}”. Try a different name.`" />
+        <AppScreenState
+          v-else-if="!hasQuery && discoverRows.length === 0" title="No new groups" icon="group"
+          :description="isAuthed ? 'You’re in every group we have right now.' : 'Check back soon for new groups.'" />
 
         <!-- Result list — full-bleed divided rows. NO outer card wrapper. -->
         <div
