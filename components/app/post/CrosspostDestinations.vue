@@ -147,8 +147,8 @@ function menuOptions(row: CrosspostDestinationView): Array<{ id: 'off' | Crosspo
 function subtitle(row: CrosspostDestinationView): string {
   if (row.disabled) return row.disabledNote || ''
   const mode = selected[row.id] ?? 'off'
-  if (mode === 'native') return row.allowanceNote || 'Your words and photos'
-  if (mode === 'link') return row.linkOnlyReason || row.allowanceNote || 'A link back to this post'
+  if (mode === 'native') return 'Your words and photos'
+  if (mode === 'link') return row.linkOnlyReason || 'A link back to this post'
   return row.linkOnlyReason || row.allowanceNote || ''
 }
 
