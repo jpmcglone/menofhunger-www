@@ -59,20 +59,18 @@ export function useArticleSeo(article: Ref<Article | null | undefined>) {
   })
 
   const seoImage = computed(() => {
-    if (isRestricted.value) return '/images/logo-black-bg-small.png'
+    if (isRestricted.value) return '/images/features/articles-v1.png'
     const a = article.value
-    if (!a) return '/images/logo-black-bg-small.png'
+    if (!a) return '/images/features/articles-v1.png'
     const thumb = (a.thumbnailUrl ?? '').trim()
     if (thumb) return thumb
-    const avatar = (a.author?.avatarUrl ?? '').trim()
-    if (avatar) return avatar
-    return '/images/banner.png'
+    return '/images/features/articles-v1.png'
   })
 
   const seoImageAlt = computed(() => {
-    if (isRestricted.value) return `${siteConfig.name} logo`
+    if (isRestricted.value) return `Articles — ${siteConfig.name}`
     const a = article.value
-    if (!a) return `${siteConfig.name} logo`
+    if (!a) return `Articles — ${siteConfig.name}`
     const username = (a.author?.username ?? '').trim()
     const title = (a.title ?? '').trim()
     if (title && username) return `${title} — @${username}`
@@ -153,7 +151,7 @@ export function useArticleSeo(article: Ref<Article | null | undefined>) {
     const thumb = (a.thumbnailUrl ?? '').trim()
     if (thumb) images.push(toAbsoluteUrl(thumb))
     if (avatarUrl) images.push(toAbsoluteUrl(avatarUrl))
-    images.push(toAbsoluteUrl('/images/banner.png'))
+    images.push(toAbsoluteUrl('/images/features/articles-v1.png'))
 
     const publishedAt = a.publishedAt ?? a.createdAt
     const modifiedAt = a.editedAt ?? publishedAt
@@ -237,7 +235,7 @@ export function useArticleSeo(article: Ref<Article | null | undefined>) {
     imageAlt: seoImageAlt,
     canonicalPath,
     ogType: computed(() => (isRestricted.value ? 'website' : 'article')),
-    twitterCard: computed(() => (isRestricted.value ? 'summary' : 'summary_large_image')),
+    twitterCard: 'summary_large_image',
     noindex: computed(() => isRestricted.value || !article.value),
     author: seoAuthor,
     jsonLdGraph,

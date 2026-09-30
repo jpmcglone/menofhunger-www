@@ -107,11 +107,11 @@ useSeoMeta({
   ogDescription: () => ogDescription.value,
   ogType: 'article',
   ogUrl: `${siteConfig.url}/daily/quote`,
-  ogImage: `${siteConfig.url}/images/logo-black-bg.png`,
+  ogImage: `${siteConfig.url}/images/features/daily-v1.png`,
   twitterCard: 'summary_large_image',
   twitterTitle: () => ogTitle.value,
   twitterDescription: () => ogDescription.value,
-  twitterImage: `${siteConfig.url}/images/logo-black-bg.png`,
+  twitterImage: `${siteConfig.url}/images/features/daily-v1.png`,
   twitterSite: '@menofhunger',
 })
 

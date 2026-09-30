@@ -1,4 +1,6 @@
 import { siteConfig } from '~/config/site'
+import { featurePageForPath } from '~/utils/feature-pages'
+import { isSafeRedirect } from '~/utils/url'
 import type { MaybeRef } from 'vue'
  
 type OgType = 'website' | 'article' | 'profile'
@@ -70,9 +72,19 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     return toAbsoluteUrl(path)
   })
  
-  // Default to dark/black logo for social previews unless a page overrides it.
-  const image = computed(() => toAbsoluteUrl(unref(options.image) || '/images/logo-black-bg-small.png'))
-  const imageAlt = computed(() => (unref(options.imageAlt) || `${siteConfig.name} logo`).slice(0, 200))
+  // Auth redirects retain safe feature branding for crawlers; browser title/auth stay unchanged.
+  const sharePath = computed(() => {
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
+    return route.path === '/login' && isSafeRedirect(redirect) ? redirect! : route.fullPath
+  })
+  const feature = computed(() => featurePageForPath(sharePath.value))
+  const isFeatureHandoff = computed(() => route.path === '/login' && Boolean(feature.value))
+  const shareTitle = computed(() => isFeatureHandoff.value ? `${feature.value!.title} | ${siteConfig.name}` : fullTitle.value)
+  const shareDescription = computed(() => isFeatureHandoff.value ? feature.value!.description : description.value)
+
+  // Explicit content artwork wins; feature artwork is the shared fallback.
+  const image = computed(() => toAbsoluteUrl(unref(options.image) || feature.value?.image || '/images/logo-black-bg-small.png'))
+  const imageAlt = computed(() => (unref(options.imageAlt) || (feature.value ? `${feature.value.title} — ${siteConfig.name}` : `${siteConfig.name} logo`)).slice(0, 200))
   const twitterCard = computed(() => unref(options.twitterCard) || 'summary_large_image')
   const robots = computed(() =>
     unref(options.noindex)
@@ -88,17 +100,17 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     description,
  
     ogType: unref(options.ogType) || 'website',
-    ogUrl: canonical,
+    ogUrl: computed(() => isFeatureHandoff.value ? toAbsoluteUrl(sharePath.value) : canonical.value),
     ogSiteName: siteConfig.name,
     ogLocale: 'en_US',
-    ogTitle: fullTitle,
-    ogDescription: description,
+    ogTitle: shareTitle,
+    ogDescription: shareDescription,
     ogImage: image,
     ogImageAlt: imageAlt,
  
     twitterCard,
-    twitterTitle: fullTitle,
-    twitterDescription: description,
+    twitterTitle: shareTitle,
+    twitterDescription: shareDescription,
     twitterImage: image,
     twitterImageAlt: imageAlt,
     twitterSite: siteConfig.social.twitter,

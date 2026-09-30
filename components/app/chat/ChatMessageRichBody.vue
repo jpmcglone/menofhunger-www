@@ -47,27 +47,12 @@
       </template><slot v-if="!hasBlockPreview" name="tail" /></p>
 
     <!-- MoH internal link — branded card, navigates in-app -->
-    <NuxtLink
+    <AppFeatureLinkPreview
       v-if="everVisible && showLinkPreview && isMohInternalLink && mohInternalPath"
-      :to="mohInternalPath"
-      class="group mt-2 flex min-w-0 max-w-full items-center gap-2.5 overflow-hidden rounded-lg border border-current/20 bg-black/5 p-2 transition-colors hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-      aria-label="Open page"
-      @click.stop
-    >
-      <div class="h-9 w-9 shrink-0 overflow-hidden rounded-md border border-current/10" aria-hidden="true">
-        <img :src="logoLight" class="h-full w-full object-cover dark:hidden" alt="" loading="lazy">
-        <img :src="logoDark" class="h-full w-full object-cover hidden dark:block" alt="" loading="lazy">
-      </div>
-      <div class="min-w-0 flex-1">
-        <div class="line-clamp-2 break-words text-[12px] font-semibold leading-4">
-          {{ linkMeta?.title || 'Men of Hunger' }}
-        </div>
-        <div v-if="linkMeta?.description" class="line-clamp-2 break-words text-[11px] opacity-80">
-          {{ linkMeta.description }}
-        </div>
-        <div class="text-[10px] opacity-70">menofhunger.com</div>
-      </div>
-    </NuxtLink>
+      :path="mohInternalPath"
+      :metadata="linkMeta"
+      class="mt-2"
+    />
 
     <AppChatMediaLinkChatCard
       v-else-if="everVisible && showLinkPreview && mediaPreviewHref"
@@ -160,8 +145,6 @@ import type { ArticleSharePreview } from '~/types/api'
 
 // Stable public paths (not `~/assets` imports) so the URL is identical on
 // server and client — avoids the Vite dev `?t=<timestamp>` hydration mismatch.
-const logoLight = '/images/logo-white-bg-small.png'
-const logoDark = '/images/logo-black-bg-small.png'
 
 type TextSegment =
   | { kind: 'text'; text: string }

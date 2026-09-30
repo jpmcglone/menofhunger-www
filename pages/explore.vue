@@ -680,7 +680,7 @@ usePageSeo({
   canonicalPath: '/explore',
   noindex: true,
   ogType: 'website',
-  image: '/images/banner.png',
+  image: '/images/features/explore-v1.png',
 })
 
 const route = useRoute()

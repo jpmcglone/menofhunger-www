@@ -26,6 +26,17 @@
       </div>
     </div>
 
+    <img
+      v-else
+      src="/images/features/articles-v1.png"
+      alt=""
+      width="1200"
+      height="630"
+      class="aspect-[1200/630] w-full object-contain"
+      loading="lazy"
+      decoding="async"
+    >
+
     <!-- Content -->
     <div class="p-3">
       <!-- Article label -->

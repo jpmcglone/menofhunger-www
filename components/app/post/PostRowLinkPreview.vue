@@ -55,30 +55,11 @@
     </div>
 
     <!-- MoH internal link preview — branded card, navigates in-app -->
-    <NuxtLink
+    <AppFeatureLinkPreview
       v-else-if="showLinkPreview && isMohInternalLink && mohInternalPath"
-      :to="mohInternalPath"
-      class="group block overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover moh-focus"
-      aria-label="Open page"
-      @click.stop
-    >
-      <div class="relative flex items-center gap-3 p-3">
-        <div class="pointer-events-none absolute inset-0 bg-white/10" aria-hidden="true" />
-        <div class="relative z-10 h-12 w-12 shrink-0 overflow-hidden rounded-lg border moh-border" aria-hidden="true">
-          <img :src="logoLight" class="h-full w-full object-cover dark:hidden" alt="" loading="lazy" >
-          <img :src="logoDark" class="h-full w-full object-cover hidden dark:block" alt="" loading="lazy" >
-        </div>
-        <div class="relative z-10 min-w-0 flex-1">
-          <div class="text-sm font-semibold moh-text truncate">
-            {{ linkMeta?.title || mohInternalTitle }}
-          </div>
-          <div v-if="linkMeta?.description" class="mt-0.5 text-xs moh-text-muted line-clamp-2">
-            {{ linkMeta.description }}
-          </div>
-          <div class="mt-1 text-[11px] moh-text-muted">menofhunger.com</div>
-        </div>
-      </div>
-    </NuxtLink>
+      :path="mohInternalPath"
+      :metadata="linkMeta"
+    />
 
     <AppXPostPreviewCard
       v-else-if="showLinkPreview && xPostMeta && previewLink"
@@ -199,8 +180,6 @@ import { splitTextByScriptureDisplay } from '~/utils/scripture-reference'
 
 // Stable public paths (not `~/assets` imports) so the URL is identical on
 // server and client — avoids the Vite dev `?t=<timestamp>` hydration mismatch.
-const logoLight = '/images/logo-white-bg-small.png'
-const logoDark = '/images/logo-black-bg-small.png'
 
 const props = defineProps<{
   postId: string
@@ -551,13 +530,7 @@ const embeddedPreviewEnabled = computed(() => {
 const isMohInternalLink = computed(() => Boolean(previewLink.value && isMohUrl(previewLink.value)))
 const mohInternalPath = computed(() => (previewLink.value ? mohUrlPath(previewLink.value) : null))
 
-const mohInternalTitle = computed(() => {
-  const p = mohInternalPath.value
-  if (!p) return 'Men of Hunger'
-  const segment = p.split('/').filter(Boolean)[0]
-  if (!segment) return 'Men of Hunger'
-  return segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
-})
+
 
 const spotifyPreview = computed(() => spotifyContent(previewLink.value)
   ?? (isSpotifyShareUrl(previewLink.value) ? spotifyContent(linkMeta.value?.url) : null))
