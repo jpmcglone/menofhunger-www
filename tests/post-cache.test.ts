@@ -314,6 +314,17 @@ describe('applyLiveUpdatedPatch', () => {
     expect((result as FeedPost & { repostCount?: number }).repostCount).toBe(6)
   })
 
+  it('applies a cross-post link and clears the waiting mark', () => {
+    const post = {
+      ...makePost({ id: 'p1' }),
+      _crosspostPending: { pickax: true, x: true },
+    }
+    const result = applyLiveUpdatedPatch(post, 'p1', { xUrl: 'https://x.com/hunter/status/99' })
+    expect(result.xUrl).toBe('https://x.com/hunter/status/99')
+    expect(result.xError).toBeNull()
+    expect(result._crosspostPending).toEqual({ pickax: true, x: false })
+  })
+
   it('floors and clamps the count fields to non-negative integers', () => {
     const post = makePost({ id: 'p1', boostCount: 0, bookmarkCount: 0 })
     const result = applyLiveUpdatedPatch(post, 'p1', {

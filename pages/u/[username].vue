@@ -499,6 +499,7 @@ import { visibilityTagClasses, postHighlightClasses } from '~/utils/post-visibil
 import type { UserPostsFilter } from '~/composables/useUserPosts'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 import { hasAnyBadge } from '~/config/milestones'
+import { settleCrosspostPending } from '~/utils/feed-patch'
 
 definePageMeta({
   layout: 'app',
@@ -1142,6 +1143,10 @@ if (import.meta.client) {
                 _localId: existing?._localId,
                 _pending: undefined,
                 _pendingError: undefined,
+                _crosspostPending: settleCrosspostPending(
+                  real._crosspostPending ?? existing?._crosspostPending,
+                  real,
+                ),
               }
               const next = profilePosts.value.slice()
               next[idx] = merged

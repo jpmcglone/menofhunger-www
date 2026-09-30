@@ -129,6 +129,8 @@
             :edited-at="postView.editedAt ?? null"
             :pickax-url="postView.pickaxUrl ?? null"
             :x-url="postView.xUrl ?? null"
+            :pickax-pending="Boolean(postView._crosspostPending?.pickax) && !postView.pickaxUrl && !postView.pickaxError"
+            :x-pending="Boolean(postView._crosspostPending?.x) && !postView.xUrl && !postView.xError"
             :hide-edited-badge="postView.visibility === 'onlyMe'"
             :profile-path="authorProfilePath"
             :post-id="postView.id"

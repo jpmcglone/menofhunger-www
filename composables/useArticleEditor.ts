@@ -13,7 +13,8 @@ type ArticleEditorOptions = {
 }
 
 export function useArticleEditor(initialArticle: Ref<Article | null>, options: ArticleEditorOptions = {}) {
-  const { apiFetchData } = useApiClient()
+  const { apiFetch, apiFetchData } = useApiClient()
+  const crosspostPending = useCrosspostPending()
 
   const article = ref<Article | null>(initialArticle.value ? { ...initialArticle.value } : null)
   const title = ref(initialArticle.value?.title ?? '')
@@ -171,7 +172,13 @@ export function useArticleEditor(initialArticle: Ref<Article | null>, options: A
     if (!articleId) return null
     publishing.value = true
     try {
-      const updated = await apiFetchData<Article>(`/articles/${articleId}/publish`, { method: 'POST', body: options ?? {} })
+      const envelope = await apiFetch<Article>(`/articles/${articleId}/publish`, { method: 'POST', body: options ?? {} })
+      const crossposts = (envelope as { crossposts?: { pickax?: { status?: string }; x?: { status?: string } } }).crossposts
+      crosspostPending.expect(articleId, {
+        pickax: crossposts?.pickax?.status === 'queued',
+        x: crossposts?.x?.status === 'queued',
+      })
+      const updated = envelope.data
       article.value = updated
       isDirty.value = false
       return updated

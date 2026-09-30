@@ -1826,6 +1826,10 @@ function submitOptimistic(): boolean {
     communityGroupId: effectiveGroupId.value,
     author,
   })
+  optimisticPost._crosspostPending = {
+    pickax: Boolean(crosspostChoice.value.pickax),
+    x: Boolean(crosspostChoice.value.x),
+  }
 
   // Snapshot what we need for the network call BEFORE clearing the composer.
   const snapshot = {
@@ -1843,7 +1847,15 @@ function submitOptimistic(): boolean {
       const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload, snapshot.crosspost)
       const { post } = unwrapCreated(created)
       notifyCrosspostSkipped(created)
-      if (post) seedPermalinkPost(post)
+      if (post) {
+        const wrapped = created as CreatePostData | null | undefined
+        const pickax = wrapped?.crossposts?.pickax ?? wrapped?.pickax
+        post._crosspostPending = {
+          pickax: pickax?.status === 'queued' && !post.pickaxUrl,
+          x: wrapped?.crossposts?.x?.status === 'queued' && !post.xUrl,
+        }
+        seedPermalinkPost(post)
+      }
       return post
     },
   })

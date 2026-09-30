@@ -55,6 +55,16 @@ export default defineNuxtPlugin(() => {
       if (typeof patch.repostCount === 'number') {
         delta.repostCount = Math.max(0, Math.floor(patch.repostCount))
       }
+      if (typeof patch.pickaxUrl === 'string') {
+        delta.pickaxUrl = patch.pickaxUrl
+        delta.pickaxError = null
+      }
+      if (typeof patch.xUrl === 'string') {
+        delta.xUrl = patch.xUrl
+        delta.xError = null
+      }
+      if (typeof patch.pickaxError === 'string') delta.pickaxError = patch.pickaxError
+      if (typeof patch.xError === 'string') delta.xError = patch.xError
       if (patch.poll !== undefined) delta.poll = patch.poll
       postCache.patch(postId, delta)
     },

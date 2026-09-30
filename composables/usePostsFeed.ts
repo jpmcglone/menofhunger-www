@@ -10,7 +10,7 @@ import { useCursorFeed } from '~/composables/useCursorFeed'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { usePostCountBumps } from '~/composables/usePostCountBumps'
 import type { PostsCallback } from '~/composables/usePresence'
-// feed-patch utilities are used by the global post-cache plugin; no longer needed here.
+import { settleCrosspostPending } from '~/utils/feed-patch'
 
 type FeedFilter = 'all' | 'public' | PostVisibility
 type FeedSort = 'new' | 'trending'
@@ -948,10 +948,15 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
       _localId: existing._localId,
       _pending: undefined,
       _pendingError: undefined,
+      _crosspostPending: settleCrosspostPending(
+        realPost._crosspostPending ?? existing._crosspostPending,
+        realPost,
+      ),
     }
     const next = posts.value.slice()
     next[idx] = merged
     posts.value = next
+    if (merged.id && merged.id !== localId) subscribePostIds([merged.id])
     // Drop the stale optimistic local insert (keyed by _localId) — the server
     // will never ack that id, so without this it would linger in localInserts
     // and be re-applied on every refresh.
@@ -1077,6 +1082,7 @@ export function usePostsFeed(options: UsePostsFeedOptions = {}) {
  * as usePostsFeed so localInserts survive the next hard refresh (keepalive + onActivated).
  */
 export function useHomeFeedPrepend() {
+  const { subscribePosts } = usePresence()
   const posts = useState<FeedPost[]>('posts-feed', () => [])
   const localInserts = useState<LocalFeedInsert[]>('posts-feed-local-inserts', () => [])
 
@@ -1111,9 +1117,21 @@ export function useHomeFeedPrepend() {
       prependToHomeFeed(realPost)
       return
     }
+    const existing = posts.value[idx]
+    const merged: FeedPost = {
+      ...realPost,
+      _localId: existing?._localId ?? localId,
+      _pending: undefined,
+      _pendingError: undefined,
+      _crosspostPending: settleCrosspostPending(
+        realPost._crosspostPending ?? existing?._crosspostPending,
+        realPost,
+      ),
+    }
     const next = posts.value.slice()
-    next[idx] = { ...realPost }
+    next[idx] = merged
     posts.value = next
+    if (merged.id) subscribePosts([merged.id])
     if (realPost.visibility !== 'onlyMe') {
       localInserts.value = upsertLocalFeedInsert(localInserts.value, { kind: 'prepend', post: realPost })
     }

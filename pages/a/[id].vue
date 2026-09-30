@@ -122,6 +122,12 @@
           <time :datetime="article.publishedAt ?? article.createdAt">{{ publishedLabel }}</time>
           <span v-if="readingTime && article.viewerCanAccess !== false">· {{ readingTime }}</span>
           <time v-if="article.editedAt" :datetime="article.editedAt" class="text-xs moh-text-soft">· Edited {{ editedLabel }}</time>
+          <span
+            v-if="crosspostWaiting.pickax && !article.pickaxUrl && !article.pickaxError"
+            class="inline-flex h-3.5 w-3.5 motion-safe:animate-pulse rounded-[3px] bg-[var(--moh-text-muted)] opacity-40"
+            role="status"
+            aria-label="Sharing to Pickax"
+          />
           <a
             v-if="article.pickaxUrl"
             v-tooltip.bottom="tinyTooltip('Also on Pickax')"
@@ -141,6 +147,12 @@
             >
             On Pickax
           </a>
+          <span
+            v-if="crosspostWaiting.x && !article.xUrl && !article.xError"
+            class="inline-flex h-3.5 w-3.5 motion-safe:animate-pulse rounded-full bg-[var(--moh-text-muted)] opacity-40"
+            role="status"
+            aria-label="Sharing to X"
+          />
           <a
             v-if="article.xUrl"
             v-tooltip.bottom="tinyTooltip('Also on X')"
@@ -787,9 +799,31 @@ const hasViewedArticle = computed(() => {
   return articleViewAcks.value[id]?.uniqueCounted === true
 })
 
+const { pending: crosspostPending, settle: settleCrosspost } = useCrosspostPending()
+const crosspostWaiting = computed(() => crosspostPending.value[article.value?.id ?? ''] ?? { pickax: false, x: false })
+
 const articlesCallback: import('~/composables/usePresence').ArticlesCallback = {
   onLiveUpdated(payload) {
-    if (payload.articleId !== article.value?.id) return
+    if (payload.articleId !== article.value?.id || !article.value) return
+    const current = article.value
+    let next = current
+    if (typeof payload.patch.pickaxUrl === 'string') {
+      next = { ...next, pickaxUrl: payload.patch.pickaxUrl, pickaxError: null }
+      settleCrosspost(current.id, 'pickax')
+    }
+    if (typeof payload.patch.xUrl === 'string') {
+      next = { ...next, xUrl: payload.patch.xUrl, xError: null }
+      settleCrosspost(current.id, 'x')
+    }
+    if (typeof payload.patch.pickaxError === 'string') {
+      next = { ...next, pickaxError: payload.patch.pickaxError }
+      settleCrosspost(current.id, 'pickax')
+    }
+    if (typeof payload.patch.xError === 'string') {
+      next = { ...next, xError: payload.patch.xError }
+      settleCrosspost(current.id, 'x')
+    }
+    if (next !== current) article.value = next
     if (payload.patch.commentCount !== undefined) liveCommentCount.value = payload.patch.commentCount
     if (payload.patch.viewCount !== undefined) {
       liveViewCount.value = Math.max(liveViewCount.value ?? 0, payload.patch.viewCount)
@@ -802,6 +836,12 @@ const articlesCallback: import('~/composables/usePresence').ArticlesCallback = {
     if (payload.reason === 'article_deleted' || payload.patch.deletedAt) article.value = undefined
   },
 }
+
+watch(article, (value) => {
+  if (!value?.id) return
+  if (value.pickaxUrl || value.pickaxError) settleCrosspost(value.id, 'pickax')
+  if (value.xUrl || value.xError) settleCrosspost(value.id, 'x')
+})
 
 function onArticleViewSynced(payload: { viewerCount: number, totalViewCount: number }) {
   liveViewCount.value = Math.max(liveViewCount.value ?? 0, payload.viewerCount)

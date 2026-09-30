@@ -23,20 +23,34 @@
           :aria-label="label(row)"
           @update:model-value="(on: boolean) => turnOn(row, on)"
         />
-        <Select
+        <!-- Same capsule as the audience chip (Figma 304:1027), not a form select. -->
+        <button
           v-else
-          :model-value="selected[row.id]"
-          :options="menuOptions(row)"
-          option-label="label"
-          option-value="id"
-          append-to="body"
-          :base-z-index="1300"
+          type="button"
+          class="moh-focus inline-flex h-11 max-w-full items-center gap-1.5 rounded-full border moh-border bg-transparent px-3 text-sm font-semibold moh-text"
           :aria-label="label(row)"
-          class="h-11 w-[7.25rem]"
-          :pt="{ root: { class: '!h-11 !w-[7.25rem]' }, label: { class: '!py-0 text-sm' } }"
-          @update:model-value="(value: 'off' | CrosspostMode) => pick(row, value)"
-        />
+          aria-haspopup="menu"
+          @click="openMenu($event, row.id)"
+        >
+          <span>{{ modeLabel(selected[row.id]) }}</span>
+          <Icon name="tabler:chevron-down" class="text-sm moh-text-muted" aria-hidden="true" />
+        </button>
       </div>
+      <Menu
+        :ref="(el) => bindMenu(row.id, el)"
+        class="hidden"
+        :model="menuModel(row)"
+        popup
+        append-to="body"
+        :base-z-index="1300"
+      >
+        <template #item="{ item, props: itemProps }">
+          <a v-bind="itemProps.action" class="flex min-h-11 items-center gap-2">
+            <span class="flex-1">{{ item.label }}</span>
+            <Icon v-if="item.mode === selected[row.id]" name="tabler:check" class="text-sm" aria-hidden="true" />
+          </a>
+        </template>
+      </Menu>
     </div>
     <NuxtLink
       v-if="premiumRow"
@@ -49,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import type { MenuItem } from 'primevue/menuitem'
 import type { CrosspostMode, CrosspostPayload } from '~/utils/crosspost'
 
 export type CrosspostDestinationView = {
@@ -94,6 +109,31 @@ function turnOn(row: CrosspostDestinationView, on: boolean) {
 
 function pick(row: CrosspostDestinationView, value: 'off' | CrosspostMode) {
   selected[row.id] = value === 'off' || !row.modes.includes(value) ? 'off' : value
+}
+
+type ModeItem = MenuItem & { mode: 'off' | CrosspostMode }
+const menus: Record<string, { toggle: (event: Event) => void } | null> = {}
+
+function bindMenu(id: string, el: unknown) {
+  menus[id] = (el as { toggle?: (event: Event) => void } | null)?.toggle
+    ? (el as { toggle: (event: Event) => void })
+    : null
+}
+
+function openMenu(event: Event, id: string) {
+  menus[id]?.toggle(event)
+}
+
+function modeLabel(mode: 'off' | CrosspostMode | undefined): string {
+  return mode === 'link' ? 'Share' : 'Post'
+}
+
+function menuModel(row: CrosspostDestinationView): ModeItem[] {
+  return menuOptions(row).map((option) => ({
+    label: option.label,
+    mode: option.id,
+    command: () => pick(row, option.id),
+  }))
 }
 
 function menuOptions(row: CrosspostDestinationView): Array<{ id: 'off' | CrosspostMode; label: string }> {

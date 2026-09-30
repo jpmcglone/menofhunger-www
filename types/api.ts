@@ -821,6 +821,8 @@ export type FeedPost = {
   // confirmed by the server. Never returned by the API; never serialized.
   /** 'posting' while in flight; 'failed' after a failed attempt. */
   _pending?: 'posting' | 'failed' | null
+  /** True while a chosen cross-post is still waiting for its public link. */
+  _crosspostPending?: { pickax?: boolean; x?: boolean } | null
   /** Stable id used to find/replace this row across pending → real transitions. */
   _localId?: string | null
   /** User-facing error message when `_pending === 'failed'`. */
@@ -1937,6 +1939,10 @@ export type WsPostsLiveUpdatedPayload = {
     bookmarkCount: number
     repostCount: number
     poll: PostPoll | null
+    pickaxUrl: string | null
+    xUrl: string | null
+    pickaxError: string | null
+    xError: string | null
   }>
 }
 
@@ -1951,6 +1957,10 @@ export type WsArticlesLiveUpdatedPayload = {
     boostCount: number
     reactions: ArticleReactionSummary[]
     deletedAt: string
+    pickaxUrl: string | null
+    xUrl: string | null
+    pickaxError: string | null
+    xError: string | null
   }>
 }
 

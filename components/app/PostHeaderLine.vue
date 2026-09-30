@@ -85,6 +85,12 @@
       >
         {{ createdAtShort }}
       </NuxtLink>
+      <span
+        v-if="pickaxPending && !pickaxUrl"
+        class="ml-1 inline-flex h-3.5 w-3.5 shrink-0 motion-safe:animate-pulse items-center justify-center rounded-[3px] bg-[var(--moh-text-muted)] opacity-40"
+        role="status"
+        aria-label="Sharing to Pickax"
+      />
       <a
         v-if="pickaxUrl"
         v-tooltip.bottom="tinyTooltip('Also on Pickax')"
@@ -103,6 +109,12 @@
           class="h-3.5 w-3.5 rounded-[3px] opacity-70 transition-opacity hover:opacity-100"
         >
       </a>
+      <span
+        v-if="xPending && !xUrl"
+        class="ml-1 inline-flex h-3.5 w-3.5 shrink-0 motion-safe:animate-pulse items-center justify-center rounded-full bg-[var(--moh-text-muted)] opacity-40"
+        role="status"
+        aria-label="Sharing to X"
+      />
       <a
         v-if="xUrl"
         v-tooltip.bottom="tinyTooltip('Also on X')"
@@ -144,6 +156,9 @@ const props = defineProps<{
   pickaxUrl?: string | null
   /** Public X status URL; renders a small X mark linking to the cross-posted copy. */
   xUrl?: string | null
+  /** Dim placeholder while that destination's link is still on its way. */
+  pickaxPending?: boolean
+  xPending?: boolean
   /** Hide the inline "edited" marker (e.g. for onlyMe notes/drafts). */
   hideEditedBadge?: boolean
   profilePath: string | null

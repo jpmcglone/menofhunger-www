@@ -80,7 +80,31 @@ export function applyLiveUpdatedPatch(
   if (typeof patch.boostCount === 'number') next.boostCount = Math.max(0, Math.floor(patch.boostCount))
   if (typeof patch.bookmarkCount === 'number') next.bookmarkCount = Math.max(0, Math.floor(patch.bookmarkCount))
   if (typeof patch.repostCount === 'number') next.repostCount = Math.max(0, Math.floor(patch.repostCount))
+  if (typeof patch.pickaxUrl === 'string') {
+    next.pickaxUrl = patch.pickaxUrl
+    next.pickaxError = null
+  }
+  if (typeof patch.xUrl === 'string') {
+    next.xUrl = patch.xUrl
+    next.xError = null
+  }
+  if (typeof patch.pickaxError === 'string') next.pickaxError = patch.pickaxError
+  if (typeof patch.xError === 'string') next.xError = patch.xError
+  if (next._crosspostPending) next._crosspostPending = settleCrosspostPending(next._crosspostPending, next)
   return next
+}
+
+/** Drop a destination once its link or its final error has arrived. */
+export function settleCrosspostPending(
+  pending: FeedPost['_crosspostPending'],
+  post: Pick<FeedPost, 'pickaxUrl' | 'xUrl' | 'pickaxError' | 'xError'>,
+): FeedPost['_crosspostPending'] {
+  if (!pending) return undefined
+  const next = {
+    pickax: Boolean(pending.pickax) && !post.pickaxUrl && !post.pickaxError,
+    x: Boolean(pending.x) && !post.xUrl && !post.xError,
+  }
+  return next.pickax || next.x ? next : undefined
 }
 
 /**
