@@ -38,11 +38,10 @@
       </div>
       <Menu
         :ref="(el) => bindMenu(row.id, el)"
-        class="hidden"
         :model="menuModel(row)"
         popup
         append-to="body"
-        :base-z-index="1300"
+        :base-z-index="OVERLAY_LAYERS.nestedMenu"
       >
         <template #item="{ item, props: itemProps }">
           <a v-bind="itemProps.action" class="flex min-h-11 items-center gap-2">
@@ -65,6 +64,7 @@
 <script setup lang="ts">
 import type { MenuItem } from 'primevue/menuitem'
 import type { CrosspostMode, CrosspostPayload } from '~/utils/crosspost'
+import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 
 export type CrosspostDestinationView = {
   id: 'pickax' | 'x'
