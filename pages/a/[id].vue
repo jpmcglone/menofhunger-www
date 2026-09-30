@@ -130,12 +130,12 @@
           />
           <a
             v-if="article.pickaxUrl"
-            v-tooltip.bottom="tinyTooltip('Also on Pickax')"
+            v-tooltip.bottom="tinyTooltip('Shared on Pickax')"
             :href="article.pickaxUrl"
             target="_blank"
             rel="noopener nofollow"
             class="inline-flex items-center gap-1 text-xs moh-text-muted hover:text-[var(--moh-text)]"
-            aria-label="Read this article on Pickax"
+            aria-label="Shared on Pickax"
           >
             <span aria-hidden="true">·</span>
             <img
@@ -155,12 +155,12 @@
           />
           <a
             v-if="article.xUrl"
-            v-tooltip.bottom="tinyTooltip('Also on X')"
+            v-tooltip.bottom="tinyTooltip('Shared on X')"
             :href="article.xUrl"
             target="_blank"
             rel="noopener nofollow"
             class="inline-flex items-center gap-1 text-xs moh-text-muted hover:text-[var(--moh-text)]"
-            aria-label="View this article on X"
+            aria-label="Shared on X"
           >
             <span aria-hidden="true">·</span>
             <Icon name="tabler:brand-x" class="h-3.5 w-3.5 opacity-70" />

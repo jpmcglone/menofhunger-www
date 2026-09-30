@@ -93,12 +93,12 @@
       />
       <a
         v-if="pickaxUrl"
-        v-tooltip.bottom="tinyTooltip('Also on Pickax')"
+        v-tooltip.bottom="tinyTooltip('Shared on Pickax')"
         :href="pickaxUrl"
         target="_blank"
         rel="noopener nofollow"
         class="ml-1 inline-flex shrink-0 items-center"
-        aria-label="View this post on Pickax"
+        aria-label="Shared on Pickax"
         @click.stop
       >
         <img
@@ -117,12 +117,12 @@
       />
       <a
         v-if="xUrl"
-        v-tooltip.bottom="tinyTooltip('Also on X')"
+        v-tooltip.bottom="tinyTooltip('Shared on X')"
         :href="xUrl"
         target="_blank"
         rel="noopener nofollow"
         class="ml-1 inline-flex shrink-0 items-center text-[var(--moh-text-muted)] opacity-70 transition-opacity hover:opacity-100"
-        aria-label="View this post on X"
+        aria-label="Shared on X"
         @click.stop
       >
         <Icon name="tabler:brand-x" class="h-3.5 w-3.5" />
