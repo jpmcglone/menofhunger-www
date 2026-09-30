@@ -30,7 +30,7 @@
       Publishes {{ scheduledLabel }}
     </p>
 
-    <AppCrosspostDestinations v-if="destinations?.length" ref="destinationsRef" :destinations="destinations" />
+    <AppPostCrosspostDestinations v-if="destinations?.length" ref="destinationsRef" :destinations="destinations" />
 
     <div class="mt-5 flex justify-end gap-2">
       <button

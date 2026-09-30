@@ -26,7 +26,7 @@
         <ToggleSwitch v-model="shareToFeed" input-id="article-board-to-feed" :disabled="!postToBoard" />
       </div>
     </div>
-    <AppCrosspostDestinations v-if="destinations.length" ref="destinationsRef" :destinations="destinations" />
+    <AppPostCrosspostDestinations v-if="destinations.length" ref="destinationsRef" :destinations="destinations" />
 
     <div class="mt-5 flex items-center justify-end gap-2">
       <button type="button" class="moh-tap min-h-11 px-4 text-sm moh-text-muted hover:text-[var(--moh-text)]" @click="emit('close')">Cancel</button>
