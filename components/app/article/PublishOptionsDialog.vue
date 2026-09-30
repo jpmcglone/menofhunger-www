@@ -25,49 +25,64 @@
         </label>
         <ToggleSwitch v-model="shareToFeed" input-id="article-board-to-feed" :disabled="!postToBoard" />
       </div>
-      <!-- Cross-post destinations read like the Board/feed rows: icon, label, switch. -->
-      <div v-if="pickaxAvailable" class="flex min-h-11 items-center gap-3 py-2">
-        <img
-          src="/images/brands/pickax.png"
-          alt=""
-          width="22"
-          height="22"
-          class="h-[22px] w-[22px] shrink-0 rounded-md"
-          :class="crossPostToPickax ? '' : 'opacity-50 grayscale'"
-        >
-        <label for="article-cross-post-pickax" class="flex-1 cursor-pointer">
-          <span class="block text-sm font-semibold moh-text">Also post to Pickax</span>
-          <span class="block text-xs moh-text-muted">Publishes a copy with a link back to your profile. Later edits update it.</span>
-        </label>
-        <ToggleSwitch v-model="crossPostToPickax" input-id="article-cross-post-pickax" />
-      </div>
     </div>
+    <AppCrosspostDestinations v-if="destinations.length" ref="destinationsRef" :destinations="destinations" />
 
     <div class="mt-5 flex items-center justify-end gap-2">
       <button type="button" class="moh-tap min-h-11 px-4 text-sm moh-text-muted hover:text-[var(--moh-text)]" @click="emit('close')">Cancel</button>
-      <AppActionButton label="Publish" kind="brand" :loading="publishing" @click="emit('confirm', { postToBoard, shareToFeed, crossPostToPickax: pickaxAvailable && crossPostToPickax })" />
+      <AppActionButton label="Publish" kind="brand" :loading="publishing" @click="emit('confirm', { postToBoard, shareToFeed, crosspost: destinationsRef?.payload() ?? {} })" />
     </div>
   </Dialog>
 </template>
 
 <script setup lang="ts">
+import type { CrosspostPayload } from '~/utils/crosspost'
+import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
+
 const props = defineProps<{ publishing?: boolean; visibility?: string | null }>()
 const emit = defineEmits<{
   close: []
-  confirm: [options: { postToBoard: boolean; shareToFeed: boolean; crossPostToPickax: boolean }]
+  confirm: [options: { postToBoard: boolean; shareToFeed: boolean; crosspost: CrosspostPayload }]
 }>()
 
 const api = useBoardApi()
 const postToBoard = ref(true)
 const shareToFeed = ref(false)
-const crossPostToPickax = ref(false)
 const pickaxIntegration = usePickaxIntegration()
-const pickaxAvailable = computed(() => pickaxIntegration.connected.value && props.visibility === 'public')
+const xIntegration = useXIntegration()
+const destinationsRef = ref<{ payload: () => CrosspostPayload } | null>(null)
+
+const destinations = computed<CrosspostDestinationView[]>(() => {
+  if (props.visibility !== 'public') return []
+  const rows: CrosspostDestinationView[] = []
+  if (pickaxIntegration.connected.value) {
+    rows.push({ id: 'pickax', modes: ['link', 'native'] })
+  }
+  if (xIntegration.connected.value) {
+    if (!xIntegration.status.value?.canPost) {
+      rows.push({ id: 'x', modes: [], disabled: true, disabledNote: 'Posting to X is a Premium feature', premiumHref: '/tiers' })
+    } else {
+      const allowance = xIntegration.status.value?.allowance
+      if (allowance && allowance.linkPostsLeft <= 0) {
+        rows.push({ id: 'x', modes: [], disabled: true, disabledNote: "You've used this month's X posts" })
+      } else {
+        rows.push({
+          id: 'x',
+          modes: ['link'],
+          linkOnlyReason: 'Articles share as a link on X',
+          allowanceNote: allowance ? `About ${allowance.linkPostsLeft} links left this month` : undefined,
+        })
+      }
+    }
+  }
+  return rows
+})
 
 useOverlayDismiss(() => true, () => emit('close'))
 
 onMounted(async () => {
   void pickaxIntegration.refresh()
+  void xIntegration.refresh()
   try {
     const prefs = await api.getPreferences()
     postToBoard.value = prefs.articlePostToBoardDefault

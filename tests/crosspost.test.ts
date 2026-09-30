@@ -1,0 +1,57 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+import { crosspostOptions, xWeightedLength } from '~/utils/crosspost'
+import type { CrosspostDraft } from '~/utils/crosspost'
+
+function draft(overrides: Partial<CrosspostDraft> = {}): CrosspostDraft {
+  return {
+    visibility: 'public',
+    body: 'hello',
+    mediaCount: 0,
+    mediaAllUploadedImages: true,
+    hasPoll: false,
+    isReply: false,
+    isQuote: false,
+    isCheckin: false,
+    scheduled: false,
+    ...overrides,
+  }
+}
+
+describe('x weighted length', () => {
+  it('matches the API vectors', () => {
+    expect(xWeightedLength('hello')).toBe(5)
+    expect(xWeightedLength('🎉')).toBe(2)
+    expect(xWeightedLength('你好')).toBe(4)
+    expect(xWeightedLength('https://menofhunger.com/p/abc')).toBe(23)
+    expect(xWeightedLength('hi https://x.com')).toBe(26)
+  })
+})
+
+describe('crosspost options', () => {
+  it('offers a link and a full post when the post fits', () => {
+    expect(crosspostOptions(draft(), 'x').modes).toEqual(['link', 'native'])
+    expect(crosspostOptions(draft(), 'pickax').modes).toEqual(['link', 'native'])
+  })
+
+  it('offers only a link for a poll, a video, or a post that is too long for X', () => {
+    expect(crosspostOptions(draft({ hasPoll: true }), 'x')).toMatchObject({ modes: ['link'] })
+    expect(crosspostOptions(draft({ mediaCount: 1, mediaAllUploadedImages: false }), 'pickax').modes).toEqual(['link'])
+    expect(crosspostOptions(draft({ body: 'a'.repeat(281) }), 'x').modes).toEqual(['link'])
+    expect(crosspostOptions(draft({ body: 'a'.repeat(281) }), 'pickax').modes).toEqual(['link', 'native'])
+    expect(crosspostOptions(draft({ body: '🎉'.repeat(141) }), 'x').linkOnlyReason).toContain('longer than X')
+  })
+
+  it('hides destinations that cannot take even a link', () => {
+    expect(crosspostOptions(draft({ visibility: 'onlyMe' }), 'x').modes).toEqual([])
+    expect(crosspostOptions(draft({ isReply: true }), 'pickax').modes).toEqual([])
+    expect(crosspostOptions(draft({ groupId: 'g' }), 'x').modes).toEqual([])
+  })
+
+  it('sends a crosspost object from the composer', () => {
+    const src = readFileSync(resolve(process.cwd(), 'components/app/PostComposer.vue'), 'utf8')
+    expect(src).toContain('snapshot.crosspost')
+    expect(src).toContain('...(Object.keys(crosspost).length ? { crosspost } : {})')
+  })
+})

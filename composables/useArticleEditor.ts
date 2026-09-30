@@ -165,7 +165,7 @@ export function useArticleEditor(initialArticle: Ref<Article | null>, options: A
     }
   }
 
-  async function publish(options?: { postToBoard?: boolean; shareToFeed?: boolean; crossPostToPickax?: boolean }) {
+  async function publish(options?: { postToBoard?: boolean; shareToFeed?: boolean; crosspost?: { pickax?: 'link' | 'native'; x?: 'link' | 'native' } }) {
     if (isDirty.value || !article.value?.id) await save()
     const articleId = article.value?.id
     if (!articleId) return null

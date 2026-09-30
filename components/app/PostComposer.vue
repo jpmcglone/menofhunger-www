@@ -553,7 +553,7 @@
     v-if="previewOpen"
     :post="previewPost"
     :scheduled-label="scheduledAt ? scheduledAtDisplay : null"
-    :pickax="previewPickax"
+    :destinations="previewDestinations"
     :busy="submitting"
     @close="previewOpen = false"
     @confirm="onPreviewConfirm"
@@ -573,7 +573,8 @@ import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { buildOptimisticPost } from '~/utils/optimistic-post'
-import { pickaxCrosspostEligible, pickaxCrosspostWanted, type PickaxCrosspostDraft } from '~/utils/pickax-crosspost'
+import { crosspostOptions, crosspostSkipMessage, type CrosspostDraft, type CrosspostPayload } from '~/utils/crosspost'
+import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
 import { makePendingLocalId } from '~/composables/usePendingPostsManager'
 import {
   PRIMARY_GROUP_SKY,
@@ -1409,8 +1410,9 @@ function registerUnsavedGuardIfNeeded() {
 
 onMounted(() => {
   registerUnsavedGuardIfNeeded()
-  if (isAuthed.value && mode.value === 'create' && !props.replyTo && !pickaxIntegration.status.value) {
-    void pickaxIntegration.refresh()
+  if (isAuthed.value && mode.value === 'create' && !props.replyTo) {
+    if (!pickaxIntegration.status.value) void pickaxIntegration.refresh()
+    if (!xIntegration.status.value) void xIntegration.refresh()
   }
   if (isAuthed.value && !props.communityGroupId) {
     loadMyGroups()
@@ -1527,7 +1529,7 @@ function performCreate(
   vis: PostVisibility,
   mediaPayload: CreateMediaPayload[],
   pollPayload: ComposerPollPayload | null,
-  pickax = false,
+  crosspost: CrosspostPayload = {},
 ) {
   if (props.createPost) {
     return props.createPost(submitBody, vis, mediaPayload, pollPayload)
@@ -1549,26 +1551,25 @@ function performCreate(
           media: mediaPayload,
           ...(pollPayload ? { poll: pollPayload } : {}),
           ...(effectiveGroupId.value ? { community_group_id: effectiveGroupId.value } : {}),
-          ...(pickax ? { crossPostToPickax: true } : {}),
+          ...(Object.keys(crosspost).length ? { crosspost } : {}),
         },
   })
 }
 
 const pickaxIntegration = usePickaxIntegration()
-const crossPostToPickax = ref(false)
+const xIntegration = useXIntegration()
+const crosspostChoice = ref<CrosspostPayload>({})
 
-function pickaxMediaOk(media: CreateMediaPayload[]): boolean {
+function mediaAllImages(media: CreateMediaPayload[]): boolean {
   return media.every((m) => m.source === 'upload' && m.kind === 'image')
 }
 
-/** Draft shape the shared eligibility rules read (mirrors the server's blocker list). */
-function pickaxDraft(media: CreateMediaPayload[]): PickaxCrosspostDraft {
+function crosspostDraft(media: CreateMediaPayload[]): CrosspostDraft {
   return {
-    connected: pickaxIntegration.connected.value,
     visibility: effectiveVisibility.value,
     body: draft.value,
     mediaCount: media.length,
-    mediaAllUploadedImages: pickaxMediaOk(media),
+    mediaAllUploadedImages: mediaAllImages(media),
     hasPoll: hasPoll.value,
     isReply: Boolean(props.replyTo),
     isQuote: Boolean(props.quotedPost),
@@ -1576,17 +1577,6 @@ function pickaxDraft(media: CreateMediaPayload[]): PickaxCrosspostDraft {
     groupId: effectiveGroupId.value,
     scheduled: Boolean(scheduledAt.value),
   }
-}
-
-// Mirrors the server's eligibility so the choice only appears when Pickax can take the post.
-const pickaxEligible = computed(() => {
-  if (mode.value !== 'create' || props.createPost || props.groupComposer) return false
-  return pickaxCrosspostEligible(pickaxDraft(toCreatePayload(composerMedia.value)))
-})
-
-function pickaxWanted(media: CreateMediaPayload[]): boolean {
-  if (mode.value !== 'create' || props.createPost || props.groupComposer) return false
-  return pickaxCrosspostWanted(pickaxDraft(media), crossPostToPickax.value)
 }
 
 /**
@@ -1624,27 +1614,64 @@ const previewPost = computed<FeedPost | null>(() => {
   }
 })
 
-/** Null hides the destinations section. Scheduled posts show it disabled: the API never cross-posts them. */
-const previewPickax = computed<{ disabled: boolean; note: string } | null>(() => {
-  if (!pickaxIntegration.connected.value) return null
+function destinationRow(
+  id: 'pickax' | 'x',
+  media: CreateMediaPayload[],
+): CrosspostDestinationView | null {
+  const connected = id === 'pickax' ? pickaxIntegration.connected.value : xIntegration.connected.value
+  if (!connected) return null
+  const scheduledPublic = Boolean(scheduledAt.value) && effectiveVisibility.value === 'public' && !effectiveGroupId.value
   if (scheduledAt.value) {
-    if (effectiveVisibility.value !== 'public' || effectiveGroupId.value) return null
-    return { disabled: true, note: 'Scheduled posts stay on Men of Hunger only' }
+    if (!scheduledPublic) return null
+    return { id, modes: [], disabled: true, disabledNote: 'Scheduled posts stay on Men of Hunger only' }
   }
-  return pickaxEligible.value ? { disabled: false, note: '' } : null
+  if (id === 'x' && xIntegration.status.value?.connected && !xIntegration.status.value.canPost) {
+    return { id, modes: [], disabled: true, disabledNote: 'Posting to X is a Premium feature', premiumHref: '/tiers' }
+  }
+  if (id === 'x' && isPremium.value) {
+    const allowance = xIntegration.status.value?.allowance
+    if (allowance && allowance.linkPostsLeft <= 0 && allowance.nativePostsLeft <= 0) {
+      return { id, modes: [], disabled: true, disabledNote: "You've used this month's X posts" }
+    }
+  }
+  const options = crosspostOptions(crosspostDraft(media), id)
+  if (!options.modes.length) return null
+  let modes = options.modes
+  let allowanceNote: string | undefined
+  if (id === 'x' && xIntegration.status.value?.allowance) {
+    const allowance = xIntegration.status.value.allowance
+    if (allowance.linkPostsLeft <= 0) modes = modes.filter((mode) => mode !== 'link')
+    if (allowance.nativePostsLeft <= 0) modes = modes.filter((mode) => mode !== 'native')
+    if (!modes.length) return { id, modes: [], disabled: true, disabledNote: "You've used this month's X posts" }
+    if (allowance.linkPostsLeft > 0) allowanceNote = `About ${allowance.linkPostsLeft} links left this month`
+  }
+  return { id, modes, linkOnlyReason: options.linkOnlyReason, allowanceNote }
+}
+
+/** Null hides the destinations section. */
+const previewDestinations = computed<CrosspostDestinationView[] | null>(() => {
+  if (mode.value !== 'create' || props.createPost || props.groupComposer) return null
+  const media = toCreatePayload(composerMedia.value)
+  const rows = [destinationRow('pickax', media), destinationRow('x', media)].filter((row): row is CrosspostDestinationView => Boolean(row))
+  return rows.length ? rows : null
 })
 
-async function onPreviewConfirm(options: { crossPostToPickax: boolean }) {
-  crossPostToPickax.value = options.crossPostToPickax
+async function onPreviewConfirm(options: { crosspost: CrosspostPayload }) {
+  crosspostChoice.value = options.crosspost
   previewApproved.value = true
   previewOpen.value = false
   await submit()
 }
 
-function notifyPickaxSkipped(created: unknown) {
-  const pickax = (created as CreatePostData | null | undefined)?.pickax
-  if (pickax?.status !== 'skipped') return
-  toast.push({ title: 'Posted here. Pickax could not take this post.', durationMs: 3500 })
+function notifyCrosspostSkipped(created: unknown) {
+  const crossposts = (created as CreatePostData | null | undefined)?.crossposts
+  const pickax = crossposts?.pickax ?? (created as CreatePostData | null | undefined)?.pickax
+  if (pickax?.status === 'skipped') {
+    toast.push({ title: crosspostSkipMessage('Pickax', pickax.reason), durationMs: 3500 })
+  }
+  if (crossposts?.x?.status === 'skipped') {
+    toast.push({ title: crosspostSkipMessage('X', crossposts.x.reason), durationMs: 3500 })
+  }
 }
 
 function unwrapCreated(created: unknown): { post: FeedPost | null; streakReward: PostStreakReward | null } {
@@ -1744,9 +1771,9 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
       return
     }
 
-    const created = await performCreate(submitBody, vis, mediaPayload, pollPayload, pickaxWanted(mediaPayload))
+    const created = await performCreate(submitBody, vis, mediaPayload, pollPayload, crosspostChoice.value)
     const { post, streakReward } = unwrapCreated(created)
-    notifyPickaxSkipped(created)
+    notifyCrosspostSkipped(created)
 
     clearComposer()
 
@@ -1806,16 +1833,16 @@ function submitOptimistic(): boolean {
     vis,
     mediaPayload,
     pollPayload,
-    pickax: pickaxWanted(mediaPayload),
+    crosspost: crosspostChoice.value,
   }
 
   emit('pending', {
     localId,
     optimisticPost,
     perform: async () => {
-      const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload, snapshot.pickax)
+      const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload, snapshot.crosspost)
       const { post } = unwrapCreated(created)
-      notifyPickaxSkipped(created)
+      notifyCrosspostSkipped(created)
       if (post) seedPermalinkPost(post)
       return post
     },

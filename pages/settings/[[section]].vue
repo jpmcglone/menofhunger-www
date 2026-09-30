@@ -335,7 +335,7 @@ const sections = computed(() => {
       key: 'integrations' as const,
       label: 'Integrations',
       icon: 'link' as const,
-      description: 'Cross-post to Pickax.',
+      description: 'Cross-post to Pickax and X.',
     },
   ]
   return all.filter((s) => allowedSections.value.includes(s.key))

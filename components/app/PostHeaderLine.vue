@@ -103,6 +103,18 @@
           class="h-3.5 w-3.5 rounded-[3px] opacity-70 transition-opacity hover:opacity-100"
         >
       </a>
+      <a
+        v-if="xUrl"
+        v-tooltip.bottom="tinyTooltip('Also on X')"
+        :href="xUrl"
+        target="_blank"
+        rel="noopener nofollow"
+        class="ml-1 inline-flex shrink-0 items-center text-[var(--moh-text-muted)] opacity-70 transition-opacity hover:opacity-100"
+        aria-label="View this post on X"
+        @click.stop
+      >
+        <Icon name="tabler:brand-x" class="h-3.5 w-3.5" />
+      </a>
       <span
         v-if="isEdited"
         class="ml-1 shrink-0 text-[11px] font-normal text-gray-400 dark:text-gray-500"
@@ -130,6 +142,8 @@ const props = defineProps<{
   editedAt?: string | null
   /** Public Pickax permalink; renders a small logo link out to the cross-posted copy. */
   pickaxUrl?: string | null
+  /** Public X status URL; renders a small X mark linking to the cross-posted copy. */
+  xUrl?: string | null
   /** Hide the inline "edited" marker (e.g. for onlyMe notes/drafts). */
   hideEditedBadge?: boolean
   profilePath: string | null

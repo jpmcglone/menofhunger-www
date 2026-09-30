@@ -287,9 +287,9 @@ const titleToneClass = computed(() => {
 const router = useRouter()
 
 const publishOptionsOpen = ref(false)
-const lastPublishOptions = ref<{ postToBoard: boolean; shareToFeed: boolean; crossPostToPickax?: boolean } | null>(null)
+const lastPublishOptions = ref<{ postToBoard: boolean; shareToFeed: boolean; crosspost?: import('~/utils/crosspost').CrosspostPayload } | null>(null)
 
-async function onPublishConfirm(options: { postToBoard: boolean; shareToFeed: boolean; crossPostToPickax: boolean }) {
+async function onPublishConfirm(options: { postToBoard: boolean; shareToFeed: boolean; crosspost: import('~/utils/crosspost').CrosspostPayload }) {
   lastPublishOptions.value = options
   await handlePublish(options)
   publishOptionsOpen.value = false
@@ -320,7 +320,7 @@ function onTitleInput() {
   if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` }
 }
 
-async function handlePublish(options?: { postToBoard: boolean; shareToFeed: boolean; crossPostToPickax?: boolean }) {
+async function handlePublish(options?: { postToBoard: boolean; shareToFeed: boolean; crosspost?: import('~/utils/crosspost').CrosspostPayload }) {
   try {
     const published = await editor.publish(options)
     if (published) {

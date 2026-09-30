@@ -737,6 +737,10 @@ export type FeedPost = {
   pickaxUrl?: string | null
   /** Author-only: why Pickax rejected the last cross-post attempt. */
   pickaxError?: string | null
+  /** Public X status URL when the author cross-posted this post to X. */
+  xUrl?: string | null
+  /** Author-only: why X rejected the last cross-post attempt. */
+  xError?: string | null
   topics?: string[]
   /** User-created hashtags parsed from body text (lowercase, without '#'). */
   hashtags?: string[]
@@ -1251,12 +1255,18 @@ export type PostStreakReward = {
   multiplier: 1 | 2 | 3 | 4
 }
 
+export type CrosspostQueueResult =
+  | { status: 'queued'; mode?: 'link' | 'native' }
+  | { status: 'skipped'; reason: string }
+  | null
+
 /** Data type for POST /posts (created post). */
 export type CreatePostData = {
   post: FeedPost
   streakReward: PostStreakReward | null
-  /** Set when the client asked to cross-post to Pickax. */
-  pickax?: { status: 'queued' } | { status: 'skipped'; reason: string } | null
+  /** Set when the client asked to cross-post to Pickax. Kept for older clients. */
+  pickax?: CrosspostQueueResult
+  crossposts?: { pickax?: CrosspostQueueResult; x?: CrosspostQueueResult }
 }
 
 /** Response for POST /posts/:id/repost */
@@ -2805,6 +2815,10 @@ export type Article = {
   pickaxUrl?: string | null
   /** Author-only: why Pickax rejected the last cross-post attempt. */
   pickaxError?: string | null
+  /** Public X status URL when the author shared this article on X. */
+  xUrl?: string | null
+  /** Author-only: why X rejected the last cross-post attempt. */
+  xError?: string | null
   boostCount: number
   commentCount: number
   viewCount: number

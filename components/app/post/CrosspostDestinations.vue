@@ -1,0 +1,126 @@
+<template>
+  <div v-if="destinations.length" class="mt-4">
+    <div v-for="row in destinations" :key="row.id" class="flex min-h-11 items-center gap-3 py-2" :class="row.disabled ? 'opacity-60' : ''">
+      <img
+        v-if="row.id === 'pickax'"
+        src="/images/brands/pickax.png"
+        alt=""
+        width="22"
+        height="22"
+        class="h-[22px] w-[22px] shrink-0 rounded-md"
+      >
+      <Icon v-else name="tabler:brand-x" class="h-[22px] w-[22px] shrink-0" />
+      <div class="min-w-0 flex-1">
+        <span class="block text-sm font-semibold moh-text">{{ label(row) }}</span>
+        <span class="block h-4 truncate text-xs moh-text-muted">{{ subtitle(row) }}</span>
+      </div>
+      <div class="flex h-11 w-[7.25rem] shrink-0 items-center justify-end">
+        <ToggleSwitch
+          v-if="row.disabled || isOff(row)"
+          :model-value="false"
+          :disabled="row.disabled"
+          :input-id="`crosspost-${row.id}`"
+          :aria-label="label(row)"
+          @update:model-value="(on: boolean) => turnOn(row, on)"
+        />
+        <Select
+          v-else
+          :model-value="selected[row.id]"
+          :options="menuOptions(row)"
+          option-label="label"
+          option-value="id"
+          append-to="body"
+          :base-z-index="1300"
+          :aria-label="label(row)"
+          class="h-11 w-[7.25rem]"
+          :pt="{ root: { class: '!h-11 !w-[7.25rem]' }, label: { class: '!py-0 text-sm' } }"
+          @update:model-value="(value: 'off' | CrosspostMode) => pick(row, value)"
+        />
+      </div>
+    </div>
+    <NuxtLink
+      v-if="premiumRow"
+      :to="premiumRow.premiumHref!"
+      class="inline-flex min-h-11 items-center text-xs font-semibold underline underline-offset-2"
+    >
+      Upgrade to Premium
+    </NuxtLink>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { CrosspostMode, CrosspostPayload } from '~/utils/crosspost'
+
+export type CrosspostDestinationView = {
+  id: 'pickax' | 'x'
+  modes: CrosspostMode[]
+  linkOnlyReason?: string
+  disabled?: boolean
+  disabledNote?: string
+  allowanceNote?: string
+  premiumHref?: string | null
+}
+
+const props = defineProps<{ destinations: CrosspostDestinationView[] }>()
+
+const selected = reactive<Record<string, 'off' | CrosspostMode>>({})
+
+const premiumRow = computed(() => props.destinations.find((row) => row.premiumHref) ?? null)
+
+watch(() => props.destinations, (rows) => {
+  for (const row of rows) {
+    if (!selected[row.id]) selected[row.id] = 'off'
+    const mode = selected[row.id]
+    if (mode !== 'off' && !row.modes.includes(mode as CrosspostMode)) selected[row.id] = 'off'
+  }
+}, { immediate: true })
+
+function label(row: CrosspostDestinationView): string {
+  return row.id === 'x' ? 'Share on X' : 'Share on Pickax'
+}
+
+function isOff(row: CrosspostDestinationView): boolean {
+  return (selected[row.id] ?? 'off') === 'off'
+}
+
+function defaultMode(row: CrosspostDestinationView): CrosspostMode {
+  return row.modes.includes('native') ? 'native' : 'link'
+}
+
+function turnOn(row: CrosspostDestinationView, on: boolean) {
+  if (!on || row.disabled || !row.modes.length) return
+  selected[row.id] = defaultMode(row)
+}
+
+function pick(row: CrosspostDestinationView, value: 'off' | CrosspostMode) {
+  selected[row.id] = value === 'off' || !row.modes.includes(value) ? 'off' : value
+}
+
+function menuOptions(row: CrosspostDestinationView): Array<{ id: 'off' | CrosspostMode; label: string }> {
+  const out: Array<{ id: 'off' | CrosspostMode; label: string }> = []
+  if (row.modes.includes('native')) out.push({ id: 'native', label: 'Post' })
+  if (row.modes.includes('link')) out.push({ id: 'link', label: 'Share' })
+  out.push({ id: 'off', label: "Don't share" })
+  return out
+}
+
+function subtitle(row: CrosspostDestinationView): string {
+  if (row.disabled) return row.disabledNote || ''
+  const mode = selected[row.id] ?? 'off'
+  if (mode === 'native') return row.allowanceNote || 'Your words and photos'
+  if (mode === 'link') return row.linkOnlyReason || row.allowanceNote || 'A link back to this post'
+  return row.linkOnlyReason || row.allowanceNote || ''
+}
+
+function payload(): CrosspostPayload {
+  const out: CrosspostPayload = {}
+  for (const row of props.destinations) {
+    if (row.disabled) continue
+    const mode = selected[row.id]
+    if (mode === 'link' || mode === 'native') out[row.id] = mode
+  }
+  return out
+}
+
+defineExpose({ payload })
+</script>

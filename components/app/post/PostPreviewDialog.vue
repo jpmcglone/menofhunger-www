@@ -30,24 +30,7 @@
       Publishes {{ scheduledLabel }}
     </p>
 
-    <div v-if="pickax" class="mt-4">
-      <p class="mb-1 text-[11px] font-semibold tracking-wide moh-text-muted">ALSO POST TO</p>
-      <div class="flex min-h-11 items-center gap-3 py-2" :class="pickax.disabled ? 'opacity-50' : ''">
-        <img
-          src="/images/brands/pickax.png"
-          alt=""
-          width="22"
-          height="22"
-          class="h-[22px] w-[22px] shrink-0 rounded-md"
-          :class="pickaxOn && !pickax.disabled ? '' : 'opacity-50 grayscale'"
-        >
-        <label for="post-preview-pickax" class="flex-1 cursor-pointer">
-          <span class="block text-sm font-semibold moh-text">Also post to Pickax</span>
-          <span class="block text-xs moh-text-muted">{{ pickax.disabled ? pickax.note : 'Publishes a copy with a link back to your profile.' }}</span>
-        </label>
-        <ToggleSwitch v-model="pickaxOn" input-id="post-preview-pickax" :disabled="pickax.disabled" />
-      </div>
-    </div>
+    <AppCrosspostDestinations v-if="destinations?.length" ref="destinationsRef" :destinations="destinations" />
 
     <div class="mt-5 flex justify-end gap-2">
       <button
@@ -61,7 +44,7 @@
         :label="scheduledLabel ? 'Schedule' : 'Post'"
         kind="brand"
         :loading="busy"
-        @click="emit('confirm', { crossPostToPickax: Boolean(pickax && !pickax.disabled && pickaxOn) })"
+        @click="emit('confirm', { crosspost: destinationsRef?.payload() ?? {} })"
       />
     </div>
   </Dialog>
@@ -69,22 +52,24 @@
 
 <script setup lang="ts">
 import type { FeedPost } from '~/types/api'
+import type { CrosspostPayload } from '~/utils/crosspost'
+import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
 
 withDefaults(defineProps<{
   /** The post as it will publish, shaped exactly like a feed row. */
   post: FeedPost | null
   scheduledLabel?: string | null
-  /** Null hides the destinations section entirely (private, group, check-in, reply). */
-  pickax?: { disabled: boolean; note: string } | null
+  /** Empty hides the destinations section. */
+  destinations?: CrosspostDestinationView[] | null
   busy?: boolean
-}>(), { scheduledLabel: null, pickax: null, busy: false })
+}>(), { scheduledLabel: null, destinations: null, busy: false })
 
 const emit = defineEmits<{
   close: []
-  confirm: [options: { crossPostToPickax: boolean }]
+  confirm: [options: { crosspost: CrosspostPayload }]
 }>()
 
-const pickaxOn = ref(false)
+const destinationsRef = ref<{ payload: () => CrosspostPayload } | null>(null)
 
 useOverlayDismiss(() => true, () => emit('close'))
 </script>

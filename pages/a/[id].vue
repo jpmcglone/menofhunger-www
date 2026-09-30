@@ -97,6 +97,17 @@
           </p>
         </div>
 
+        <div
+          v-if="viewerIsAuthor && article.xError"
+          class="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2"
+        >
+          <Icon name="tabler:brand-x" class="mt-0.5 h-4 w-4 shrink-0" />
+          <p class="min-w-0 flex-1 text-xs moh-text">
+            X did not take this article: {{ article.xError }}
+            <NuxtLink to="/settings/integrations" class="font-semibold underline underline-offset-2">Check your connection</NuxtLink>
+          </p>
+        </div>
+
         <!-- Meta: author, date, read time -->
         <div class="mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm moh-text-muted">
           <span>by</span>
@@ -129,6 +140,19 @@
               class="h-3.5 w-3.5 rounded-[3px] opacity-70"
             >
             On Pickax
+          </a>
+          <a
+            v-if="article.xUrl"
+            v-tooltip.bottom="tinyTooltip('Also on X')"
+            :href="article.xUrl"
+            target="_blank"
+            rel="noopener nofollow"
+            class="inline-flex items-center gap-1 text-xs moh-text-muted hover:text-[var(--moh-text)]"
+            aria-label="View this article on X"
+          >
+            <span aria-hidden="true">·</span>
+            <Icon name="tabler:brand-x" class="h-3.5 w-3.5 opacity-70" />
+            On X
           </a>
           <button
             v-if="article.viewerCanAccess !== false && displayCommentCount > 0"

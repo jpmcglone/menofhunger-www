@@ -219,18 +219,11 @@
         </template>
       </AppFormField>
 
-      <AppFormField label="X (Twitter)">
-        <InputText
-          v-model="editXUsername"
-          class="w-full"
-          :maxlength="200"
-          placeholder="@yourhandle"
-          autocomplete="off"
-        />
-        <template #helper>
-          Optional. Leave blank to hide. You can paste your full profile URL.
-        </template>
-      </AppFormField>
+      <p class="text-sm moh-text-muted">
+        Connect X in
+        <NuxtLink to="/settings/integrations" class="font-semibold underline underline-offset-2">Settings</NuxtLink>
+        to show it on your profile.
+      </p>
 
       <AppInlineAlert v-if="editError" severity="danger">
         {{ editError }}
@@ -306,7 +299,6 @@ const editName = ref('')
 const editBio = ref('')
 const editLocationQuery = ref('')
 const editWebsite = ref('')
-const editXUsername = ref('')
 const nameCharCount = useFormCharCount(editName, 50)
 const bioCharCount = useFormCharCount(editBio, 160)
 const editError = ref<string | null>(null)
@@ -575,7 +567,6 @@ function hydrateEditFields() {
   editBio.value = props.profile?.bio || ''
   editLocationQuery.value = locationQueryFromProfile(props.profile)
   editWebsite.value = (props.profile?.website ?? '') || ''
-  editXUsername.value = (props.profile?.xUsername ?? '') || ''
 }
 
 function fillEmptyEditFieldsFromProfile() {
@@ -584,7 +575,6 @@ function fillEmptyEditFieldsFromProfile() {
   if (!editBio.value && props.profile?.bio) editBio.value = props.profile.bio
   if (!editLocationQuery.value) editLocationQuery.value = locationQueryFromProfile(props.profile)
   if (!editWebsite.value && props.profile?.website) editWebsite.value = props.profile.website
-  if (!editXUsername.value && props.profile?.xUsername) editXUsername.value = props.profile.xUsername
 }
 
 watch(
@@ -762,7 +752,6 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           bio: editBio.value,
           locationQuery: editLocationQuery.value,
           website: editWebsite.value,
-          xUsername: editXUsername.value,
         }
       })
       emit('patchProfile', {
@@ -786,7 +775,6 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           bio: editBio.value,
           locationQuery: editLocationQuery.value,
           website: editWebsite.value,
-          xUsername: editXUsername.value,
         }
       })
       const u = result.user

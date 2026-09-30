@@ -128,6 +128,7 @@
             :is-bot="postView.author?.isBot ?? false"
             :edited-at="postView.editedAt ?? null"
             :pickax-url="postView.pickaxUrl ?? null"
+            :x-url="postView.xUrl ?? null"
             :hide-edited-badge="postView.visibility === 'onlyMe'"
             :profile-path="authorProfilePath"
             :post-id="postView.id"
@@ -279,6 +280,19 @@
           <img src="/images/brands/pickax.png" alt="" width="16" height="16" class="mt-0.5 h-4 w-4 rounded-[3px]">
           <p class="min-w-0 flex-1 text-xs moh-text">
             Pickax did not take this post: {{ pickaxError }}
+            <NuxtLink to="/settings/integrations" class="font-semibold underline underline-offset-2" @click.stop>
+              Check your connection
+            </NuxtLink>
+          </p>
+        </div>
+
+        <div
+          v-if="xError"
+          class="relative z-10 mt-2 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2"
+        >
+          <Icon name="tabler:brand-x" class="mt-0.5 h-4 w-4 shrink-0" />
+          <p class="min-w-0 flex-1 text-xs moh-text">
+            X did not take this post: {{ xError }}
             <NuxtLink to="/settings/integrations" class="font-semibold underline underline-offset-2" @click.stop>
               Check your connection
             </NuxtLink>
@@ -724,6 +738,11 @@ const { user, isAuthed } = useAuth()
 /** Author-only cross-post failure: the API sends `pickaxError` only to the author. */
 const pickaxError = computed(() => {
   const message = (postView.value.pickaxError ?? '').trim()
+  if (!message) return null
+  return user.value?.id && user.value.id === postView.value.author?.id ? message : null
+})
+const xError = computed(() => {
+  const message = (postView.value.xError ?? '').trim()
   if (!message) return null
   return user.value?.id && user.value.id === postView.value.author?.id ? message : null
 })

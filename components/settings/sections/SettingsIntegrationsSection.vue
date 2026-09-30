@@ -88,6 +88,45 @@
         :disabled="!clientId.trim() || !clientSecret.trim() || (needsUsername && !username.trim())"
       />
     </form>
+
+    <section class="space-y-3 border-t moh-border pt-6">
+      <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-50">
+        <Icon name="tabler:brand-x" class="h-5 w-5 text-[var(--moh-text-muted)]" />
+        X
+      </div>
+      <p class="text-sm text-gray-600 dark:text-gray-300">
+        Cross-post new public posts, and share articles as a link, to your X account. Verified members can connect.
+        Posting to X is included with Premium.
+      </p>
+      <div v-if="!xStatus" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+      <p v-else-if="!xStatus.available" class="text-sm text-gray-600 dark:text-gray-300">
+        X connections are not available right now.
+      </p>
+      <div v-else-if="xStatus.connected" class="space-y-3">
+        <div class="flex items-center justify-between gap-3 rounded-xl border moh-border px-4 py-3">
+          <div class="min-w-0">
+            <div class="truncate text-sm font-semibold moh-text">@{{ xStatus.username }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              {{ xStatus.canPost ? `About ${xStatus.allowance.linkPostsLeft} links left this month` : 'Posting to X is a Premium feature' }}
+            </div>
+          </div>
+          <Button label="Disconnect" severity="secondary" size="small" class="shrink-0" :loading="xBusy" @click="onDisconnectX" />
+        </div>
+        <p v-if="xStatus.needsAttention" role="alert" class="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3 text-sm dark:border-amber-500/30 dark:bg-amber-500/10">
+          X needs to be connected again before new posts can be shared.
+        </p>
+        <NuxtLink v-if="!xStatus.canPost" to="/tiers" class="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
+          Upgrade to Premium
+        </NuxtLink>
+      </div>
+      <div v-else class="space-y-3">
+        <p v-if="!isVerifiedMember" class="text-sm text-gray-600 dark:text-gray-300">
+          Verify your account, or join Premium, to connect X.
+        </p>
+        <Button v-else label="Connect X" :loading="xBusy" @click="onConnectX" />
+        <AppInlineAlert v-if="xError" severity="danger">{{ xError }}</AppInlineAlert>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -95,6 +134,10 @@
 import { getApiErrorMessage } from '~/utils/api-error'
 
 const { status, refresh, connect, disconnect } = usePickaxIntegration()
+const { status: xStatus, refresh: refreshX, authorize, connect: connectX, disconnect: disconnectX } = useXIntegration()
+const { isVerifiedMember } = useAuth()
+const route = useRoute()
+const toast = useAppToast()
 
 const clientId = ref('')
 const clientSecret = ref('')
@@ -103,6 +146,8 @@ const needsUsername = ref(false)
 const verificationCode = ref<string | null>(null)
 const busy = ref(false)
 const error = ref('')
+const xBusy = ref(false)
+const xError = ref('')
 
 async function onConnect() {
   if (busy.value) return
@@ -144,6 +189,56 @@ async function onDisconnect() {
   }
 }
 
-onMounted(refresh)
-onActivated(refresh)
+async function onConnectX() {
+  if (xBusy.value) return
+  xBusy.value = true
+  xError.value = ''
+  try {
+    window.location.href = await authorize()
+  } catch (e) {
+    xError.value = getApiErrorMessage(e) || 'Could not start the X connection.'
+    xBusy.value = false
+  }
+}
+
+async function onDisconnectX() {
+  if (xBusy.value) return
+  if (!window.confirm('Disconnect X? New posts will no longer be cross-posted, and your X link will leave your profile.')) return
+  xBusy.value = true
+  xError.value = ''
+  try {
+    await disconnectX()
+  } catch (e) {
+    xError.value = getApiErrorMessage(e) || 'X could not be disconnected. Please try again.'
+  } finally {
+    xBusy.value = false
+  }
+}
+
+async function finishXCallback() {
+  const code = typeof route.query.code === 'string' ? route.query.code : ''
+  const state = typeof route.query.state === 'string' ? route.query.state : ''
+  if (!code || !state) return
+  // Drop the code from the address bar before exchanging it, so a refresh cannot replay it.
+  await navigateTo('/settings/integrations', { replace: true })
+  xBusy.value = true
+  try {
+    await connectX({ code, state })
+    toast.push({ title: 'X connected.', tone: 'success' })
+  } catch (e) {
+    xError.value = getApiErrorMessage(e) || 'X could not be connected. Try again.'
+  } finally {
+    xBusy.value = false
+  }
+}
+
+onMounted(() => {
+  void refresh()
+  void refreshX()
+  void finishXCallback()
+})
+onActivated(() => {
+  void refresh()
+  void refreshX()
+})
 </script>
