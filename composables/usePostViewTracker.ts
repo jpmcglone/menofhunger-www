@@ -99,6 +99,7 @@ async function flushBatch(
       keepalive: true,
       mohUnauthorized: 'ignore',
       body: {
+        require_auth: opts.isAuthed,
         postIds: ids,
         source: opts.source,
         ...(opts.anonId ? { anon_id: opts.anonId } : {}),
@@ -354,7 +355,7 @@ export function usePostViewTracker() {
     try {
       const acks = await apiFetchData('/posts/views', {
         method: 'POST', keepalive: true, mohUnauthorized: 'ignore',
-        body: { postIds: [postId], source: 'post_open', ...(anonViewId.value ? { anon_id: anonViewId.value } : {}) },
+        body: { require_auth: isAuthed.value, postIds: [postId], source: 'post_open', ...(anonViewId.value ? { anon_id: anonViewId.value } : {}) },
       }) as import('~/types/api').PostViewAck[]
       if (Array.isArray(acks)) applyAcks(acks)
     } catch { openedAt.delete(postId) }

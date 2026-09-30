@@ -40,6 +40,7 @@ export function useArticleViewTracker() {
       const acks = await apiFetchData('/articles/views', {
         method: 'POST',
         body: {
+          require_auth: isAuthed.value,
           articleIds: [id],
           source: opts?.source ?? 'article_read_sentinel',
           ...(anonViewId.value ? { anon_id: anonViewId.value } : {}),

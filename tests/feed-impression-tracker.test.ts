@@ -1,11 +1,12 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { effectScope, ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useArticleViewTracker } from '~/composables/useArticleViewTracker'
 import { usePostViewTracker } from '~/composables/usePostViewTracker'
 
-const state = vi.hoisted(() => ({ fetch: vi.fn(), user: { value: { id: 'impressions' } }, patches: vi.fn() }))
+const state = vi.hoisted(() => ({ fetch: vi.fn(), authed: true, user: { value: { id: 'impressions' } }, patches: vi.fn() }))
 mockNuxtImport('useApiClient', () => () => ({ apiFetchData: state.fetch }))
-mockNuxtImport('useAuth', () => () => ({ isAuthed: ref(true), user: state.user }))
+mockNuxtImport('useAuth', () => () => ({ isAuthed: ref(state.authed), user: state.user }))
 mockNuxtImport('useAnonViewId', () => () => ref('anonymous_impressions'))
 mockNuxtImport('usePresence', () => () => ({ groupsUnread: ref({ total: 0, byGroupId: {} }), setGroupsUnread: vi.fn() }))
 mockNuxtImport('usePostCache', () => () => ({ get: () => ({}), patch: state.patches }))
@@ -22,6 +23,7 @@ function entry(index: number, visible: boolean) {
 }
 beforeEach(() => {
   vi.useFakeTimers()
+  state.authed = true
   state.user.value.id = `impressions-${++sequence}`
   state.fetch.mockReset().mockResolvedValue([])
   callbacks = []
@@ -35,6 +37,33 @@ afterEach(() => {
   vi.useRealTimers(); vi.unstubAllGlobals()
 })
 describe('feed impressions', () => {
+  it.each([true, false])('declares authentication intent for feed, open and article reports (authenticated=%s)', async (authed) => {
+    state.authed = authed
+    const t = tracker()
+    t.markEngaged('identity-post')
+    await t.flush()
+    await t.markOpened('identity-post')
+    const scope = effectScope(); scopes.push(scope)
+    const article = scope.run(() => useArticleViewTracker())!
+    stops.push(article.trackOnDwell(`article-${sequence}`))
+    await vi.advanceTimersByTimeAsync(5000)
+    const reports = state.fetch.mock.calls.filter(([path]) => path === '/posts/views' || path === '/articles/views')
+    expect(reports).toHaveLength(3)
+    for (const [, options] of reports) {
+      expect(options.body.require_auth).toBe(authed)
+      expect(options.body.anon_id).toBe('anonymous_impressions')
+    }
+  })
+  it('retries rejected authenticated views without downgrading them to guests', async () => {
+    const t = tracker()
+    state.fetch.mockRejectedValue({ status: 401 })
+    t.markEngaged('auth-retry')
+    await t.flush()
+    state.fetch.mockResolvedValue([])
+    await t.flush()
+    expect(state.fetch.mock.calls.length).toBeGreaterThanOrEqual(2)
+    for (const [, options] of state.fetch.mock.calls) expect(options.body.require_auth).toBe(true)
+  })
   it('requires a full visible second and never counts offscreen or stationary cards twice', async () => {
     const t = tracker()
     stops.push(t.observe('board', document.createElement('div')))
