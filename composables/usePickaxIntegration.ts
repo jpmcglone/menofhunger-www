@@ -1,4 +1,5 @@
 export type PickaxIntegrationStatus = {
+  oauthAvailable?: boolean
   available: boolean
   connected: boolean
   username: string | null

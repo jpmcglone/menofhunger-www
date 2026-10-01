@@ -42,6 +42,9 @@
     "/crew",
     "/topics/this-topic-does-not-exist",
     "/state/ny",
-    "/g/this-group-does-not-exist/members"
+    "/g/this-group-does-not-exist/members",
+    "/developers",
+    "/connect/partner",
+    "/connect/pickax"
   ]
 }

@@ -70,7 +70,7 @@ export function xWeightedLength(text: string): number {
 
 function linkBlocked(draft: CrosspostDraft): boolean {
   if (draft.isReply || draft.isQuote || draft.isCheckin) return true
-  if (draft.groupId || draft.scheduled) return true
+  if (draft.groupId) return true
   return draft.visibility !== 'public'
 }
 
@@ -113,4 +113,9 @@ export function crosspostSkipMessage(destination: 'Pickax' | 'X', reason: string
       ? 'Premium is required'
       : reason.replaceAll('_', ' ')
   return `Posted here. ${destination} couldn't take this post: ${detail}.`
+}
+
+/** Match the API's conservative accounting of URLs that X may linkify. */
+export function xContainsLink(text: string): boolean {
+  return /https?:\/\/|\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(?:[/:?#]|\b)/i.test(text)
 }

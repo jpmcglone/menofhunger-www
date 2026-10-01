@@ -573,7 +573,7 @@ import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { buildOptimisticPost } from '~/utils/optimistic-post'
-import { crosspostOptions, crosspostSkipMessage, type CrosspostDraft, type CrosspostPayload } from '~/utils/crosspost'
+import { xContainsLink, crosspostOptions, crosspostSkipMessage, type CrosspostDraft, type CrosspostPayload } from '~/utils/crosspost'
 import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
 import { makePendingLocalId } from '~/composables/usePendingPostsManager'
 import {
@@ -894,6 +894,7 @@ async function performSchedule(submitBody: string, vis: PostVisibility, mediaPay
     body: submitBody,
     visibility: vis,
     scheduled_at: targetAt.toISOString(),
+    crosspost: crosspostChoice.value,
     ...(mediaPayload.length ? { media: mediaPayload } : {}),
     ...(pollPayload ? { poll: toScheduledPollBody(pollPayload) } : {}),
     ...(groupId ? { community_group_id: groupId } : {}),
@@ -1620,15 +1621,11 @@ function destinationRow(
 ): CrosspostDestinationView | null {
   const connected = id === 'pickax' ? pickaxIntegration.connected.value : xIntegration.connected.value
   if (!connected) return null
-  const scheduledPublic = Boolean(scheduledAt.value) && effectiveVisibility.value === 'public' && !effectiveGroupId.value
-  if (scheduledAt.value) {
-    if (!scheduledPublic) return null
-    return { id, modes: [], disabled: true, disabledNote: 'Scheduled posts stay on Men of Hunger only' }
-  }
+  if (!viewerIsVerified.value) return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to share outward', premiumHref: '/settings/verification' }
   if (id === 'x' && xIntegration.status.value?.connected && !xIntegration.status.value.canPost) {
-    return { id, modes: [], disabled: true, disabledNote: 'Posting to X is a Premium feature', premiumHref: '/tiers' }
+    return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to share to X', premiumHref: '/settings/verification' }
   }
-  if (id === 'x' && isPremium.value) {
+  if (!scheduledAt.value && id === 'x') {
     const allowance = xIntegration.status.value?.allowance
     if (allowance && allowance.linkPostsLeft <= 0 && allowance.nativePostsLeft <= 0) {
       return { id, modes: [], disabled: true, disabledNote: "You've used this month's X posts" }
@@ -1638,13 +1635,14 @@ function destinationRow(
   if (!options.modes.length) return null
   let modes = options.modes
   let allowanceNote: string | undefined
-  if (id === 'x' && xIntegration.status.value?.allowance) {
+  if (!scheduledAt.value && id === 'x' && xIntegration.status.value?.allowance) {
     const allowance = xIntegration.status.value.allowance
-    if (allowance.linkPostsLeft <= 0) modes = modes.filter((mode) => mode !== 'link')
+    if (allowance.linkPostsLeft <= 0) modes = modes.filter((mode) => mode !== 'link' && !xContainsLink(crosspostDraft(media).body))
     if (allowance.nativePostsLeft <= 0) modes = modes.filter((mode) => mode !== 'native')
     if (!modes.length) return { id, modes: [], disabled: true, disabledNote: "You've used this month's X posts" }
-    if (allowance.linkPostsLeft > 0) allowanceNote = `About ${allowance.linkPostsLeft} links left this month`
+    allowanceNote = `${allowance.totalRemaining ?? allowance.nativePostsLeft} posts remaining · ${allowance.linkRemaining ?? allowance.linkPostsLeft} with links`
   }
+  if (scheduledAt.value) allowanceNote = 'Allowance is checked when this post publishes'
   return { id, modes, linkOnlyReason: options.linkOnlyReason, allowanceNote }
 }
 

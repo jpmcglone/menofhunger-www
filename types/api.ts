@@ -3573,3 +3573,14 @@ export type GroupActivity = {
 }
 
 export type { ActivationDto, ActivationCompletionDto } from './api-contracts.gen'
+
+/** Read grants are separate from outward platform credentials. */
+export type PartnerConnection = {
+  status?: 'active' | 'expired' | 'suspended' | 'needs_reauthorization'
+  id: string
+  clientName: string
+  accountId: string
+  scopes: string[]
+  createdAt: string
+  expiresAt: string
+}

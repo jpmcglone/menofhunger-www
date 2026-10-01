@@ -17,7 +17,9 @@ describe('cross-post choice menu', () => {
     })
     try {
       const toggle = wrapper.get('input')
+      expect((wrapper.vm as unknown as { payload: () => unknown }).payload()).toEqual({})
       await toggle.setValue(true)
+      expect((wrapper.vm as unknown as { payload: () => unknown }).payload()).toEqual({ pickax: 'link' })
       await wrapper.get('button[aria-label="Share on Pickax"]').trigger('click')
       await vi.waitFor(() => {
         const popup = document.querySelector<HTMLElement>('[data-pc-name="menu"]')

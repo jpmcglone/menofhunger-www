@@ -56,7 +56,7 @@
       :to="premiumRow.premiumHref!"
       class="inline-flex min-h-11 items-center text-xs font-semibold underline underline-offset-2"
     >
-      Upgrade to Premium
+      {{ premiumRow.premiumHref === '/settings/verification' ? 'Verify your account' : 'Upgrade to Premium' }}
     </NuxtLink>
   </div>
 </template>
@@ -99,7 +99,7 @@ function isOff(row: CrosspostDestinationView): boolean {
 }
 
 function defaultMode(row: CrosspostDestinationView): CrosspostMode {
-  return row.modes.includes('native') ? 'native' : 'link'
+  return row.id === 'pickax' ? 'link' : row.modes.includes('native') ? 'native' : 'link'
 }
 
 function turnOn(row: CrosspostDestinationView, on: boolean) {
@@ -147,7 +147,7 @@ function menuOptions(row: CrosspostDestinationView): Array<{ id: 'off' | Crosspo
 function subtitle(row: CrosspostDestinationView): string {
   if (row.disabled) return row.disabledNote || ''
   const mode = selected[row.id] ?? 'off'
-  if (mode === 'native') return 'Your words and photos'
+  if (mode === 'native') return row.id === 'pickax' ? 'Full copy with a link to the original' : 'Your words and photos'
   if (mode === 'link') return row.linkOnlyReason || 'A link back to this post'
   return row.linkOnlyReason || row.allowanceNote || ''
 }

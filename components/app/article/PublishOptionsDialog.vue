@@ -46,6 +46,8 @@ const emit = defineEmits<{
 }>()
 
 const api = useBoardApi()
+const { user } = useAuth()
+const verified = computed(() => user.value?.verifiedStatus === 'manual' || user.value?.verifiedStatus === 'identity')
 const postToBoard = ref(true)
 const shareToFeed = ref(false)
 const pickaxIntegration = usePickaxIntegration()
@@ -56,11 +58,11 @@ const destinations = computed<CrosspostDestinationView[]>(() => {
   if (props.visibility !== 'public') return []
   const rows: CrosspostDestinationView[] = []
   if (pickaxIntegration.connected.value) {
-    rows.push({ id: 'pickax', modes: ['link', 'native'] })
+    rows.push(verified.value ? { id: 'pickax', modes: ['link', 'native'] } : { id: 'pickax', modes: [], disabled: true, disabledNote: 'Verify your MOH account to share outward', premiumHref: '/settings/verification' })
   }
   if (xIntegration.connected.value) {
     if (!xIntegration.status.value?.canPost) {
-      rows.push({ id: 'x', modes: [], disabled: true, disabledNote: 'Posting to X is a Premium feature', premiumHref: '/tiers' })
+      rows.push({ id: 'x', modes: [], disabled: true, disabledNote: 'Verify your MOH account to share to X', premiumHref: '/settings/verification' })
     } else {
       const allowance = xIntegration.status.value?.allowance
       if (allowance && allowance.linkPostsLeft <= 0) {
@@ -70,7 +72,7 @@ const destinations = computed<CrosspostDestinationView[]>(() => {
           id: 'x',
           modes: ['link'],
           linkOnlyReason: 'Articles share as a link on X',
-          allowanceNote: allowance ? `About ${allowance.linkPostsLeft} links left this month` : undefined,
+          allowanceNote: allowance ? `${allowance.linkRemaining ?? allowance.linkPostsLeft} link posts remaining this month` : undefined,
         })
       }
     }

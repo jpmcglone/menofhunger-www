@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { crosspostOptions, xWeightedLength } from '~/utils/crosspost'
+import { crosspostOptions, xWeightedLength, xContainsLink } from '~/utils/crosspost'
 import type { CrosspostDraft } from '~/utils/crosspost'
 
 function draft(overrides: Partial<CrosspostDraft> = {}): CrosspostDraft {
@@ -53,5 +53,16 @@ describe('crosspost options', () => {
     const src = readFileSync(resolve(process.cwd(), 'components/app/PostComposer.vue'), 'utf8')
     expect(src).toContain('snapshot.crosspost')
     expect(src).toContain('...(Object.keys(crosspost).length ? { crosspost } : {})')
+  })
+})
+
+describe('X link accounting and scheduling', () => {
+  it('counts both explicit URLs and domains that X can linkify', () => {
+    expect(xContainsLink('see https://example.com')).toBe(true)
+    expect(xContainsLink('see example.com/path')).toBe(true)
+    expect(xContainsLink('ordinary words')).toBe(false)
+  })
+  it('keeps destination selection available for scheduled public posts', () => {
+    expect(crosspostOptions(draft({ scheduled: true }), 'pickax').modes).toEqual(['link', 'native'])
   })
 })

@@ -5,7 +5,7 @@ export type XIntegrationStatus = {
   canPost: boolean
   needsAttention: boolean
   lastError?: string | null
-  allowance: { linkPostsLeft: number; nativePostsLeft: number }
+  allowance: { linkPostsLeft: number; nativePostsLeft: number; totalRemaining?: number; linkRemaining?: number; totalLimit?: number; linkLimit?: number; resetsAt?: string }
 }
 
 const EMPTY: XIntegrationStatus = {

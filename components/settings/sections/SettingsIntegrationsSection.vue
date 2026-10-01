@@ -6,8 +6,8 @@
         Pickax
       </div>
       <p class="text-sm text-gray-600 dark:text-gray-300">
-        Cross-post new public feed posts and articles to your Pickax account. Posts you edit here update on
-        Pickax. Deleting on Men of Hunger leaves the Pickax copy in place.
+        Create here, then choose what to share to Pickax. Connecting never turns sharing on.
+        Verification is required to share. Removals need attention until Pickax confirms them.
       </p>
     </div>
 
@@ -37,7 +37,7 @@
         role="alert"
         class="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3 text-sm dark:border-amber-500/30 dark:bg-amber-500/10"
       >
-        Pickax stopped accepting this key, so cross-posting is paused. Disconnect and connect again with a new key.
+        Pickax needs authorization again before new content can be shared. Reconnect the same account.
       </p>
       <p
         v-else-if="status.lastError"
@@ -46,12 +46,17 @@
       >
         Pickax rejected the last cross-post: {{ status.lastError }}
       </p>
+      <NuxtLink v-if="status.oauthAvailable" to="/connect/pickax" class="inline-flex min-h-11 items-center font-semibold underline">Reconnect Pickax</NuxtLink>
       <p class="text-sm text-gray-600 dark:text-gray-300">
         Your Pickax profile link on Men of Hunger comes from this connection. Disconnecting stops future
         cross-posts and updates and keeps what is already on Pickax.
       </p>
     </section>
 
+    <section v-else-if="status.oauthAvailable" class="space-y-3">
+      <NuxtLink to="/connect/pickax" class="inline-flex min-h-11 items-center font-semibold underline">Connect Pickax</NuxtLink>
+      <p class="text-sm moh-text-muted">You will authorize on Pickax. Your password stays there.</p>
+    </section>
     <form v-else class="space-y-4" @submit.prevent="onConnect">
       <ol class="list-decimal space-y-1 pl-5 text-sm text-gray-700 dark:text-gray-300">
         <li>In Pickax, create an API key for a third-party app.</li>
@@ -95,8 +100,8 @@
         X
       </div>
       <p class="text-sm text-gray-600 dark:text-gray-300">
-        Cross-post new public posts, and share articles as a link, to your X account. Verified members can connect.
-        Posting to X is included with Premium.
+        Connecting is free. Verified members can share public posts and articles to X.
+        Premium increases your monthly allowance.
       </p>
       <div v-if="!xStatus" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
       <p v-else-if="!xStatus.available" class="text-sm text-gray-600 dark:text-gray-300">
@@ -107,26 +112,28 @@
           <div class="min-w-0">
             <div class="truncate text-sm font-semibold moh-text">@{{ xStatus.username }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              {{ xStatus.canPost ? `About ${xStatus.allowance.linkPostsLeft} links left this month` : 'Posting to X is a Premium feature' }}
+              {{ xStatus.canPost ? `${xStatus.allowance.totalRemaining ?? xStatus.allowance.nativePostsLeft} posts remaining · ${xStatus.allowance.linkRemaining ?? xStatus.allowance.linkPostsLeft} with links` : 'Verify your MOH account to share to X' }}
             </div>
           </div>
           <Button label="Disconnect" severity="secondary" size="small" class="shrink-0" :loading="xBusy" @click="onDisconnectX" />
         </div>
+        <p v-if="xStatus.allowance.resetsAt" class="text-xs moh-text-muted">
+          Resets {{ new Date(xStatus.allowance.resetsAt).toLocaleString() }}
+        </p>
+        <Button label="Reconnect X" severity="secondary" :loading="xBusy" @click="onConnectX" />
         <p v-if="xStatus.needsAttention" role="alert" class="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3 text-sm dark:border-amber-500/30 dark:bg-amber-500/10">
           X needs to be connected again before new posts can be shared.
         </p>
-        <NuxtLink v-if="!xStatus.canPost" to="/tiers" class="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
-          Upgrade to Premium
+        <NuxtLink v-if="!xStatus.canPost" to="/settings/verification" class="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2">
+          Verify your account
         </NuxtLink>
       </div>
       <div v-else class="space-y-3">
-        <p v-if="!isVerifiedMember" class="text-sm text-gray-600 dark:text-gray-300">
-          Verify your account, or join Premium, to connect X.
-        </p>
-        <Button v-else label="Connect X" :loading="xBusy" @click="onConnectX" />
+        <Button label="Connect X" :loading="xBusy" @click="onConnectX" />
         <AppInlineAlert v-if="xError" severity="danger">{{ xError }}</AppInlineAlert>
       </div>
     </section>
+    <SettingsPartnerConnections />
   </div>
 </template>
 
@@ -135,7 +142,6 @@ import { getApiErrorMessage } from '~/utils/api-error'
 
 const { status, refresh, connect, disconnect } = usePickaxIntegration()
 const { status: xStatus, refresh: refreshX, authorize, connect: connectX, disconnect: disconnectX } = useXIntegration()
-const { isVerifiedMember } = useAuth()
 const route = useRoute()
 const toast = useAppToast()
 
@@ -175,7 +181,7 @@ async function onConnect() {
 
 async function onDisconnect() {
   if (busy.value) return
-  if (!window.confirm('Disconnect Pickax? New posts and edits will no longer be cross-posted.')) return
+  if (!window.confirm('Disconnect Pickax? Future sharing stops. Copies already on Pickax remain.')) return
   busy.value = true
   error.value = ''
   try {
@@ -203,7 +209,7 @@ async function onConnectX() {
 
 async function onDisconnectX() {
   if (xBusy.value) return
-  if (!window.confirm('Disconnect X? New posts will no longer be cross-posted, and your X link will leave your profile.')) return
+  if (!window.confirm('Disconnect X? Future sharing stops. Copies already on X remain.')) return
   xBusy.value = true
   xError.value = ''
   try {
