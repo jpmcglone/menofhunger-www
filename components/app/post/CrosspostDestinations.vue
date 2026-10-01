@@ -156,7 +156,7 @@ function menuOptions(row: CrosspostDestinationView): Array<{ id: 'off' | Crosspo
 function subtitle(row: CrosspostDestinationView): string {
   if (row.disabled) return row.disabledNote || ''
   if (row.id === 'x') return 'Your words and photos'
-  if (displayMode(row) === 'native') return 'Full copy with a link to the original'
+  if (displayMode(row) === 'native') return 'Your words and photos'
   return row.linkOnlyReason || 'A link back to this post'
 }
 
