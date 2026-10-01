@@ -49,6 +49,12 @@ export function usePickaxIntegration() {
     return result
   }
 
+  async function reconnect(): Promise<PickaxIntegrationStatus> {
+    const res = await apiFetch<PickaxIntegrationStatus>('/me/integrations/pickax/reconnect', { method: 'POST' })
+    status.value = res?.data ?? EMPTY
+    return status.value
+  }
+
   async function disconnect(): Promise<void> {
     const res = await apiFetch<PickaxIntegrationStatus>('/me/integrations/pickax', { method: 'DELETE' })
     status.value = res?.data ?? EMPTY
@@ -56,5 +62,5 @@ export function usePickaxIntegration() {
 
   const connected = computed(() => Boolean(status.value?.connected && !status.value.needsAttention))
 
-  return { status, loading, connected, refresh, connect, disconnect }
+  return { status, loading, connected, refresh, connect, reconnect, disconnect }
 }
