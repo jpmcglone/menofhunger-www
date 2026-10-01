@@ -101,6 +101,8 @@
         />
       </div>
 
+      <AppXPublishing v-if="post.author.id === user?.id && !post.deletedAt && post.visibility === 'public'" :key="`publish-x-${post.id}`" :post-id="post.id" />
+      <AppXAuthorMetrics v-if="post.author.id === user?.id && post.xUrl && !post.deletedAt" :key="`x-${post.id}`" :post-id="post.id" />
       <AppConversationInsights v-if="post.author.id === user?.id && !post.parentId && !isOnlyMe && !post.deletedAt && post.kind !== 'repost'" :key="post.id" :post-id="post.id" />
       <AppPostContribution :key="`contribution-${post.id}`" :post="post" />
       <template v-if="!isOnlyMe && !isGatedPost">

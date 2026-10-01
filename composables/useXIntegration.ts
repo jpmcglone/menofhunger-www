@@ -1,3 +1,4 @@
+import type { IntegrationAllowanceDto, IntegrationCapabilityDto } from '~/types/api-contracts.gen'
 export type XIntegrationStatus = {
   available: boolean
   connected: boolean
@@ -5,6 +6,9 @@ export type XIntegrationStatus = {
   canPost: boolean
   needsAttention: boolean
   lastError?: string | null
+  capabilities?: IntegrationCapabilityDto[]
+  linksEnabled?: boolean
+  integrationAllowance?: IntegrationAllowanceDto
   allowance: { linkPostsLeft: number; nativePostsLeft: number; totalRemaining?: number; linkRemaining?: number; totalLimit?: number; linkLimit?: number; resetsAt?: string }
 }
 

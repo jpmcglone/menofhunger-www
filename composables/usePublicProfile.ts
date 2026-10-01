@@ -7,6 +7,7 @@ import type { PublicProfile } from '~/types/api'
 export async function usePublicProfile(normalizedUsername: Ref<string>) {
   const { apiFetchData } = useApiClient()
   const usersStore = useUsersStore()
+  const requestEvent = import.meta.server ? useRequestEvent() : undefined
 
   const { data, error } = await useAsyncData(
     () => `public-profile:${normalizedUsername.value}`,
@@ -59,8 +60,7 @@ export async function usePublicProfile(normalizedUsername: Ref<string>) {
     const e = error.value as { statusCode?: number; status?: number; response?: { status?: number } }
     const status = Number(e?.statusCode ?? e?.status ?? e?.response?.status ?? 0)
     if (status >= 500 || status === 0) {
-      const event = useRequestEvent()
-      if (event) setResponseStatus(event, 503)
+      if (requestEvent) setResponseStatus(requestEvent, 503)
     }
   }
 

@@ -64,7 +64,14 @@ const destinations = computed<CrosspostDestinationView[]>(() => {
     if (!xIntegration.status.value?.canPost) {
       rows.push({ id: 'x', modes: [], disabled: true, disabledNote: 'Verify your MOH account to post to X', premiumHref: '/settings/verification' })
     } else {
-      rows.push({ id: 'x', modes: [], disabled: true, disabledNote: 'Articles cannot be posted to X because they require a link.' })
+      const status = xIntegration.status.value
+      const article = status?.capabilities?.find(capability => capability.action === 'article')
+      const modes: Array<'link' | 'native'> = []
+      if (status?.linksEnabled) modes.push('link')
+      if (article?.state === 'supported') modes.push('native')
+      rows.push({ id: 'x', modes, disabled: !modes.length,
+        disabledNote: modes.length ? undefined : 'Native Articles need confirmed X access. Link sharing requires Premium+.',
+        allowanceNote: modes.includes('link') ? 'Link: estimated $0.20 · Shared high-cost allowance' : article?.unitCostMicros !== null && article?.unitCostMicros !== undefined ? `Article: estimated $${(article.unitCostMicros / 1_000_000).toFixed(3)}, plus media` : undefined })
     }
   }
   return rows

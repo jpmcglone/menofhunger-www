@@ -207,6 +207,12 @@
         </template>
       </AppFormField>
 
+      <AppFormField v-for="field in publicSocialFields" :key="field.key" :label="field.label">
+        <InputText
+v-model="editSocialUrls[field.key]" type="url" :placeholder="field.placeholder"
+          :maxlength="300" :disabled="saving || !canEdit" class="w-full" />
+      </AppFormField>
+
       <AppFormField label="Website">
         <InputText
           v-model="editWebsite"
@@ -249,6 +255,9 @@ type PublicProfile = {
   website?: string | null
   xUsername?: string | null
   pickaxUsername?: string | null
+  rumbleUrl?: string | null
+  linkedinUrl?: string | null
+  youtubeUrl?: string | null
   locationDisplay?: string | null
   locationZip?: string | null
   locationCity?: string | null
@@ -279,7 +288,7 @@ const emit = defineEmits<{
   (e: 'saved'): void
   (e: 'patchProfile', patch: Partial<Pick<
     PublicProfile,
-    'name' | 'bio' | 'avatarVideo' | 'avatarUrl' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+    'name' | 'bio' | 'avatarVideo' | 'avatarUrl' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'rumbleUrl' | 'linkedinUrl' | 'youtubeUrl' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
   >>): void
 }>()
 
@@ -299,6 +308,8 @@ const editName = ref('')
 const editBio = ref('')
 const editLocationQuery = ref('')
 const editWebsite = ref('')
+const editSocialUrls = reactive({ rumbleUrl: '', linkedinUrl: '', youtubeUrl: '' })
+const publicSocialFields = [{ key: 'rumbleUrl', label: 'Rumble', placeholder: 'https://rumble.com/c/' }, { key: 'linkedinUrl', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/' }, { key: 'youtubeUrl', label: 'YouTube', placeholder: 'https://youtube.com/@' }] as const
 const nameCharCount = useFormCharCount(editName, 50)
 const bioCharCount = useFormCharCount(editBio, 160)
 const editError = ref<string | null>(null)
@@ -567,6 +578,7 @@ function hydrateEditFields() {
   editBio.value = props.profile?.bio || ''
   editLocationQuery.value = locationQueryFromProfile(props.profile)
   editWebsite.value = (props.profile?.website ?? '') || ''
+  for (const { key } of publicSocialFields) editSocialUrls[key] = props.profile?.[key] ?? ''
 }
 
 function fillEmptyEditFieldsFromProfile() {
@@ -752,6 +764,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           bio: editBio.value,
           locationQuery: editLocationQuery.value,
           website: editWebsite.value,
+          ...editSocialUrls,
         }
       })
       emit('patchProfile', {
@@ -760,6 +773,9 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         website: result?.website ?? null,
         xUsername: result?.xUsername ?? null,
         pickaxUsername: result?.pickaxUsername ?? null,
+        rumbleUrl: result?.rumbleUrl ?? null,
+        linkedinUrl: result?.linkedinUrl ?? null,
+        youtubeUrl: result?.youtubeUrl ?? null,
         locationZip: result?.locationZip ?? null,
         locationDisplay: result?.locationDisplay ?? null,
         locationCity: result?.locationCity ?? null,
@@ -775,6 +791,7 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           bio: editBio.value,
           locationQuery: editLocationQuery.value,
           website: editWebsite.value,
+          ...editSocialUrls,
         }
       })
       const u = result.user
@@ -785,6 +802,9 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
         website: u?.website ?? null,
         xUsername: u?.xUsername ?? null,
         pickaxUsername: u?.pickaxUsername ?? null,
+        rumbleUrl: u?.rumbleUrl ?? null,
+        linkedinUrl: u?.linkedinUrl ?? null,
+        youtubeUrl: u?.youtubeUrl ?? null,
         locationZip: u?.locationZip ?? null,
         locationDisplay: u?.locationDisplay ?? null,
         locationCity: u?.locationCity ?? null,

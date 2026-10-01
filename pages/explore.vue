@@ -419,6 +419,7 @@ v-else-if="searchActive && !activeTopic && !activeCategory"
         </section>
 
         <AppBoardExploreSection />
+        <AppXNewsDigest v-if="isAuthed" />
 
         <!-- Trending articles -->
         <section v-if="discoverInitialLoading || trendingArticles.length > 0" class="space-y-3">

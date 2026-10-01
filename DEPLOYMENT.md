@@ -4,6 +4,55 @@
 
 The www service runs Nitro SSR in Node mode. See [render.yaml](render.yaml) for the Blueprint.
 
+### CI-gated deployments
+
+Pushes to `main` run GitHub Actions first. Both MOH services use **After CI Checks
+Pass** (`autoDeployTrigger: checksPass`): failed checks block automatic deployment;
+passing checks allow Render to install, build, and deploy. Keep the existing lint,
+type, contract, and test jobs enabled on `main`. No detected checks also blocks an
+automatic deployment.
+
+Build filters have no included-path restrictions and ignore only:
+
+```text
+.agents/**
+.cursor/**
+.vscode/**
+AGENTS.md
+README.md
+DEPLOYMENT.md
+docs/engineering-policy.md
+```
+
+A change containing only these paths skips automatic deployment. A mixed change
+with application files still deploys after CI. Do not ignore all Markdown or all
+of `docs/`: web Markdown supplies published content, and API documentation is used
+by build checks. Dependencies, build scripts, content, and migrations remain eligible.
+
+Batch related changes before pushing when practical. Use `[skip render]` only for
+an individual commit that does not need deployment. Manual deployments bypass the
+automatic CI gate and build filters; configuration updates can also trigger a deploy.
+See [Render deploys](https://render.com/docs/deploys) and
+[build filters](https://render.com/docs/monorepo-support#setting-build-filters).
+
+Apply settings to the existing services; do not create a new Blueprint or change
+runtimes. Enable CI gating before removing duplicate web checks. Billing limits,
+service sizes, and disabled previews are unchanged.
+
+#### Rollback baseline (October 1, 2026)
+
+Before this change, both services tracked `main`, deployed **On Commit**, and had
+no included or ignored build paths. Restore those settings to reverse the gate
+and filters. The previous www build command was:
+
+```sh
+npm ci && npx nuxi typecheck && node scripts/validate-api-types.mjs && npm run build
+```
+
+The API build remains `npm ci --include=dev && npm run build:ci`, with
+`npm run prisma:migrate:deploy` before deployment. Both existing services start
+with `npm run start`. Rollback does not require runtime or billing changes.
+
 ### Zero-downtime deploys
 
 Render already boots the new instance next to the live one. We gate the traffic flip on `GET /health` (`healthCheckPath` in `render.yaml`) so it does not switch until Nitro can actually serve. `maxShutdownDelaySeconds: 120` lets in-flight SSR finish after `SIGTERM`.
@@ -35,12 +84,11 @@ separate from the runtime plan; see [Render's build pipeline](https://render.com
 
 ### Pipeline minutes
 
-Render’s free tier includes 500 pipeline minutes/month. To reduce usage:
-
-- **Fewer deploys:** Deploy only from `main` when needed; avoid branch/preview deploys if not required.
-- **Faster www builds:** Your build is already tuned (hidden client source maps uploaded to Sentry and removed before serving; server maps disabled in [nuxt.config.ts](nuxt.config.ts)). To use Render’s cache and speed up installs, you can set `buildCommand: npm install --prefer-offline --no-audit && npm run build` in [render.yaml](render.yaml). Tradeoff: `npm install` is less strict than `npm ci` (lockfile still pins versions).
-- **API:** The API Dockerfile uses SWC for fast compilation and a lean runner stage; dependency and build layers are cached between builds when `package*.json` and source don’t change.
-- **Spend control:** In Render dashboard you can set a custom pipeline minute limit so builds pause instead of incurring overage.
+Included pipeline minutes depend on the workspace plan; consult Render billing for
+current usage. CI gating, conservative build filters, and avoiding duplicate web
+checks reduce unnecessary minutes. Keep `npm ci` for reproducible installs and
+retain the service-worker prebuild hook. The live API uses native Node; the Docker
+configuration is an alternative, not the current production build pipeline.
 
 - **Plan:** Standard (2GB RAM / 1 CPU) — recommended for SSR at ~1k DAU.
 - **Build:** `npm ci --no-audit --no-fund && npm run build`

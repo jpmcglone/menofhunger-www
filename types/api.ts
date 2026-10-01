@@ -598,6 +598,9 @@ export type PublicProfile = {
   website: string | null
   xUsername: string | null
   pickaxUsername: string | null
+  rumbleUrl: string | null
+  linkedinUrl: string | null
+  youtubeUrl: string | null
   locationDisplay: string | null
   locationZip: string | null
   locationCity: string | null
@@ -2104,6 +2107,9 @@ export type UserDto = {
   website: string | null
   xUsername: string | null
   pickaxUsername: string | null
+  rumbleUrl: string | null
+  linkedinUrl: string | null
+  youtubeUrl: string | null
   locationInput: string | null
   locationDisplay: string | null
   locationZip: string | null

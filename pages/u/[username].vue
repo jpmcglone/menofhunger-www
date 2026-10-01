@@ -595,6 +595,9 @@ function profileFromAuthUser(u: import('~/composables/useAuth').AuthUser): Publi
     website: u.website ?? null,
     xUsername: u.xUsername ?? null,
     pickaxUsername: u.pickaxUsername ?? null,
+    rumbleUrl: u.rumbleUrl ?? null,
+    linkedinUrl: u.linkedinUrl ?? null,
+    youtubeUrl: u.youtubeUrl ?? null,
     locationDisplay: u.locationDisplay ?? null,
     locationZip: u.locationZip ?? null,
     locationCity: u.locationCity ?? null,
@@ -628,6 +631,9 @@ const profile = computed(() => {
       website: fromAuth.website ?? loaded.website,
       xUsername: fromAuth.xUsername ?? loaded.xUsername,
       pickaxUsername: fromAuth.pickaxUsername ?? loaded.pickaxUsername,
+      rumbleUrl: fromAuth.rumbleUrl === undefined ? loaded.rumbleUrl : fromAuth.rumbleUrl,
+      linkedinUrl: fromAuth.linkedinUrl === undefined ? loaded.linkedinUrl : fromAuth.linkedinUrl,
+      youtubeUrl: fromAuth.youtubeUrl === undefined ? loaded.youtubeUrl : fromAuth.youtubeUrl,
       locationDisplay: fromAuth.locationDisplay ?? loaded.locationDisplay,
       locationZip: fromAuth.locationZip ?? loaded.locationZip,
       locationCity: fromAuth.locationCity ?? loaded.locationCity,
@@ -1375,7 +1381,7 @@ function onOpenProfileImage(payload: {
 
 function patchPublicProfile(patch: Partial<Pick<
   PublicProfile,
-  'name' | 'bio' | 'avatarUrl' | 'avatarVideo' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+  'name' | 'bio' | 'avatarUrl' | 'avatarVideo' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'rumbleUrl' | 'linkedinUrl' | 'youtubeUrl' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
 >>) {
   if (!data.value) return
   data.value = { ...(data.value as PublicProfile), ...patch }

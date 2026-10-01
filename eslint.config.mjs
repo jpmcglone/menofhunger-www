@@ -3,7 +3,7 @@ import withNuxt from './.nuxt/eslint.config.mjs'
 
 export default withNuxt(
   {
-    ignores: ['figma/**'],
+    ignores: ['figma/**', 'utils/vendor/x-text.js'],
   },
   {
     rules: {

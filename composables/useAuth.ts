@@ -21,6 +21,9 @@ export type AuthUser = {
   website?: string | null
   xUsername?: string | null
   pickaxUsername?: string | null
+  rumbleUrl?: string | null
+  linkedinUrl?: string | null
+  youtubeUrl?: string | null
   locationInput?: string | null
   locationDisplay?: string | null
   locationZip?: string | null

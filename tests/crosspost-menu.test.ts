@@ -95,3 +95,14 @@ it('uses only an on/off toggle for X, and clears an unsupported saved selection'
     expect(payload()).toEqual({})
   } finally { wrapper.unmount() }
 })
+
+it('retains an explicitly offered X Article link choice', async () => {
+  const wrapper = await mountSuspended(Destinations, {
+    props: { destinations: [{ id: 'x', modes: ['link'] }] }, global: { stubs: { Icon: true } },
+  })
+  try {
+    await wrapper.get('input').setValue(true)
+    expect((wrapper.vm as unknown as { payload: () => unknown }).payload()).toEqual({ x: 'link' })
+    expect(wrapper.text()).toContain('A link back')
+  } finally { wrapper.unmount() }
+})

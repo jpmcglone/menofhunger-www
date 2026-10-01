@@ -102,8 +102,7 @@
         X
       </div>
       <p class="text-sm text-gray-600 dark:text-gray-300">
-        Connecting is free. Verified members can post public text and photos to X. Posts with links, polls, videos, or GIFs are not supported.
-        Premium increases your monthly allowance.
+        Connecting is free. Choose X for each public post. Available formats depend on your connection. Premium+ links use the shared high-cost allowance when enabled.
       </p>
       <div v-if="!xStatus" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
       <p v-else-if="!xStatus.available" class="text-sm text-gray-600 dark:text-gray-300">
@@ -118,6 +117,11 @@
             </div>
           </div>
           <Button label="Disconnect" severity="secondary" size="small" class="shrink-0" :loading="xBusy" @click="onDisconnectX" />
+        </div>
+        <div v-if="xStatus.integrationAllowance" class="space-y-2 text-sm moh-text">
+          <p>Regular actions: {{ (xStatus.integrationAllowance.regular.remainingMicros / 1000000).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }} remaining</p>
+          <p v-if="xStatus.integrationAllowance.expensive.limitMicros">High-cost actions: {{ (xStatus.integrationAllowance.expensive.remainingMicros / 1000000).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }} remaining</p>
+          <p class="text-xs moh-text-muted">Shared across connected platforms. Pending requests count toward your allowance.</p>
         </div>
         <p v-if="xStatus.allowance.resetsAt" class="text-xs moh-text-muted">
           Resets {{ new Date(xStatus.allowance.resetsAt).toLocaleString() }}

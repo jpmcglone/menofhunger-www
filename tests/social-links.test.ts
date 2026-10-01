@@ -95,3 +95,14 @@ describe('Header.vue social link markup guardrails', () => {
     expect(headerSrc).toContain('v-for="link in socialLinks"')
   })
 })
+
+describe('canonical public profile links', () => {
+  it('preserves Rumble channel paths and does not invent a username route', () => {
+    const links = buildSocialLinks({ rumbleUrl: 'https://rumble.com/c/Example', youtubeUrl: 'https://youtube.com/@Example' })
+    expect(links.map(link => link.href)).toEqual(['https://rumble.com/c/Example', 'https://youtube.com/@Example'])
+    expect(links[0]?.display).toBe('Rumble')
+  })
+  it('does not make executable URL schemes clickable', () => {
+    expect(buildSocialLinks({ rumbleUrl: 'javascript:alert(1)' })).toEqual([])
+  })
+})

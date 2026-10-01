@@ -17,7 +17,7 @@
       </div>
       <div class="flex h-11 w-[7.25rem] shrink-0 items-center justify-end">
         <ToggleSwitch
-          v-if="row.id === 'x' || row.disabled || isOff(row)"
+          v-if="(row.id === 'x' && row.modes.length < 2) || row.disabled || isOff(row)"
           :model-value="!row.disabled && !isOff(row)"
           :disabled="row.disabled"
           :input-id="`crosspost-${row.id}`"
@@ -39,7 +39,7 @@
         </button>
       </div>
       <Menu
-        v-if="row.id !== 'x'"
+        v-if="row.id !== 'x' || row.modes.length > 1"
         :ref="(el) => bindMenu(row.id, el)"
         :model="menuModel(row)"
         popup
@@ -155,7 +155,6 @@ function menuOptions(row: CrosspostDestinationView): Array<{ id: 'off' | Crosspo
 
 function subtitle(row: CrosspostDestinationView): string {
   if (row.disabled) return row.disabledNote || ''
-  if (row.id === 'x') return 'Your words and photos'
   if (displayMode(row) === 'native') return 'Your words and photos'
   return row.linkOnlyReason || 'A link back to this post'
 }
@@ -165,7 +164,6 @@ function payload(): CrosspostPayload {
   for (const row of props.destinations) {
     if (row.disabled) continue
     const mode = selected[row.id]
-    if (row.id === 'x' && mode !== 'native') continue
     if ((mode === 'link' || mode === 'native') && row.modes.includes(mode)) out[row.id] = mode
   }
   return out

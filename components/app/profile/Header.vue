@@ -315,8 +315,8 @@
       </div>
 
       <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] moh-text-muted">
+        <AppProfileMetadataPreview v-if="locationLabel && locationTo" :url="locationTo" :title="locationLabel" :state-code="locationState ?? undefined">
         <NuxtLink
-          v-if="locationLabel && locationTo"
           :to="locationTo"
           class="inline-flex items-center gap-1.5 min-w-0 text-gray-600 dark:text-gray-300 hover:underline underline-offset-2"
         >
@@ -333,6 +333,7 @@
           <Icon v-if="!locationState" name="tabler:map-pin" class="shrink-0" aria-hidden="true" />
           <span class="truncate">{{ locationLabel }}</span>
         </NuxtLink>
+        </AppProfileMetadataPreview>
         <div v-else-if="locationLabel" class="inline-flex items-center gap-1.5 min-w-0 text-gray-600 dark:text-gray-300">
           <ClientOnly>
             <AppStateShape
@@ -348,8 +349,8 @@
           <span class="truncate">{{ locationLabel }}</span>
         </div>
 
+        <AppProfileMetadataPreview v-if="websiteHref" :url="websiteHref" :title="websiteLabel">
         <a
-          v-if="websiteHref"
           :href="websiteHref"
           target="_blank"
           rel="noopener noreferrer nofollow"
@@ -358,11 +359,10 @@
           <AppIconGlyph name="link" class="size-4 shrink-0" aria-hidden="true" />
           <span class="break-all">{{ websiteLabel }}</span>
         </a>
+        </AppProfileMetadataPreview>
 
+        <AppProfileMetadataPreview v-for="link in socialLinks" :key="link.network" :url="link.href" :title="link.display" :x-profile-user-id="link.network === 'x' ? profile?.id : undefined">
         <a
-          v-for="link in socialLinks"
-          :key="link.network"
-          v-tooltip.bottom="tinyTooltip(link.label)"
           :href="link.href"
           target="_blank"
           rel="noopener noreferrer nofollow"
@@ -370,8 +370,9 @@
         >
           <Icon v-if="link.icon" :name="link.icon" class="shrink-0 text-gray-600 dark:text-gray-300" aria-hidden="true" />
           <img v-else :src="link.image!" class="h-4 w-4 shrink-0 rounded-[3px]" alt="" aria-hidden="true" >
-          <span class="break-all">@{{ link.handle }}</span>
+          <span class="break-all">{{ link.display }}</span>
         </a>
+        </AppProfileMetadataPreview>
 
         <div v-if="birthdayLabel" class="inline-flex items-center gap-1.5 min-w-0">
           <Icon name="tabler:cake" class="shrink-0" aria-hidden="true" />
@@ -688,6 +689,9 @@ const socialLinks = computed(() => {
   return buildSocialLinks({
     xUsername: p?.xUsername ?? null,
     pickaxUsername: p?.pickaxUsername ?? null,
+    rumbleUrl: p?.rumbleUrl ?? null,
+    linkedinUrl: p?.linkedinUrl ?? null,
+    youtubeUrl: p?.youtubeUrl ?? null,
   })
 })
 

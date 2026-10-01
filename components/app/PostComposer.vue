@@ -576,7 +576,7 @@ import { VOICE } from '~/config/voice'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { buildOptimisticPost } from '~/utils/optimistic-post'
 import { buildPostPreview } from '~/utils/post-preview'
-import { crosspostOptions, crosspostSkipMessage, type CrosspostDraft, type CrosspostPayload } from '~/utils/crosspost'
+import { crosspostOptions, crosspostSkipMessage, xContainsLink, type CrosspostDraft, type CrosspostPayload } from '~/utils/crosspost'
 import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
 import { makePendingLocalId } from '~/composables/usePendingPostsManager'
 import {
@@ -1624,13 +1624,14 @@ function destinationRow(
   if (id === 'x' && xIntegration.status.value?.connected && !xIntegration.status.value.canPost) {
     return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to post to X', premiumHref: '/settings/verification' }
   }
-  const options = crosspostOptions(crosspostDraft(media), id)
+  const options = crosspostOptions(crosspostDraft(media), id, xIntegration.status.value?.linksEnabled === true, xIntegration.status.value?.capabilities)
   const modes = options.modes
   let allowanceNote: string | undefined
   if (id === 'x' && xIntegration.status.value?.allowance) {
     const allowance = xIntegration.status.value.allowance
-    const remaining = allowance.totalRemaining ?? allowance.nativePostsLeft
-    allowanceNote = `${remaining} posts left this month`
+    const hasLink = xContainsLink(crosspostDraft(media).body)
+    const remaining = hasLink ? allowance.linkPostsLeft : allowance.nativePostsLeft
+    allowanceNote = hasLink ? 'Estimated $0.20 · Uses your shared high-cost allowance' : `${remaining} posts left this month`
     if (scheduledAt.value) allowanceNote += ' · Checked again at publishing'
     else if (remaining <= 0) return {
       id, modes: [], disabled: true, allowanceNote, disabledNote: "You've used this month's X posts.",

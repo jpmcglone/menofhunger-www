@@ -1,3 +1,6 @@
+import xText from './vendor/x-text.js'
+import type { IntegrationCapabilityDto } from '~/types/api-contracts.gen'
+
 /**
  * Mirrors the API cross-post rules so the composer offers Link or Full post
  * only when that destination can actually take the post.
@@ -31,43 +34,7 @@ export type CrosspostPayload = {
   x?: CrosspostMode
 }
 
-const URL_RE = /https?:\/\/\S+/gi
-const X_URL_WEIGHT = 23
-
-function codePointWeight(cp: number): number {
-  if (
-    (cp >= 0 && cp <= 4351)
-    || (cp >= 8192 && cp <= 8205)
-    || (cp >= 8208 && cp <= 8223)
-    || (cp >= 8242 && cp <= 8247)
-  ) return 1
-  return 2
-}
-
-/** Same vectors as the API: latin 1, emoji and CJK 2, each URL 23. */
-export function xWeightedLength(text: string): number {
-  const spans: Array<[number, number]> = []
-  for (const match of text.matchAll(URL_RE)) {
-    if (match.index === undefined) continue
-    spans.push([match.index, match.index + match[0].length])
-  }
-  let weight = 0
-  let i = 0
-  let spanIdx = 0
-  while (i < text.length) {
-    const span = spans[spanIdx]
-    if (span && i >= span[0] && i < span[1]) {
-      weight += X_URL_WEIGHT
-      i = span[1]
-      spanIdx += 1
-      continue
-    }
-    const cp = text.codePointAt(i)!
-    weight += codePointWeight(cp)
-    i += cp > 0xffff ? 2 : 1
-  }
-  return weight
-}
+export function xWeightedLength(text: string): number { return xText.weightedLength(text) }
 
 function commonBlocker(draft: CrosspostDraft): string | undefined {
   if (draft.visibility !== 'public') return 'Only public posts can be posted to other platforms.'
@@ -110,11 +77,14 @@ function reasonCopy(reason: string, destination: CrosspostDestinationId): string
   return `This shares a link on ${name}`
 }
 
-export function crosspostOptions(draft: CrosspostDraft, destination: CrosspostDestinationId): CrosspostOptions {
+export function crosspostOptions(draft: CrosspostDraft, destination: CrosspostDestinationId, xLinksEnabled = false, capabilities?: IntegrationCapabilityDto[]): CrosspostOptions {
   const blockedReason = commonBlocker(draft)
   if (blockedReason) return { modes: [], blockedReason }
   if (destination === 'x') {
-    if (xContainsLink(draft.body)) return { modes: [], blockedReason: 'Remove any links to post to X.' }
+    const needed = ['text', ...(xContainsLink(draft.body) ? ['url'] : []), ...(draft.mediaCount > 0 ? ['photos'] : [])]
+    const unavailable = capabilities?.find(capability => needed.includes(capability.action) && capability.state !== 'supported')
+    if (unavailable) return { modes: [], blockedReason: unavailable.reason ?? 'Reconnect X or check integration availability in Settings.' }
+    if (xContainsLink(draft.body) && !xLinksEnabled) return { modes: [], blockedReason: 'Remove any links to post to X.' }
     const reason = nativeReason(draft, destination)
     return reason ? { modes: [], blockedReason: xReasonCopy(reason) } : { modes: ['native'] }
   }
@@ -133,6 +103,4 @@ export function crosspostSkipMessage(destination: 'Pickax' | 'X', reason: string
 }
 
 /** Match the API's conservative accounting of URLs that X may linkify. */
-export function xContainsLink(text: string): boolean {
-  return /https?:\/\/|(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)+(?:[\p{L}]{2,63}|xn--[a-z0-9-]+)(?![\p{L}\p{N}-])/iu.test(text)
-}
+export function xContainsLink(text: string): boolean { return xText.containsLink(text) }
