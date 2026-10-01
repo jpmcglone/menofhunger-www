@@ -3,8 +3,8 @@
     :visible="true"
     modal
     :closable="true"
-    :style="{ width: '32rem', maxWidth: '95vw' }"
-    :pt="{ root: { class: '!rounded-2xl' } }"
+    :style="{ width: columnWidth > 0 ? `${columnWidth}px` : '40rem', maxWidth: 'calc(100vw - 2rem)' }"
+    :pt="{ root: { class: '!rounded-2xl' }, content: { class: '!p-0' } }"
     @update:visible="emit('close')"
   >
     <template #header>
@@ -13,8 +13,8 @@
 
     <!-- The real post row, exactly as it will publish. Inert except the images, which open
          full screen so the author can check them. -->
-    <div class="overflow-hidden rounded-2xl border moh-border bg-[var(--moh-surface-hover)]">
-      <div class="pointer-events-none select-none [--moh-gutter-x:0.875rem] [&_[data-media-open]]:pointer-events-auto">
+    <div class="border-y moh-border moh-surface-1">
+      <div class="pointer-events-none select-none [&_[data-media-open]]:pointer-events-auto">
         <AppPostRow
           v-if="post"
           :post="post"
@@ -22,35 +22,38 @@
           :track-views="false"
           preview
           no-border-bottom
-          compact
         />
       </div>
     </div>
-    <p v-if="scheduledLabel" class="mt-3 text-sm moh-text-muted">
-      Publishes {{ scheduledLabel }}
-    </p>
+    <div class="p-5">
+      <p v-if="scheduledLabel" class="mb-3 text-sm moh-text-muted">
+        Publishes {{ scheduledLabel }}
+      </p>
 
-    <AppPostCrosspostDestinations v-if="destinations?.length" ref="destinationsRef" :destinations="destinations" />
+      <AppPostCrosspostDestinations v-if="destinations?.length" ref="destinationsRef" :destinations="destinations" />
 
-    <div class="mt-5 flex justify-end gap-2">
-      <button
-        type="button"
-        class="moh-tap min-h-11 px-4 text-sm moh-text-muted hover:text-[var(--moh-text)]"
-        @click="emit('close')"
-      >
-        Cancel
-      </button>
-      <AppActionButton
-        :label="scheduledLabel ? 'Schedule' : 'Post'"
-        kind="brand"
-        :loading="busy"
-        @click="emit('confirm', { crosspost: destinationsRef?.payload() ?? {} })"
-      />
+      <div class="flex justify-end gap-2" :class="{ 'mt-5': Boolean(destinations?.length) }">
+        <button
+          type="button"
+          class="moh-tap min-h-11 px-4 text-sm moh-text-muted hover:text-[var(--moh-text)]"
+          @click="emit('close')"
+        >
+          Cancel
+        </button>
+        <AppActionButton
+          :label="scheduledLabel ? 'Schedule' : 'Post'"
+          kind="brand"
+          :loading="busy"
+          @click="emit('confirm', { crosspost: destinationsRef?.payload() ?? {} })"
+        />
+      </div>
     </div>
   </Dialog>
 </template>
 
 <script setup lang="ts">
+// Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=992-3041
+import { useElementSize } from '@vueuse/core'
 import type { FeedPost } from '~/types/api'
 import type { CrosspostPayload } from '~/utils/crosspost'
 import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
@@ -70,6 +73,7 @@ const emit = defineEmits<{
 }>()
 
 const destinationsRef = ref<{ payload: () => CrosspostPayload } | null>(null)
+const { width: columnWidth } = useElementSize(useMiddleScroller())
 
 useOverlayDismiss(() => true, () => emit('close'))
 </script>

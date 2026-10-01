@@ -573,6 +573,7 @@ import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { buildOptimisticPost } from '~/utils/optimistic-post'
+import { buildPostPreview } from '~/utils/post-preview'
 import { xContainsLink, crosspostOptions, crosspostSkipMessage, type CrosspostDraft, type CrosspostPayload } from '~/utils/crosspost'
 import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
 import { makePendingLocalId } from '~/composables/usePendingPostsManager'
@@ -1594,25 +1595,16 @@ const previewSupported = computed(
 const previewPost = computed<FeedPost | null>(() => {
   const author = makeOptimisticAuthor()
   if (!author) return null
-  const built = buildOptimisticPost({
+  return buildPostPreview({
     localId: 'preview',
     body: buildSubmitBody(),
     visibility: effectiveVisibility.value,
     media: composerMedia.value,
     poll: poll.value ? poll.value : null,
     communityGroupId: effectiveGroupId.value,
+    checkinPrompt: props.checkinPrompt,
     author,
   })
-  // Drop the pending markers (this is a preview, not an in-flight post) and show the view
-  // counters a real post starts with, so the row looks complete.
-  return {
-    ...built,
-    _localId: undefined,
-    _pending: null,
-    _pendingError: null,
-    viewerCount: 1,
-    totalViewCount: 1,
-  }
 })
 
 function destinationRow(
