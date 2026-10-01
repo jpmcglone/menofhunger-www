@@ -1617,25 +1617,25 @@ function destinationRow(
   if (id === 'x' && xIntegration.status.value?.connected && !xIntegration.status.value.canPost) {
     return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to share to X', premiumHref: '/settings/verification' }
   }
-  if (!scheduledAt.value && id === 'x') {
-    const allowance = xIntegration.status.value?.allowance
-    if (allowance && allowance.linkPostsLeft <= 0 && allowance.nativePostsLeft <= 0) {
-      return { id, modes: [], disabled: true, disabledNote: "You've used this month's X posts" }
-    }
-  }
   const options = crosspostOptions(crosspostDraft(media), id)
   if (!options.modes.length) return null
   let modes = options.modes
   let allowanceNote: string | undefined
-  if (!scheduledAt.value && id === 'x' && xIntegration.status.value?.allowance) {
+  if (id === 'x' && xIntegration.status.value?.allowance) {
     const allowance = xIntegration.status.value.allowance
-    if (allowance.linkPostsLeft <= 0) modes = modes.filter((mode) => mode !== 'link' && !xContainsLink(crosspostDraft(media).body))
-    if (allowance.nativePostsLeft <= 0) modes = modes.filter((mode) => mode !== 'native')
-    if (!modes.length) return { id, modes: [], disabled: true, disabledNote: "You've used this month's X posts" }
-    allowanceNote = `${allowance.totalRemaining ?? allowance.nativePostsLeft} posts remaining · ${allowance.linkRemaining ?? allowance.linkPostsLeft} with links`
+    allowanceNote = `${allowance.totalRemaining ?? allowance.nativePostsLeft} posts left this month · up to ${allowance.linkRemaining ?? allowance.linkPostsLeft} with links`
+    if (scheduledAt.value) {
+      allowanceNote += ' · Checked again at publishing'
+    } else {
+      if (allowance.linkPostsLeft <= 0) modes = modes.filter((mode) => mode !== 'link' && !xContainsLink(crosspostDraft(media).body))
+      if (allowance.nativePostsLeft <= 0) modes = modes.filter((mode) => mode !== 'native')
+      if (!modes.length) return {
+        id, modes: [], disabled: true, allowanceNote,
+        disabledNote: allowance.nativePostsLeft <= 0 ? "You've used this month's X posts" : "You've used this month's X links",
+      }
+    }
   }
-  if (scheduledAt.value) allowanceNote = 'Allowance is checked when this post publishes'
-  return { id, modes, linkOnlyReason: options.linkOnlyReason, allowanceNote }
+  return { id, modes, linkOnlyReason: options.linkOnlyReason, allowanceNote, nativeContainsLink: xContainsLink(crosspostDraft(media).body) }
 }
 
 /** Null hides the destinations section. */
@@ -1916,6 +1916,9 @@ const submit = async () => {
 
   if (previewSupported.value && !previewApproved.value) {
     previewOpen.value = true
+    // Refresh this short-lived confirmation whenever it opens; submission rechecks on the API.
+    void pickaxIntegration.refresh()
+    void xIntegration.refresh()
     return
   }
   previewApproved.value = false

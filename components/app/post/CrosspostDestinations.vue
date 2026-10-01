@@ -12,7 +12,8 @@
       <Icon v-else name="tabler:brand-x" class="h-[22px] w-[22px] shrink-0" />
       <div class="min-w-0 flex-1">
         <span class="block text-sm font-semibold moh-text">{{ label(row) }}</span>
-        <span class="block h-4 truncate text-xs moh-text-muted">{{ subtitle(row) }}</span>
+        <span class="block text-xs moh-text-muted">{{ subtitle(row) }}</span>
+        <span v-if="row.allowanceNote" class="block text-xs moh-text-muted">{{ row.allowanceNote }}</span>
       </div>
       <div class="flex h-11 w-[7.25rem] shrink-0 items-center justify-end">
         <ToggleSwitch
@@ -32,6 +33,7 @@
           aria-haspopup="menu"
           @click="openMenu($event, row.id)"
         >
+          <Icon v-if="selected[row.id] === 'link'" name="tabler:link" class="text-sm moh-text-muted" aria-hidden="true" />
           <span>{{ modeLabel(selected[row.id]) }}</span>
           <Icon name="tabler:chevron-down" class="text-sm moh-text-muted" aria-hidden="true" />
         </button>
@@ -45,6 +47,7 @@
       >
         <template #item="{ item, props: itemProps }">
           <a v-bind="itemProps.action" class="flex min-h-11 items-center gap-2">
+            <Icon v-if="item.mode === 'link'" name="tabler:link" class="text-sm moh-text-muted" aria-hidden="true" />
             <span class="flex-1">{{ item.label }}</span>
             <Icon v-if="item.mode === selected[row.id]" name="tabler:check" class="text-sm" aria-hidden="true" />
           </a>
@@ -72,6 +75,7 @@ export type CrosspostDestinationView = {
   linkOnlyReason?: string
   disabled?: boolean
   disabledNote?: string
+  nativeContainsLink?: boolean
   allowanceNote?: string
   premiumHref?: string | null
 }
@@ -91,7 +95,7 @@ watch(() => props.destinations, (rows) => {
 }, { immediate: true })
 
 function label(row: CrosspostDestinationView): string {
-  return row.id === 'x' ? 'Share on X' : 'Share on Pickax'
+  return `${modeLabel(displayMode(row))} on ${row.id === 'x' ? 'X' : 'Pickax'}`
 }
 
 function isOff(row: CrosspostDestinationView): boolean {
@@ -99,7 +103,12 @@ function isOff(row: CrosspostDestinationView): boolean {
 }
 
 function defaultMode(row: CrosspostDestinationView): CrosspostMode {
-  return row.id === 'pickax' ? 'link' : row.modes.includes('native') ? 'native' : 'link'
+  return row.modes.includes('native') ? 'native' : 'link'
+}
+
+function displayMode(row: CrosspostDestinationView): CrosspostMode {
+  const mode = selected[row.id]
+  return !mode || mode === 'off' ? defaultMode(row) : mode
 }
 
 function turnOn(row: CrosspostDestinationView, on: boolean) {
@@ -146,10 +155,12 @@ function menuOptions(row: CrosspostDestinationView): Array<{ id: 'off' | Crosspo
 
 function subtitle(row: CrosspostDestinationView): string {
   if (row.disabled) return row.disabledNote || ''
-  const mode = selected[row.id] ?? 'off'
-  if (mode === 'native') return row.id === 'pickax' ? 'Full copy with a link to the original' : 'Your words and photos'
-  if (mode === 'link') return row.linkOnlyReason || 'A link back to this post'
-  return row.linkOnlyReason || row.allowanceNote || ''
+  if (displayMode(row) === 'native') {
+    if (row.id === 'pickax') return 'Full copy with a link to the original'
+    return row.nativeContainsLink ? 'Your words and photos · Uses 1 post + 1 link' : 'Your words and photos · Uses 1 post'
+  }
+  const reason = row.linkOnlyReason || 'A link back to this post'
+  return row.id === 'x' ? `${reason} · Uses 1 post + 1 link` : reason
 }
 
 function payload(): CrosspostPayload {
@@ -157,7 +168,7 @@ function payload(): CrosspostPayload {
   for (const row of props.destinations) {
     if (row.disabled) continue
     const mode = selected[row.id]
-    if (mode === 'link' || mode === 'native') out[row.id] = mode
+    if ((mode === 'link' || mode === 'native') && row.modes.includes(mode)) out[row.id] = mode
   }
   return out
 }

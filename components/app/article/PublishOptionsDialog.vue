@@ -65,14 +65,15 @@ const destinations = computed<CrosspostDestinationView[]>(() => {
       rows.push({ id: 'x', modes: [], disabled: true, disabledNote: 'Verify your MOH account to share to X', premiumHref: '/settings/verification' })
     } else {
       const allowance = xIntegration.status.value?.allowance
+      const allowanceNote = allowance ? `${allowance.totalRemaining ?? allowance.nativePostsLeft} posts left this month · up to ${allowance.linkRemaining ?? allowance.linkPostsLeft} with links` : undefined
       if (allowance && allowance.linkPostsLeft <= 0) {
-        rows.push({ id: 'x', modes: [], disabled: true, disabledNote: "You've used this month's X posts" })
+        rows.push({ id: 'x', modes: [], disabled: true, disabledNote: "You've used this month's X links", allowanceNote })
       } else {
         rows.push({
           id: 'x',
           modes: ['link'],
           linkOnlyReason: 'Articles share as a link on X',
-          allowanceNote: allowance ? `${allowance.linkRemaining ?? allowance.linkPostsLeft} link posts remaining this month` : undefined,
+          allowanceNote,
         })
       }
     }
