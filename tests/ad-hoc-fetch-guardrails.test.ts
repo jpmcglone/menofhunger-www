@@ -23,6 +23,8 @@ const REPO_ROOT = resolve(process.cwd())
 const ALLOW_LIST = new Set<string>([
   // The client itself defines and uses the URL.
   'composables/useApiClient.ts',
+  // Browser navigation to the API-hosted OAuth consent page, not an ad-hoc fetch.
+  'pages/connect/partner.vue',
   // Exposes apiBaseUrl from useApiClient() and performs a special unversioned health probe
   // (strips any /vN suffix because /health lives at the raw host root).
   'composables/useApiHealth.ts',

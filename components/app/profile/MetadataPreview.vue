@@ -8,7 +8,7 @@ ref="trigger" class="inline-flex min-w-0" @pointerenter="enter" @pointerleave="l
   <Teleport v-if="open" to="body">
     <section
 ref="card" role="dialog" :aria-label="`${title} preview`" tabindex="-1"
-      class="fixed z-[1200] w-[360px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl moh-popover moh-card-matte shadow-xl"
+      class="fixed z-[var(--moh-z-menu)] w-[360px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl moh-popover moh-card-matte shadow-xl"
       :style="position" @pointerenter="cancelHide" @pointerleave="leave" @focusin="cancelHide"
       @focusout="focusOut" @keydown.esc.stop.prevent="close(true)">
       <template v-if="xProfile">

@@ -161,7 +161,7 @@ describe('space layout', () => {
     const overlays = readFromRepo('components/app/layout/GlobalOverlays.vue')
     const player = readFromRepo('components/SpaceYouTubePlayer.vue')
     expect(page).toMatch(/pinWatchPlayerForChat/)
-    expect(page).toMatch(/z-\[10001\]/)
+    expect(page).toMatch(/z-\[var\(--moh-z-pinned-player\)\]/)
     expect(overlays).toMatch(/keep-watch-player-visible/)
     expect(page).toMatch(/WATCH_PLAYER_PINNED_HEIGHT/)
     expect(overlay).toMatch(/WATCH_CHAT_PINNED_TOP/)

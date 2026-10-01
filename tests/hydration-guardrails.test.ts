@@ -526,7 +526,7 @@ describe('hydration guardrails (structural)', () => {
     const row = readFromRepo('components/app/PostRow.vue')
     // Signed-in viewers see it on every real row — catch-up summarizes the post itself
     // plus broader context, so it's useful even without a surrounding thread.
-    expect(row).toMatch(/isAuthed\.value && !isPendingRow\.value && !isDeletedPost\.value/)
+    expect(row).toMatch(/isAuthed\.value && !props\.preview && !isPendingRow\.value && !isDeletedPost\.value/)
   })
 
   it('defers the PostRow catch-up icon localStorage read until after mount', () => {
