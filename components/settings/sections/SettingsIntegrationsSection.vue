@@ -17,19 +17,19 @@
       Pickax connections are not available right now.
     </p>
 
-    <section v-else-if="status.connected" class="space-y-3">
+    <section v-else-if="status.connected && !reconnecting" class="space-y-3">
       <div class="flex items-center justify-between gap-3 rounded-xl border moh-border px-4 py-3">
         <div class="min-w-0">
           <div class="text-sm font-semibold moh-text truncate">@{{ status.username }}</div>
           <div class="text-xs text-gray-500 dark:text-gray-400">Verified Pickax account</div>
         </div>
         <Button
-          label="Disconnect"
+          label="Reconnect"
           severity="secondary"
           size="small"
           class="shrink-0"
           :loading="busy"
-          @click="onDisconnect"
+          @click="onReconnect"
         />
       </div>
       <p
@@ -37,7 +37,7 @@
         role="alert"
         class="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3 text-sm dark:border-amber-500/30 dark:bg-amber-500/10"
       >
-        Pickax needs authorization again before new content can be shared. Reconnect the same account.
+        {{ status.lastError || 'Reconnect Pickax before sharing new content.' }}
       </p>
       <p
         v-else-if="status.lastError"
@@ -46,7 +46,8 @@
       >
         Pickax rejected the last cross-post: {{ status.lastError }}
       </p>
-      <NuxtLink v-if="status.oauthAvailable" to="/connect/pickax" class="inline-flex min-h-11 items-center font-semibold underline">Reconnect Pickax</NuxtLink>
+      <AppInlineAlert v-if="error" severity="danger">{{ error }}</AppInlineAlert>
+      <Button label="Disconnect" severity="secondary" text :disabled="busy" @click="onDisconnect" />
       <p class="text-sm text-gray-600 dark:text-gray-300">
         Your Pickax profile link on Men of Hunger comes from this connection. Disconnecting stops future
         cross-posts and updates and keeps what is already on Pickax.
@@ -58,6 +59,7 @@
       <p class="text-sm moh-text-muted">You will authorize on Pickax. Your password stays there.</p>
     </section>
     <form v-else class="space-y-4" @submit.prevent="onConnect">
+      <p v-if="reconnecting" class="text-sm moh-text-muted">Reconnect @{{ reconnectUsername }}. Your current connection stays in place until verification succeeds.</p>
       <ol class="list-decimal space-y-1 pl-5 text-sm text-gray-700 dark:text-gray-300">
         <li>In Pickax, create an API key for a third-party app.</li>
         <li>Paste its Client ID and Client Secret below.</li>
@@ -88,10 +90,11 @@
 
       <Button
         type="submit"
-        :label="verificationCode ? 'Verify and connect' : 'Connect Pickax'"
+        :label="verificationCode ? 'Verify and connect' : reconnecting ? 'Reconnect Pickax' : 'Connect Pickax'"
         :loading="busy"
         :disabled="!clientId.trim() || !clientSecret.trim() || (needsUsername && !username.trim())"
       />
+      <Button v-if="reconnecting" label="Cancel" severity="secondary" text :disabled="busy" @click="cancelReconnect" />
     </form>
 
     <section class="space-y-3 border-t moh-border pt-6">
@@ -145,6 +148,8 @@ const { status: xStatus, refresh: refreshX, authorize, connect: connectX, discon
 const route = useRoute()
 const toast = useAppToast()
 
+const reconnecting = ref(false)
+const reconnectUsername = ref('')
 const clientId = ref('')
 const clientSecret = ref('')
 const username = ref('')
@@ -154,6 +159,29 @@ const busy = ref(false)
 const error = ref('')
 const xBusy = ref(false)
 const xError = ref('')
+
+async function onReconnect() {
+  if (status.value?.oauthAvailable) {
+    await navigateTo('/connect/pickax')
+    return
+  }
+  reconnectUsername.value = status.value?.username ?? ''
+  username.value = reconnectUsername.value
+  needsUsername.value = true
+  error.value = ''
+  reconnecting.value = true
+}
+
+function cancelReconnect() {
+  reconnecting.value = false
+  clientId.value = ''
+  clientSecret.value = ''
+  username.value = ''
+  needsUsername.value = false
+  verificationCode.value = null
+  error.value = ''
+  void refresh()
+}
 
 async function onConnect() {
   if (busy.value) return
@@ -167,7 +195,8 @@ async function onConnect() {
     })
     needsUsername.value = result.needsUsername
     verificationCode.value = result.verificationCode
-    if (result.connected) {
+    if (result.connected && !result.needsAttention && !result.needsUsername) {
+      reconnecting.value = false
       clientId.value = ''
       clientSecret.value = ''
       username.value = ''

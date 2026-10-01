@@ -43,8 +43,10 @@ export function usePickaxIntegration() {
 
   async function connect(input: { clientId: string; clientSecret: string; username?: string }): Promise<PickaxIntegrationStatus> {
     const res = await apiFetch<PickaxIntegrationStatus>('/me/integrations/pickax', { method: 'POST', body: input })
-    status.value = res?.data ?? EMPTY
-    return status.value
+    const result = res?.data ?? EMPTY
+    // Intermediate ownership-proof steps must not hide the existing connection.
+    if (!result.needsUsername) status.value = result
+    return result
   }
 
   async function disconnect(): Promise<void> {
