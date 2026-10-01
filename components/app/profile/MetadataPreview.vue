@@ -9,7 +9,7 @@ ref="trigger" class="inline-flex min-w-0" @pointerenter="enter" @pointerleave="l
     <section
 ref="card" role="dialog" :aria-label="`${title} preview`" tabindex="-1"
       class="fixed z-[var(--moh-z-menu)] w-[360px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl moh-popover moh-card-matte shadow-xl"
-      :style="position" @pointerenter="cancelHide" @pointerleave="leave" @focusin="cancelHide"
+      :style="{ ...position, visibility: positioned ? 'visible' : 'hidden' }" @pointerenter="cancelHide" @pointerleave="leave" @focusin="cancelHide"
       @focusout="focusOut" @keydown.esc.stop.prevent="close(true)">
       <template v-if="xProfile">
         <img v-if="xProfile.bannerUrl" :src="xProfile.bannerUrl" alt="" class="h-32 w-full object-cover" >
@@ -51,7 +51,7 @@ v-if="xProfile.websiteUrl" :href="xProfile.websiteUrl" target="_blank" rel="noop
       </template>
       <template v-else>
         <a :href="url" target="_blank" rel="noopener noreferrer nofollow" class="block outline-offset-[-4px]" :aria-label="`Open ${metadata?.title ?? title}`">
-          <img v-if="safeImage" :src="safeImage" alt="" class="max-h-48 w-full object-contain moh-surface-1" >
+          <img v-if="safeImage" :src="safeImage" alt="" class="h-48 w-full object-contain moh-surface-1" >
           <div class="space-y-3 p-4">
             <AppAvatarCircle v-if="metadata?.profile?.avatarUrl" :src="metadata.profile.avatarUrl" :name="metadata.title ?? title" size-class="h-14 w-14" />
             <div class="flex items-center justify-between gap-3 text-xs moh-text-muted">
@@ -92,6 +92,7 @@ const identity = useId()
 const active = useState<string | null>('profile-metadata-preview', () => null)
 const open = computed(() => active.value === identity)
 const loading = ref(false)
+const positioned = ref(false)
 const metadata = ref<LinkMetadata | null>(null)
 const xContext = ref<XProfileContextDto | null>(null)
 let profileExpiry: ReturnType<typeof setTimeout> | undefined
@@ -135,8 +136,8 @@ async function show() {
   cancelHide(); clearTimeout(showTimer); clearTimeout(contextExpiry); clearTimeout(profileExpiry); xContext.value = null; request?.abort()
   const token = ++revision
   request = new AbortController()
+  positioned.value = false
   active.value = identity; loading.value = true; metadata.value = null; xProfile.value = null; location.value = null
-  await nextTick(); place()
   try {
     if (props.stateCode) {
       const result = await apiFetchData<StatePreview>('/users/by-location', { query: { state: props.stateCode, limit: 6 }, signal: request.signal })
@@ -157,7 +158,13 @@ async function show() {
       if (token === revision) metadata.value = result
     }
   } catch { /* Working external link remains available. */ }
-  finally { if (token === revision) { loading.value = false; await nextTick(); place() } }
+  finally {
+    if (token === revision) {
+      loading.value = false
+      await nextTick()
+      if (token === revision && open.value) { place(); positioned.value = true }
+    }
+  }
 }
 function schedule() { cancelHide(); clearTimeout(showTimer); if (!open.value) showTimer = setTimeout(() => { void show() }, 300) }
 function focusIn() { if (!suppressFocus) schedule() }
@@ -165,14 +172,14 @@ function enter(event: PointerEvent) { suppressFocus = false; if (event.pointerTy
 function leave() { clearTimeout(showTimer); cancelHide(); hideTimer = setTimeout(() => {
   if (card.value?.contains(document.activeElement) || trigger.value?.contains(document.activeElement)) return
   close()
-}, 150) }
+}, 500) }
 function focusOut(event: FocusEvent) {
   suppressFocus = false
   if (event.relatedTarget instanceof Node && (card.value?.contains(event.relatedTarget) || trigger.value?.contains(event.relatedTarget))) return
   leave()
 }
 function tabIntoCard(event: KeyboardEvent) {
-  if (open.value && !event.shiftKey) { event.preventDefault(); card.value?.querySelector('a')?.focus() }
+  if (open.value && positioned.value && !event.shiftKey) { event.preventDefault(); card.value?.querySelector('a')?.focus() }
 }
 function contextPreview(event: MouseEvent) {
   if (!isRecentTouch()) return // Keep the desktop browser's native context menu.
@@ -183,6 +190,11 @@ function outside(event: PointerEvent) {
 }
 watch(() => [props.url, props.stateCode, props.xProfileUserId], () => close())
 watch(open, visible => { if (!visible) { request?.abort(); revision++ } })
-onMounted(() => { window.addEventListener('resize', place); window.addEventListener('scroll', place, true); document.addEventListener('pointerdown', outside) })
-onBeforeUnmount(() => { close(); window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); document.removeEventListener('pointerdown', outside) })
+// Keep the landed card fixed. Scrolling its own content must not re-anchor it.
+function viewportChanged(event: Event) {
+  if (event.target instanceof Node && card.value?.contains(event.target)) return
+  close()
+}
+onMounted(() => { window.addEventListener('resize', viewportChanged); window.addEventListener('scroll', viewportChanged, true); document.addEventListener('pointerdown', outside) })
+onBeforeUnmount(() => { close(); window.removeEventListener('resize', viewportChanged); window.removeEventListener('scroll', viewportChanged, true); document.removeEventListener('pointerdown', outside) })
 </script>

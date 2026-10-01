@@ -90,3 +90,28 @@ it('shows the Pickax avatar separately from the banner, with the public bio and 
   expect(dialog.textContent).toContain('111 Followers')
   expect(dialog.textContent).toContain('Pickax · @John')
 })
+
+it('lands once after metadata arrives and stays anchored when images load or the card scrolls', async () => {
+  let resolve!: (value: unknown) => void
+  state.fetch.mockImplementation(() => new Promise(done => { resolve = done }))
+  await render({ url: 'https://example.com', title: 'Website' })
+  await focus()
+  const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!
+  expect(dialog.style.visibility).toBe('hidden')
+  const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+  view!.find('a').element.dispatchEvent(tab)
+  expect(tab.defaultPrevented).toBe(false)
+  resolve({ title: 'Loaded site', description: 'Website metadata', imageUrl: 'https://example.com/image.png' })
+  await flushPromises()
+  expect(dialog.style.visibility).toBe('visible')
+  const landed = { top: dialog.style.top, left: dialog.style.left }
+  dialog.querySelector('img')!.dispatchEvent(new Event('load'))
+  dialog.dispatchEvent(new Event('scroll'))
+  await flushPromises()
+  expect(dialog.style.top).toBe(landed.top)
+  expect(dialog.style.left).toBe(landed.left)
+  expect(dialog.style.visibility).toBe('visible')
+  window.dispatchEvent(new Event('resize'))
+  await flushPromises()
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+})

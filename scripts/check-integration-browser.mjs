@@ -27,9 +27,12 @@ try {
     const page = await browser.newPage({ viewport: { width: 1100, height: 900 } })
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
-    await page.route('**/*', route => {
+    await page.route('**/*', async route => {
       const host = new URL(route.request().url()).hostname
-      if (host === 'preview-fixture.example') return route.fulfill({ path: resolve(root, 'tests/fixtures/integration-banner.png'), contentType: 'image/png' })
+      if (host === 'preview-fixture.example') {
+        await new Promise(resolve => setTimeout(resolve, 350))
+        return route.fulfill({ path: resolve(root, 'tests/fixtures/integration-banner.png'), contentType: 'image/png' })
+      }
       return host === '127.0.0.1' ? route.continue() : route.abort()
     })
     await page.goto(url)
@@ -92,11 +95,18 @@ try {
         assert.equal(await card.getByText('Preview unavailable').count(), 0)
         assert.equal(await card.locator('a').count(), 1)
         if (site === 'pickax.com') await card.getByText('111 Followers').waitFor()
+        const landed = await card.boundingBox()
         assert.equal(await card.locator('img').count(), site === 'pickax.com' ? 2 : 1)
         for (const img of await card.locator('img').all()) {
           await img.evaluate(image => image.decode())
           assert.equal(await img.evaluate(image => image.naturalWidth > 0), true)
         }
+        const loaded = await card.boundingBox()
+        assert.equal(loaded.x, landed.x)
+        assert.equal(loaded.y, landed.y)
+        assert.equal(loaded.height, landed.height)
+        await card.hover()
+        assert.equal(await card.isVisible(), true)
         await page.screenshot({ path: `/tmp/moh-integration-browser/${site}-${theme}.png` })
         await card.focus(); await page.keyboard.press('Escape'); await card.waitFor({ state: 'hidden' })
       }
