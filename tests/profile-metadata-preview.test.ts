@@ -44,7 +44,7 @@ it('keeps a working link when metadata is blocked', async () => {
   state.fetch.mockRejectedValue(new Error('blocked'))
   await render({ url: 'https://rumble.com/c/example', title: 'Rumble' }); await focus()
   const dialog = document.querySelector('[role="dialog"]')!
-  expect(dialog.textContent).toContain('Preview unavailable')
+  expect(dialog.textContent).toContain('View on Rumble')
   expect(dialog.querySelector('a')?.getAttribute('href')).toBe('https://rumble.com/c/example')
 })
 it('shows Message on X only for a current matching private response and expires it', async () => {
@@ -59,7 +59,7 @@ it('shows Message on X only for a current matching private response and expires 
   await vi.advanceTimersByTimeAsync(2100)
   expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain('Message on X')
   await vi.advanceTimersByTimeAsync(10000)
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Preview unavailable')
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('View on X')
 })
 it('drops late results when the profile identity changes', async () => {
   let resolve!: (value: unknown) => void
@@ -68,4 +68,25 @@ it('drops late results when the profile identity changes', async () => {
   await view!.setProps({ url: 'https://rumble.com/c/other', title: 'Rumble' })
   resolve({ title: 'Wrong person' }); await flushPromises()
   expect(document.querySelector('[role="dialog"]')).toBeNull()
+})
+
+it('renders a complete social card without claiming a missing description is an error', async () => {
+  state.fetch.mockResolvedValue({ title: 'Real site title', description: null, imageUrl: 'https://example.com/social.png' })
+  await render({ url: 'https://example.com', title: 'Example' }); await focus()
+  const dialog = document.querySelector('[role="dialog"]')!
+  expect(dialog.textContent).toContain('Real site title')
+  expect(dialog.textContent).not.toContain('unavailable')
+  expect(dialog.querySelectorAll('a')).toHaveLength(1)
+  expect(dialog.querySelector('a img')?.getAttribute('src')).toBe('https://example.com/social.png')
+})
+it('shows the Pickax avatar separately from the banner, with the public bio and counts', async () => {
+  state.fetch.mockResolvedValue({ title: 'John', description: 'Public bio', imageUrl: 'https://img.pickax.com/banner.jpg',
+    profile: { platform: 'pickax', username: 'John', avatarUrl: 'https://img.pickax.com/avatar.jpg', following: 22, followers: 111 } })
+  await render({ url: 'https://pickax.com/john', title: '@john' }); await focus()
+  const dialog = document.querySelector('[role="dialog"]')!
+  expect(dialog.querySelector('.avatar')).not.toBeNull()
+  expect(dialog.querySelector('img')?.getAttribute('src')).toContain('banner.jpg')
+  expect(dialog.textContent).toContain('Public bio')
+  expect(dialog.textContent).toContain('111 Followers')
+  expect(dialog.textContent).toContain('Pickax · @John')
 })

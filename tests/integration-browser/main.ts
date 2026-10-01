@@ -14,7 +14,7 @@ for (const [name, component] of Object.entries({ Button, Dialog, Checkbox, Texta
 app.component('AppPageContent', defineComponent({ setup: (_, { slots }) => () => h('section', slots.default?.()) }))
 app.component('AppPageHeader', defineComponent({ props: ['title', 'description'], setup: props => () => h('header', [h('h2', props.title), h('p', props.description)]) }))
 app.component('NuxtLink', defineComponent({ props: ['to'], setup: (props, { slots }) => () => h('a', { href: props.to }, slots.default?.()) }))
-app.component('AppAvatarCircle', defineComponent({ props: ['name', 'sizeClass'], setup: props => () => h('span', { class: `inline-flex items-center justify-center rounded-full bg-orange-900 text-white ${props.sizeClass}`, 'aria-label': props.name }, props.name?.slice(0, 1)) }))
+app.component('AppAvatarCircle', defineComponent({ props: ['name', 'sizeClass', 'src'], setup: props => () => h('span', { class: `inline-flex items-center justify-center rounded-full bg-orange-900 text-white ${props.sizeClass}`, 'aria-label': props.name }, props.src?.startsWith('https://preview-fixture.example/') ? h('img', { src: props.src, alt: props.name, class: 'h-full w-full rounded-full object-cover' }) : props.name?.slice(0, 1)) }))
 app.component('AppStateShape', defineComponent({ setup: () => () => h('span', { 'aria-hidden': true }, 'VA') }))
 app.component('Icon', defineComponent({ setup: () => () => h('span', { 'aria-label': 'Verified on X' }, '✓') }))
 app.mount('#app')

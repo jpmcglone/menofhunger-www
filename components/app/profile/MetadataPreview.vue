@@ -50,23 +50,31 @@ v-if="xProfile.websiteUrl" :href="xProfile.websiteUrl" target="_blank" rel="noop
         </div>
       </template>
       <template v-else>
-        <img v-if="safeImage" :src="safeImage" alt="" class="h-36 w-full object-cover" >
-        <div class="space-y-3 p-5">
-          <p class="text-xs moh-text-muted">{{ displayHost(url) }}</p>
-          <p class="break-words font-semibold moh-text">{{ metadata?.title ?? title }}</p>
-          <p v-if="metadata?.description" class="line-clamp-5 text-sm moh-text-muted">{{ metadata.description }}</p>
-          <p v-else-if="!loading" class="text-sm moh-text-muted">Preview unavailable</p>
-        </div>
+        <a :href="url" target="_blank" rel="noopener noreferrer nofollow" class="block outline-offset-[-4px]" :aria-label="`Open ${metadata?.title ?? title}`">
+          <img v-if="safeImage" :src="safeImage" alt="" class="max-h-48 w-full object-contain moh-surface-1" >
+          <div class="space-y-3 p-4">
+            <AppAvatarCircle v-if="metadata?.profile?.avatarUrl" :src="metadata.profile.avatarUrl" :name="metadata.title ?? title" size-class="h-14 w-14" />
+            <div class="flex items-center justify-between gap-3 text-xs moh-text-muted">
+              <span>{{ metadata?.profile ? `Pickax · @${metadata.profile.username}` : displayHost(url) }}</span>
+              <Icon name="tabler:arrow-up-right" class="shrink-0 text-base" aria-hidden="true" />
+            </div>
+            <p class="break-words text-base font-semibold leading-snug moh-text">{{ metadata?.title ?? title }}</p>
+            <p v-if="metadata?.description" class="line-clamp-5 whitespace-pre-line text-sm moh-text-muted">{{ metadata.description }}</p>
+            <div v-if="metadata?.profile" class="flex gap-4 text-xs moh-text-muted">
+              <span v-if="metadata.profile.following !== null"><strong class="moh-text">{{ metadata.profile.following.toLocaleString() }}</strong> Following</span>
+              <span v-if="metadata.profile.followers !== null"><strong class="moh-text">{{ metadata.profile.followers.toLocaleString() }}</strong> Followers</span>
+            </div>
+            <p v-if="!metadata && !loading" class="text-sm moh-text-muted">{{ destinationLabel }}</p>
+          </div>
+        </a>
       </template>
       <p v-if="loading" role="status" class="px-5 pb-3 text-sm moh-text-muted">Loading preview…</p>
-      <div v-if="!xProfile || xContext?.messageUrl" class="space-y-2 px-5 pb-5">
+      <div v-if="stateCode || xContext?.messageUrl" class="space-y-2 px-5 pb-5">
         <a
 v-if="xContext?.messageUrl" :href="xContext.messageUrl" target="_blank" rel="noopener noreferrer nofollow"
           class="flex min-h-11 items-center justify-center rounded-full border moh-border text-sm font-semibold moh-text">Message on X</a>
         <NuxtLink v-if="stateCode" :to="url" class="flex min-h-11 items-center justify-center rounded-full border moh-border text-sm font-semibold moh-text" @click="close()">Explore {{ location?.location.stateDisplay ?? title }}</NuxtLink>
-        <a
-v-else-if="!xProfile" :href="url" target="_blank" rel="noopener noreferrer nofollow"
-          class="flex min-h-11 items-center justify-center rounded-full border moh-border text-sm font-semibold moh-text">{{ destinationLabel }}</a>
+
       </div>
     </section>
   </Teleport>
@@ -145,7 +153,7 @@ async function show() {
         }
       }
     } else {
-      const result = await apiFetchData<LinkMetadata | null>('/link-metadata', { query: { url: props.url, purpose: 'profile' }, signal: request.signal })
+      const result = await apiFetchData<LinkMetadata | null>('/link-metadata', { query: { url: props.url, purpose: 'profile', v: 2 }, signal: request.signal })
       if (token === revision) metadata.value = result
     }
   } catch { /* Working external link remains available. */ }

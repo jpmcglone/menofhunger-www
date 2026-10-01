@@ -21,6 +21,8 @@ export function useApiClient() {
       }
       throw new Error('Unmatched fixture mutation')
     }
+    if (path === '/link-metadata') return { url: options.query.url, title: 'John Example', description: 'A public biography from the original website.', imageUrl: 'https://preview-fixture.example/banner.png',
+      profile: options.query.url.includes('pickax.com') ? { platform: 'pickax', username: 'john', avatarUrl: 'https://preview-fixture.example/avatar.png', followers: 111, following: 22 } : null }
     if (!(path in fixtures)) throw new Error(`Unmatched fixture ${path}`)
     const result = structuredClone(fixtures[path])
     if (result?.bannerUrl) result.bannerUrl = banner

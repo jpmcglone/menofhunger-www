@@ -27,7 +27,11 @@ try {
     const page = await browser.newPage({ viewport: { width: 1100, height: 900 } })
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
-    await page.route('**/*', route => new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort())
+    await page.route('**/*', route => {
+      const host = new URL(route.request().url()).hostname
+      if (host === 'preview-fixture.example') return route.fulfill({ path: resolve(root, 'tests/fixtures/integration-banner.png'), contentType: 'image/png' })
+      return host === '127.0.0.1' ? route.continue() : route.abort()
+    })
     await page.goto(url)
     await page.getByText('Spending controls', { exact: true }).waitFor()
     await page.locator('#fixture').focus()
@@ -39,10 +43,10 @@ try {
     await preview.waitFor({ state: 'hidden' })
     await page.locator('#no-dm').hover()
     await preview.getByText('James Example').waitFor()
-    assert.equal(await preview.getByText('Message on X').count(), 0)
+    await preview.getByText('Message on X').waitFor({ state: 'hidden' })
     await page.getByRole('dialog').last().focus(); await page.keyboard.press('Escape'); await page.getByRole('dialog').last().waitFor({ state: 'hidden' })
     await page.locator('#expired').hover()
-    await preview.getByText('Preview unavailable').waitFor()
+    await preview.getByText('View on X').waitFor()
     await page.getByRole('dialog').last().focus(); await page.keyboard.press('Escape'); await page.getByRole('dialog').last().waitFor({ state: 'hidden' })
     await page.locator('#state').hover()
     const state = page.getByRole('dialog', { name: 'Virginia preview' })
@@ -78,6 +82,24 @@ try {
       await page.screenshot({ path: `/tmp/moh-integration-browser/${theme}.png` })
       assert.equal(await preview.evaluate(el => el.getBoundingClientRect().right <= window.innerWidth), true)
       await page.getByRole('dialog').last().focus(); await page.keyboard.press('Escape'); await page.getByRole('dialog').last().waitFor({ state: 'hidden' })
+    }
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), theme === 'dark')
+      for (const site of ['pickax.com', 'rumble.com']) {
+        await page.locator(`[id="${site}"]`).hover()
+        const card = page.getByRole('dialog', { name: `${site} preview` })
+        await card.getByText('A public biography from the original website.').waitFor()
+        assert.equal(await card.getByText('Preview unavailable').count(), 0)
+        assert.equal(await card.locator('a').count(), 1)
+        if (site === 'pickax.com') await card.getByText('111 Followers').waitFor()
+        assert.equal(await card.locator('img').count(), site === 'pickax.com' ? 2 : 1)
+        for (const img of await card.locator('img').all()) {
+          await img.evaluate(image => image.decode())
+          assert.equal(await img.evaluate(image => image.naturalWidth > 0), true)
+        }
+        await page.screenshot({ path: `/tmp/moh-integration-browser/${site}-${theme}.png` })
+        await card.focus(); await page.keyboard.press('Escape'); await card.waitFor({ state: 'hidden' })
+      }
     }
     assert.deepEqual(errors, [])
     console.warn('Browser fixtures passed: public/private/expired previews, avatar cap, thread queue, partial thread, admin controls/reconciliation, compact light and wide dark.')

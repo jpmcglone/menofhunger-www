@@ -44,7 +44,16 @@ export type VideoEmbedMetadata = {
   height: number
 }
 
+export type PublicProfileMetadata = {
+  platform: 'pickax'
+  username: string
+  avatarUrl: string | null
+  followers: number | null
+  following: number | null
+}
+
 export type LinkMetadata = {
+  profile?: PublicProfileMetadata | null
   url: string
   title: string | null
   description: string | null
