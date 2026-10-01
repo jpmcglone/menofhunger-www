@@ -23,6 +23,7 @@ export type CrosspostDraft = {
 export type CrosspostOptions = {
   modes: CrosspostMode[]
   linkOnlyReason?: string
+  blockedReason?: string
 }
 
 export type CrosspostPayload = {
@@ -68,10 +69,20 @@ export function xWeightedLength(text: string): number {
   return weight
 }
 
-function linkBlocked(draft: CrosspostDraft): boolean {
-  if (draft.isReply || draft.isQuote || draft.isCheckin) return true
-  if (draft.groupId) return true
-  return draft.visibility !== 'public'
+function commonBlocker(draft: CrosspostDraft): string | undefined {
+  if (draft.visibility !== 'public') return 'Only public posts can be posted to other platforms.'
+  if (draft.groupId) return 'Group posts cannot be posted to other platforms.'
+  if (draft.isReply) return 'Replies cannot be posted to other platforms.'
+  if (draft.isQuote) return 'Quoted posts cannot be posted to other platforms.'
+  if (draft.isCheckin) return 'Check-ins cannot be posted to other platforms.'
+}
+
+function xReasonCopy(reason: string): string {
+  if (reason === 'poll') return 'Polls cannot be posted to X.'
+  if (reason === 'too_long') return 'Shorten this post to 280 characters to post to X.'
+  if (reason === 'unsupported_media') return 'Only uploaded photos can be posted to X. Remove videos and GIFs.'
+  if (reason === 'too_many_images') return 'Use no more than 4 photos to post to X.'
+  return 'Add text or a photo to post to X.'
 }
 
 function nativeReason(draft: CrosspostDraft, destination: CrosspostDestinationId): string | null {
@@ -100,7 +111,13 @@ function reasonCopy(reason: string, destination: CrosspostDestinationId): string
 }
 
 export function crosspostOptions(draft: CrosspostDraft, destination: CrosspostDestinationId): CrosspostOptions {
-  if (linkBlocked(draft)) return { modes: [] }
+  const blockedReason = commonBlocker(draft)
+  if (blockedReason) return { modes: [], blockedReason }
+  if (destination === 'x') {
+    if (xContainsLink(draft.body)) return { modes: [], blockedReason: 'Remove any links to post to X.' }
+    const reason = nativeReason(draft, destination)
+    return reason ? { modes: [], blockedReason: xReasonCopy(reason) } : { modes: ['native'] }
+  }
   const reason = nativeReason(draft, destination)
   if (reason) return { modes: ['link'], linkOnlyReason: reasonCopy(reason, destination) }
   return { modes: ['link', 'native'] }
@@ -117,5 +134,5 @@ export function crosspostSkipMessage(destination: 'Pickax' | 'X', reason: string
 
 /** Match the API's conservative accounting of URLs that X may linkify. */
 export function xContainsLink(text: string): boolean {
-  return /https?:\/\/|\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(?:[/:?#]|\b)/i.test(text)
+  return /https?:\/\/|(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)+(?:[\p{L}]{2,63}|xn--[a-z0-9-]+)(?![\p{L}\p{N}-])/iu.test(text)
 }

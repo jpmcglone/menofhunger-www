@@ -17,8 +17,8 @@
       </div>
       <div class="flex h-11 w-[7.25rem] shrink-0 items-center justify-end">
         <ToggleSwitch
-          v-if="row.disabled || isOff(row)"
-          :model-value="false"
+          v-if="row.id === 'x' || row.disabled || isOff(row)"
+          :model-value="!row.disabled && !isOff(row)"
           :disabled="row.disabled"
           :input-id="`crosspost-${row.id}`"
           :aria-label="label(row)"
@@ -39,6 +39,7 @@
         </button>
       </div>
       <Menu
+        v-if="row.id !== 'x'"
         :ref="(el) => bindMenu(row.id, el)"
         :model="menuModel(row)"
         popup
@@ -75,12 +76,11 @@ export type CrosspostDestinationView = {
   linkOnlyReason?: string
   disabled?: boolean
   disabledNote?: string
-  nativeContainsLink?: boolean
   allowanceNote?: string
   premiumHref?: string | null
 }
 
-const props = defineProps<{ destinations: CrosspostDestinationView[] }>()
+const props = defineProps<{ destinations: CrosspostDestinationView[]; initialSelection?: CrosspostPayload }>()
 
 const selected = reactive<Record<string, 'off' | CrosspostMode>>({})
 
@@ -88,14 +88,14 @@ const premiumRow = computed(() => props.destinations.find((row) => row.premiumHr
 
 watch(() => props.destinations, (rows) => {
   for (const row of rows) {
-    if (!selected[row.id]) selected[row.id] = 'off'
+    if (!selected[row.id]) selected[row.id] = props.initialSelection?.[row.id] ?? 'off'
     const mode = selected[row.id]
     if (mode !== 'off' && !row.modes.includes(mode as CrosspostMode)) selected[row.id] = 'off'
   }
 }, { immediate: true })
 
 function label(row: CrosspostDestinationView): string {
-  return `${modeLabel(displayMode(row))} on ${row.id === 'x' ? 'X' : 'Pickax'}`
+  return row.id === 'x' ? 'Post to X' : `${modeLabel(displayMode(row))} on Pickax`
 }
 
 function isOff(row: CrosspostDestinationView): boolean {
@@ -112,8 +112,8 @@ function displayMode(row: CrosspostDestinationView): CrosspostMode {
 }
 
 function turnOn(row: CrosspostDestinationView, on: boolean) {
-  if (!on || row.disabled || !row.modes.length) return
-  selected[row.id] = defaultMode(row)
+  if (row.disabled || !row.modes.length) return
+  selected[row.id] = on ? defaultMode(row) : 'off'
 }
 
 function pick(row: CrosspostDestinationView, value: 'off' | CrosspostMode) {
@@ -155,12 +155,9 @@ function menuOptions(row: CrosspostDestinationView): Array<{ id: 'off' | Crosspo
 
 function subtitle(row: CrosspostDestinationView): string {
   if (row.disabled) return row.disabledNote || ''
-  if (displayMode(row) === 'native') {
-    if (row.id === 'pickax') return 'Full copy with a link to the original'
-    return row.nativeContainsLink ? 'Your words and photos · Uses 1 post + 1 link' : 'Your words and photos · Uses 1 post'
-  }
-  const reason = row.linkOnlyReason || 'A link back to this post'
-  return row.id === 'x' ? `${reason} · Uses 1 post + 1 link` : reason
+  if (row.id === 'x') return 'Your words and photos'
+  if (displayMode(row) === 'native') return 'Full copy with a link to the original'
+  return row.linkOnlyReason || 'A link back to this post'
 }
 
 function payload(): CrosspostPayload {
@@ -168,6 +165,7 @@ function payload(): CrosspostPayload {
   for (const row of props.destinations) {
     if (row.disabled) continue
     const mode = selected[row.id]
+    if (row.id === 'x' && mode !== 'native') continue
     if ((mode === 'link' || mode === 'native') && row.modes.includes(mode)) out[row.id] = mode
   }
   return out

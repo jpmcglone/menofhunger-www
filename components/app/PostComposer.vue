@@ -554,6 +554,8 @@
     :post="previewPost"
     :scheduled-label="scheduledAt ? scheduledAtDisplay : null"
     :destinations="previewDestinations"
+    :initial-selection="crosspostChoice"
+    :editing-scheduled="Boolean(scheduledEditId)"
     :busy="submitting"
     @close="previewOpen = false"
     @confirm="onPreviewConfirm"
@@ -574,7 +576,7 @@ import { VOICE } from '~/config/voice'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { buildOptimisticPost } from '~/utils/optimistic-post'
 import { buildPostPreview } from '~/utils/post-preview'
-import { xContainsLink, crosspostOptions, crosspostSkipMessage, type CrosspostDraft, type CrosspostPayload } from '~/utils/crosspost'
+import { crosspostOptions, crosspostSkipMessage, type CrosspostDraft, type CrosspostPayload } from '~/utils/crosspost'
 import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
 import { makePendingLocalId } from '~/composables/usePendingPostsManager'
 import {
@@ -729,6 +731,7 @@ const props = defineProps<{
   initialVisibility?: import('~/types/api').PostVisibility
   /** Pre-fill the scheduled time chip (ISO string). */
   initialScheduledAt?: string
+  initialCrosspost?: CrosspostPayload
   /**
    * Shows the full-width daily prompt above the answer editor, with prompt-specific
    * typography and spacing. The question stays separate from the writing placeholder.
@@ -1560,10 +1563,14 @@ function performCreate(
 
 const pickaxIntegration = usePickaxIntegration()
 const xIntegration = useXIntegration()
-const crosspostChoice = ref<CrosspostPayload>({})
+const crosspostChoice = ref<CrosspostPayload>(props.initialCrosspost ?? {})
 
 function mediaAllImages(media: CreateMediaPayload[]): boolean {
-  return media.every((m) => m.source === 'upload' && m.kind === 'image')
+  return media.every((m) => {
+    if (m.source !== 'existing') return m.source === 'upload' && m.kind === 'image'
+    const existing = composerMedia.value.find((item) => item.existingId === m.id)
+    return existing?.source === 'upload' && existing.kind === 'image'
+  })
 }
 
 function crosspostDraft(media: CreateMediaPayload[]): CrosspostDraft {
@@ -1588,7 +1595,7 @@ function crosspostDraft(media: CreateMediaPayload[]): CrosspostDraft {
 const previewOpen = ref(false)
 const previewApproved = ref(false)
 const previewSupported = computed(
-  () => mode.value === 'create' && !props.replyTo && !props.quotedPost && !scheduledEditId.value,
+  () => (mode.value === 'create' || Boolean(scheduledEditId.value)) && !props.replyTo && !props.quotedPost,
 )
 
 /** The post exactly as it will publish, so the dialog can render a real feed row. */
@@ -1615,32 +1622,27 @@ function destinationRow(
   if (!connected) return null
   if (!viewerIsVerified.value) return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to share outward', premiumHref: '/settings/verification' }
   if (id === 'x' && xIntegration.status.value?.connected && !xIntegration.status.value.canPost) {
-    return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to share to X', premiumHref: '/settings/verification' }
+    return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to post to X', premiumHref: '/settings/verification' }
   }
   const options = crosspostOptions(crosspostDraft(media), id)
-  if (!options.modes.length) return null
-  let modes = options.modes
+  const modes = options.modes
   let allowanceNote: string | undefined
   if (id === 'x' && xIntegration.status.value?.allowance) {
     const allowance = xIntegration.status.value.allowance
-    allowanceNote = `${allowance.totalRemaining ?? allowance.nativePostsLeft} posts left this month · up to ${allowance.linkRemaining ?? allowance.linkPostsLeft} with links`
-    if (scheduledAt.value) {
-      allowanceNote += ' · Checked again at publishing'
-    } else {
-      if (allowance.linkPostsLeft <= 0) modes = modes.filter((mode) => mode !== 'link' && !xContainsLink(crosspostDraft(media).body))
-      if (allowance.nativePostsLeft <= 0) modes = modes.filter((mode) => mode !== 'native')
-      if (!modes.length) return {
-        id, modes: [], disabled: true, allowanceNote,
-        disabledNote: allowance.nativePostsLeft <= 0 ? "You've used this month's X posts" : "You've used this month's X links",
-      }
+    const remaining = allowance.totalRemaining ?? allowance.nativePostsLeft
+    allowanceNote = `${remaining} posts left this month`
+    if (scheduledAt.value) allowanceNote += ' · Checked again at publishing'
+    else if (remaining <= 0) return {
+      id, modes: [], disabled: true, allowanceNote, disabledNote: "You've used this month's X posts.",
     }
   }
-  return { id, modes, linkOnlyReason: options.linkOnlyReason, allowanceNote, nativeContainsLink: xContainsLink(crosspostDraft(media).body) }
+  if (!modes.length) return { id, modes, disabled: true, disabledNote: options.blockedReason, allowanceNote }
+  return { id, modes, linkOnlyReason: options.linkOnlyReason, allowanceNote }
 }
 
 /** Null hides the destinations section. */
 const previewDestinations = computed<CrosspostDestinationView[] | null>(() => {
-  if (mode.value !== 'create' || props.createPost || props.groupComposer) return null
+  if ((mode.value !== 'create' && !scheduledEditId.value) || props.createPost || props.groupComposer) return null
   const media = toCreatePayload(composerMedia.value)
   const rows = [destinationRow('pickax', media), destinationRow('x', media)].filter((row): row is CrosspostDestinationView => Boolean(row))
   return rows.length ? rows : null
@@ -1698,6 +1700,7 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
       const groupId = effectiveGroupId.value
       const patchBody: Record<string, unknown> = {
         body: buildSubmitBody(),
+        crosspost: crosspostChoice.value,
         visibility: vis,
         ...(scheduledAt.value ? { scheduled_at: scheduledAt.value.toISOString() } : {}),
         media: mediaPayload,

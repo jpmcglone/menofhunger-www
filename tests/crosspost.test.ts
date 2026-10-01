@@ -31,16 +31,16 @@ describe('x weighted length', () => {
 
 describe('crosspost options', () => {
   it('offers a link and a full post when the post fits', () => {
-    expect(crosspostOptions(draft(), 'x').modes).toEqual(['link', 'native'])
+    expect(crosspostOptions(draft(), 'x').modes).toEqual(['native'])
     expect(crosspostOptions(draft(), 'pickax').modes).toEqual(['link', 'native'])
   })
 
-  it('offers only a link for a poll, a video, or a post that is too long for X', () => {
-    expect(crosspostOptions(draft({ hasPoll: true }), 'x')).toMatchObject({ modes: ['link'] })
+  it('explains X restrictions while preserving Pickax link fallback', () => {
+    expect(crosspostOptions(draft({ hasPoll: true }), 'x')).toMatchObject({ modes: [], blockedReason: 'Polls cannot be posted to X.' })
     expect(crosspostOptions(draft({ mediaCount: 1, mediaAllUploadedImages: false }), 'pickax').modes).toEqual(['link'])
-    expect(crosspostOptions(draft({ body: 'a'.repeat(281) }), 'x').modes).toEqual(['link'])
+    expect(crosspostOptions(draft({ body: 'a'.repeat(281) }), 'x').modes).toEqual([])
     expect(crosspostOptions(draft({ body: 'a'.repeat(281) }), 'pickax').modes).toEqual(['link', 'native'])
-    expect(crosspostOptions(draft({ body: '🎉'.repeat(141) }), 'x').linkOnlyReason).toContain('longer than X')
+    expect(crosspostOptions(draft({ body: '🎉'.repeat(141) }), 'x').blockedReason).toContain('280 characters')
   })
 
   it('hides destinations that cannot take even a link', () => {
@@ -65,4 +65,15 @@ describe('X link accounting and scheduling', () => {
   it('keeps destination selection available for scheduled public posts', () => {
     expect(crosspostOptions(draft({ scheduled: true }), 'pickax').modes).toEqual(['link', 'native'])
   })
+})
+
+it.each([false, true])('applies native-only X rules with scheduled=%s', scheduled => {
+  for (const body of ['https://example.com', 'hello example.com/path', 'www.example.com', '例子.中国', 'münchen.de']) {
+    expect(crosspostOptions(draft({ body, scheduled }), 'x')).toMatchObject({ modes: [], blockedReason: 'Remove any links to post to X.' })
+    expect(crosspostOptions(draft({ body, scheduled }), 'pickax').modes).toEqual(['link', 'native'])
+  }
+  expect(crosspostOptions(draft({ scheduled }), 'x').modes).toEqual(['native'])
+  expect(crosspostOptions(draft({ scheduled, hasPoll: true }), 'pickax').modes).toEqual(['link'])
+  expect(crosspostOptions(draft({ scheduled, mediaCount: 1, mediaAllUploadedImages: false }), 'x').blockedReason).toContain('videos and GIFs')
+  expect(crosspostOptions(draft({ scheduled, mediaCount: 5 }), 'x').blockedReason).toContain('4 photos')
 })

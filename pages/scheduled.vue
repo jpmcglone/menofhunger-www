@@ -56,6 +56,7 @@
       :initial-poll="editing.poll"
       :initial-visibility="editing.scheduledVisibility"
       :initial-scheduled-at="editing.scheduledAt"
+      :initial-crosspost="editing.crosspost"
       :community-group-id="editing.scheduledCommunityGroupId ?? null"
       @scheduled-updated="onScheduledUpdated"
     />

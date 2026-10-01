@@ -102,7 +102,7 @@
         X
       </div>
       <p class="text-sm text-gray-600 dark:text-gray-300">
-        Connecting is free. Verified members can share public posts and articles to X.
+        Connecting is free. Verified members can post public text and photos to X. Posts with links, polls, videos, or GIFs are not supported.
         Premium increases your monthly allowance.
       </p>
       <div v-if="!xStatus" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
@@ -114,7 +114,7 @@
           <div class="min-w-0">
             <div class="truncate text-sm font-semibold moh-text">@{{ xStatus.username }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              {{ xStatus.canPost ? `${xStatus.allowance.totalRemaining ?? xStatus.allowance.nativePostsLeft} posts remaining · ${xStatus.allowance.linkRemaining ?? xStatus.allowance.linkPostsLeft} with links` : 'Verify your MOH account to share to X' }}
+              {{ xStatus.canPost ? `${xStatus.allowance.totalRemaining ?? xStatus.allowance.nativePostsLeft} posts left this month` : 'Verify your MOH account to post to X' }}
             </div>
           </div>
           <Button label="Disconnect" severity="secondary" size="small" class="shrink-0" :loading="xBusy" @click="onDisconnectX" />

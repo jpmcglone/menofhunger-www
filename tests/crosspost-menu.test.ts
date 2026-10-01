@@ -39,13 +39,13 @@ describe('cross-post choice menu', () => {
   })
 })
 
-for (const id of ['pickax', 'x'] as const) {
+for (const id of ['pickax'] as const) {
   it(`defaults ${id} to Post and keeps allowance visible through Share and off`, async () => {
-    const name = id === 'x' ? 'X' : 'Pickax'
+    const name = 'Pickax'
     const allowanceNote = '40 posts left this month · up to 2 with links'
     const wrapper = await mountSuspended(Destinations, {
       attachTo: document.body,
-      props: { destinations: [{ id, modes: ['link', 'native'], allowanceNote, nativeContainsLink: true }] },
+      props: { destinations: [{ id, modes: ['link', 'native'], allowanceNote }] },
       global: { stubs: { Icon: true, Transition: false } },
     })
     const payload = () => (wrapper.vm as unknown as { payload: () => unknown }).payload()
@@ -54,7 +54,6 @@ for (const id of ['pickax', 'x'] as const) {
       expect(wrapper.text()).toContain(allowanceNote)
       await wrapper.get('input').setValue(true)
       expect(payload()).toEqual({ [id]: 'native' })
-      if (id === 'x') expect(wrapper.text()).toContain('Uses 1 post + 1 link')
       await wrapper.get('button').trigger('click')
       await vi.waitFor(() => expect(document.querySelector('[data-pc-name="menu"]')).not.toBeNull())
       const share = [...document.querySelectorAll<HTMLElement>('[data-pc-name="menu"] a')].find(a => a.textContent?.trim() === 'Share')!
@@ -73,19 +72,26 @@ for (const id of ['pickax', 'x'] as const) {
   })
 }
 
-it('uses Share for link-only content and clears a selection when its allowance runs out', async () => {
+it('uses only an on/off toggle for X, and clears an unsupported saved selection', async () => {
   const wrapper = await mountSuspended(Destinations, {
-    props: { destinations: [{ id: 'x', modes: ['link'], allowanceNote: '1 post left · 1 with links', linkOnlyReason: 'Articles share as a link on X' }] },
+    props: { destinations: [{ id: 'x', modes: ['native'], allowanceNote: '40 posts left this month' }], initialSelection: { x: 'native' } },
     global: { stubs: { Icon: true } },
   })
+  const payload = () => (wrapper.vm as unknown as { payload: () => unknown }).payload()
   try {
-    expect(wrapper.text()).toContain('Share on X')
-    expect(wrapper.text()).toContain('Articles share as a link on X')
+    expect(wrapper.text()).toContain('Post to X')
+    expect(wrapper.find('button').exists()).toBe(false)
+    expect(payload()).toEqual({ x: 'native' })
+    await wrapper.get('input').setValue(false)
+    expect(payload()).toEqual({})
     await wrapper.get('input').setValue(true)
-    expect((wrapper.vm as unknown as { payload: () => unknown }).payload()).toEqual({ x: 'link' })
-    await wrapper.setProps({ destinations: [{ id: 'x', modes: [], disabled: true, allowanceNote: '0 posts left · 0 with links', disabledNote: 'No links left' }] })
-    expect((wrapper.vm as unknown as { payload: () => unknown }).payload()).toEqual({})
-    expect(wrapper.text()).toContain('0 posts left · 0 with links')
+    expect(payload()).toEqual({ x: 'native' })
+    expect(wrapper.find('button').exists()).toBe(false)
+    await wrapper.setProps({ destinations: [{ id: 'x', modes: [], disabled: true, disabledNote: 'Remove any links to post to X.' }] })
+    expect(payload()).toEqual({})
+    expect(wrapper.text()).toContain('Remove any links')
     expect(wrapper.get('input').attributes('disabled')).toBeDefined()
+    await wrapper.setProps({ destinations: [{ id: 'x', modes: ['native'] }] })
+    expect(payload()).toEqual({})
   } finally { wrapper.unmount() }
 })

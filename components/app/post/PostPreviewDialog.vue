@@ -8,7 +8,7 @@
     @update:visible="emit('close')"
   >
     <template #header>
-      <span class="text-lg font-bold text-[var(--moh-text)]">{{ scheduledLabel ? 'Schedule post' : 'Ready to post?' }}</span>
+      <span class="text-lg font-bold text-[var(--moh-text)]">{{ editingScheduled ? 'Save scheduled post' : scheduledLabel ? 'Schedule post' : 'Ready to post?' }}</span>
     </template>
 
     <!-- The real post row, exactly as it will publish. Inert except the images, which open
@@ -30,7 +30,7 @@
         Publishes {{ scheduledLabel }}
       </p>
 
-      <AppPostCrosspostDestinations v-if="destinations?.length" ref="destinationsRef" :destinations="destinations" />
+      <AppPostCrosspostDestinations v-if="destinations?.length" ref="destinationsRef" :destinations="destinations" :initial-selection="initialSelection" />
 
       <div class="flex justify-end gap-2" :class="{ 'mt-5': Boolean(destinations?.length) }">
         <button
@@ -41,7 +41,7 @@
           Cancel
         </button>
         <AppActionButton
-          :label="scheduledLabel ? 'Schedule' : 'Post'"
+          :label="editingScheduled ? 'Save' : scheduledLabel ? 'Schedule' : 'Post'"
           kind="brand"
           :loading="busy"
           @click="emit('confirm', { crosspost: destinationsRef?.payload() ?? {} })"
@@ -64,8 +64,10 @@ withDefaults(defineProps<{
   scheduledLabel?: string | null
   /** Empty hides the destinations section. */
   destinations?: CrosspostDestinationView[] | null
+  initialSelection?: CrosspostPayload
+  editingScheduled?: boolean
   busy?: boolean
-}>(), { scheduledLabel: null, destinations: null, busy: false })
+}>(), { scheduledLabel: null, destinations: null, initialSelection: undefined, editingScheduled: false, busy: false })
 
 const emit = defineEmits<{
   close: []
