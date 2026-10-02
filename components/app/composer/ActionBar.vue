@@ -1,16 +1,22 @@
 <template>
   <div class="composer-action-container">
-    <div class="composer-action-layout">
+    <div class="composer-action-layout" :class="{ 'composer-action-layout--header-submit': submitTarget }">
       <div class="composer-tools">
         <slot name="tools" />
       </div>
       <div class="composer-publish">
         <div class="composer-count"><slot name="count" /></div>
-        <div class="composer-submit"><slot name="submit" /></div>
+        <Teleport :to="submitTarget ?? 'body'" :disabled="!submitTarget">
+          <div class="composer-submit"><slot name="submit" /></div>
+        </Teleport>
       </div>
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+defineProps<{ submitTarget?: HTMLElement | null }>()
+</script>
 
 <style scoped>
 /* Figma Composer: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=91-1122
@@ -23,6 +29,8 @@
 .composer-count { min-width: 0; font-variant-numeric: tabular-nums; }
 .composer-submit { flex: 0 0 auto; margin-left: auto; max-width: 100%; }
 .composer-submit :deep(button) { min-height: 44px; max-width: 100%; }
+.composer-action-layout--header-submit { flex-direction: row; align-items: center; justify-content: space-between; }
+.composer-action-layout--header-submit .composer-publish { flex: 0 0 auto; }
 @container (min-width: 480px) {
   .composer-action-layout { flex-direction: row; align-items: center; gap: 16px; }
   .composer-tools { flex: 1 1 0; }

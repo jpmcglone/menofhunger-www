@@ -23,64 +23,61 @@
           @click="close"
         />
 
-        <!-- Reply sheet: max-height is relative to the keyboard-pinned overlay, not 90vh -->
+        <!-- Definite bounds let the body shrink while Close and Reply stay above the keyboard. -->
         <div
-          class="absolute top-3 max-h-[calc(100%-0.75rem)]"
+          class="reply-sheet absolute inset-0 flex flex-col overflow-hidden moh-border moh-surface sm:inset-y-3 sm:max-h-[40rem] sm:rounded-2xl sm:border"
           :style="replySheetStyle"
         >
+          <div class="moh-gutter-x flex shrink-0 items-center justify-between py-1 sm:py-3">
+            <button type="button" class="moh-focus moh-surface-hover flex h-11 w-11 items-center justify-center rounded-full moh-text" aria-label="Close reply" @click="close">
+              <Icon name="tabler:x" class="text-xl" aria-hidden="true" />
+            </button>
+            <div ref="replySubmitEl" class="sm:hidden" />
+          </div>
           <div
-            :class="[
-              'relative overflow-hidden rounded-2xl border moh-border moh-surface max-h-full',
-            ]"
+            class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain no-scrollbar"
+            @click.capture="onSheetClick"
           >
-            <div class="relative z-10 flex flex-col max-h-[min(100%,40rem)]">
-              <div
-                class="overflow-y-auto overflow-x-hidden no-scrollbar flex flex-col pt-3 pb-2"
-                @click.capture="onSheetClick"
-              >
-                <div class="moh-gutter-x mb-3">
-                  <button type="button" class="moh-focus moh-surface-hover flex h-11 w-11 items-center justify-center rounded-full moh-text" aria-label="Close reply" @click="close">
-                    <Icon name="tabler:x" class="text-xl" aria-hidden="true" />
-                  </button>
-                </div>
-                <div class="moh-gutter-x">
-                  <AppReplyParentPreview :post="parentPost" connect-to-reply>
-                    <template #default>
-                      <span v-if="replyingToDisplay.length">
-                        Replying to
-                        <template v-for="(p, i) in replyingToDisplay" :key="p.id">
-                          <NuxtLink
-                            :to="`/u/${encodeURIComponent(p.username)}`"
-                            class="font-semibold hover:underline underline-offset-2"
-                            :class="participantLinkClass(p)"
-                            :aria-label="`View @${p.username} profile`"
-                            @mouseenter="(e) => multiTrigger.onEnter(p.username, e)"
-                            @mousemove="multiTrigger.onMove"
-                            @mouseleave="multiTrigger.onLeave"
-                          >
-                            @{{ p.username }}
-                          </NuxtLink>
-                          <span v-if="i < replyingToDisplay.length - 1" class="moh-text-muted">, </span>
-                        </template>
-                      </span>
+            <div class="moh-gutter-x">
+              <AppReplyParentPreview :post="parentPost" connect-to-reply>
+                <template #default>
+                  <span v-if="replyingToDisplay.length">
+                    Replying to
+                    <template v-for="(p, i) in replyingToDisplay" :key="p.id">
+                      <NuxtLink
+                        :to="`/u/${encodeURIComponent(p.username)}`"
+                        class="font-semibold hover:underline underline-offset-2"
+                        :class="participantLinkClass(p)"
+                        :aria-label="`View @${p.username} profile`"
+                        @mouseenter="(e) => multiTrigger.onEnter(p.username, e)"
+                        @mousemove="multiTrigger.onMove"
+                        @mouseleave="multiTrigger.onLeave"
+                      >
+                        @{{ p.username }}
+                      </NuxtLink>
+                      <span v-if="i < replyingToDisplay.length - 1" class="moh-text-muted">, </span>
                     </template>
-                  </AppReplyParentPreview>
-                </div>
-                <div>
-                  <AppPostComposer
-                    v-if="replyContext"
-                    ref="replyComposerRef"
-                    :reply-to="replyContext"
-                    auto-focus
-                    :show-divider="false"
-                    in-reply-thread
-                    @pending="onReplyPending"
-                    @posted="onReplyPosted"
-                  />
-                </div>
-              </div>
+                  </span>
+                </template>
+              </AppReplyParentPreview>
+            </div>
+            <div>
+              <AppPostComposer
+                v-if="replyContext"
+                ref="replyComposerRef"
+                class="reply-composer"
+                :reply-to="replyContext"
+                :actions-target="replyActionsEl"
+                :submit-target="isMobileReply ? replySubmitEl : null"
+                auto-focus
+                :show-divider="false"
+                in-reply-thread
+                @pending="onReplyPending"
+                @posted="onReplyPosted"
+              />
             </div>
           </div>
+          <div ref="replyActionsEl" class="moh-gutter-x shrink-0 border-t moh-border moh-surface py-1 sm:py-2" />
         </div>
       </div>
     </Transition>
@@ -159,10 +156,17 @@ function participantLinkClass(p: { id: string; username: string }): string {
   return ''
 }
 
+const isMobileReply = ref(false)
+const replySubmitEl = ref<HTMLElement | null>(null)
 const replySheetStyle = ref<Record<string, string>>({ left: '0px', width: 'auto' })
 
 function updateReplySheetStyle() {
   if (!import.meta.client) return
+  isMobileReply.value = window.matchMedia('(max-width: 639px)').matches
+  if (isMobileReply.value) {
+    replySheetStyle.value = { left: '0px', width: '100%' }
+    return
+  }
   const el = middleScrollerRef.value
   if (!el) return
   const r = el.getBoundingClientRect()
@@ -178,6 +182,7 @@ function close() {
   replyModal.hide()
 }
 
+const replyActionsEl = ref<HTMLElement | null>(null)
 const replyComposerRef = ref<{ hasUnsavedContent: boolean; draftText?: string } | null>(null)
 
 async function onSheetClick(event: MouseEvent) {
@@ -349,3 +354,14 @@ function onReplyPending(payload: {
   replyModal.hide()
 }
 </script>
+
+<style scoped>
+/* Mobile reply master: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=263-1569
+   One scroll owner lets the parent post leave the viewport as the draft grows. */
+@media (max-width: 639px) {
+  .reply-sheet .reply-composer :deep(.moh-styled-textarea-editor) {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+</style>

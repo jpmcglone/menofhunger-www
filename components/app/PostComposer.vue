@@ -237,8 +237,9 @@
           </Teleport>
         </ClientOnly>
 
-        <div :class="[checkinPrompt ? 'mt-5 border-t moh-border pt-4' : (composerMedia.length ? 'mt-5' : 'mt-3'), mode === 'edit' && !scheduledEditId && 'moh-edit-actions']" class="flex flex-col gap-1">
-          <AppComposerActionBar>
+        <Teleport :to="actionsTarget ?? 'body'" :disabled="!actionsTarget">
+        <div :class="[actionsTarget ? '' : checkinPrompt ? 'mt-5 border-t moh-border pt-4' : (composerMedia.length ? 'mt-5' : 'mt-3'), mode === 'edit' && !scheduledEditId && 'moh-edit-actions']" class="flex flex-col gap-1">
+          <AppComposerActionBar :submit-target="submitTarget">
             <template #tools>
               <template v-if="!disableMedia">
                 <Button
@@ -372,6 +373,7 @@
             Remove failed items to post.
           </p>
         </div>
+        </Teleport>
       </div>
       </div>
     </div>
@@ -678,6 +680,10 @@ const props = defineProps<{
   }
   /** When true, use compact top padding for thread/reply modal layout (connects with thread line). */
   inReplyThread?: boolean
+  /** Optional fixed footer owned by a modal; keeps actions outside its scrolling draft. */
+  actionsTarget?: HTMLElement | null
+  /** Mobile full-screen replies place their primary action in the header. */
+  submitTarget?: HTMLElement | null
   /** When true, omit the avatar (used when parent renders avatar in shared thread column). */
   omitAvatar?: boolean
   /** When set, composer is in edit mode (PATCH post). */
