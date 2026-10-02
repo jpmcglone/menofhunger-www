@@ -28,14 +28,6 @@ export const DOWNGRADE_AFTER_BAD_SAMPLES = 3
 /** Consecutive good samples before stepping back up (slow to recover, fast to protect audio). */
 export const UPGRADE_AFTER_GOOD_SAMPLES = 10
 
-/**
- * With 3–4 peers every participant uploads N-1 streams, so the ceiling drops to 540p
- * to keep total upstream in a range home connections can sustain.
- */
-export function topTierFor(peerCount: number): number {
-  return peerCount >= 2 ? 1 : 0
-}
-
 export type QualitySample = {
   /** Fraction of our outgoing video packets the peer reported lost (0..1). */
   fractionLost: number | null

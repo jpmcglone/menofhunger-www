@@ -10,7 +10,6 @@ import {
   icePathFromStats,
   icePathLabel,
   sampleFromStatsReport,
-  topTierFor,
   VIDEO_QUALITY_TIERS,
   type QualityCounters,
 } from '~/composables/calls/callQuality'
@@ -36,11 +35,7 @@ describe('quality tiers', () => {
     }
   })
 
-  it('caps the top tier at 540p for 3+ participants', () => {
-    expect(topTierFor(1)).toBe(0)
-    expect(topTierFor(2)).toBe(1)
-    expect(topTierFor(3)).toBe(1)
-  })
+
 })
 
 describe('hysteresis', () => {

@@ -5,12 +5,10 @@ import {
   nextQualityTier,
   QUALITY_WARMUP_MS,
   sampleFromStatsReport,
-  topTierFor,
   VIDEO_QUALITY_TIERS,
   type IcePathKind,
   type QualityCounters,
 } from './callQuality'
-import { isPathTrouble, nextRelayStreak, pathSampleFromStats, RELAY_AFTER_TROUBLED_SAMPLES } from './callRelayFallback'
 
 const SAMPLE_INTERVAL_MS = 2_000
 
@@ -20,8 +18,6 @@ type PeerQuality = {
   counters: QualityCounters
   /** When the connection last became `connected`; samples inside the warm-up window are ignored. */
   connectedAt: number | null
-  /** Consecutive troubled samples on a STUN path. */
-  relayStreak: number
 }
 
 /**
@@ -35,16 +31,13 @@ export class CallQualityManager {
   private timer: ReturnType<typeof setInterval> | null = null
   private readonly onTierChange: (userId: string, tier: number) => void
   private readonly onIcePath: (userId: string, path: IcePathKind | null) => void
-  private readonly onPathTrouble: (userId: string) => void
 
   constructor(
     onTierChange: (userId: string, tier: number) => void,
     onIcePath: (userId: string, path: IcePathKind | null) => void = () => {},
-    onPathTrouble: (userId: string) => void = () => {},
   ) {
     this.onTierChange = onTierChange
     this.onIcePath = onIcePath
-    this.onPathTrouble = onPathTrouble
   }
 
   /** Read the selected ICE pair as soon as ICE connects (don't wait for the 2s quality tick). */
@@ -55,16 +48,14 @@ export class CallQualityManager {
   }
 
   attach(userId: string, pc: RTCPeerConnection): void {
-    const top = topTierFor(this.peers.size + (this.peers.has(userId) ? 0 : 1))
-    this.peers.set(userId, { pc, tier: top, counters: { bad: 0, good: 0 }, connectedAt: null, relayStreak: 0 })
+    const top = 0
+    this.peers.set(userId, { pc, tier: top, counters: { bad: 0, good: 0 }, connectedAt: null })
     void this.applyTier(userId)
-    this.reclampAll()
     this.ensureTimer()
   }
 
   detach(userId: string): void {
     this.peers.delete(userId)
-    this.reclampAll()
     if (this.peers.size === 0) this.stopTimer()
   }
 
@@ -100,20 +91,8 @@ export class CallQualityManager {
     this.timer = null
   }
 
-  /** When the mesh grows, the ceiling drops for everyone; when it shrinks, allow climbing back. */
-  private reclampAll(): void {
-    const top = topTierFor(this.peers.size)
-    for (const [userId, p] of this.peers) {
-      if (p.tier < top) {
-        p.tier = top
-        p.counters = { bad: 0, good: 0 }
-        void this.applyTier(userId)
-      }
-    }
-  }
-
   private async sampleAll(): Promise<void> {
-    const top = topTierFor(this.peers.size)
+    const top = 0
     const now = Date.now()
     for (const [userId, p] of this.peers) {
       if (p.pc.connectionState !== 'connected' && p.pc.iceConnectionState !== 'connected' && p.pc.iceConnectionState !== 'completed') {
@@ -132,11 +111,6 @@ export class CallQualityManager {
         continue
       }
       if (now - p.connectedAt < QUALITY_WARMUP_MS) continue
-      p.relayStreak = nextRelayStreak(p.relayStreak, path, isPathTrouble(pathSampleFromStats(values)))
-      if (p.relayStreak >= RELAY_AFTER_TROUBLED_SAMPLES) {
-        p.relayStreak = 0
-        this.onPathTrouble(userId)
-      }
       let bad = false
       try {
         const cap = VIDEO_QUALITY_TIERS[Math.min(p.tier, AUDIO_ONLY_TIER)]?.maxBitrate ?? null

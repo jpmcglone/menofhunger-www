@@ -1,7 +1,7 @@
 import type { SfuAckDto, SfuRequestDto } from '~/types/api-contracts.gen'
 import type { Ref } from 'vue'
 import type { Socket } from 'socket.io-client'
-import type { CallsAck, CallType, RtcIceCandidate, RtcSessionDescription } from '~/types/api'
+import type { CallsAck, CallType } from '~/types/api'
 import { tabCallSessionId } from '~/composables/calls/callSessionId'
 
 const CALLS_ACK_TIMEOUT_MS = 10_000
@@ -239,8 +239,8 @@ export function createPresenceEmitters(socketRef: Ref<Socket | null>) {
         sfuCapable: true,
       })
     },
-    emitCallsJoin(callId: string): Promise<CallsAck> {
-      return emitCallsWithAck(socketRef.value, 'calls:join', { callId: String(callId ?? '').trim(), sessionId: tabCallSessionId(), sfuCapable: true })
+    emitCallsJoin(callId: string, resumeSessionId?: string): Promise<CallsAck> {
+      return emitCallsWithAck(socketRef.value, 'calls:join', { callId: String(callId ?? '').trim(), sessionId: tabCallSessionId(), sfuCapable: true, ...(resumeSessionId ? { resumeSessionId } : {}) })
     },
     /** Current state of one call (resyncs a ring whose `calls:updated` was missed offline). */
     emitCallsStatus(callId: string): Promise<CallsAck> {
@@ -258,17 +258,7 @@ export function createPresenceEmitters(socketRef: Ref<Socket | null>) {
       if (!socket?.connected || !id) return
       socket.emit('calls:state', { callId: id, ...state })
     },
-    emitRtcSignal(
-      callId: string,
-      toUserId: string,
-      signal: { description?: RtcSessionDescription; candidate?: RtcIceCandidate },
-    ) {
-      const socket = socketRef.value
-      const id = String(callId ?? '').trim()
-      const to = String(toUserId ?? '').trim()
-      if (!socket?.connected || !id || !to) return
-      socket.emit('rtc:signal', { callId: id, toUserId: to, ...signal })
-    },
+
   }
 }
 

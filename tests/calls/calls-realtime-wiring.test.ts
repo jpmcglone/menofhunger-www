@@ -27,10 +27,10 @@ describe('DM calling realtime wiring', () => {
     }
     expect(emitters).toContain('emitWithAck(event, payload)')
     expect(emitters).toContain("socket.emit('calls:state'")
-    expect(emitters).toContain("socket.emit('rtc:signal'")
+    expect(emitters).not.toContain("socket.emit('rtc:signal'")
   })
 
-  it('binds the session once per tab from the client-only host and leaves only on real unload', () => {
+  it('binds the session once per tab from the client-only host', () => {
     const overlays = read('components/app/layout/GlobalOverlays.vue')
     expect(overlays).toMatch(/<ClientOnly>[\s\S]*<AppCallsCallHost v-if="isAuthed" \/>[\s\S]*<\/ClientOnly>/)
 
@@ -39,9 +39,7 @@ describe('DM calling realtime wiring', () => {
     expect(host).toContain('registerCallPipSource')
 
     const session = read('composables/calls/useCallSession.ts')
-    expect(session).toContain("window.addEventListener('pagehide', onPageHide)")
-    expect(session).toContain("window.addEventListener('beforeunload', onBeforeUnload)")
-    expect(session).toContain('shouldHangUpCallOnPageLifecycle')
+    // Reload/close behavior is exercised by call-reload-session.test.ts.
     expect(session).toContain('void rejoinAfterReconnect()')
     expect(session).toContain('resumeAfterForeground')
     expect(session).toContain('enterCallPictureInPicture')
@@ -113,12 +111,5 @@ describe('DM calling realtime wiring', () => {
     expect(session).toContain("if (phase.value !== 'idle' && phase.value !== 'in_call_elsewhere' && phase.value !== 'incoming')")
   })
 
-  it('never lets the polite peer race the impolite one on ICE restart', () => {
-    const transport = read('composables/calls/transport/PeerToPeerCallTransport.ts')
-    expect(transport).toContain('polite: this.opts.selfUserId < userId')
-    expect(transport).toContain("if (peer.polite || peer.state === 'failed') return")
-    expect(transport).toContain('peer.pc.restartIce()')
-    expect(transport).toContain('peer.ignoreOffer = !peer.polite && offerCollision')
-    expect(transport).toContain("setLocalDescription({ type: 'rollback' })")
-  })
+
 })

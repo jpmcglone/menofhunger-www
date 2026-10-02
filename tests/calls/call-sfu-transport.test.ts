@@ -45,7 +45,7 @@ function harness() {
     return {}
   })
   const events = { onRemoteStream: vi.fn(), onRemoteScreenStream: vi.fn(), onPeerState: vi.fn(), onData: vi.fn() }
-  const transport = new CloudflareSfuCallTransport({ callId: 'call', selfUserId: 'me', iceServers: [], sendSignal: vi.fn(), events }, rpc)
+  const transport = new CloudflareSfuCallTransport({ callId: 'call', selfUserId: 'me', iceServers: [], events }, rpc)
   transports.push(transport)
   return { transport, requests, rpc, events }
 }
@@ -119,6 +119,31 @@ describe('Cloudflare SFU transport', () => {
     expect(h.requests.filter(r => r.action === 'close')).toHaveLength(1)
     expect(h.events.onRemoteStream).toHaveBeenCalledWith('alice', null)
   })
+  it('coalesces recovery and stops at the original deadline even when every replacement fails', async () => {
+    const h = harness()
+    h.transport.setPeers(['alice'])
+    await flush()
+    h.rpc.mockImplementation(async (request) => {
+      h.requests.push(request)
+      if (request.action === 'close') return {}
+      throw new Error('provider offline')
+    })
+    const original = FakeConnection.instances[0]!
+    original.connectionState = 'disconnected'
+    original.onconnectionstatechange?.()
+    h.transport.resumeConnections()
+    h.transport.resumeConnections()
+    expect(FakeConnection.instances).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(30_000)
+    await flush()
+    expect(h.events.onPeerState).toHaveBeenLastCalledWith('alice', 'failed')
+    const attempts = FakeConnection.instances.length
+    await vi.advanceTimersByTimeAsync(60_000)
+    h.transport.resumeConnections()
+    await flush()
+    expect(FakeConnection.instances).toHaveLength(attempts)
+  })
+
   it('fails candidate gathering instead of submitting incomplete SDP', async () => {
     const pc = new FakeConnection()
     pc.iceGatheringState = 'gathering'

@@ -180,6 +180,10 @@
       <p v-if="cameraError && !isCameraEnabled" class="mb-3 text-center text-sm text-white/85">
         {{ cameraError }}
       </p>
+      <div v-if="call.budgetWarningDeadline" class="mb-3 rounded-xl bg-white/10 p-4 text-sm" role="status">
+        <p class="font-semibold">Call ending soon</p>
+        <p class="mt-2 text-white/70">Calling is temporarily unavailable. This call ends in {{ budgetSeconds }} seconds.</p>
+      </div>
       <CallControls
         :mic-enabled="isMicEnabled"
         :camera-enabled="isCameraEnabled"
@@ -215,6 +219,11 @@ import CallVideoTile from './CallVideoTile.vue'
 import CallControls from './CallControls.vue'
 
 const props = defineProps<{ call: CallSession }>()
+const budgetNow = ref(Date.now())
+let budgetTimer: ReturnType<typeof setInterval> | undefined
+onMounted(() => { budgetTimer = setInterval(() => { budgetNow.value = Date.now() }, 1000) })
+onUnmounted(() => { if (budgetTimer) clearInterval(budgetTimer) })
+const budgetSeconds = computed(() => Math.max(0, Math.ceil((Date.parse(props.call.budgetWarningDeadline ?? '') - budgetNow.value) / 1000)) || 0)
 const emit = defineEmits<{ minimize: [] }>()
 
 const {

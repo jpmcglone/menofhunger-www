@@ -21,18 +21,6 @@ describe('screen share session', () => {
     expect(session).not.toContain('cameraWasOnBeforeShare')
   })
 
-  it('negotiates a dedicated screen transceiver so share does not replace camera', () => {
-    const transport = read('composables/calls/transport/PeerToPeerCallTransport.ts')
-    expect(transport).toContain("addTransceiver('video'")
-    expect(transport).toContain('screenTransceiver')
-    expect(transport).toContain('screenSender')
-    expect(transport).toContain('onRemoteScreenStream')
-    expect(transport).toContain("kind === 'screen'")
-    expect(transport).toContain('renegotiateForTrack')
-    expect(transport).toContain('publishRemoteTracks')
-    expect(transport).toContain('videoTransceiver')
-  })
-
   it('skips resolution scale-down when the sender track is a screen share', () => {
     const quality = read('composables/calls/useCallQualityManager.ts')
     expect(quality).toContain("contentHint === 'detail'")

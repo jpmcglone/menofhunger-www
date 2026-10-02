@@ -1,16 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { callVideoAttachKey, shouldHangUpCallOnPageLifecycle } from '~/composables/calls/callLifecycle'
+import { callVideoAttachKey } from '~/composables/calls/callLifecycle'
 import { pickCallPipSource, registerCallPipSource } from '~/composables/calls/callPictureInPicture'
-
-describe('shouldHangUpCallOnPageLifecycle', () => {
-  it('does not hang up on pagehide (iOS app switch / screenshot / incoming phone)', () => {
-    expect(shouldHangUpCallOnPageLifecycle('pagehide')).toBe(false)
-  })
-
-  it('hangs up on beforeunload so a closed desktop tab does not leave a ghost seat', () => {
-    expect(shouldHangUpCallOnPageLifecycle('beforeunload')).toBe(true)
-  })
-})
 
 describe('callVideoAttachKey', () => {
   it('changes when the live video track is replaced', () => {

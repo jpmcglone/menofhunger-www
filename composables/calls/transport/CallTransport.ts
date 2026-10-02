@@ -1,4 +1,4 @@
-import type { RtcIceCandidate, RtcIceServer, RtcSessionDescription, WsRtcSignalPayload } from '~/types/api'
+import type { RtcIceServer, WsRtcSignalPayload } from '~/types/api'
 import type { IcePathKind } from '../callQuality'
 
 /**
@@ -6,11 +6,6 @@ import type { IcePathKind } from '../callQuality'
  * `connectionState` (which tracks the signaling socket, not the media).
  */
 export type PeerMediaState = 'connecting' | 'connected' | 'reconnecting' | 'failed'
-
-export type CallSignal = {
-  description?: RtcSessionDescription
-  candidate?: RtcIceCandidate
-}
 
 export type CallLocalTrackKind = 'audio' | 'video' | 'screen'
 
@@ -20,7 +15,7 @@ export type CallTransportEvents = {
   /** A remote peer's screen-share track (separate from their camera). `null` when it ends or the peer leaves. */
   onRemoteScreenStream?: (userId: string, stream: MediaStream | null) => void
   onPeerState: (userId: string, state: PeerMediaState) => void
-  /** In-call data-channel payload (reactions). `raw` is already JSON-parsed. */
+  /** Authenticated in-call reaction (reactions). `raw` is already JSON-parsed. */
   onData?: (userId: string, raw: unknown) => void
   /** Selected ICE pair for this peer: TURN / STUN / host. Admin tiles only. */
   onIcePath?: (userId: string, path: IcePathKind | null) => void
@@ -30,8 +25,6 @@ export type CallTransportOptions = {
   callId: string
   selfUserId: string
   iceServers: RtcIceServer[]
-  /** Relay a signal to one remote participant through the authenticated socket. */
-  sendSignal: (toUserId: string, signal: CallSignal) => void
   /**
    * How long a peer may stay `reconnecting` before it is marked `failed`. Comes from the
    * server's `reconnectGraceMs` so every client gives up at the same moment the server does.
@@ -40,12 +33,7 @@ export type CallTransportOptions = {
   events: CallTransportEvents
 }
 
-/**
- * Transport boundary between the call UI/session and how media actually moves.
- * V1 is a browser-to-browser mesh (`PeerToPeerCallTransport`). A future SFU
- * transport (LiveKit or similar) implements the same interface so `useCallSession`
- * and the components don't change.
- */
+/** Cloudflare SFU media and authenticated call events. */
 export interface CallTransport {
   /**
    * Reconcile the remote participant set. New ids get a connection, missing ids are
@@ -58,7 +46,7 @@ export interface CallTransport {
    * peer is rebuilt instead of renegotiated.
    */
   syncPeerSessions(sessions: Record<string, string | null>): void
-  /** Relayed SDP / ICE from a remote participant. */
+  /** Server-authored publication changes and reactions. */
   handleSignal(payload: WsRtcSignalPayload): Promise<void>
   /**
    * Publish (or stop publishing) a local track of the given kind to every peer.
@@ -78,7 +66,7 @@ export interface CallTransport {
    * so a background freeze doesn't leave a dead connection.
    */
   resumeConnections(): void
-  /** Send a JSON payload on every open `moh` data channel. */
+  /** Send a reaction through authenticated SFU signaling. */
   sendData(payload: unknown): void
   /** Tear everything down. The instance is unusable afterwards. */
   destroy(): void

@@ -1,6 +1,6 @@
 import type { SfuAckDto, SfuRequestDto } from '~/types/api-contracts.gen'
 import type { WsRtcSignalPayload } from '~/types/api'
-import { CallQualityManager } from '../useCallQualityManager'
+import { CallQualityManager, prioritizeAudioSender } from '../useCallQualityManager'
 import type { CallLocalTrackKind, CallTransport, CallTransportOptions } from './CallTransport'
 
 type Connection = {
@@ -22,6 +22,8 @@ export class CloudflareSfuCallTransport implements CallTransport {
   private readonly subscribers = new Map<string, Connection>()
   private readonly sessions = new Map<string, string | null>()
   private readonly tracks = new Map<CallLocalTrackKind, MediaStreamTrack | null>()
+  private readonly recovery = new Map<string, { deadline: number, timer: ReturnType<typeof setTimeout> }>()
+  private readonly failed = new Set<string>()
   private destroyed = false
   private requestQueue: Promise<SfuAckDto> = Promise.resolve({})
 
@@ -40,6 +42,8 @@ export class CloudflareSfuCallTransport implements CallTransport {
       if (!wanted.has(id)) {
         this.close(connection)
         this.subscribers.delete(id)
+        this.clearRecovery(id)
+        this.failed.delete(id)
         this.opts.events.onRemoteStream(id, null)
         this.opts.events.onRemoteScreenStream?.(id, null)
       }
@@ -84,6 +88,7 @@ export class CloudflareSfuCallTransport implements CallTransport {
       if (!current) return
       const transceiver = existing ?? connection.pc.addTransceiver(current, { direction: 'sendonly' })
       connection.senders.set(kind, transceiver)
+      if (kind === 'audio') await prioritizeAudioSender(transceiver.sender)
       await connection.pc.setLocalDescription(await connection.pc.createOffer())
       await gatherCandidates(connection.pc)
       if (!transceiver.mid) throw new Error('Missing track mid')
@@ -108,7 +113,7 @@ export class CloudflareSfuCallTransport implements CallTransport {
   }
 
   private subscribe(userId: string): void {
-    if (this.destroyed) return
+    if (this.destroyed || this.failed.has(userId)) return
     const old = this.subscribers.get(userId)
     if (old) this.close(old)
     const connection = this.makeConnection(userId)
@@ -146,12 +151,12 @@ export class CloudflareSfuCallTransport implements CallTransport {
     pc.onconnectionstatechange = () => {
       if (connection.closed) return
       if (pc.connectionState === 'connected') {
+        this.clearRecovery(remoteUserId ?? 'publisher')
         if (connection.timer) clearTimeout(connection.timer)
         connection.timer = undefined
         if (remoteUserId) this.opts.events.onPeerState(remoteUserId, 'connected')
       } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-        if (remoteUserId) this.opts.events.onPeerState(remoteUserId, 'reconnecting')
-        if (!connection.timer) connection.timer = setTimeout(() => this.recover(connection), 3_000)
+        this.scheduleRecovery(connection)
       }
     }
     connection.queue = this.rpc(connection, 'open').then(() => {})
@@ -166,7 +171,10 @@ export class CloudflareSfuCallTransport implements CallTransport {
       callId: this.opts.callId, connectionId: connection.id, action,
       ...(connection.remoteUserId ? { remoteUserId: connection.remoteUserId } : {}), ...fields,
     }
-    const operation = this.requestQueue.catch(() => ({})).then(() => this.request(payload))
+    const operation = this.requestQueue.catch(() => ({})).then(() => {
+      if (connection.closed && action !== 'close') throw new Error('Connection closed')
+      return this.request(payload)
+    })
     this.requestQueue = operation
     const ack = await operation
     if (ack.error) throw new Error(ack.error.code)
@@ -179,14 +187,42 @@ export class CloudflareSfuCallTransport implements CallTransport {
       if (!connection.closed) await work()
     }).catch(() => {
       if (connection.closed || this.destroyed) return
-      if (connection.remoteUserId) this.opts.events.onPeerState(connection.remoteUserId, 'failed')
-      else for (const id of this.subscribers.keys()) this.opts.events.onPeerState(id, 'failed')
+      this.scheduleRecovery(connection)
     })
     return connection.queue
   }
 
-  private recover(connection: Connection): void {
+  private clearRecovery(slot: string): void {
+    const recovery = this.recovery.get(slot)
+    if (recovery) clearTimeout(recovery.timer)
+    this.recovery.delete(slot)
+  }
+
+  private scheduleRecovery(connection: Connection): void {
     if (connection.closed || this.destroyed) return
+    const slot = connection.remoteUserId ?? 'publisher'
+    if (this.failed.has(slot)) return
+    if (!this.recovery.has(slot)) {
+      const grace = this.opts.reconnectGraceMs ?? 30_000
+      const timer = setTimeout(() => {
+        this.failed.add(slot)
+        this.clearRecovery(slot)
+        const current = connection.remoteUserId ? this.subscribers.get(slot) : this.publisher
+        if (current) this.close(current)
+        if (!connection.remoteUserId) for (const subscriber of this.subscribers.values()) this.close(subscriber)
+        const ids = connection.remoteUserId ? [slot] : [...this.subscribers.keys()]
+        for (const id of ids) this.opts.events.onPeerState(id, 'failed')
+      }, grace)
+      this.recovery.set(slot, { deadline: Date.now() + grace, timer })
+    }
+    const ids = connection.remoteUserId ? [slot] : [...this.subscribers.keys()]
+    for (const id of ids) this.opts.events.onPeerState(id, 'reconnecting')
+    if (!connection.timer) connection.timer = setTimeout(() => this.recover(connection), 3_000)
+  }
+
+  private recover(connection: Connection): void {
+    if (connection.closed || this.destroyed || this.failed.has(connection.remoteUserId ?? 'publisher')) return
+    this.scheduleRecovery(connection)
     if (connection.remoteUserId) this.subscribe(connection.remoteUserId)
     else {
       this.close(connection)
@@ -198,13 +234,12 @@ export class CloudflareSfuCallTransport implements CallTransport {
 
   peerCount(): number { return this.subscribers.size }
   restartIce(): void {
-    if (this.publisher) this.recover(this.publisher)
-    for (const connection of [...this.subscribers.values()]) this.recover(connection)
+    this.resumeConnections()
   }
   resumeConnections(): void {
     const connections = [this.publisher, ...this.subscribers.values()]
     for (const connection of connections) {
-      if (connection && connection.pc.connectionState !== 'connected') this.recover(connection)
+      if (connection && connection.pc.connectionState !== 'connected') this.scheduleRecovery(connection)
     }
   }
   sendData(payload: unknown): void {
@@ -226,6 +261,8 @@ export class CloudflareSfuCallTransport implements CallTransport {
 
   destroy(): void {
     this.destroyed = true
+    for (const slot of this.recovery.keys()) this.clearRecovery(slot)
+    this.failed.clear()
     if (this.publisher) this.close(this.publisher)
     for (const connection of this.subscribers.values()) this.close(connection)
     this.subscribers.clear()

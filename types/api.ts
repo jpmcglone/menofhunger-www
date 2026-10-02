@@ -1746,7 +1746,6 @@ export type MessageCallOutcome = Contracts.MessageCallOutcome
 export type MessageCall = Contracts.MessageCallDto
 export type RtcIceServer = Contracts.RtcIceServerDto
 export type RtcSessionDescription = Contracts.RtcSessionDescriptionDto
-export type RtcIceCandidate = Contracts.RtcIceCandidateDto
 export type CallsAckErrorCode = Contracts.CallsAckErrorCode
 export type CallsAckError = Contracts.CallsAckErrorDto
 export type CallsAck = Contracts.CallsAckDto
