@@ -88,7 +88,8 @@ it('shows the Pickax avatar separately from the banner, with the public bio and 
   expect(dialog.querySelector('img')?.getAttribute('src')).toContain('banner.jpg')
   expect(dialog.textContent).toContain('Public bio')
   expect(dialog.textContent).toContain('111 Followers')
-  expect(dialog.textContent).toContain('Pickax · @John')
+  expect(dialog.textContent).toContain('@John')
+  expect(dialog.querySelector('a')?.getAttribute('aria-label')).toBe('Open John on Pickax')
 })
 
 it('lands once after metadata arrives and stays anchored when images load or the card scrolls', async () => {

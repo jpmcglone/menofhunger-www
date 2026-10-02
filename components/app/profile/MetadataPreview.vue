@@ -8,7 +8,8 @@ ref="trigger" class="inline-flex min-w-0" @pointerenter="enter" @pointerleave="l
   <Teleport v-if="open" to="body">
     <section
 ref="card" role="dialog" :aria-label="`${title} preview`" tabindex="-1"
-      class="fixed z-[var(--moh-z-menu)] w-[360px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl moh-popover moh-card-matte shadow-xl"
+      class="fixed z-[var(--moh-z-menu)] w-[360px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl shadow-xl"
+      :class="metadata?.profile ? 'bg-[#222a39] text-white ring-1 ring-white/10' : 'moh-popover moh-card-matte'"
       :style="{ ...position, visibility: positioned ? 'visible' : 'hidden' }" @pointerenter="cancelHide" @pointerleave="leave" @focusin="cancelHide"
       @focusout="focusOut" @keydown.esc.stop.prevent="close(true)">
       <template v-if="xProfile">
@@ -49,21 +50,38 @@ v-if="xProfile.websiteUrl" :href="xProfile.websiteUrl" target="_blank" rel="noop
           <p v-else-if="!loading" class="text-sm moh-text-muted">Member preview unavailable</p>
         </div>
       </template>
+      <template v-else-if="metadata?.profile">
+        <a :href="url" target="_blank" rel="noopener noreferrer nofollow" class="block outline-offset-[-4px] focus-visible:outline-[#2cafff]" :aria-label="`Open ${metadata.title ?? title} on Pickax`">
+          <img v-if="safeImage" :src="safeImage" alt="" class="block aspect-[3/1] w-full object-cover" >
+          <div class="space-y-3 p-4">
+            <div class="flex items-start justify-between gap-3">
+              <AppAvatarCircle v-if="metadata.profile.avatarUrl" :src="metadata.profile.avatarUrl" :name="metadata.title ?? title" size-class="h-20 w-20" />
+              <span class="ml-auto inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-[#2cafff]">
+                View on Pickax <Icon name="tabler:arrow-up-right" class="text-base" aria-hidden="true" />
+              </span>
+            </div>
+            <div>
+              <p class="break-words text-xl font-semibold leading-snug text-white">{{ metadata.title ?? title }}</p>
+              <p class="break-words text-sm text-[#a5a9b2]">@{{ metadata.profile.username }}</p>
+            </div>
+            <p v-if="metadata.description" class="line-clamp-5 whitespace-pre-line break-words text-sm text-[#a5a9b2]">{{ metadata.description }}</p>
+            <div class="flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#a5a9b2]">
+              <span v-if="metadata.profile.followers !== null"><strong class="text-white">{{ metadata.profile.followers.toLocaleString() }}</strong> Followers</span>
+              <span v-if="metadata.profile.following !== null"><strong class="text-white">{{ metadata.profile.following.toLocaleString() }}</strong> Following</span>
+            </div>
+          </div>
+        </a>
+      </template>
       <template v-else>
         <a :href="url" target="_blank" rel="noopener noreferrer nofollow" class="block outline-offset-[-4px]" :aria-label="`Open ${metadata?.title ?? title}`">
           <img v-if="safeImage" :src="safeImage" alt="" class="h-48 w-full object-contain moh-surface-1" >
           <div class="space-y-3 p-4">
-            <AppAvatarCircle v-if="metadata?.profile?.avatarUrl" :src="metadata.profile.avatarUrl" :name="metadata.title ?? title" size-class="h-14 w-14" />
             <div class="flex items-center justify-between gap-3 text-xs moh-text-muted">
-              <span>{{ metadata?.profile ? `Pickax · @${metadata.profile.username}` : displayHost(url) }}</span>
+              <span>{{ displayHost(url) }}</span>
               <Icon name="tabler:arrow-up-right" class="shrink-0 text-base" aria-hidden="true" />
             </div>
             <p class="break-words text-base font-semibold leading-snug moh-text">{{ metadata?.title ?? title }}</p>
             <p v-if="metadata?.description" class="line-clamp-5 whitespace-pre-line text-sm moh-text-muted">{{ metadata.description }}</p>
-            <div v-if="metadata?.profile" class="flex gap-4 text-xs moh-text-muted">
-              <span v-if="metadata.profile.following !== null"><strong class="moh-text">{{ metadata.profile.following.toLocaleString() }}</strong> Following</span>
-              <span v-if="metadata.profile.followers !== null"><strong class="moh-text">{{ metadata.profile.followers.toLocaleString() }}</strong> Followers</span>
-            </div>
             <p v-if="!metadata && !loading" class="text-sm moh-text-muted">{{ destinationLabel }}</p>
           </div>
         </a>
