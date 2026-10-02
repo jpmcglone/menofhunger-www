@@ -28,9 +28,18 @@ export const siteConfig = {
     'Faith',
     'Family',
   ],
+  // Editable Figma master: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=1075-397
+  // Versioned, repository-owned artwork; served by the web app, not uploaded to R2.
+  homeShare: {
+    title: 'Men of Hunger — Join men who show up.',
+    image: '/images/social/home-v1.png',
+    imageAlt: 'Join men who show up. A trusted community for men who want real conversation. Join now at menofhunger.com.',
+    imageWidth: 1200,
+    imageHeight: 630,
+  },
   meta: {
     title: 'Men of Hunger',
-    description: "Men of Hunger is a trusted community for American men who want real conversation. Men elsewhere are welcome. Structured conversations, accountability, and a daily check-in — not just a forum.",
+    description: "Join a trusted community for men who want real conversation, not more noise. Bring your friends, find your people, and show up together.",
     keywords: 'men of hunger, community, measurable progress, personal growth, accountability, cohorts, workshops, leadership, ambition, driven men'
   }
 }

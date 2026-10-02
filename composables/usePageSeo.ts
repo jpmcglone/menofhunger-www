@@ -55,7 +55,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
   const fullTitle = computed(() => {
     // Keep landing page clean (no duplicated site name)
     const isHome = route.path === '/' || options.canonicalPath === '/'
-    if (isHome) return siteConfig.meta.title
+    if (isHome) return title.value
 
     const t = title.value
     if (!t || t === siteConfig.meta.title) return siteConfig.meta.title

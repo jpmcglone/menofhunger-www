@@ -517,7 +517,7 @@ function onLandingPostRowAuxClick(href: string, e: MouseEvent) {
 }
 
 usePageSeo({
-  title: siteConfig.meta.title,
+  ...siteConfig.homeShare,
   description: siteConfig.meta.description,
   canonicalPath: '/',
   ogType: 'website',
