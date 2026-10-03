@@ -30,7 +30,7 @@ async function load() {
   error.value = null
   const owner = user.value?.id
   try {
-    const result = await apiFetchData<FeedPost[]>('/posts', { query: { limit: 20, sort: 'newest', visibility: 'all', topLevelOnly: true } })
+    const result = await apiFetchData<FeedPost[]>('/posts', { query: { limit: 20, sort: 'new', visibility: 'all', topLevelOnly: true } })
     if (alive && owner === user.value?.id) posts.value = result.filter(post => post.author.id !== owner && !post.author.isOrganization && !post.author.isBot && post.viewerCanAccess !== false && Boolean(post.body))
   } catch (cause) {
     if (alive) error.value = getSafeUserErrorMessage(cause, 'Couldn’t load conversations. Try again.')
