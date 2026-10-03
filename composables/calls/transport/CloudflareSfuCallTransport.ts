@@ -1,5 +1,6 @@
 import type { SfuAckDto, SfuRequestDto } from '~/types/api-contracts.gen'
 import type { WsRtcSignalPayload } from '~/types/api'
+import { callMediaLog } from '../callMediaLog'
 import { CallQualityManager, prioritizeAudioSender } from '../useCallQualityManager'
 import type { CallLocalTrackKind, CallTransport, CallTransportOptions } from './CallTransport'
 
@@ -12,6 +13,8 @@ type Connection = {
   senders: Map<CallLocalTrackKind, RTCRtpTransceiver>
   published: Set<CallLocalTrackKind>
   closed: boolean
+  opened: boolean
+  stage: string
   timer?: ReturnType<typeof setTimeout>
 }
 
@@ -90,8 +93,10 @@ export class CloudflareSfuCallTransport implements CallTransport {
       connection.senders.set(kind, transceiver)
       if (kind === 'audio') await prioritizeAudioSender(transceiver.sender)
       await connection.pc.setLocalDescription(await connection.pc.createOffer())
+      connection.stage = 'gathering'
       await gatherCandidates(connection.pc)
       if (!transceiver.mid) throw new Error('Missing track mid')
+      await this.open(connection)
       const ack = await this.rpc(connection, 'publish', {
         sessionDescription: description(connection.pc.localDescription),
         tracks: [{ kind, mid: transceiver.mid }],
@@ -99,6 +104,7 @@ export class CloudflareSfuCallTransport implements CallTransport {
       if (!ack.sessionDescription?.sdp) throw new Error('Missing SFU answer')
       await connection.pc.setRemoteDescription({ type: 'answer', sdp: ack.sessionDescription.sdp })
       connection.published.add(kind)
+      connection.stage = 'connecting'
       await waitForSfuConnection(connection.pc)
       await this.rpc(connection, 'ready')
       this.qualityManager.reapply()
@@ -130,6 +136,7 @@ export class CloudflareSfuCallTransport implements CallTransport {
       else this.opts.events.onRemoteStream(userId, stream)
     }
     void this.enqueue(connection, async () => {
+      await this.open(connection)
       const ack = await this.rpc(connection, 'subscribe')
       // Publication may not exist yet. Its server event retries us when it is ready.
       if (!ack.tracks?.length) return
@@ -137,8 +144,11 @@ export class CloudflareSfuCallTransport implements CallTransport {
       if (!ack.sessionDescription?.sdp) throw new Error('Missing SFU offer')
       await connection.pc.setRemoteDescription({ type: 'offer', sdp: ack.sessionDescription.sdp })
       await connection.pc.setLocalDescription(await connection.pc.createAnswer())
+      connection.stage = 'gathering'
       await gatherCandidates(connection.pc)
       await this.rpc(connection, 'answer', { sessionDescription: description(connection.pc.localDescription) })
+      connection.stage = 'connecting'
+      await waitForSfuConnection(connection.pc)
     })
   }
 
@@ -146,7 +156,7 @@ export class CloudflareSfuCallTransport implements CallTransport {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers, bundlePolicy: 'max-bundle' })
     const connection: Connection = {
       id: crypto.randomUUID(), pc, remoteUserId, queue: Promise.resolve(),
-      mids: new Map(), senders: new Map(), published: new Set(), closed: false,
+      mids: new Map(), senders: new Map(), published: new Set(), closed: false, opened: false, stage: 'created',
     }
     pc.onconnectionstatechange = () => {
       if (connection.closed) return
@@ -154,19 +164,30 @@ export class CloudflareSfuCallTransport implements CallTransport {
         this.clearRecovery(remoteUserId ?? 'publisher')
         if (connection.timer) clearTimeout(connection.timer)
         connection.timer = undefined
-        if (remoteUserId) this.opts.events.onPeerState(remoteUserId, 'connected')
+        this.reportConnectedPeers()
       } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
         this.scheduleRecovery(connection)
       }
     }
-    connection.queue = this.rpc(connection, 'open').then(() => {})
-    // Consume immediately; queued operations observe and handle the same rejection.
-    void connection.queue.catch(() => {})
     return connection
+  }
+
+  private reportConnectedPeers(): void {
+    if (this.publisher?.pc.connectionState !== 'connected') return
+    for (const [id, subscriber] of this.subscribers) {
+      if (!subscriber.closed && subscriber.pc.connectionState === 'connected') this.opts.events.onPeerState(id, 'connected')
+    }
+  }
+
+  private async open(connection: Connection): Promise<void> {
+    if (connection.opened) return
+    await this.rpc(connection, 'open')
+    connection.opened = true
   }
 
   private async rpc(connection: Connection, action: SfuRequestDto['action'], fields: Partial<SfuRequestDto> = {}): Promise<SfuAckDto> {
     if (connection.closed && action !== 'close') throw new Error('Connection closed')
+    connection.stage = action
     const payload: SfuRequestDto = {
       callId: this.opts.callId, connectionId: connection.id, action,
       ...(connection.remoteUserId ? { remoteUserId: connection.remoteUserId } : {}), ...fields,
@@ -187,6 +208,10 @@ export class CloudflareSfuCallTransport implements CallTransport {
       if (!connection.closed) await work()
     }).catch(() => {
       if (connection.closed || this.destroyed) return
+      callMediaLog('sfu.failed', {
+        role: connection.remoteUserId ? 'subscriber' : 'publisher',
+        stage: connection.stage, connection: connection.pc.connectionState, gathering: connection.pc.iceGatheringState,
+      })
       this.scheduleRecovery(connection)
     })
     return connection.queue
@@ -275,7 +300,7 @@ function description(value: RTCSessionDescription | null) {
   return { type: value.type, sdp: value.sdp }
 }
 
-/** Cloudflare uses complete SDP, not trickle ICE. A timeout must fail rather than send a partial offer. */
+/** Send gathered candidates in SDP. An unreachable ICE server must not discard usable candidates. */
 export function gatherCandidates(pc: RTCPeerConnection): Promise<void> {
   if (pc.iceGatheringState === 'complete') return Promise.resolve()
   return new Promise((resolve, reject) => {
@@ -288,7 +313,10 @@ export function gatherCandidates(pc: RTCPeerConnection): Promise<void> {
     }
     const changed = () => { if (pc.iceGatheringState === 'complete') finish() }
     const closed = () => { if (pc.connectionState === 'closed') finish(new Error('Connection closed')) }
-    const timer = setTimeout(() => finish(new Error('ICE gathering timed out')), 8_000)
+    const timer = setTimeout(() => {
+      const hasCandidate = pc.localDescription?.sdp.split(/\r?\n/).some(line => line.startsWith('a=candidate:'))
+      finish(hasCandidate ? undefined : new Error('ICE gathering timed out without a candidate'))
+    }, 10_000)
     pc.addEventListener('icegatheringstatechange', changed)
     pc.addEventListener('connectionstatechange', closed)
     changed()

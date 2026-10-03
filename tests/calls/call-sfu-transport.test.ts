@@ -15,7 +15,7 @@ class FakeConnection extends EventTarget {
   transceivers: Array<{ mid: string, sender: { track: unknown, replaceTrack: (track: unknown) => Promise<void> } }> = []
   ontrack: ((event: unknown) => void) | null = null
   onconnectionstatechange: (() => void) | null = null
-  constructor() { super(); FakeConnection.instances.push(this) }
+  constructor(readonly config: RTCConfiguration = {}) { super(); FakeConnection.instances.push(this) }
   addTransceiver(track: unknown) {
     const sender = { track, replaceTrack: async (next: unknown) => { sender.track = next } }
     const transceiver = { mid: String(this.transceivers.length), sender }
@@ -45,7 +45,7 @@ function harness() {
     return {}
   })
   const events = { onRemoteStream: vi.fn(), onRemoteScreenStream: vi.fn(), onPeerState: vi.fn(), onData: vi.fn() }
-  const transport = new CloudflareSfuCallTransport({ callId: 'call', selfUserId: 'me', iceServers: [], events }, rpc)
+  const transport = new CloudflareSfuCallTransport({ callId: 'call', selfUserId: 'me', iceServers: [{ urls: ['stun:stun.cloudflare.com:3478'] }], events }, rpc)
   transports.push(transport)
   return { transport, requests, rpc, events }
 }
@@ -69,6 +69,7 @@ describe('Cloudflare SFU transport', () => {
     await h.transport.setLocalTrack('audio', { kind: 'audio' } as MediaStreamTrack)
     h.transport.setPeers(['alice', 'bob', 'charlie'])
     await flush()
+    expect(FakeConnection.instances.every(pc => JSON.stringify(pc.config.iceServers) === JSON.stringify([{ urls: ['stun:stun.cloudflare.com:3478'] }]))).toBe(true)
     expect(h.requests.filter(r => r.action === 'publish')).toHaveLength(1)
     expect(h.requests.filter(r => r.action === 'subscribe').map(r => r.remoteUserId)).toEqual(['alice', 'bob', 'charlie'])
     expect(h.requests.filter(r => r.action === 'ready')).toHaveLength(1)
@@ -144,12 +145,55 @@ describe('Cloudflare SFU transport', () => {
     expect(FakeConnection.instances).toHaveLength(attempts)
   })
 
-  it('fails candidate gathering instead of submitting incomplete SDP', async () => {
+  it('fails candidate gathering when no candidate is available', async () => {
     const pc = new FakeConnection()
     pc.iceGatheringState = 'gathering'
     const assertion = expect(gatherCandidates(pc as unknown as RTCPeerConnection)).rejects.toThrow('timed out')
-    await vi.advanceTimersByTimeAsync(8_000)
+    await vi.advanceTimersByTimeAsync(10_000)
     await assertion
+  })
+  it('uses gathered candidates when another ICE server never finishes', async () => {
+    const pc = new FakeConnection()
+    pc.iceGatheringState = 'gathering'
+    pc.localDescription = { type: 'offer', sdp: 'v=0\r\na=candidate:1 1 udp 1 192.0.2.1 1234 typ host\r\n' }
+    const pending = gatherCandidates(pc as unknown as RTCPeerConnection)
+    await vi.advanceTimersByTimeAsync(10_000)
+    await expect(pending).resolves.toBeUndefined()
+  })
+  it('creates the provider session only after publisher candidates are ready', async () => {
+    const h = harness()
+    const pending = h.transport.setLocalTrack('audio', { kind: 'audio' } as MediaStreamTrack)
+    const pc = FakeConnection.instances[0]!
+    pc.iceGatheringState = 'gathering'
+    await flush()
+    expect(h.requests).toHaveLength(0)
+    pc.iceGatheringState = 'complete'
+    pc.dispatchEvent(new Event('icegatheringstatechange'))
+    await pending
+    expect(h.requests.map(r => r.action)).toEqual(['open', 'publish', 'ready'])
+  })
+  it('reports a recovered peer only when both upload and receive connections are connected', async () => {
+    const h = harness()
+    await h.transport.setLocalTrack('audio', { kind: 'audio' } as MediaStreamTrack)
+    h.transport.setPeers(['alice'])
+    await flush()
+    const publisher = FakeConnection.instances[0]!
+    const subscriber = FakeConnection.instances[1]!
+    publisher.connectionState = 'disconnected'
+    publisher.onconnectionstatechange?.()
+    subscriber.onconnectionstatechange?.()
+    expect(h.events.onPeerState).toHaveBeenLastCalledWith('alice', 'reconnecting')
+    publisher.connectionState = 'connected'
+    publisher.onconnectionstatechange?.()
+    expect(h.events.onPeerState).toHaveBeenLastCalledWith('alice', 'connected')
+  })
+  it('bounds a receiver that never connects after answering', async () => {
+    const h = harness()
+    h.transport.setPeers(['alice'])
+    FakeConnection.instances[0]!.connectionState = 'connecting'
+    await flush()
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(h.events.onPeerState).toHaveBeenLastCalledWith('alice', 'reconnecting')
   })
   it('waits for an actual media connection before advertising a publication', async () => {
     const pc = new FakeConnection()
