@@ -36,7 +36,7 @@ afterEach(() => { wrapper.unmount(); vi.useRealTimers() })
 describe('Board unread Activity', () => {
   it('loads without marking anything read and preserves exact comment links', async () => {
     await flushPromises()
-    expect(mocks.fetch).toHaveBeenCalledWith('/notifications', expect.objectContaining({ query: expect.objectContaining({ kind: 'board', unreadOnly: true }) }))
+    expect(mocks.fetch).toHaveBeenCalledWith('/notifications', expect.objectContaining({ query: expect.objectContaining({ kind: 'board', boardCommentsOnly: true, unreadOnly: true }) }))
     expect(mocks.fetch.mock.calls.every(call => !call[1]?.method)).toBe(true)
     expect(boardActivityHref(row('one'))).toBe('/b/thread/c/reply')
     expect(unreadBoardActivity([row('one'), row('one'), row('read', 'now')])).toHaveLength(1)

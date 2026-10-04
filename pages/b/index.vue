@@ -5,8 +5,13 @@
     <div class="flex items-center justify-between moh-gutter-x pt-3 pb-1">
       <h1 class="moh-h1">Board</h1>
       <div class="flex items-center">
+        <details v-if="isAuthed" class="relative">
+          <summary class="moh-focus flex size-11 cursor-pointer list-none items-center justify-center" aria-label="More Board options"><Icon name="tabler:dots" /></summary>
+          <div class="absolute right-0 top-11 z-30 min-w-60 rounded-lg border moh-border bg-[var(--moh-bg)] p-2 shadow-lg">
+            <button class="moh-focus min-h-11 w-full px-3 text-left text-sm" :disabled="activity.markingRead.value" @click="markAllBoardRead($event)">Mark all Board activity as read</button>
+          </div>
+        </details>
         <button
-          v-if="view !== 'activity'"
           v-tooltip.bottom="'Search'"
           type="button"
           class="moh-tap moh-focus inline-flex size-11 items-center justify-center rounded-full moh-text-muted hover:text-[var(--moh-text)] moh-surface-hover transition-colors"
@@ -17,7 +22,6 @@
           <AppIconGlyph name="search" :size="20" :selected="searchOpen" />
         </button>
         <AppBoardFiltersBar
-          v-if="view !== 'activity'"
           icon-only
           :show-range="view === 'top'"
           :range="range"
@@ -49,7 +53,7 @@
       </div>
     </div>
 
-    <form v-if="searchOpen && view !== 'activity'" class="moh-gutter-x pb-3" role="search" @submit.prevent="applySearch">
+    <form v-if="searchOpen" class="moh-gutter-x pb-3" role="search" @submit.prevent="applySearch">
       <input
         ref="searchEl"
         v-model="searchDraft"
@@ -65,10 +69,10 @@
         :model-value="view"
         aria-label="Board view"
         :tabs="viewTabs"
-        @update:model-value="setView($event as 'new' | 'top' | 'comments' | 'activity')"
+        @update:model-value="setView($event as 'new' | 'top' | 'comments')"
       />
       <!-- Chips appear only while a filter is on; each one clears itself. -->
-      <div v-if="isFiltered && view !== 'comments' && view !== 'activity'" class="flex flex-wrap items-center gap-2 moh-gutter-x pt-2 pb-2.5">
+      <div v-if="isFiltered && view !== 'comments'" class="flex flex-wrap items-center gap-2 moh-gutter-x pt-2 pb-2.5">
         <AppFilterChip v-if="view === 'top' && range" :label="rangeLabel" @clear="setQuery({ range: undefined })" />
         <AppFilterChip
           v-if="scope !== 'all'"
@@ -93,7 +97,10 @@
       />
     </div>
 
-    <AppBoardActivity v-if="view === 'activity' && isAuthed" :key="user?.id" />
+    <div v-if="view === 'comments' && isAuthed" class="flex gap-2 moh-gutter-x py-3" aria-label="Comments filter">
+      <button v-for="filter in ['all', 'you']" :key="filter" type="button" class="moh-focus min-h-11 rounded-full px-4 text-sm" :class="commentsForYou === (filter === 'you') ? 'moh-text bg-[var(--moh-surface)] font-semibold' : 'moh-text-muted'" :aria-pressed="commentsForYou === (filter === 'you')" @click="setQuery({ for: filter === 'you' ? 'you' : undefined })">{{ filter === 'you' ? 'For you' : 'All' }}</button>
+    </div>
+    <AppBoardActivity v-if="view === 'comments' && commentsForYou" :key="user?.id" :items="activity.items.value" :next-cursor="activity.nextCursor.value" :loading="activity.loading.value" :error="activity.error.value" :load="activity.load" />
     <AppSubtleSectionLoader v-else :loading="initialLoading" :refreshing="refreshing" min-height-class="min-h-[240px]">
       <template v-if="view === 'comments'">
         <TransitionGroup tag="div" name="moh-list" class="relative moh-divide">
@@ -165,19 +172,21 @@ const router = useRouter()
 const api = useBoardApi()
 const toast = useAppToast()
 const { user, isAuthed, isPremium, isVerifiedMember } = useAuth()
-const { notificationNavUnread } = usePresence()
+const presence = usePresence()
+const { apiFetch } = useApiClient()
+const activity = useBoardActivity()
 const { requireMember } = useBoardAccess()
 const preview = useUserPreviewMultiTrigger()
 
 const viewTabs = computed(() => [
-  ...(isAuthed.value ? [{ key: 'activity', label: 'Activity' }] : []),
   { key: 'new', label: 'New' },
   { key: 'top', label: 'Top' },
-  { key: 'comments', label: 'Comments' },
+  { key: 'comments', label: 'Comments', badge: activity.items.value.length > 0 },
 ])
 
 const qs = (key: string) => (typeof route.query[key] === 'string' ? String(route.query[key]).trim() : '')
-const view = computed<'new' | 'top' | 'comments' | 'activity'>(() => (qs('view') === 'activity' && isAuthed.value ? 'activity' : qs('view') === 'comments' ? 'comments' : qs('sort') === 'top' ? 'top' : 'new'))
+const view = computed<'new' | 'top' | 'comments'>(() => (qs('view') === 'comments' ? 'comments' : qs('sort') === 'top' ? 'top' : 'new'))
+const commentsForYou = computed(() => isAuthed.value && qs('for') === 'you')
 const range = computed<BoardRange | null>(() => {
   const r = qs('range')
   return (['day', 'week', 'month', 'year', 'all'] as const).includes(r as BoardRange) ? (r as BoardRange) : null
@@ -233,9 +242,8 @@ function setQuery(patch: Record<string, string | undefined>) {
   void router.replace({ path: '/b', query: next })
 }
 
-function setView(next: 'new' | 'top' | 'comments' | 'activity') {
-  if (next === 'activity') { setQuery({ view: 'activity' }); return }
-  if (next === 'comments') setQuery({ view: 'comments', sort: undefined, range: undefined })
+function setView(next: 'new' | 'top' | 'comments') {
+  if (next === 'comments') setQuery({ view: 'comments', for: activity.items.value.length ? 'you' : undefined, sort: undefined, range: undefined })
   else setQuery({ view: undefined, sort: next === 'top' ? 'top' : undefined, range: next === 'top' ? range.value ?? undefined : undefined })
 }
 
@@ -311,8 +319,8 @@ function listQuery(cursor: string | null) {
   }
 }
 
-async function load(reset = true) {
-  if (view.value === 'activity') return
+async function load(reset = true, preserveRows = false) {
+  const targetCount = preserveRows ? threads.value.length : 0
   const seq = ++loadSeq
   const kind = contentKind.value
   if (reset) loading.value = true
@@ -324,7 +332,15 @@ async function load(reset = true) {
       latestComments.value = reset ? res.comments : [...latestComments.value, ...res.comments]
       nextCursor.value = res.nextCursor
     } else {
-      const res = await api.listThreads(listQuery(reset ? null : nextCursor.value))
+      const request = listQuery(reset ? null : nextCursor.value)
+      const res = await api.listThreads(request)
+      while (reset && res.threads.length < targetCount && res.nextCursor) {
+        if (seq !== loadSeq) return
+        const more = await api.listThreads({ ...request, cursor: res.nextCursor })
+        res.threads.push(...more.threads.filter(t => !res.threads.some(existing => existing.id === t.id)))
+        if (res.nextCursor === more.nextCursor) break
+        res.nextCursor = more.nextCursor
+      }
       if (seq !== loadSeq) return
       postCache.clear(res.threads.map((t) => t.id))
       threads.value = reset ? res.threads : [...threads.value, ...res.threads.filter((t) => !threads.value.some((x) => x.id === t.id))]
@@ -378,28 +394,73 @@ function showNewThreads() {
   void load(true)
 }
 
-function openEntryActivity() {
-  if (isAuthed.value && notificationNavUnread.value.board > 0 && Object.keys(route.query).length === 0) {
-    void router.replace({ path: '/b', query: { view: 'activity' } })
+async function enterBoard() {
+  const account = user.value?.id
+  if (!account || !boardActive) return
+  try {
+    await apiFetch('/notifications/mark-delivered', { method: 'POST', body: { filter: 'board' } })
+    const revision = notificationRevision
+    const counts = await apiFetch<{ boardUnreadCount?: number; articlesUnreadCount?: number }>('/notifications/unread-count', { mohDedupe: false })
+    if (user.value?.id === account && revision === notificationRevision) presence.setNotificationNavUnread(counts.data)
+  } catch (error) {
+    toast.push({ title: getApiErrorMessage(error) || 'Couldn’t acknowledge Board activity.', tone: 'error' })
   }
 }
+async function markAllBoardRead(event: Event) {
+  (event.currentTarget as HTMLElement)?.closest('details')?.removeAttribute('open')
+  await activity.markAllRead()
+  if (activity.error.value) toast.push({ title: activity.error.value, tone: 'error' })
+  else await load(true, true)
+}
+let notificationRevision = 0
+let boardActive = false
+let refreshTimer: ReturnType<typeof setTimeout> | undefined
+function refreshActivityRows() {
+  if (!boardActive) return
+  clearTimeout(refreshTimer)
+  loadSeq += 1
+  refreshTimer = setTimeout(() => { void load(true, true) }, 150)
+}
+// The comments controller also refreshes on reconnect and tab visibility; refresh row state with it.
+watch(activity.items, refreshActivityRows)
+function notificationsChanged() {
+  notificationRevision += 1
+  refreshActivityRows()
+}
+const notificationCallback = { onNew: notificationsChanged, onUpdated: notificationsChanged, onDeleted: notificationsChanged }
+watch(() => user.value?.id, () => {
+  threads.value = []; latestComments.value = []
+  if (boardActive) { void enterBoard(); void load(true) }
+})
 
 onMounted(() => {
+  boardActive = true
   void load(true)
+  presence.addNotificationsCallback(notificationCallback)
   addBoardCallback(boardCb)
   subscribeBoard()
-  openEntryActivity()
+  void enterBoard()
 })
 let activatedOnce = false
 onActivated(() => {
-  openEntryActivity()
+  if (!boardActive) presence.addNotificationsCallback(notificationCallback)
+  boardActive = true
   if (!activatedOnce) {
     activatedOnce = true
     return
   }
-  void load(true)
+  void enterBoard()
+  void load(true, true)
+})
+onDeactivated(() => {
+  boardActive = false
+  loadSeq += 1
+  clearTimeout(refreshTimer)
+  presence.removeNotificationsCallback(notificationCallback)
 })
 onBeforeUnmount(() => {
+  clearTimeout(refreshTimer)
+  presence.removeNotificationsCallback(notificationCallback)
   removeBoardCallback(boardCb)
   unsubscribeBoard()
 })

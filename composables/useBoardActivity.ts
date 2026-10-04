@@ -53,7 +53,7 @@ export function useBoardActivity() {
     const current = () => active && ticket === generation && account === user.value?.id
     try {
       const response = await apiFetch<NotificationFeedItem[]>('/notifications', {
-        query: { kind: 'board', unreadOnly: true, limit: 30, cursor: reset ? undefined : nextCursor.value },
+        query: { kind: 'board', boardCommentsOnly: true, unreadOnly: true, limit: 30, cursor: reset ? undefined : nextCursor.value },
         mohDedupe: false,
       }) as unknown as GetNotificationsResponse
       if (!current()) return

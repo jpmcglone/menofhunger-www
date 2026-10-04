@@ -16,6 +16,7 @@
 
     <div class="relative z-[2] min-w-0 flex-1 pointer-events-none">
       <div class="flex items-start gap-1.5">
+        <span v-if="thread.viewerCanAccess && thread.unreadActivity" class="mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--moh-brass)]" aria-label="Unread activity" />
         <Icon v-if="!thread.viewerCanAccess" name="tabler:lock" class="mt-0.5 shrink-0 text-[15px] moh-text-muted" aria-hidden="true" />
         <!-- The title opens the discussion like the rest of the row; the link or article lives in "…". -->
         <p class="min-w-0 text-[15px] font-semibold leading-snug break-words">
@@ -64,12 +65,17 @@
           <AppIconGlyph name="reply" :size="14" />
           <AppAnimatedCount :value="liveCommentCount" :format="formatShortCount" :min-ch="2" />
         </span>
-        <span
-          v-if="newCommentCount"
-          class="font-semibold"
-          style="color: var(--moh-verified)"
-          :title="`${newCommentCount} new since your last visit`"
-        >{{ formatShortCount(newCommentCount) }} new</span>
+        <span v-if="activityLabel" class="font-semibold text-[var(--moh-brass)]">{{ activityLabel }}</span>
+        <AppPostRowViewerBreakdown
+          v-if="thread.viewerCanAccess"
+          :entity-id="thread.id"
+          :breakdown-path="`/posts/${encodeURIComponent(thread.id)}/views/breakdown`"
+          :viewer-count="liveViews.viewerCount"
+          :total-view-count="liveViews.totalViewCount"
+          :has-viewed="liveViews.hasViewed"
+          class="pointer-events-auto"
+          @count-synced="onViewCountSynced"
+        />
         <AppTypingIndicator
           v-if="typingUsers.length && thread.viewerCanAccess"
           :users="typingUsers"
@@ -81,7 +87,7 @@
       </div>
     </div>
 
-    <div class="relative z-[2] flex shrink-0 items-center gap-3 self-center">
+    <div v-if="!thread.viewerCanAccess || thread.image?.url" class="relative z-[2] flex shrink-0 items-center gap-3 self-center">
       <NuxtLink
         v-if="!thread.viewerCanAccess"
         :to="gateTo"
@@ -95,15 +101,6 @@
         class="h-14 w-14 rounded-lg object-cover pointer-events-none"
         loading="lazy"
       >
-      <AppPostRowViewerBreakdown
-        v-if="thread.viewerCanAccess"
-        :entity-id="thread.id"
-        :breakdown-path="`/posts/${encodeURIComponent(thread.id)}/views/breakdown`"
-        :viewer-count="liveViews.viewerCount"
-        :total-view-count="liveViews.totalViewCount"
-        :has-viewed="liveViews.hasViewed"
-        @count-synced="onViewCountSynced"
-      />
     </div>
 
     <div v-if="menuItems.length" class="relative z-[2] -my-1 -mr-2 shrink-0">
@@ -162,9 +159,15 @@ const liveCommentCount = computed(() => postCache.cache.value[props.thread.id]?.
 
 // Rows show the same people · total views chip as posts, but only opening the post counts a view.
 const { hasViewedLocally } = usePostViewTracker()
-const newCommentCount = computed(() => {
-  const count = props.thread.newCommentCount ?? 0
-  return props.thread.viewerCanAccess && count > 0 ? count : 0
+const activityLabel = computed(() => {
+  if (!props.thread.viewerCanAccess) return null
+  switch (props.thread.unreadActivity) {
+    case 'mention': return 'Mentioned you'
+    case 'reply': return 'Reply to you'
+    case 'new': return 'New'
+    case 'comments': return props.thread.unreadCommentCount ? `${props.thread.unreadCommentCount} new comments` : 'New comments'
+    default: return null
+  }
 })
 const isUnanswered = computed(() => props.thread.viewerCanAccess && props.thread.tags.includes('ask') && liveCommentCount.value === 0)
 const liveViews = computed(() => {
