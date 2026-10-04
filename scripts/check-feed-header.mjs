@@ -7,7 +7,7 @@ const probe = createServer()
 await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve))
 const port = probe.address().port
 await new Promise(resolve => probe.close(resolve))
-const BASE_URL = `http://127.0.0.1:${port}`
+const BASE_URL = process.env.FEED_CHECK_BASE_URL || `http://127.0.0.1:${port}`
 const POST_ID = 'post-click-ui-test'
 const POST_BODY = 'A conversation in the compact feed.'
 function envelope(data, pagination) {
@@ -97,16 +97,23 @@ async function waitForHttpReady(url, timeoutMs = 15_000) {
 }
 
 
-const child = spawn(process.execPath, ['.output/server/index.mjs'], { env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', NUXT_API_BASE_URL: 'http://127.0.0.1:1/v1', NUXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:1/v1' }, stdio: 'ignore' })
+const previewArgs = process.env.FEED_CHECK_DEV === '1'
+  ? ['node_modules/@nuxt/cli/bin/nuxi.mjs', 'dev', '--host', '127.0.0.1', '--port', String(port), '--no-fork']
+  : ['.output/server/index.mjs']
+const child = process.env.FEED_CHECK_BASE_URL ? null : spawn(process.execPath, previewArgs, { env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', NUXT_API_BASE_URL: 'http://127.0.0.1:1/v1', NUXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:1/v1' }, stdio: 'ignore', detached: true })
+function stopPreview() {
+  if (!child?.pid) return
+  try { process.kill(-child.pid, 'SIGTERM') } catch (error) { if (error.code !== 'ESRCH') throw error }
+}
 let browser
-for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { child.kill('SIGTERM'); void browser?.close().finally(() => process.exit(130)) })
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => { stopPreview(); void browser?.close().finally(() => process.exit(130)) })
 try {
-  await waitForHttpReady(BASE_URL, 30000)
+  await waitForHttpReady(BASE_URL, process.env.FEED_CHECK_DEV === '1' ? 90000 : 30000)
   browser = await chromium.launch({ headless: true })
   const errors = []
   const page = await browser.newPage()
   await page.clock.install({ time: new Date('2026-10-04T17:00:00Z') })
-  page.on('pageerror', error => errors.push(error.message))
+  page.on('pageerror', error => errors.push((error.stack || error.message).split('\n').slice(0, 2).join('\n')))
   page.on('console', message => { if (/hydration.*mismatch/i.test(message.text())) errors.push(message.text()) })
   await page.addInitScript(() => { localStorage.setItem('moh.activation.v1.u-viewer.approved', '1') })
   await page.route('**/*', async route => {
@@ -120,7 +127,8 @@ try {
     else if (path.endsWith('/posts/insights/weekly')) data = { from: '2026-09-28', to: '2026-10-04', postCount: 1, participantCount: 1, newParticipantCount: 0, timeline: [], posts: [{ id: POST_ID, body: POST_BODY, participantCount: 1, participants: [], replies: [] }] }
     else if (path.endsWith('/posts')) { data = [testPost()]; pagination = { nextCursor: null } }
     else if (path.endsWith('/checkins/today')) data = { dayKey: '2026-10-04', isOpen: false, hasCheckedInToday: false, allowedVisibilities: ['verifiedOnly'], checkinStreakDays: 0 }
-    else if (path.endsWith('/groups/me')) data = [{ id: 'g1', name: 'Daily Practice', joinPolicy: 'open' }]
+    else if (path.endsWith('/groups/me')) data = [{ id: 'g1', slug: 'daily-practice', name: 'Daily Practice', joinPolicy: 'open', memberCount: 1, description: '', avatarImageUrl: null, coverImageUrl: null, viewerMembership: { status: 'active', role: 'member' } }]
+    else if (path.endsWith('/checkins/leaderboard')) data = { users: [], viewerRank: null, generatedAt: '2026-10-04T17:00:00Z' }
     else if (path.includes('/following-count')) data = 1
     else if (/presence|notifications|messages|follows|articles|meta|spaces|groups|leaderboard/.test(path)) data = []
     return route.fulfill({ status: 200, contentType: 'application/json', body: envelope(data, pagination) })
@@ -143,7 +151,16 @@ try {
       const destination = composer.getByRole('button', { name: 'Post to: Public', exact: true })
       await destination.waitFor()
       assert.equal(await composer.getByText(/0\s*\/\s*500/).count(), 0)
-      assert.equal(await composer.getByRole('button', { name: 'Post', exact: true }).isDisabled(), true)
+      const postButton = composer.getByRole('button', { name: 'Post', exact: true })
+      assert.equal(await postButton.isDisabled(), true)
+      assert.equal(await postButton.evaluate(button => {
+        const swatch = document.createElement('span')
+        swatch.style.color = 'var(--moh-button-disabled-fill)'
+        button.append(swatch)
+        const expected = getComputedStyle(swatch).color
+        swatch.remove()
+        return getComputedStyle(button).backgroundColor === expected
+      }), true, 'Empty Post button uses the disabled fill')
       await destination.click()
       const dialog = page.getByRole('dialog')
       await dialog.screenshot({ path: `/tmp/moh-picker-feed-${width}-${theme}.png` })
@@ -163,10 +180,11 @@ try {
       await page.getByRole('dialog').getByText('Private to you', { exact: false }).first().waitFor()
       await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
       await page.getByRole('dialog').waitFor({ state: 'hidden' })
+      assert.ok((await page.locator('html').getAttribute('class'))?.split(' ').includes(theme))
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true)
       await page.screenshot({ path: `/tmp/moh-feed-${width}-${theme}.png` })
     }
   }
   assert.deepEqual(errors, [])
   console.warn('Feed header: desktop/mobile light/dark, group → public, draft counter, disabled Post, private recap, and hydration passed.')
-} finally { await browser?.close(); child.kill('SIGTERM') }
+} finally { await browser?.close(); stopPreview() }

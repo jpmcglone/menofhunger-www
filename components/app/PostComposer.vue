@@ -400,7 +400,7 @@
               :label="mode === 'edit' && scheduledEditId ? 'Save' : (scheduledAt ? 'Schedule' : (mode === 'edit' ? 'Save' : (replyTo ? 'Reply' : (checkinPrompt ? 'Post answer' : 'Post'))))"
               rounded
               severity="secondary"
-              :class="[postButtonClass, 'moh-pressable !rounded-full !min-h-11 !py-1.5 !px-5 !text-sm !font-semibold']"
+              :class="[postButtonClass, inlineAudience && !checkinPrompt && 'disabled:!border-[var(--moh-button-disabled-fill)] disabled:!bg-[var(--moh-button-disabled-fill)] disabled:!text-[var(--moh-text-muted)]', 'moh-pressable !rounded-full !min-h-11 !py-1.5 !px-5 !text-sm !font-semibold']"
               :disabled="
                 submitting ||
                 !canPost ||
@@ -2178,11 +2178,6 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
 .moh-home-composer { padding-top: 12px; }
 .moh-home-composer .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) { min-height: 44px; }
 .moh-home-composer :deep(.composer-tools .iconify) { width: 22px; height: 22px; font-size: 22px; }
-.moh-home-composer :deep(.composer-submit button:disabled) {
-  background: var(--moh-button-disabled-fill) !important;
-  color: var(--moh-text-muted) !important;
-  opacity: 1;
-}
 
 /* Figma compact editing: 550:2169. Content sets height; footer remains visible. */
 .moh-edit-composer { padding: 20px 24px; }

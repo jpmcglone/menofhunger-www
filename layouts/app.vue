@@ -26,7 +26,7 @@
 
     <div
       ref="layoutViewportEl"
-      :class="['overflow-hidden moh-bg moh-text moh-texture moh-vignette', showStatusBg ? 'moh-status-tone' : '']"
+      :class="['overflow-hidden moh-bg moh-text', route.path === '/home' ? '' : 'moh-texture moh-vignette', showStatusBg ? 'moh-status-tone' : '']"
       :style="shellStyle"
     >
       <div class="mx-auto flex h-full w-full max-w-6xl xl:max-w-7xl">
