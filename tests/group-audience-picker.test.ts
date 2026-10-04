@@ -1,14 +1,14 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
-import GroupAudiencePicker from '~/components/app/composer/GroupAudiencePicker.vue'
+import DestinationPicker from '~/components/app/composer/DestinationPicker.vue'
 
 describe('group destination dialog', () => {
   const cleanups: Array<() => void> = []
   afterEach(() => { cleanups.splice(0).forEach(fn => fn()); document.body.innerHTML = '' })
   async function mountPicker(extra = {}) {
-    const wrapper = await mountSuspended(GroupAudiencePicker, {
-      props: { modelValue: 'g1', groups: [
+    const wrapper = await mountSuspended(DestinationPicker, {
+      props: { modelValue: 'g1', visibility: 'public', allowed: ['public', 'verifiedOnly', 'premiumOnly'], isPremium: false, groups: [
         { id: 'g1', name: 'Morning Men', joinPolicy: 'open' },
         { id: 'g2', name: 'Quiet Work', joinPolicy: 'approval' },
       ], ...extra }, attachTo: document.body,
@@ -35,11 +35,13 @@ describe('group destination dialog', () => {
     await nextTick()
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['g2'])
   })
-  it('removes the group without assigning a new feed visibility', async () => {
+  it('returns from a group to the selected feed audience', async () => {
     const wrapper = await mountPicker()
-    button('No group').click()
+    button('Feed').click()
     await nextTick()
-    expect(wrapper.emitted('update:modelValue')).toEqual([[null]])
+    button('Public').click()
+    await nextTick()
+    expect(wrapper.emitted('select-visibility')).toEqual([['public']])
   })
   it('retains cached groups during a failed refresh and lets the user retry', async () => {
     const wrapper = await mountPicker({ error: 'Could not refresh' })

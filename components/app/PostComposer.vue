@@ -4,7 +4,7 @@
   <!-- Composer -->
   <div
     :class="[
-      'pb-4',
+      inlineAudience && !checkinPrompt ? 'moh-home-composer pb-3' : 'pb-4',
       mode === 'edit' && !scheduledEditId ? 'moh-edit-composer' : '',
       checkinPrompt ? 'moh-prompt-composer' : '',
       omitAvatar ? 'pr-[var(--moh-gutter-x)]' : 'moh-gutter-x',
@@ -18,17 +18,32 @@
       >
       <!-- Inline audience aligns with the text column; modal controls span the header. -->
       <div
-        v-if="!replyTo || $slots.close"
+        v-if="!inlineAudience && (!replyTo || $slots.close)"
         :class="[
           mode === 'edit' && !scheduledEditId ? 'row-start-1 flex items-center gap-2' : 'row-start-1 flex flex-wrap items-center gap-2',
-          checkinPrompt ? 'col-span-2 mb-5' : (inlineAudience ? 'col-start-2 mb-2' : 'col-span-2 mb-3'),
+          checkinPrompt ? 'col-span-2 mb-5' : 'col-span-2 mb-3',
         ]"
       >
         <slot name="close" />
         <slot name="audience">
         <div v-if="!replyTo" class="flex min-w-0 flex-wrap items-center gap-2" :class="(!inlineAudience || checkinPrompt) && 'ml-auto'">
+          <AppComposerDestinationPicker
+            v-if="canChooseGroup"
+            :visibility="visibility"
+            :allowed="allowedComposerVisibilities"
+            :is-premium="isPremium"
+            :groups="myGroups"
+            :model-value="selectedGroupId"
+            :loading="myGroupsLoading"
+            :error="myGroupsError"
+            :shows-chat="showChatDestination"
+            @select-chat="handoffToChat"
+            @select-visibility="selectDestinationVisibility"
+            @update:model-value="selectGroup"
+            @open="loadMyGroups"
+          />
           <AppComposerVisibilityPicker
-            v-if="showVisibilityPicker"
+            v-else-if="showVisibilityPicker"
             v-model="visibility"
             :allowed="allowedComposerVisibilities"
             :viewer-is-verified="viewerIsVerified"
@@ -47,17 +62,6 @@
               :group-name="showGroupScopeIcon ? scopeTagLabel : undefined"
             />
           </span>
-          <AppComposerGroupAudiencePicker
-            v-if="canChooseGroup"
-            :groups="myGroups"
-            :model-value="selectedGroupId"
-            :loading="myGroupsLoading"
-            :error="myGroupsError"
-            :shows-chat="showChatDestination"
-            @select-chat="handoffToChat"
-            @update:model-value="selectGroup"
-            @open="loadMyGroups"
-          />
           <span v-if="effectiveGroupId && mode !== 'edit'" class="text-xs moh-text-muted">{{ selectedGroupReadLabel }}</span>
         </div>
 
@@ -115,7 +119,7 @@
       </template>
 
       <div
-        :class="[omitAvatar ? 'min-w-0 moh-composer-tint' : 'col-start-2 min-w-0 moh-composer-tint', checkinPrompt ? 'row-start-3' : 'row-start-2']"
+        :class="[omitAvatar ? 'min-w-0 moh-composer-tint' : 'col-start-2 min-w-0 moh-composer-tint', checkinPrompt ? 'row-start-3' : (inlineAudience ? 'row-start-1' : 'row-start-2')]"
       >
         <p v-if="checkinPrompt" class="mb-2 text-[13px] font-medium moh-text-muted">Your answer</p>
         <!-- Optional content above textarea (e.g. "Replying to @username" in reply modal) -->
@@ -219,6 +223,63 @@
           <AppEmbeddedPostPreview :preloaded-post="quotedPost" />
         </div>
 
+        <div v-if="inlineAudience" class="flex min-w-0 flex-wrap items-center gap-2">
+        <slot name="audience">
+        <div v-if="!replyTo" class="flex min-w-0 flex-wrap items-center gap-2" :class="(!inlineAudience || checkinPrompt) && 'ml-auto'">
+          <AppComposerDestinationPicker
+            v-if="canChooseGroup"
+            :visibility="visibility"
+            :allowed="allowedComposerVisibilities"
+            :is-premium="isPremium"
+            :groups="myGroups"
+            :model-value="selectedGroupId"
+            :loading="myGroupsLoading"
+            :error="myGroupsError"
+            :shows-chat="showChatDestination"
+            @select-chat="handoffToChat"
+            @select-visibility="selectDestinationVisibility"
+            @update:model-value="selectGroup"
+            @open="loadMyGroups"
+          />
+          <AppComposerVisibilityPicker
+            v-else-if="showVisibilityPicker"
+            v-model="visibility"
+            :allowed="allowedComposerVisibilities"
+            :viewer-is-verified="viewerIsVerified"
+            :is-premium="isPremium"
+            :shows-chat="showChatDestination"
+            @select-chat="handoffToChat"
+          />
+          <span
+            v-else-if="!canChooseGroup || !effectiveGroupId"
+            v-tooltip.bottom="scopeTagTooltip"
+            class="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border moh-border px-3 cursor-default"
+            :aria-label="`Post audience: ${scopeTagLabel}`"
+          >
+            <AppComposerAudienceLabel
+              :visibility="effectiveVisibility"
+              :group-name="showGroupScopeIcon ? scopeTagLabel : undefined"
+            />
+          </span>
+          <span v-if="effectiveGroupId && mode !== 'edit'" class="text-xs moh-text-muted">{{ selectedGroupReadLabel }}</span>
+        </div>
+
+        </slot>
+        <!-- Right: scheduled time — shown when a time is confirmed (not applicable for check-ins) -->
+        <button
+          v-if="!checkinPrompt && scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
+          v-tooltip.bottom="`Click to change schedule`"
+          type="button"
+          class="inline-flex items-center gap-1 text-[11px] font-semibold moh-focus"
+          :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
+          :aria-label="`Scheduled for ${scheduledAtDisplay}. Click to change.`"
+          @click="openSchedulePicker"
+        >
+          <Icon name="tabler:calendar-time" class="text-[12px]" aria-hidden="true" />
+          <span>{{ scheduledAtDisplay }}</span>
+        </button>
+        </div>
+
         <ClientOnly>
           <Teleport to="body">
             <div
@@ -238,7 +299,7 @@
         </ClientOnly>
 
         <Teleport :to="actionsTarget ?? 'body'" :disabled="!actionsTarget">
-        <div :class="[actionsTarget ? '' : checkinPrompt ? 'mt-5 border-t moh-border pt-4' : (composerMedia.length ? 'mt-5' : 'mt-3'), mode === 'edit' && !scheduledEditId && 'moh-edit-actions']" class="flex flex-col gap-1">
+        <div :class="[actionsTarget ? '' : checkinPrompt ? 'mt-5 border-t moh-border pt-4' : (composerMedia.length ? 'mt-5' : inlineAudience ? 'mt-0' : 'mt-3'), mode === 'edit' && !scheduledEditId && 'moh-edit-actions']" class="flex flex-col gap-1">
           <AppComposerActionBar :submit-target="submitTarget">
             <template #tools>
               <template v-if="!disableMedia">
@@ -282,7 +343,7 @@
                   @click="onClickAddPoll"
                 >
                   <template #icon>
-                    <Icon name="tabler:chart-bar" class="rotate-90" aria-hidden="true" />
+                    <Icon name="tabler:chart-bar" class="rotate-90 size-[22px]" aria-hidden="true" />
                   </template>
                 </Button>
               </template>
@@ -323,6 +384,7 @@
             </template>
             <template #count>
             <div
+              v-if="postCharCount > 0"
               class="moh-meta tabular-nums"
               :class="
                 postCharCount > postMaxLen
@@ -771,6 +833,11 @@ async function loadMyGroups() {
 }
 
 const { rememberFeed, rememberGroup } = useShareDestination()
+
+function selectDestinationVisibility(value: PostVisibility) {
+  visibility.value = value
+  selectGroup(null)
+}
 
 function selectGroup(id: string | null) {
   selectedGroupId.value = id
@@ -2105,6 +2172,16 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
   padding: 0.375rem 0;
   font-size: 20px;
   line-height: 1.75rem;
+}
+
+/* Figma: 304:1028 — compact idle composer, natural growth while drafting. */
+.moh-home-composer { padding-top: 12px; }
+.moh-home-composer .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) { min-height: 44px; }
+.moh-home-composer :deep(.composer-tools .iconify) { width: 22px; height: 22px; font-size: 22px; }
+.moh-home-composer :deep(.composer-submit button:disabled) {
+  background: var(--moh-button-disabled-fill) !important;
+  color: var(--moh-text-muted) !important;
+  opacity: 1;
 }
 
 /* Figma compact editing: 550:2169. Content sets height; footer remains visible. */

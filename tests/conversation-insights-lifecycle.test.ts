@@ -152,12 +152,7 @@ describe('weekly activity presentation', () => {
     try {
       await flushPromises()
       const entry = wrapper.get('button[aria-haspopup="dialog"]')
-      expect(entry.text()).toContain('Last 7 days')
-      expect(entry.text()).toContain('Private to you')
-      expect(entry.text()).toContain('Show all')
-      expect(entry.text()).toContain('+12')
-      expect(entry.text()).toContain('Participants')
-      expect(entry.text()).toContain('3,842')
+      expect(entry.text()).toBe('Your week →')
       expect(entry.attributes('aria-label')).toContain('4 posts')
       expect(entry.attributes('aria-label')).toContain('12 other participants, excluding you')
       expect(entry.attributes('aria-expanded')).toBeUndefined()
@@ -169,6 +164,7 @@ describe('weekly activity presentation', () => {
       expect(wrapper.element.contains(dialog)).toBe(false)
       expect(dialog.textContent).toContain('Last 7 days')
       expect(dialog.textContent).toContain('This week')
+      expect(dialog.textContent).toContain('Private to you')
       expect(dialog.textContent).toContain('+12')
       expect(dialog.textContent).toContain('You are excluded.')
       expect(dialog.textContent).toContain('3 new')
@@ -186,7 +182,7 @@ describe('weekly activity presentation', () => {
       ;(dialog.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click()
       await flushPromises()
       expect(wrapper.text()).not.toContain('Conversation 1')
-      expect(wrapper.get('button[aria-haspopup="dialog"]').text()).toContain('Last 7 days')
+      expect(wrapper.get('button[aria-haspopup="dialog"]').text()).toBe('Your week →')
     } finally { wrapper.unmount() }
   })
 

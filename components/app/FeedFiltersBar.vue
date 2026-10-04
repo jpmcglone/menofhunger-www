@@ -209,7 +209,7 @@ watch(
 </script>
 
 <style scoped>
-.filter-trigger { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 0 10px; border: 1px solid var(--moh-border); border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--moh-text-muted); background: var(--moh-bg); cursor: pointer; }
+.filter-trigger { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 0 10px; border: 1px solid transparent; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--moh-text-muted); background: transparent; cursor: pointer; }
 .filter-trigger::before { content: ""; position: absolute; inset: -4px 0; }
 .filter-trigger:hover, .filter-trigger.is-open { background: var(--moh-surface-2); color: var(--moh-text); }
 .filter-trigger.is-active { color: var(--moh-text); }

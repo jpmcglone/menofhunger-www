@@ -44,7 +44,8 @@
           <main
             :class="[
               // `min-h-0` is critical so inner scroll containers can actually scroll (flexbox default min-height:auto can block it).
-              'min-w-0 min-h-0 flex-1 overflow-x-hidden flex flex-col moh-surface-1 moh-texture',
+              'min-w-0 min-h-0 flex-1 overflow-x-hidden flex flex-col moh-surface-1',
+              route.path === '/home' ? '' : 'moh-texture',
               // Right rail appears at a custom breakpoint between md and lg (~962px)
               !isRightRailForcedHidden ? 'min-[962px]:border-r moh-border' : '',
             ]"

@@ -23,8 +23,8 @@ onMounted(() => {
   justify-content: center;
   height: 28px;
   margin: 0;
-  background: #17191c;
-  color: #f4f1ea;
+  background: color-mix(in srgb, var(--moh-brass) 10%, var(--moh-surface-1));
+  color: var(--moh-text);
   font-size: 13px;
   font-weight: 500;
   line-height: 28px;

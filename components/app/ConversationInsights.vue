@@ -1,34 +1,9 @@
 <template>
   <section v-if="postId || data?.posts.length || error || open" class="border-b moh-border" :class="!postId && 'border-t bg-[var(--moh-surface)]'">
     <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 965:1594 -->
-    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-11 w-full flex-col justify-center gap-1 py-2 text-left" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
-      <span class="flex min-w-0 items-center gap-2">
-        <span class="shrink-0 text-[13px] font-semibold">Last 7 days</span>
-        <span class="inline-flex min-w-0 items-center gap-1 truncate text-xs moh-text-muted">
-          <AppIconGlyph name="private" :size="12" />
-          Private to you
-        </span>
-        <span class="ml-auto shrink-0 text-[13px] font-medium">Show all →</span>
-      </span>
-      <span v-if="error" class="truncate text-xs moh-text-muted">Activity unavailable</span>
-      <span v-else-if="data" class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-0.5 text-[13px]">
-        <span class="inline-flex items-center gap-1">
-          <AppIconGlyph name="write" :size="14" class="moh-text-muted" />
-          <span class="font-semibold tabular-nums">{{ formatCount(data.postCount) }}</span>
-          <span class="moh-text-muted">{{ data.postCount === 1 ? 'Post' : 'Posts' }}</span>
-        </span>
-        <span class="inline-flex items-center gap-1">
-          <AppIconGlyph name="members" :size="14" class="moh-text-muted" />
-          <span class="font-semibold tabular-nums">+{{ formatCount(data.participantCount) }}</span>
-          <span class="moh-text-muted">{{ data.participantCount === 1 ? 'Participant' : 'Participants' }}</span>
-        </span>
-        <span v-if="data.reach?.scope === 'lifetime'" class="inline-flex items-center gap-1">
-          <AppIconGlyph name="visibility" :size="14" class="moh-text-muted" />
-          <span class="font-semibold tabular-nums">{{ formatCount(data.reach.impressions) }}</span>
-          <span class="moh-text-muted">Impressions</span>
-        </span>
-      </span>
-      <span v-else class="truncate text-xs moh-text-muted">Conversation activity</span>
+    <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-11 w-full items-center gap-3 py-2 text-left" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
+      <span class="text-[13px] font-medium moh-text-muted">Your week →</span>
+      <span v-if="error" class="text-xs moh-text-muted">Activity unavailable</span>
     </button>
     <button v-else type="button" class="moh-gutter-x flex min-h-12 w-full items-center gap-3 py-3 text-left" :aria-expanded="open" @click="open = !open">
       <Icon name="tabler:chart-bar" class="text-lg moh-text-muted" aria-hidden="true" />
@@ -92,9 +67,6 @@ const { apiFetchData } = useApiClient()
 const route = useRoute()
 const open = ref(Boolean(props.postId && route.query.insights === '1'))
 const data = ref<ConversationInsights | null>(null)
-function formatCount(value: number) {
-  return value.toLocaleString('en-US')
-}
 const entryLabel = computed(() => {
   if (error.value) return 'Last 7 days. Activity unavailable'
   const recap = data.value
