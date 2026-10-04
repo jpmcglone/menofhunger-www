@@ -13,16 +13,16 @@
           <dt class="mt-1 text-[13px] moh-text-muted">{{ participantNoun }}</dt>
           <p v-if="data.newParticipantCount" class="mt-1 text-xs moh-text-muted">{{ number(data.newParticipantCount) }} new</p>
         </div>
-        <template v-if="data.reach?.scope === 'lifetime'">
+        <template v-if="data.windowReach">
           <div class="rounded-xl border moh-border moh-surface-2 p-3">
-            <dd class="text-[22px] font-semibold tabular-nums tracking-tight">{{ number(data.reach.people) }}</dd>
-            <dt class="mt-1 text-[13px] moh-text-muted">Reached</dt>
-            <p class="mt-1 text-xs moh-text-muted">Lifetime</p>
+            <dd class="text-[22px] font-semibold tabular-nums tracking-tight">{{ number(data.windowReach.people) }}</dd>
+            <dt class="mt-1 text-[13px] moh-text-muted">Unique viewers</dt>
+            <p class="mt-1 text-xs moh-text-muted">Last 7 days</p>
           </div>
           <div class="rounded-xl border moh-border moh-surface-2 p-3">
-            <dd class="text-[22px] font-semibold tabular-nums tracking-tight">{{ number(data.reach.impressions) }}</dd>
+            <dd class="text-[22px] font-semibold tabular-nums tracking-tight">{{ number(data.windowReach.impressions) }}</dd>
             <dt class="mt-1 text-[13px] moh-text-muted">Impressions</dt>
-            <p class="mt-1 text-xs moh-text-muted">Lifetime</p>
+            <p class="mt-1 text-xs moh-text-muted">Last 7 days</p>
           </div>
         </template>
       </dl>
@@ -58,7 +58,8 @@
       </template>
     </dl>
     <p v-if="weekly" class="text-[11px] moh-text-muted">Other people who replied, boosted or reposted. You are excluded.</p>
-    <p v-if="data.reach?.scope === 'lifetime'" class="text-[11px] moh-text-muted">
+    <p v-if="weekly && data.windowReach?.complete === false" class="text-[11px] moh-text-muted">* View tracking began {{ new Date(data.windowReach.trackedSince).toLocaleDateString() }}. Earlier views are unavailable.</p>
+    <p v-if="!weekly && data.reach?.scope === 'lifetime'" class="text-[11px] moh-text-muted">
       Lifetime totals on these posts. People counted once; guest reach is estimated.
     </p>
   </div>

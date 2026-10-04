@@ -129,7 +129,8 @@ describe('conversation recap refresh queue', () => {
 
 const weeklyData = {
   postCount: 4, participantCount: 12, newParticipantCount: 3,
-  reach: { people: 1284, impressions: 3842, scope: 'lifetime' },
+  reach: { people: 9000, impressions: 19000, scope: 'lifetime' },
+  windowReach: { people: 1284, impressions: 3842, trackedSince: '2026-09-04T00:00:00Z', complete: false },
   timeline: [{ date: '2026-09-06', replies: 2, reposts: 1, boosts: 32, coins: 1, branches: 1 }],
   posts: Array.from({ length: 4 }, (_, index) => ({
     id: `post-${index}`, body: `Conversation ${index + 1}`, renewed: index === 2,
@@ -152,7 +153,11 @@ describe('weekly activity presentation', () => {
     try {
       await flushPromises()
       const entry = wrapper.get('button[aria-haspopup="dialog"]')
-      expect(entry.text()).toBe('Your week →')
+      expect(entry.text()).toContain('Your week')
+      expect(entry.text()).toContain('12 participants')
+      expect(entry.text()).toContain('1.2k')
+      expect(entry.text()).toContain('3.8k')
+      expect(entry.text()).not.toContain('9k')
       expect(entry.attributes('aria-label')).toContain('4 posts')
       expect(entry.attributes('aria-label')).toContain('12 other participants, excluding you')
       expect(entry.attributes('aria-expanded')).toBeUndefined()
@@ -170,7 +175,8 @@ describe('weekly activity presentation', () => {
       expect(dialog.textContent).toContain('3 new')
       expect(dialog.textContent).toContain('1,284')
       expect(dialog.textContent).toContain('3,842')
-      expect(dialog.textContent).toContain('Lifetime totals on these posts')
+      expect(dialog.textContent).toContain('Earlier views are unavailable')
+      expect(dialog.textContent).not.toContain('Lifetime totals on these posts')
       expect(dialog.textContent).toContain('Active again')
       expect(dialog.textContent).toContain('Keep going')
       expect(dialog.textContent).toContain('Share recap')
@@ -182,7 +188,7 @@ describe('weekly activity presentation', () => {
       ;(dialog.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click()
       await flushPromises()
       expect(wrapper.text()).not.toContain('Conversation 1')
-      expect(wrapper.get('button[aria-haspopup="dialog"]').text()).toBe('Your week →')
+      expect(wrapper.get('button[aria-haspopup="dialog"]').text()).toContain('12 participants')
     } finally { wrapper.unmount() }
   })
 

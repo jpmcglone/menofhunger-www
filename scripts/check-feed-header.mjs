@@ -26,7 +26,7 @@ function testUser() {
     locationPromptSkipped: true,
     name: 'Viewer',
     verifiedStatus: 'identity',
-    premium: false,
+    premium: true,
     premiumPlus: false,
     avatarUrl: null,
     notificationUndeliveredCount: 0,
@@ -124,7 +124,7 @@ try {
     let data = null
     let pagination
     if (path.endsWith('/auth/me')) data = testUser()
-    else if (path.endsWith('/posts/insights/weekly')) data = { from: '2026-09-28', to: '2026-10-04', postCount: 1, participantCount: 1, newParticipantCount: 0, timeline: [], posts: [{ id: POST_ID, body: POST_BODY, participantCount: 1, participants: [], replies: [] }] }
+    else if (path.endsWith('/posts/insights/weekly')) data = { from: '2026-09-28', to: '2026-10-04', postCount: 1, participantCount: 24, newParticipantCount: 0, windowReach: { people: 1284, impressions: 3842, trackedSince: '2026-09-01T00:00:00Z', complete: true }, timeline: [], posts: [{ id: POST_ID, body: POST_BODY, participantCount: 1, participants: [], replies: [] }] }
     else if (path.endsWith('/posts')) { data = [testPost()]; pagination = { nextCursor: null } }
     else if (path.endsWith('/checkins/today')) data = { dayKey: '2026-10-04', isOpen: false, hasCheckedInToday: false, allowedVisibilities: ['verifiedOnly'], checkinStreakDays: 0 }
     else if (path.endsWith('/groups/me')) data = [{ id: 'g1', slug: 'daily-practice', name: 'Daily Practice', joinPolicy: 'open', memberCount: 1, description: '', avatarImageUrl: null, coverImageUrl: null, viewerMembership: { status: 'active', role: 'member' } }]
@@ -161,6 +161,21 @@ try {
         swatch.remove()
         return getComputedStyle(button).backgroundColor === expected
       }), true, 'Empty Post button uses the disabled fill')
+      const chip = destination.locator(':scope > span')
+      assert.equal(await chip.evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)')
+      assert.equal(await chip.evaluate(el => getComputedStyle(el).color), theme === 'dark' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)')
+      assert.equal(Math.round((await chip.boundingBox()).height), 32)
+      assert.ok((await destination.boundingBox()).height >= 44)
+      const gridGap = await composer.locator('.grid').first().evaluate(el => getComputedStyle(el).columnGap)
+      assert.equal(gridGap, '20px')
+      const week = page.getByRole('button').filter({ hasText: 'Your week' }).first()
+      assert.equal(Math.round((await week.boundingBox()).height), 44)
+      assert.ok((await week.textContent()).includes('24 participants'))
+      assert.equal(await week.locator('use[href="/icons/moh.svg#members-default"]').count(), 1)
+      assert.equal(await week.locator('use[href="/icons/moh.svg#profile-default"]').count(), 1)
+      assert.equal(await week.locator('use[href="/icons/moh.svg#visibility-default"]').count(), 1)
+      const actions = page.locator('.moh-post-actions').first()
+      assert.equal(await actions.locator('button').first().getAttribute('aria-label'), 'Upvote')
       await destination.click()
       const dialog = page.getByRole('dialog')
       await dialog.screenshot({ path: `/tmp/moh-picker-feed-${width}-${theme}.png` })
@@ -171,12 +186,21 @@ try {
       await page.getByRole('dialog').getByRole('tab', { name: 'Feed', exact: true }).click()
       await page.getByRole('dialog').getByRole('button', { name: /Public Everyone/ }).click()
       await destination.waitFor()
+      for (const [label, description] of [['Verified', 'Verified members only'], ['Premium', 'Premium membership required']]) {
+        await composer.getByRole('button', { name: /^Post to:/ }).click()
+        await page.getByRole('dialog').getByRole('button', { name: new RegExp(`${label} ${description}`) }).click()
+        const selected = composer.getByRole('button', { name: `Post to: ${label}`, exact: true })
+        assert.equal(await selected.locator(':scope > span').evaluate(el => getComputedStyle(el).color), 'rgb(255, 255, 255)')
+        await selected.screenshot({ path: `/tmp/moh-audience-${label.replaceAll(' ', '-')}-${width}-${theme}.png` })
+      }
+      await composer.getByRole('button', { name: /^Post to:/ }).click()
+      await page.getByRole('dialog').getByRole('button', { name: /Public Everyone/ }).click()
       const editor = composer.locator('[contenteditable="true"]').first()
       await editor.fill('A draft')
-      await composer.getByText(/7\s*\/\s*500/).waitFor()
+      await composer.getByText(/7\s*\/\s*1,?000/).waitFor()
       assert.equal(await composer.getByRole('button', { name: 'Post', exact: true }).isEnabled(), true)
       await editor.fill('')
-      await page.getByRole('button').filter({ hasText: 'Your week →' }).click()
+      await week.click()
       await page.getByRole('dialog').getByText('Private to you', { exact: false }).first().waitFor()
       await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
       await page.getByRole('dialog').waitFor({ state: 'hidden' })

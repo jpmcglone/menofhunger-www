@@ -1,8 +1,11 @@
 <template>
-  <button type="button" class="moh-focus moh-surface-hover inline-flex min-h-11 max-w-full items-center gap-2 text-sm moh-text-muted" :aria-label="`Post to: ${selected?.name ?? visibilityLabel}`" aria-haspopup="dialog" :aria-expanded="open" @click="open = true">
-    <span>Post to:</span>
-    <span class="max-w-48 truncate">{{ selected?.name ?? (modelValue ? 'Group' : visibilityLabel) }}</span>
-    <Icon name="tabler:chevron-down" class="text-base moh-text-muted" aria-hidden="true" />
+  <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 1113:3097 -->
+  <button type="button" class="moh-focus inline-flex min-h-11 max-w-full items-center rounded-[10px]" :aria-label="`Post to: ${selected?.name ?? visibilityLabel}`" aria-haspopup="dialog" :aria-expanded="open" @click="open = true">
+    <span class="inline-flex min-w-0 items-center gap-1.5 rounded-[10px] border px-2.5 py-[5px] text-sm font-semibold leading-5" :class="chipClass">
+      <span class="shrink-0">Post to:</span>
+      <span class="max-w-48 truncate">{{ selected?.name ?? (modelValue ? 'Group' : visibilityLabel) }}</span>
+      <Icon name="tabler:chevron-down" class="shrink-0 text-sm" aria-hidden="true" />
+    </span>
   </button>
   <AppComposerSelectionDialog v-model="open" title="Post to" :description="activeTab === 'feed' ? 'Who can see your post in the feed.' : 'Visibility is set by the group.'">
     <div class="mx-3 mb-3 flex gap-1 rounded-xl bg-[var(--moh-surface-2)] p-1" role="tablist" aria-label="Post destination">
@@ -61,6 +64,12 @@ const choices: { value: PostVisibility; label: string; description: string; icon
   { value: 'onlyMe', label: 'Only me', description: 'Only visible to you', icon: 'tabler:lock' },
 ]
 const visibilityOptions = computed(() => choices.filter(option => props.allowed.includes(option.value)))
+const chipClass = computed(() => {
+  if (props.modelValue || props.visibility === 'verifiedOnly') return 'border-transparent bg-[var(--moh-verified)] text-white'
+  if (props.visibility === 'premiumOnly') return 'border-transparent bg-[var(--moh-premium)] text-white'
+  if (props.visibility === 'onlyMe') return 'border-transparent bg-[var(--moh-onlyme)] text-white'
+  return 'border-black text-black dark:border-white dark:text-white'
+})
 const visibilityLabel = computed(() => choices.find(option => option.value === props.visibility)?.label ?? 'Public')
 function selectVisibility(value: PostVisibility) {
   if (!props.allowed.includes(value) || (value === 'premiumOnly' && !props.isPremium)) return

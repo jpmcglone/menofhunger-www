@@ -1,9 +1,16 @@
 <template>
   <section v-if="postId || data?.posts.length || error || open" class="border-b moh-border" :class="!postId && 'border-t bg-[var(--moh-surface)]'">
-    <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 965:1594 -->
+    <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 1114:1605 -->
     <button v-if="!postId" type="button" class="moh-gutter-x moh-focus moh-surface-hover flex min-h-11 w-full items-center gap-3 py-2 text-left" aria-haspopup="dialog" :aria-label="entryLabel" @click="open = true">
-      <span class="text-[13px] font-medium moh-text-muted">Your week →</span>
-      <span v-if="error" class="text-xs moh-text-muted">Activity unavailable</span>
+      <span class="shrink-0 text-[13px] font-medium moh-text-muted">Your week</span>
+      <span v-if="error" class="ml-auto text-xs moh-text-muted">Activity unavailable</span>
+      <span v-else-if="data" class="ml-auto flex min-w-0 items-center gap-2 whitespace-nowrap text-xs tabular-nums sm:gap-3">
+        <span class="inline-flex items-center gap-1" title="Other people who replied, boosted or reposted in the last 7 days"><AppIconGlyph name="members" :size="14" aria-hidden="true" />{{ formatShortCount(data.participantCount) }} participants</span>
+        <span class="inline-flex items-center gap-1" :title="`Unique viewers in the last 7 days${trackingNote}`"><AppIconGlyph name="profile" :size="14" aria-hidden="true" />{{ data.windowReach ? formatShortCount(data.windowReach.people) : '—' }}</span>
+        <span class="inline-flex items-center gap-1" :title="`Impressions in the last 7 days${trackingNote}`"><AppIconGlyph name="visibility" :size="14" aria-hidden="true" />{{ data.windowReach ? formatShortCount(data.windowReach.impressions) : '—' }}</span>
+        <span v-if="data.windowReach?.complete === false" :title="trackingNote">*</span>
+      </span>
+      <Icon name="tabler:chevron-right" class="shrink-0 text-sm moh-text-muted" aria-hidden="true" />
     </button>
     <button v-else type="button" class="moh-gutter-x flex min-h-12 w-full items-center gap-3 py-3 text-left" :aria-expanded="open" @click="open = !open">
       <Icon name="tabler:chart-bar" class="text-lg moh-text-muted" aria-hidden="true" />
@@ -58,6 +65,7 @@
 </template>
 <script setup lang="ts">
 import Dialog from 'primevue/dialog'
+import { formatShortCount } from '~/utils/text'
 import type { ConversationInsights } from '~/types/api'
 import type { PostsCallback } from '~/composables/usePresence'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
@@ -67,6 +75,8 @@ const { apiFetchData } = useApiClient()
 const route = useRoute()
 const open = ref(Boolean(props.postId && route.query.insights === '1'))
 const data = ref<ConversationInsights | null>(null)
+const trackingNote = computed(() => data.value?.windowReach?.complete === false
+  ? `; tracking began ${new Date(data.value.windowReach.trackedSince).toLocaleDateString()}. Earlier views are unavailable.` : '')
 const entryLabel = computed(() => {
   if (error.value) return 'Last 7 days. Activity unavailable'
   const recap = data.value
@@ -75,9 +85,10 @@ const entryLabel = computed(() => {
     `${recap.postCount} ${recap.postCount === 1 ? 'post' : 'posts'}`,
     `${recap.participantCount} other ${recap.participantCount === 1 ? 'participant' : 'participants'}, excluding you`,
   ]
-  if (recap.reach?.scope === 'lifetime') {
-    parts.push(`${recap.reach.people} reached`)
-    parts.push(`${recap.reach.impressions} impressions`)
+  if (recap.windowReach) {
+    parts.push(`${recap.windowReach.people} unique viewers`)
+    parts.push(`${recap.windowReach.impressions} impressions`)
+    if (!recap.windowReach.complete) parts.push(trackingNote.value)
   }
   return `Last 7 days. ${parts.join(', ')}`
 })

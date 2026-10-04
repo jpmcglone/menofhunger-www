@@ -33,6 +33,27 @@
   >
     <slot name="start" />
 
+    <!-- Upvote: Board rows boost from their own Board boost control instead. -->
+    <div v-if="variant === 'post'" class="inline-flex items-center">
+      <button
+        v-tooltip.bottom="upvoteTooltip"
+        type="button"
+        class="moh-tap moh-pressable inline-flex min-h-11 min-w-11 items-center justify-center transition-colors hover:moh-text"
+        :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
+        :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
+        @click.stop="onBoostClick"
+      >
+        <AppIconGlyph name="boost" :selected="isBoosted" :size="20" :style="{ color: boostActiveColor }" />
+      </button>
+      <span
+        class="ml-0 inline-block select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
+        :class="boostCount > 0 ? 'opacity-100' : 'opacity-0'"
+        aria-hidden="true"
+      >
+        <AppAnimatedCount :value="boostCount" :format="formatCountOrBlank" />
+      </span>
+    </div>
+
     <!-- Reply -->
     <div v-if="showsReplyAndRepost" class="inline-flex items-center">
       <button
@@ -88,27 +109,6 @@
         @repost="onRepostMenuRepost"
         @quote="onRepostMenuQuote"
       />
-    </div>
-
-    <!-- Upvote: Board rows boost from their own Board boost control instead. -->
-    <div v-if="variant === 'post'" class="inline-flex items-center">
-      <button
-        v-tooltip.bottom="upvoteTooltip"
-        type="button"
-        class="moh-tap moh-pressable inline-flex min-h-11 min-w-11 items-center justify-center transition-colors hover:moh-text"
-        :class="boostClickable ? 'cursor-pointer' : 'cursor-default opacity-60'"
-        :aria-label="isBoosted ? 'Remove upvote' : 'Upvote'"
-        @click.stop="onBoostClick"
-      >
-        <AppIconGlyph name="boost" :selected="isBoosted" :size="20" :style="{ color: boostActiveColor }" />
-      </button>
-      <span
-        class="ml-0 inline-block select-none text-left text-[11px] sm:text-xs tabular-nums moh-text-muted moh-count-gutter"
-        :class="boostCount > 0 ? 'opacity-100' : 'opacity-0'"
-        aria-hidden="true"
-      >
-        <AppAnimatedCount :value="boostCount" :format="formatCountOrBlank" />
-      </span>
     </div>
 
     <!-- Spacer: hidden on mobile (justify-between handles spacing), grows on desktop -->

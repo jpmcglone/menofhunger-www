@@ -14,7 +14,7 @@
   >
     <div v-if="isAuthed">
       <div
-        :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'"
+        :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-5 items-start'"
       >
       <!-- Inline audience aligns with the text column; modal controls span the header. -->
       <div
@@ -447,7 +447,7 @@
       tabindex="0"
       aria-label="Log in to post"
       class="cursor-pointer"
-      :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-3 items-start'"
+      :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-5 items-start'"
       @click="showLoginPrompt"
       @keydown.enter="showLoginPrompt"
       @keydown.space.prevent="showLoginPrompt"
