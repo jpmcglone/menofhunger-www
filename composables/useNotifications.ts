@@ -856,6 +856,7 @@ export function useNotifications() {
   }
 
   function rowHref(n: Notification): string | null {
+    if (n.actionPath && /^\/admin\/delegation(?:\/[A-Za-z0-9_-]+)?$/.test(n.actionPath)) return n.actionPath
     if (n.kind === 'word_of_the_day') return '/daily/word'
     if (n.kind === 'quote_of_the_day') return '/daily/quote'
     if (n.kind === 'checkin_reminder') return '/home?checkin=1'

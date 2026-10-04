@@ -41,14 +41,16 @@ export function adminReviewFields(raw: string): Array<{ label: string; value: st
   return Object.entries(value).map(([key, entry]) => {
     if (key === 'visibility' && typeof entry === 'string') return { label: 'Visibility', value: visibility[entry] ?? entry }
     if (key === 'schedule' && entry && typeof entry === 'object') {
-      const schedule = entry as { frequency?: string; at?: string; time?: string; timeZone?: string; weekday?: number }
+      const schedule = entry as { frequency?: string; at?: string; time?: string; timeZone?: string; weekday?: number; weekdays?: number[]; dayOfMonth?: number; endsAt?: string; notification?: string; condition?: unknown }
       try {
         const zone = schedule.timeZone ?? 'America/New_York'
-        if (schedule.frequency === 'once') return { label: 'Schedule', value: schedule.at
+        const extra = `${schedule.endsAt ? ` · Ends ${schedule.endsAt}` : ''}${schedule.notification ? ` · Notify: ${schedule.notification}` : ''}${schedule.condition ? ` · Condition: ${text(schedule.condition)}` : ''}`
+        if (schedule.frequency === 'once') return { label: 'Schedule', value: (schedule.at
           ? `Once · ${new Intl.DateTimeFormat('en-US', { timeZone: zone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(schedule.at))} · ${zone}`
-          : 'Once · As soon as the job is created' }
-        const day = schedule.frequency === 'daily' ? 'Every day' : ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][schedule.weekday ?? 1]
-        return { label: 'Schedule', value: `${day} at ${schedule.time} · ${zone}` }
+          : 'Once · As soon as the job is created') + extra }
+        const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+        const day = schedule.frequency === 'monthly' ? `Day ${schedule.dayOfMonth ?? 1} each month` : schedule.weekdays?.map(d => days[d]).join(', ') || (schedule.frequency === 'daily' ? 'Every day' : days[schedule.weekday ?? 1])
+        return { label: 'Schedule', value: `${day} at ${schedule.time} · ${zone}${extra}` }
       } catch { /* Preserve invalid input for review. */ }
     }
     if (key === 'bodyJson' && typeof entry === 'string') {

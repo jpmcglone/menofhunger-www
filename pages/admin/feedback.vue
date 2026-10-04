@@ -12,6 +12,7 @@
     </AppPageHeader>
   <div class="py-4 space-y-4">
 
+    <div v-if="linkedFeedbackId" class="px-4"><NuxtLink to="/admin/feedback" class="underline">Show all feedback</NuxtLink></div>
     <div class="px-4 flex flex-wrap items-center gap-2">
       <Select
         v-model="statusFilter"
@@ -178,12 +179,12 @@
         <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Admin note</label>
           <div ref="adminNoteTextareaWrapEl" class="relative">
-            <Textarea v-model="editAdminNote" class="w-full" rows="3" autoResize placeholder="Optional internal note…" />
+            <Textarea v-model="editAdminNote" class="w-full" rows="3" auto-resize placeholder="Optional internal note…" />
             <AppMentionAutocompletePopover
               v-bind="adminNoteMention.popoverProps"
               @select="adminNoteMention.onSelect"
               @highlight="adminNoteMention.onHighlight"
-              @requestClose="adminNoteMention.onRequestClose"
+              @request-close="adminNoteMention.onRequestClose"
             />
           </div>
         </div>
@@ -226,7 +227,7 @@ const { apiFetchData } = useApiClient()
 const { addAdminCallback, removeAdminCallback } = usePresence()
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
-import type { AdminFeedbackItem, AdminFeedbackListData, FeedbackCategory, FeedbackStatus } from '~/types/api'
+import type { AdminFeedbackItem, FeedbackCategory, FeedbackStatus } from '~/types/api'
 import { useMentionAutocomplete } from '~/composables/useMentionAutocomplete'
 import type { AdminCallback } from '~/composables/usePresence'
 import { useCursorFeed } from '~/composables/useCursorFeed'
@@ -249,6 +250,8 @@ const categoryOptions = [
 const statusFilter = ref<typeof statusOptions[number]['value']>('all')
 const categoryFilter = ref<typeof categoryOptions[number]['value']>('all')
 const feedbackQuery = ref('')
+const route = useRoute()
+const linkedFeedbackId = computed(() => typeof route.query.feedbackId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(route.query.feedbackId) ? route.query.feedbackId : undefined)
 
 const { items, nextCursor, loading, loadingMore, initialLoading, error, refresh, loadMore } = useCursorFeed<AdminFeedbackItem>({
   stateKey: 'admin-feedback',
@@ -256,6 +259,7 @@ const { items, nextCursor, loading, loadingMore, initialLoading, error, refresh,
     path: '/admin/feedback',
     query: {
       limit: 50,
+      feedbackId: linkedFeedbackId.value,
       cursor: cursor ?? undefined,
       q: feedbackQuery.value.trim() || undefined,
       status: statusFilter.value === 'all' ? undefined : statusFilter.value,
@@ -297,8 +301,9 @@ const adminCb: AdminCallback = {
     void refresh()
   },
 }
+watch(linkedFeedbackId, () => { void refresh() })
 onMounted(() => {
-  void refresh()
+  void refresh().then(() => { const linked = items.value.find(item => item.id === linkedFeedbackId.value); if (linked) openDetails(linked) })
   addAdminCallback(adminCb)
 })
 

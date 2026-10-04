@@ -1541,6 +1541,7 @@ export type SubjectArticlePreview = Contracts.SubjectArticlePreviewDto
 export type SubjectTier = 'premium' | 'verified' | null
 
 export type Notification = {
+  actionPath?: string | null
   id: string
   createdAt: string
   kind: NotificationKind

@@ -1,0 +1,4 @@
+@import '../../assets/css/main.css';
+@source '../../components/admin/delegation/DelegationEditor.vue';
+@source './';
+.delegation-field { width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--p-inputtext-border-color); border-radius: 8px; background: var(--p-inputtext-background); color: var(--p-inputtext-color); }

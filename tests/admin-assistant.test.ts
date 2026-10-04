@@ -22,3 +22,9 @@ describe('publishing review', () => {
     expect(adminReviewFields('{"schedule":{"frequency":"once"}}')[0]!.value).toContain('As soon as')
   })
 })
+
+it('shows one-shot notification and condition settings before approval', () => {
+  const field = adminReviewFields(JSON.stringify({ schedule: { frequency: 'once', notification: 'none', condition: { metric: 'pending_reports', threshold: 3 } } }))[0]!
+  expect(field.value).toContain('Notify: none')
+  expect(field.value).toContain('Threshold: 3')
+})

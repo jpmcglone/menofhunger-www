@@ -10,6 +10,10 @@
       <template v-else-if="job">
         <div class="flex flex-wrap gap-3"><Button label="Run now" class="delegation-primary" :disabled="busy || !workspace.configured || job.status === 'cancelled' || job.runs.some(r => ['queued','running'].includes(r.status))" @click="control('run')" /><Button v-if="job.status !== 'cancelled'" :label="job.status === 'paused' ? 'Resume' : 'Pause'" outlined severity="secondary" :disabled="busy" @click="control(job.status === 'paused' ? 'resume' : 'pause')" /><Button v-if="job.status !== 'cancelled'" label="Edit" text severity="secondary" :disabled="busy" @click="editing = true" /></div>
         <p class="text-xs moh-text-muted">{{ status(job.status) }} · {{ job.permission === 'publish_news' ? 'May publish one sourced news post per run' : 'Actions require your review' }}<span v-if="job.nextRunAt"> · Next: {{ date(job.nextRunAt) }}</span></p>
+        <div v-if="job.status === 'active' && job.nextRunAt"><Button label="Skip next run" text severity="secondary" :disabled="busy" @click="control('skip')" /></div>
+        <details v-if="job.status !== 'cancelled'"><summary class="min-h-11 content-center cursor-pointer text-sm">Pause until…</summary><label for="resume-at">Resume at</label><input id="resume-at" v-model="resumeAt" type="datetime-local" class="delegation-field"><Button label="Pause until then" text :disabled="busy || !resumeAt || new Date(resumeAt).getTime() <= Date.now()" @click="control('pause')" /></details>
+        <p v-if="job.resumeAt" class="text-sm moh-text-muted">Resumes: {{ date(job.resumeAt) }}</p>
+        <details v-if="job.baseline"><summary class="min-h-11 content-center cursor-pointer text-sm">Saved baseline</summary><pre class="whitespace-pre-wrap break-words text-xs">{{ job.baseline }}</pre></details>
         <details><summary class="min-h-11 content-center cursor-pointer text-sm">Instructions</summary><p class="whitespace-pre-wrap text-sm moh-text-muted py-3">{{ job.instruction }}</p></details>
         <div v-if="!job.runs.length" class="py-6"><h2 class="font-semibold">Ready when you are</h2><p class="mt-2 text-sm moh-text-muted">The first run will appear here when it starts.</p></div>
         <div class="moh-divide"><article v-for="(run, index) in job.runs" :key="run.id" class="py-6 space-y-4"><div><p class="text-xs moh-text-muted">{{ index === 0 ? 'Latest run' : 'Earlier run' }} · {{ date(run.createdAt) }}</p><h2 class="mt-1 font-semibold">{{ status(run.status) }}</h2></div><p v-if="run.summary" class="whitespace-pre-wrap text-sm leading-relaxed">{{ run.summary }}</p><p v-else class="text-sm moh-text-muted">{{ ['queued','running'].includes(run.status) ? 'MARV is gathering evidence and preparing the result.' : 'No summary was recorded.' }}</p><AdminDelegationAction v-for="action in run.actions" :key="action.id" :action="action" :actor="job.actor.username ?? ''" :busy="busy" :stale="job.status === 'cancelled'" @decide="decide" /></article></div>
@@ -31,7 +35,7 @@ import type { DelegationJobDto } from '~/types/api'
 import { delegationStatus as status, delegationSchedule as schedule, delegationNeedsReview as needsReview } from '~/utils/admin-delegation'
 const props = defineProps<{ jobId?: string }>()
 const { workspace, job, error, loading, busy, refresh, mutate, older } = useAdminDelegation(toRef(props, 'jobId'))
-const editing = ref(false), filter = ref('all')
+const editing = ref(false), filter = ref('all'), resumeAt = ref('')
 const filters = [{ id: 'all', label: 'All jobs' }, { id: 'review', label: 'Needs review' }, { id: 'scheduled', label: 'Scheduled' }, { id: 'complete', label: 'Completed' }]
 const filtered = computed(() => (workspace.value?.jobs ?? []).filter(j => filter.value === 'all' || (filter.value === 'review' ? needsReview(j) : filter.value === 'scheduled' ? j.status === 'active' && Boolean(j.nextRunAt) : j.runs[0]?.status === 'complete')))
 const date = (value: string) => new Date(value).toLocaleString()
@@ -40,7 +44,7 @@ async function save(input: Record<string, unknown>) {
   const result = await mutate<DelegationJobDto>(job.value ? `jobs/${job.value.id}` : 'jobs', input, job.value ? 'PATCH' : 'POST')
   if (result) { editing.value = false; if (!props.jobId) await navigateTo(`/admin/delegation/${result.id}`) }
 }
-async function control(command: string) { if (job.value) await mutate(`jobs/${job.value.id}/control`, { command, requestId: crypto.randomUUID() }) }
+async function control(command: string) { if (job.value) await mutate(`jobs/${job.value.id}/control`, { command, requestId: crypto.randomUUID(), revision: job.value.revision, resumeAt: command === 'pause' && resumeAt.value ? new Date(resumeAt.value).toISOString() : undefined }) }
 async function decide(id: string, decision: 'confirm' | 'cancel', body?: string) { await mutate(`actions/${id}`, { decision, body }) }
 </script>
 <style>

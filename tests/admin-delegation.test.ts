@@ -12,7 +12,7 @@ const user = ref<{ id: string; siteAdmin: boolean; accountSwitch?: object }>({ i
 mockNuxtImport('useApiClient', () => () => ({ apiFetchData: spies.fetch, apiUrl: (path: string) => path }))
 mockNuxtImport('useAuth', () => () => ({ user }))
 mockNuxtImport('usePresence', () => () => ({ addAdminCallback: spies.add, removeAdminCallback: spies.remove, isSocketConnected: ref(true) }))
-const workspace = { actionSchema: {}, operations: {}, configured: true, access: 'admin' as const, accounts: [{ id: 'admin', username: 'john', name: 'John', accountKind: 'person' },{ id: 'page', username: 'mohnews', name: 'News', accountKind: 'page' }], workflows: [{ id: 'news', title: 'News', description: '' }], jobs: [], integrations: [] }
+const workspace = { templates: [], actionSchema: {}, operations: {}, configured: true, access: 'admin' as const, accounts: [{ id: 'admin', username: 'john', name: 'John', accountKind: 'person' },{ id: 'page', username: 'mohnews', name: 'News', accountKind: 'page' }], workflows: [{ id: 'news', title: 'News', description: '' }], jobs: [], integrations: [] }
 const globals = { plugins: [PrimeVue], stubs: { NuxtLink: RouterLinkStub } }
 function harness() { let state!: ReturnType<typeof useAdminDelegation>; const wrapper = mount(defineComponent({ setup() { state = useAdminDelegation(ref(undefined)); return () => h('div') } })); return { state, wrapper } }
 beforeEach(() => { vi.clearAllMocks(); user.value = { id: 'admin', siteAdmin: true }; spies.fetch.mockResolvedValue(workspace) })
@@ -31,6 +31,18 @@ describe('explicit review and account defaults', () => {
     expect(first.actorUsername).toBeUndefined(); expect(first.permission).toBe('review'); expect(first.id).toBe(second.id);
     await wrapper.get('#job-actor').setValue('mohnews'); await wrapper.get('form').trigger('submit');
     expect((wrapper.emitted('save')![2]![0] as Record<string,unknown>).actorUsername).toBe('mohnews'); wrapper.unmount()
+  })
+  it('saves selected weekdays, a condition, and digest delivery', async () => {
+    const wrapper = mount(DelegationEditor, { props: { workspace, busy: false }, global: globals });
+    await wrapper.get('#job-title').setValue('Founder review'); await wrapper.get('#job-instruction').setValue('Check attention');
+    await wrapper.get('#job-frequency').setValue('daily');
+    await wrapper.findAll('input[type="checkbox"]')[1]!.setValue(true);
+    await wrapper.get('#job-notifications').setValue('digest'); await wrapper.get('#job-condition').setValue('pending_reports');
+    await wrapper.get('#job-threshold').setValue(3); await wrapper.get('#job-cooldown').setValue(48);
+    await wrapper.get('form').trigger('submit');
+    const input = wrapper.emitted('save')![0]![0] as { schedule: unknown };
+    expect(input.schedule).toMatchObject({ frequency: 'daily', weekdays: [1], notification: 'digest', condition: { metric: 'pending_reports', threshold: 3, cooldownHours: 48 } });
+    wrapper.unmount();
   })
   it('preserves edited proposal text through refresh and requires an explicit click', async () => {
     const action = { id:'a',operation:'post_publish',title:'Publish',preview:'body: Original',body:'Original',status:'pending',receipt:null,path:null,sources:[],createdAt:'2026-09-07T00:00:00Z' };

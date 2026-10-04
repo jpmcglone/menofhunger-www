@@ -8,6 +8,7 @@
     <div v-if="action.status === 'pending'" class="flex flex-wrap gap-3"><Button :label="action.operation === 'export' ? 'Save export' : 'Apply action'" class="delegation-primary" :disabled="busy || stale" @click="$emit('decide', action.id, 'confirm', action.body !== null ? body : undefined)" /><Button label="Dismiss" text severity="secondary" :disabled="busy" @click="$emit('decide', action.id, 'cancel')" /></div>
     <p v-if="stale && action.status === 'pending'" class="text-xs moh-text-muted">The job changed. Run it again to prepare a fresh proposal.</p>
     <Button v-if="action.operation === 'export'" label="Download export" text severity="secondary" @click="download" />
+    <a v-if="action.path && /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/issues\/\d+$/.test(action.path)" :href="action.path" target="_blank" rel="noopener noreferrer" class="inline-block text-sm underline">Open GitHub issue</a>
     <NuxtLink v-if="safePath(action.path)" :to="action.path!" class="inline-block text-sm underline">Open result</NuxtLink>
   </article>
 </template>
