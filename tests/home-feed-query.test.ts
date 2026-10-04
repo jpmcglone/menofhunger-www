@@ -93,6 +93,12 @@ describe('home feed query shape', () => {
 })
 
 describe('home feed refresh guardrails', () => {
+  it('lets the regular home composer offer every audience allowed by the account', () => {
+    const home = readFromRepo('pages/home.vue')
+    const composer = home.match(/<LazyAppPostComposer\b[\s\S]*?\/>/)?.[0]
+    expect(composer).toBeDefined()
+    expect(composer).not.toContain(':allowed-visibilities=')
+  })
   it('keeps the home composer expanded with no compact chrome', () => {
     const home = readFromRepo('pages/home.vue')
     const composer = readFromRepo('components/app/PostComposer.vue')

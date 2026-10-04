@@ -80,7 +80,6 @@
         key="home-regular"
         ref="homeComposerRef"
         inline-audience
-        :allowed-visibilities="['public', 'verifiedOnly', 'premiumOnly']"
         persist-key="home"
         :enable-avatar-status-editor="true"
         :register-unsaved-guard="false"

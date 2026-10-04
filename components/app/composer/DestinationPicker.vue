@@ -1,5 +1,5 @@
 <template>
-  <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 1113:3097 -->
+  <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 1113:3097 (trigger), 481:2265 (dialog) -->
   <button type="button" class="moh-focus inline-flex min-h-11 max-w-full items-center rounded-[10px]" :aria-label="`Post to: ${selected?.name ?? visibilityLabel}`" aria-haspopup="dialog" :aria-expanded="open" @click="open = true">
     <span class="inline-flex min-w-0 items-center gap-1.5 rounded-[10px] border px-2.5 py-[5px] text-sm font-semibold leading-5" :class="chipClass">
       <span class="shrink-0">Post to:</span>
@@ -14,7 +14,7 @@
       </button>
     </div>
     <div v-if="activeTab === 'feed'" :id="`${pickerId}-feed-panel`" role="tabpanel" :aria-labelledby="`${pickerId}-feed-tab`">
-    <AppComposerSelectionRow v-for="option in visibilityOptions" :key="option.value" :label="option.label" :description="option.description" :icon="option.icon" :selected="!modelValue && visibility === option.value" :locked="option.value === 'premiumOnly' && !isPremium" @select="selectVisibility(option.value)" />
+    <AppComposerSelectionRow v-for="option in visibilityOptions" :key="option.value" :label="option.label" :description="option.description" :icon="option.icon" :color="option.color" :selected="!modelValue && visibility === option.value" :locked="option.value === 'premiumOnly' && !isPremium" @select="selectVisibility(option.value)" />
     </div>
     <div v-else :id="`${pickerId}-group-panel`" role="tabpanel" :aria-labelledby="`${pickerId}-group-tab`">
     <InputText v-model="query" class="w-full" placeholder="Search your groups" aria-label="Search your groups" />
@@ -57,11 +57,11 @@ const filteredGroups = computed(() => props.groups.filter(group => group.name.to
 watch(open, value => { if (value) { activeTab.value = props.modelValue ? 'group' : 'feed'; query.value = ''; emit('open') } })
 function select(id: string | null) { emit('update:modelValue', id); open.value = false }
 
-const choices: { value: PostVisibility; label: string; description: string; icon: string }[] = [
+const choices: { value: PostVisibility; label: string; description: string; icon: string; color?: string }[] = [
   { value: 'public', label: 'Public', description: 'Everyone can see this post', icon: 'tabler:world' },
-  { value: 'verifiedOnly', label: 'Verified', description: 'Verified members only', icon: 'tabler:circle-check-filled' },
-  { value: 'premiumOnly', label: 'Premium', description: 'Premium membership required', icon: 'tabler:rosette-discount-check-filled' },
-  { value: 'onlyMe', label: 'Only me', description: 'Only visible to you', icon: 'tabler:lock' },
+  { value: 'verifiedOnly', label: 'Verified', description: 'Verified members only', icon: 'tabler:circle-check-filled', color: 'var(--moh-verified)' },
+  { value: 'premiumOnly', label: 'Premium', description: 'Premium members only', icon: 'tabler:rosette-discount-check-filled', color: 'var(--moh-premium)' },
+  { value: 'onlyMe', label: 'Only me', description: 'Only visible to you', icon: 'tabler:lock', color: 'var(--moh-onlyme)' },
 ]
 const visibilityOptions = computed(() => choices.filter(option => props.allowed.includes(option.value)))
 const chipClass = computed(() => {
@@ -77,4 +77,3 @@ function selectVisibility(value: PostVisibility) {
   open.value = false
 }
 </script>
-
