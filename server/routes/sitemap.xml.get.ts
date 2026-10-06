@@ -1,7 +1,7 @@
 /**
  * Sitemap Index — GET /sitemap.xml
  *
- * Points search engines to the three sub-sitemaps:
+ * Points search engines to the sub-sitemaps:
  *  • /sitemap-pages.xml    — static marketing + listing pages
  *  • /sitemap-articles.xml — all public articles (with image entries)
  *  • /sitemap-profiles.xml — top user profile pages
@@ -15,6 +15,7 @@ export default defineEventHandler((event) => {
     entry(`${SITE_URL}/sitemap-pages.xml`),
     entry(`${SITE_URL}/sitemap-articles.xml`),
     entry(`${SITE_URL}/sitemap-profiles.xml`),
+    entry(`${SITE_URL}/sitemap-groups.xml`),
     '</sitemapindex>',
   ].join('\n')
 

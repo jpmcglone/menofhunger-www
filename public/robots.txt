@@ -1,6 +1,20 @@
 # Men of Hunger — robots.txt
 # https://menofhunger.com
 
+# Link-preview crawlers may fetch any shared URL (group/channel links unfurl as the public group card).
+User-agent: facebookexternalhit
+User-agent: Facebot
+User-agent: Twitterbot
+User-agent: LinkedInBot
+User-agent: Slackbot
+User-agent: Slackbot-LinkExpanding
+User-agent: Discordbot
+User-agent: WhatsApp
+User-agent: TelegramBot
+User-agent: Applebot
+User-agent: iMessage
+Allow: /
+
 User-agent: *
 Allow: /
 

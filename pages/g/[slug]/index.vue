@@ -667,31 +667,20 @@ async function onGroupShellUpdated(_next: CommunityGroupShell) {
 }
 
 // ─── SEO ──────────────────────────────────────────────────────────────────────
-const seoImage = computed(() => {
-  const avatar = shell.value?.avatarImageUrl
-  const cover = shell.value?.coverImageUrl
-  return avatar || cover || '/images/logo-black-bg-small.png'
-})
-
-const seoDescription = computed(() => {
-  const s = shell.value
-  if (!s) return siteConfig.meta.description
-  const memberStr = `${s.memberCount.toLocaleString()} member${s.memberCount === 1 ? '' : 's'}`
-  const policy = s.joinPolicy === 'approval' ? 'approval-required group' : 'open group'
-  const desc = (s.description ?? '').trim()
-  if (desc) return `${desc.slice(0, 140)} · ${memberStr} · ${policy}`
-  return `${s.name} on ${siteConfig.name} · ${memberStr} · ${policy}`
-})
+const seo = computed(() => groupSeo(shell.value))
 
 usePageSeo({
-  title: computed(() => shell.value?.name ?? 'Group'),
-  description: seoDescription,
-  image: seoImage,
-  imageAlt: computed(() => shell.value ? `${shell.value.name} group on ${siteConfig.name}` : siteConfig.name),
-  twitterCard: computed(() => (shell.value?.avatarImageUrl ? 'summary' : 'summary_large_image')),
-  canonicalPath: computed(() => `/g/${slug.value}`),
+  title: computed(() => seo.value?.title ?? 'Group'),
+  description: computed(() => seo.value?.description ?? siteConfig.meta.description),
+  image: computed(() => seo.value?.image),
+  imageAlt: computed(() => seo.value?.imageAlt),
+  imageWidth: computed(() => seo.value?.imageWidth),
+  imageHeight: computed(() => seo.value?.imageHeight),
+  twitterCard: computed(() => seo.value?.twitterCard),
+  canonicalPath: computed(() => seo.value?.canonicalPath ?? `/g/${slug.value}`),
   ogType: 'website',
-  noindex: false,
+  noindex: computed(() => !shell.value),
+  jsonLdGraph: computed(() => seo.value?.jsonLdGraph),
 })
 
 watch(

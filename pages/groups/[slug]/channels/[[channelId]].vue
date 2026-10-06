@@ -47,6 +47,25 @@ definePageMeta({ layout: 'app', title: 'Channels', key: route => `group-channels
 const channelAnalytics = usePostHog()
 const route = useRoute()
 const { apiFetchData } = useApiClient()
+// Server-rendered share metadata. Channel and message links preview the public group, never chat content.
+const { data: seoShell } = await useAsyncData<CommunityGroupShell | null>(
+  () => `group-seo-${String(route.params.slug)}`,
+  () => apiFetchData<CommunityGroupShell>(`/groups/by-slug/${encodeURIComponent(String(route.params.slug))}`).catch(() => null),
+)
+const seo = computed(() => groupSeo(seoShell.value))
+usePageSeo({
+  title: computed(() => seo.value?.title ?? 'Channels'),
+  description: computed(() => seo.value?.description),
+  image: computed(() => seo.value?.image),
+  imageAlt: computed(() => seo.value?.imageAlt),
+  imageWidth: computed(() => seo.value?.imageWidth),
+  imageHeight: computed(() => seo.value?.imageHeight),
+  twitterCard: computed(() => seo.value?.twitterCard),
+  canonicalPath: computed(() => seo.value?.canonicalPath),
+  ogType: 'website',
+  noindex: true,
+  jsonLdGraph: computed(() => seo.value?.jsonLdGraph),
+})
 const group = ref<CommunityGroupShell | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
