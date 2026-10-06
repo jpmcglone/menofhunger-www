@@ -193,6 +193,13 @@ export function useBottomAnchoredList(scroller: Ref<HTMLElement | null>, options
         el.removeEventListener('scroll', onScroll)
         inputEvents.forEach(name => el.removeEventListener(name, onUserInput))
       }
+      // Decoding media can change height without a layout pass we observe; re-pin when pinned.
+      const onMediaSettled = () => { if (holdPin || atBottom.value) pinToBottom(el) }
+      el.addEventListener('load', onMediaSettled, true)
+      el.addEventListener('loadedmetadata', onMediaSettled, true)
+      const unbindMedia = () => { el.removeEventListener('load', onMediaSettled, true); el.removeEventListener('loadedmetadata', onMediaSettled, true) }
+      const previousRemove = removeScrollListener
+      removeScrollListener = () => { previousRemove?.(); unbindMedia() }
       bindSizeObservers(el)
       // Initial sync.
       scheduleAfterFrame(() => syncAtBottomFromScroll())

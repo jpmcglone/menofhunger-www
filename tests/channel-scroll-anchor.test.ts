@@ -58,6 +58,22 @@ describe('useBottomAnchoredList — opening and sending', () => {
     expect(el.scrollTop).toBe(600)
   })
 
+  it('re-pins when an image finishes loading and grows the content, but not once the reader scrolled up', async () => {
+    const el = scroller(1200, 400)
+    const api = useBottomAnchoredList(ref(el as unknown as HTMLElement))
+    api.lockToBottom()
+    await nextTick()
+    el.scrollHeight = 1700
+    el.emit('load')
+    expect(el.scrollTop).toBe(1300)
+    el.emit('wheel', { deltaY: -40 } as Partial<Event>)
+    el.scrollTop = 900
+    el.emit('scroll')
+    el.scrollHeight = 2000
+    el.emit('load')
+    expect(el.scrollTop).toBe(900)
+  })
+
   it('scrolling down does not release the pin', async () => {
     const el = scroller(1200, 400)
     const api = useBottomAnchoredList(ref(el as unknown as HTMLElement))

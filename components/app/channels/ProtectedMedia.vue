@@ -1,6 +1,6 @@
 <template>
-  <div class="my-2">
-    <img v-if="imageUrl" :src="imageUrl" :alt="media.alt ?? 'Attachment'" class="max-h-80 max-w-full rounded-lg object-contain" >
+  <div class="my-2" :class="reserved ? 'overflow-hidden rounded-lg bg-[var(--moh-surface-2)]' : ''" :style="reserved">
+    <img v-if="imageUrl" :src="imageUrl" :alt="media.alt ?? 'Attachment'" decoding="async" :class="reserved ? 'size-full object-contain' : 'max-h-80 max-w-full rounded-lg object-contain'" :width="media.width ?? undefined" :height="media.height ?? undefined" >
     <video v-else-if="streamUrl && media.source !== 'upload' && media.kind !== 'audio'" :key="streamUrl" :src="streamUrl" autoplay loop muted playsinline preload="auto" :aria-label="media.alt ?? 'Animated GIF'" class="max-h-80 max-w-full rounded-lg" @error="error = true; streamUrl = null" />
     <video v-else-if="streamUrl && media.kind !== 'audio'" ref="player" :key="streamUrl" :src="streamUrl" controls playsinline crossorigin="use-credentials" preload="metadata" class="max-h-80 max-w-full rounded-lg" />
     <div v-else-if="streamUrl" class="max-w-xs">
@@ -19,6 +19,14 @@ const { user } = useAuth()
 const imageUrl = ref<string | null>(null)
 const streamUrl = ref<string | null>(null)
 const error = ref(false)
+// Visual media reserves its final box from the stored dimensions, so the timeline never shifts when bytes arrive.
+const reserved = computed(() => {
+  const { width, height, kind } = props.media
+  if (!width || !height || (kind !== 'image' && kind !== 'gif' && kind !== 'video')) return undefined
+  const max = 320
+  const displayed = Math.min(width, max * (width / height))
+  return { aspectRatio: `${width} / ${height}`, width: `min(100%, ${Math.round(displayed)}px)` }
+})
 const player = ref<HTMLMediaElement | null>(null)
 let generation = 0
 function clear() { player.value?.pause(); player.value?.removeAttribute("src"); player.value?.load(); generation++; if (imageUrl.value?.startsWith('blob:')) URL.revokeObjectURL(imageUrl.value); imageUrl.value = null; streamUrl.value = null }

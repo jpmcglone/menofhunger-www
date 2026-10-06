@@ -105,13 +105,22 @@ function selectGIF(value: GiphyItem) { gif.value = value; gifOpen.value = false;
 async function searchGIF() { gifLoading.value = true; try { gifs.value = await apiFetchData<GiphyItem[]>(gifQuery.value ? '/giphy/search' : '/giphy/trending', { query: { q: gifQuery.value || undefined } }); gifError.value = null } catch (cause) { gifError.value = getSafeUserErrorMessage(cause) } finally { gifLoading.value = false } }
 async function startVoice() { try { await voice.start() } catch (cause) { error.value = getSafeUserErrorMessage(cause, 'Microphone unavailable.') } }
 async function stopVoice() { const recording = await voice.stop(); if (recording) attachAll([recording.file]) }
+// Leaders can notify the whole channel; for everyone else the token stays plain text.
+const BROADCASTS = [
+  { id: 'broadcast:everyone', username: 'everyone', name: 'Notify everyone in this channel' },
+  { id: 'broadcast:here', username: 'here', name: 'Notify members online now' },
+]
+function broadcastSuggestions(query: string): Mention[] {
+  if (!props.channel.capabilities.canModerate) return []
+  return BROADCASTS.filter(item => item.username.startsWith(query.toLowerCase())).map(item => ({ user: item }))
+}
 async function searchMentions() {
   const query = text.value.slice(0, input.value?.selectionStart ?? text.value.length).match(/(?:^|\s)@([a-zA-Z0-9_]*)$/)?.[1]
   const request = ++mentionRequest
   if (query === undefined) { suggestions.value = []; return }
   try {
     const results = await apiFetchData<Mention[]>(`${channelPath(props.group.id, props.channel.id)}/members`, { query: { q: query } })
-    if (request === mentionRequest && !closed && identity === user.value?.id) { suggestions.value = results.filter(item => item.user.username).slice(0, 8); mentionIndex.value = 0 }
+    if (request === mentionRequest && !closed && identity === user.value?.id) { suggestions.value = [...broadcastSuggestions(query), ...results.filter(item => item.user.username)].slice(0, 8); mentionIndex.value = 0 }
   } catch { if (request === mentionRequest) suggestions.value = [] }
 }
 function mention(value: Mention) {

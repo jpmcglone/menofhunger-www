@@ -27,6 +27,10 @@
         >{{ seg.text }}</NuxtLink>
         <AppGroupsGroupMention v-else-if="seg.kind === 'group'" :slug="seg.slug" :text="seg.text" />
         <span
+          v-else-if="seg.kind === 'broadcast'"
+          class="rounded bg-[var(--moh-surface-2)] px-1 font-bold text-[var(--p-primary-color)]"
+        >{{ seg.text }}</span>
+        <span
           v-else-if="seg.kind === 'mention'"
           class="font-bold opacity-60"
         >{{ seg.text }}</span>
@@ -166,6 +170,7 @@ type TextSegment =
   | { kind: 'text'; text: string }
   | { kind: 'link'; text: string; href: string }
   | { kind: 'mention'; text: string; username: string; isKnown: boolean }
+  | { kind: 'broadcast'; text: string }
   | { kind: 'group'; text: string; slug: string }
   | { kind: 'hashtag'; text: string; tag: string }
   | { kind: 'cashtag'; text: string; symbol: string }
@@ -412,6 +417,7 @@ const displayBodySegments = computed<TextSegment[]>(() => {
     const overlaps = allMatches.some((lm) => start < lm.end && end > lm.start)
     if (!overlaps) {
       const isKnown = validSet.value.has(username.toLowerCase())
+      if (/^(everyone|here)$/i.test(username)) { allMatches.push({ start, end, seg: { kind: 'broadcast', text: m[0] } }); continue }
       allMatches.push({ start, end, seg: { kind: 'mention', text: m[0], username, isKnown } })
     }
   }
