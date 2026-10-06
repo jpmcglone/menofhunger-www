@@ -19,10 +19,13 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{ title?: string; compact?: boolean }>(), {
+type Unlock = { label: string; to: string; body: string }
+const props = withDefaults(defineProps<{ title?: string; compact?: boolean; unlock?: Unlock }>(), {
   title: 'Names and faces are for members',
   compact: false,
+  unlock: undefined,
 })
 
-const { unlock } = useMembersAccess()
+const membersUnlock = useMembersAccess().unlock
+const unlock = computed(() => props.unlock ?? membersUnlock.value)
 </script>

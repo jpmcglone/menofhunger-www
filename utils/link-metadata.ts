@@ -54,6 +54,17 @@ export type PublicProfileMetadata = {
 
 export type LinkMetadata = {
   profile?: PublicProfileMetadata | null
+  /** Verified-only group card from `/link-metadata`; never cached across viewers. */
+  group?: {
+    slug: string
+    name: string
+    description: string
+    avatarUrl: string | null
+    coverUrl: string | null
+    memberCount: number
+    joinPolicy: string
+  } | null
+  locked?: 'signIn' | 'verify' | null
   url: string
   title: string | null
   description: string | null

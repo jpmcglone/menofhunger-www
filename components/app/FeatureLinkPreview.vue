@@ -1,5 +1,7 @@
 <template>
+  <AppGroupLinkPreview v-if="isGroupPath" :path="path" />
   <NuxtLink
+    v-else
     :to="path"
     class="block min-w-0 overflow-hidden rounded-xl border moh-border moh-surface-1 moh-surface-hover moh-focus text-left"
     :aria-label="`Open ${title}`"
@@ -17,11 +19,13 @@
 </template>
 
 <script setup lang="ts">
+import { groupSlugFromPath } from '~/utils/group-link'
 import { featurePageForPath } from '~/utils/feature-pages'
 import type { LinkMetadata } from '~/utils/link-metadata'
 
 // Figma: Feature sharing / Feature preview, 974:54 and 974:78.
 const props = defineProps<{ path: string; metadata?: LinkMetadata | null }>()
+const isGroupPath = computed(() => Boolean(groupSlugFromPath(props.path)))
 const feature = computed(() => featurePageForPath(props.path))
 // The catalog gives an immediate, stable preview even with an older metadata cache.
 const title = computed(() => feature.value?.title || props.metadata?.title || 'Men of Hunger')

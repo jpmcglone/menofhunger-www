@@ -732,6 +732,39 @@ async function doJoin() {
   }
 }
 
+// Emailed invite links carry `?invite=<id>`. The link itself changes nothing; once the right,
+// verified member is signed in, the page accepts the invite (a POST from the signed-in session).
+const inviteId = computed(() => {
+  const raw = Array.isArray(route.query.invite) ? route.query.invite[0] : route.query.invite
+  return String(raw ?? '').trim() || null
+})
+const inviteAttempted = ref(false)
+const { acceptInvite } = useGroupInvites()
+async function maybeAcceptEmailedInvite() {
+  const id = inviteId.value
+  if (!import.meta.client || !id || inviteAttempted.value) return
+  if (!shell.value || !isAuthed.value || !isVerified.value) return
+  inviteAttempted.value = true
+  autoJoinAttempted.value = true
+  setPendingGroupJoin(null)
+  const { invite: _drop, ...rest } = route.query
+  try {
+    if (!isMember.value) {
+      await acceptInvite(id)
+      pushToast({ title: `Welcome to ${shell.value.name}`, message: 'You joined the group.', tone: 'success', durationMs: 3500 })
+    }
+  } catch (e: unknown) {
+    pushToast({
+      title: 'Invite unavailable',
+      message: getApiErrorMessage(e) || 'This invite is no longer valid.',
+      tone: 'error',
+      durationMs: 4500,
+    })
+  }
+  await navigateTo({ path: route.path, query: rest }, { replace: true })
+  await loadShell()
+}
+
 const autoJoinAttempted = ref(false)
 async function maybeAutoJoinFromInvite() {
   if (!import.meta.client || autoJoinAttempted.value) return
@@ -747,7 +780,7 @@ async function maybeAutoJoinFromInvite() {
 
 watch(
   () => [shell.value?.id, isAuthed.value, isVerified.value, isMember.value] as const,
-  () => { void maybeAutoJoinFromInvite() },
+  () => { void maybeAcceptEmailedInvite().then(() => maybeAutoJoinFromInvite()) },
   { immediate: true },
 )
 
