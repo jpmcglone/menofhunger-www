@@ -11,3 +11,5 @@ export const diagnoseSdkConnectivity = vi.fn(async () => 'sentry-reachable')
 export const startSpan = vi.fn((_options: unknown, callback: () => unknown) => callback())
 
 export const addBreadcrumb = vi.fn()
+
+export const startInactiveSpan = vi.fn(() => ({ end: vi.fn() }))

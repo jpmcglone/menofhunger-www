@@ -67,6 +67,7 @@ export type SwitchableAccount = {
   isOrganization: boolean
   isCurrent: boolean
   unreadBadgeCount: number
+  hasUnreadNotifications?: boolean
 }
 
 export type ApiPagination = {
@@ -1677,6 +1678,7 @@ export type GetNotificationsUnreadCountResponse = {
     boardUnreadCount: number
     /** Unread article notifications — drives the Articles nav dot. */
     articlesUnreadCount: number
+    hasUnreadNotifications?: boolean
   }
 }
 
@@ -1896,6 +1898,7 @@ export type WsNotificationsLockScreenClearPayload = {
 export type WsAccountsBadgeUpdatedPayload = {
   userId: string
   unreadBadgeCount: number
+  hasUnreadNotifications?: boolean
 }
 
 export type WsMessagesReadPayload = {

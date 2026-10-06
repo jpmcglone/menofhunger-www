@@ -208,6 +208,8 @@ export function usePresence() {
     messageUnreadCounts: readonly(badges.messageUnreadCounts),
     groupsUnread: readonly(badges.groupsUnread),
     notificationNavUnread: readonly(badges.notificationNavUnread),
+    hasUnreadNotifications: readonly(badges.hasUnreadNotifications),
+    notificationBadgeRevision: readonly(badges.notificationBadgeRevision),
     suppressMessageUnreadBumpsForMs: badges.suppressMessageUnreadBumpsForMs,
     setNotificationUndeliveredCount: badges.setNotificationUndeliveredCount,
     setNotificationUnreadCommentCount: badges.setNotificationUnreadCommentCount,

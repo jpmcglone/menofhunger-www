@@ -20,6 +20,7 @@ export type ReplyPendingPayload = {
 }
 
 export function useReplyModal() {
+  const journeys = useNuxtApp().$journeys
   const open = useState<boolean>('reply-modal-open', () => false)
   const parentPost = useState<FeedPost | null>('reply-modal-parent-post', () => null)
   /**
@@ -38,6 +39,7 @@ export function useReplyModal() {
   )
 
   function show(post: FeedPost, extras: string[] = []) {
+    journeys?.begin('composer_ready', 'presentation')
     parentPost.value = post
     extraMentionUsernames.value = extras
     open.value = true

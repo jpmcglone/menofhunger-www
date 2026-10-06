@@ -76,6 +76,11 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
   // ─── Modal state ─────────────────────────────────────────────────────────────
 
   const composerModalOpen = ref(false)
+  const journeys = useNuxtApp().$journeys
+  watch(composerModalOpen, (open) => {
+    if (open) journeys?.begin('composer_ready', 'presentation')
+    else journeys?.finish('composer_ready', journeys.token('composer_ready'), 'navigation')
+  }, { flush: 'sync' })
   provide(MOH_COMPOSER_OPEN_KEY, composerModalOpen)
   const composerInitialText = ref<string | null>(null)
   const composerSourceOnlyMePost = ref<FeedPost | null>(null)

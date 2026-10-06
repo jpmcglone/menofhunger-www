@@ -33,8 +33,9 @@
             <span
               class="pointer-events-none absolute inset-0 rounded-full border transition-opacity duration-200 ease-out"
               :class="chipHasUnseenNotifications(chip.kind)
-                ? 'opacity-100 border-amber-400/80 dark:border-amber-300/80'
+                ? 'opacity-100'
                 : 'opacity-0 border-transparent'"
+              :style="{ borderColor: notificationActivityColor }"
               aria-hidden="true"
             />
             <span class="relative z-[1]">{{ chip.label }}</span>
@@ -145,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+import { userActionColor } from '~/utils/user-tier'
 import { notificationFilterCategory } from '~/utils/notification-category'
 import type { Notification, NotificationKind } from '~/types/api'
 import { VOICE } from '~/config/voice'
@@ -236,7 +238,6 @@ async function onChipSelect(kind: NotificationKind | 'other' | 'board' | null) {
 }
 
 const {
-  setNotificationUndeliveredCount,
   addInterest,
   removeInterest,
   addCrewCallback,
@@ -384,20 +385,29 @@ const groupInviteCb = {
 onMounted(() => addGroupInviteCallback(groupInviteCb))
 onBeforeUnmount(() => removeGroupInviteCallback(groupInviteCb))
 
+const notificationReadToast = useAppToast()
 async function onMarkAllRead() {
+  const account = notificationViewer.value?.id
+  const ids = new Set(notifications.value.map(item => item.type === 'single' ? item.notification.id : item.type === 'group' ? item.group.id : item.rollup.id))
   markingAllRead.value = true
   try {
     await markAllRead()
+    if (account !== notificationViewer.value?.id) return
     clearUnreadKind('all')
     visitHighlights.clear()
     const now = new Date().toISOString()
     notifications.value = notifications.value.map((item) => {
+      const id = item.type === 'single' ? item.notification.id : item.type === 'group' ? item.group.id : item.rollup.id
+      if (!ids.has(id)) return item
       if (item.type === 'single') {
         return { ...item, notification: { ...item.notification, readAt: now } }
       }
       if (item.type === 'group') return { ...item, group: { ...item.group, readAt: now } }
       return { ...item, rollup: { ...item.rollup, readAt: now } }
     })
+    await Promise.all([fetchList({ forceRefresh: true }), notifBadge.fetchUndeliveredCount()])
+  } catch {
+    notificationReadToast.push({ title: 'Couldn’t mark notifications read. Try again.', tone: 'error' })
   } finally {
     markingAllRead.value = false
   }
@@ -490,7 +500,16 @@ function markItemReadOptimistic(item: (typeof notifications.value)[number]) {
     }
   })
   if (changed) decrementUnreadKind(unreadKind)
-  if (id) void markReadById(id)
+  if (id) {
+    const account = notificationViewer.value?.id
+    void markReadById(id).then(() => {
+      if (account === notificationViewer.value?.id) void notifBadge.fetchUndeliveredCount()
+    }).catch(() => {
+      if (account !== notificationViewer.value?.id) return
+      notificationReadToast.push({ title: 'Couldn’t mark notification read. Try again.', tone: 'error' })
+      void fetchList({ forceRefresh: true })
+    })
+  }
   closeBrowserNotificationsForHref(itemHref(item))
 }
 
@@ -545,8 +564,13 @@ function markDeliveredInBackground(force = false) {
   const now = Date.now()
   if (!force && now - lastDeliveredMarkAt < 1_000) return
   lastDeliveredMarkAt = now
-  void markDelivered()
-  setNotificationUndeliveredCount(0)
+  const account = notificationViewer.value?.id
+  void markDelivered().then(() => {
+    if (account === notificationViewer.value?.id) void notifBadge.fetchUndeliveredCount()
+  }).catch(() => {
+    if (account !== notificationViewer.value?.id) return
+    notificationReadToast.push({ title: 'Couldn’t acknowledge notifications. Try again.', tone: 'error' })
+  })
 }
 
 let entrySyncPromise: Promise<void> | null = null
@@ -583,6 +607,7 @@ onActivated(() => {
 onDeactivated(() => visitHighlights.end())
 onBeforeUnmount(() => visitHighlights.end())
 const { user: notificationViewer } = useAuth()
+const notificationActivityColor = computed(() => userActionColor(notificationViewer.value))
 watch(() => notificationViewer.value?.id, () => {
   visitHighlights.end()
   if (route.path === '/notifications') visitHighlights.begin()

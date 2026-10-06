@@ -48,6 +48,17 @@ beforeEach(() => {
 afterEach(() => scope.stop())
 
 describe('session notification lifecycle', () => {
+  it('surfaces failed seen and read acknowledgements without changing inbox rows', async () => {
+    mocks.fetch.mockResolvedValueOnce(response([row('unread')]))
+    await inbox.fetchList()
+    const failure = new Error('offline')
+    mocks.fetch.mockRejectedValue(failure)
+    await expect(inbox.markDelivered()).rejects.toBe(failure)
+    await expect(inbox.markReadById('unread')).rejects.toBe(failure)
+    await expect(inbox.markAllRead()).rejects.toBe(failure)
+    expect(inbox.notifications.value).toEqual([row('unread')])
+  })
+
   it('preserves established notifications during a filter request', async () => {
     mocks.fetch.mockResolvedValueOnce(response([row('existing')]))
     await inbox.fetchList()

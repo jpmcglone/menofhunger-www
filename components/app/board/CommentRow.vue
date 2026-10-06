@@ -47,7 +47,7 @@
           >{{ comment.author.username }}</NuxtLink>
           <span class="moh-text-soft" aria-hidden="true">·</span>
           <NuxtLink :to="permalink" class="moh-text-soft hover:underline" :title="createdTitle">{{ age }}</NuxtLink>
-          <AppNewBadge v-if="isNewSinceVisit" small label="NEW" />
+          <span v-if="isNewSinceVisit" class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" :class="activityBadgeTone" aria-label="New since your last visit">New</span>
           <button
             type="button"
             class="moh-focus rounded px-0.5 moh-text-soft hover:text-[var(--moh-text)]"
@@ -143,6 +143,7 @@
 </template>
 
 <script setup lang="ts">
+const activityBadgeTone = useActivityBadgeTone()
 import type { MenuItem } from 'primevue/menuitem'
 import type { BoardComment } from '~/types/api'
 import { formatListTime, formatDateTime } from '~/utils/time-format'

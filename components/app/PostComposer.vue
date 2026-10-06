@@ -1087,6 +1087,9 @@ const myProfilePath = computed(() => {
 })
 const draft = ref('')
 const composerEditorEl = ref<{ focus: () => void; insertAtCursor: (text: string) => void; clear: () => void } | null>(null)
+useJourneyReady('composer_ready', () => Boolean(composerEditorEl.value) && !submitting.value, {
+  source: () => 'local',
+})
 const emojiPickerEl = ref<{ close: () => void } | null>(null)
 const initialTextApplied = ref(false)
 

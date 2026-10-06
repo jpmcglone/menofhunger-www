@@ -618,6 +618,10 @@ input[type="reset"] {
     background-color: var(--moh-premium);
     color: #ffffff;
   }
+  .moh-notif-badge-organization {
+    background-color: var(--moh-org);
+    color: #0f1113;
+  }
   .moh-notif-badge-normal {
     background-color: #0f1113;
     color: #ffffff;

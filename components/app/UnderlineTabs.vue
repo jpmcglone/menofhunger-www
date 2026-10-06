@@ -15,7 +15,7 @@
       @keydown="onKeydown($event, idx)"
     >
       {{ t.label }}
-      <span v-if="t.badge" class="ml-1.5 inline-block size-1.5 rounded-full bg-[var(--moh-brass)] align-middle" aria-label="Unread activity" />
+      <span v-if="t.badge" class="ml-1.5 inline-block size-1.5 rounded-full align-middle" :class="activityBadgeTone" aria-label="Unread activity" />
       <span
         class="absolute inset-x-0 bottom-0 mx-auto h-[3px] rounded-full transition-[width,opacity] duration-200"
         :class="modelValue === t.key ? 'w-7 opacity-100' : 'w-0 opacity-0'"
@@ -27,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+const activityBadgeTone = useActivityBadgeTone()
 const props = withDefaults(defineProps<{
   modelValue: string
   tabs: Array<{ key: string; label: string; badge?: boolean }>

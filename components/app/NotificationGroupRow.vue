@@ -1,6 +1,6 @@
 <template>
   <div class="relative transition-colors" :class="subjectTierRowClass(group)">
-    <div v-if="!group.readAt" class="absolute inset-y-0 left-0 w-0.5 bg-[var(--moh-brass)]" aria-hidden="true" />
+    <div v-if="!group.readAt" class="absolute inset-y-0 left-0 w-0.5" :class="activityBadgeTone" aria-hidden="true" />
     <div class="flex min-w-0 gap-3 px-4 py-4" :class="{ 'items-center': group.kind === 'follow' }">
       <AppNotificationActors v-if="group.kind === 'follow'" :actors="group.actors.slice(0, 1)" :size="40" class="shrink-0" />
       <AppNotificationEventIcon v-else :kind="group.kind" :actors="group.actors" />
@@ -162,6 +162,7 @@
 </template>
 
 <script setup lang="ts">
+const activityBadgeTone = useActivityBadgeTone()
 import type { FollowSummaryResponse, NotificationActor, NotificationGroup } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import type { MenuItem } from 'primevue/menuitem'

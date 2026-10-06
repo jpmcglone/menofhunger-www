@@ -1,13 +1,12 @@
-import { getAuthGeneration } from '~/composables/auth/authState'
-
-const badgeRefreshByApp = new WeakMap<object, { userId: string; generation: number; promise: Promise<void> }>()
+// Frozen pre-change implementation, used only by the controlled SSR benchmark.
+const badgeRefreshByApp = new WeakMap<object, { userId: string; promise: Promise<void> }>()
 const BADGE_REFRESH_STALE_MS = 30_000
 
 function isCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
 
-export function useBadgeHydration() {
+export function useBadgeHydrationBefore() {
   const nuxtApp = useNuxtApp()
   const { user } = useAuth()
   const notifications = useNotificationsBadge()
@@ -27,8 +26,6 @@ export function useBadgeHydration() {
     setGroupsUnread,
     setNotificationNavUnread,
   } = usePresence()
-  let mounted = false
-  const seededUserId = useState<string | null>('badge-hydration:seeded-user-id', () => null)
   const hydratedUserId = useState<string | null>('badge-hydration:user-id', () => null)
   const hydratedAt = useState<number>('badge-hydration:hydrated-at', () => 0)
   const hasSeenSocketConnection = ref(isSocketConnected.value)
@@ -41,63 +38,25 @@ export function useBadgeHydration() {
     setNotificationNavUnread({ boardUnreadCount: 0, articlesUnreadCount: 0, hasUnreadNotifications: false })
     crewInvites.setCount(0)
     groupInvites.setCount(0)
-    seededUserId.value = null
     hydratedUserId.value = null
     hydratedAt.value = 0
   }
 
-  // Synchronous and serializable: safe during SSR and the first hydration render.
-  function seed() {
-    const authUser = user.value
-    if (!authUser?.id || seededUserId.value === authUser.id) return
-    const hasNotificationCount = isCount(authUser.notificationUndeliveredCount)
-    const hasUnreadCommentCount = isCount(authUser.notificationUnreadCommentCount)
-    const hasMessageCounts =
-      isCount(authUser.messageUnreadCounts?.primary)
-      && isCount(authUser.messageUnreadCounts?.requests)
-    const hasGroupsUnread =
-      isCount(authUser.groupsUnread?.total)
-      && authUser.groupsUnread?.byGroupId != null
-    const hasCrewInviteCount = isCount(authUser.crewInviteInboxCount)
-    const hasGroupInviteCount = isCount(authUser.groupInviteInboxCount)
-
-    if (hasNotificationCount) {
-      setNotificationUndeliveredCount(authUser.notificationUndeliveredCount!)
-    }
-    if (hasUnreadCommentCount) {
-      setNotificationUnreadCommentCount(authUser.notificationUnreadCommentCount!)
-    }
-    if (hasMessageCounts) {
-      setMessageUnreadCounts(authUser.messageUnreadCounts!)
-    }
-    if (hasGroupsUnread) {
-      setGroupsUnread(authUser.groupsUnread!)
-    }
-    if (hasCrewInviteCount) {
-      crewInvites.setCount(authUser.crewInviteInboxCount!)
-    }
-    if (hasGroupInviteCount) {
-      groupInvites.setCount(authUser.groupInviteInboxCount!)
-    }
-
-    seededUserId.value = authUser.id
-  }
-
   async function refresh(options?: { force?: boolean }) {
-    seed()
-    if (!import.meta.client || !mounted) return
     const authUser = user.value
     if (!authUser?.id) {
       clear()
       return
     }
     if (!options?.force && hydratedUserId.value === authUser.id) return
-    const generation = getAuthGeneration()
+
     const existing = badgeRefreshByApp.get(nuxtApp)
-    if (existing?.userId === authUser.id && existing.generation === generation) return await existing.promise
+    if (existing?.userId === authUser.id) return await existing.promise
 
     const request = (async () => {
       const force = options?.force === true
+      const hasNotificationCount = isCount(authUser.notificationUndeliveredCount)
+      const hasUnreadCommentCount = isCount(authUser.notificationUnreadCommentCount)
       const hasMessageCounts =
         isCount(authUser.messageUnreadCounts?.primary)
         && isCount(authUser.messageUnreadCounts?.requests)
@@ -106,6 +65,25 @@ export function useBadgeHydration() {
         && authUser.groupsUnread?.byGroupId != null
       const hasCrewInviteCount = isCount(authUser.crewInviteInboxCount)
       const hasGroupInviteCount = isCount(authUser.groupInviteInboxCount)
+
+      if (!force && hasNotificationCount) {
+        setNotificationUndeliveredCount(authUser.notificationUndeliveredCount!)
+      }
+      if (!force && hasUnreadCommentCount) {
+        setNotificationUnreadCommentCount(authUser.notificationUnreadCommentCount!)
+      }
+      if (!force && hasMessageCounts) {
+        setMessageUnreadCounts(authUser.messageUnreadCounts!)
+      }
+      if (!force && hasGroupsUnread) {
+        setGroupsUnread(authUser.groupsUnread!)
+      }
+      if (!force && hasCrewInviteCount) {
+        crewInvites.setCount(authUser.crewInviteInboxCount!)
+      }
+      if (!force && hasGroupInviteCount) {
+        groupInvites.setCount(authUser.groupInviteInboxCount!)
+      }
 
       const fallbacks: Promise<unknown>[] = []
       // Board / Articles dots are not on /auth/me, so this endpoint always runs once per hydration.
@@ -116,7 +94,7 @@ export function useBadgeHydration() {
       if (force || !hasGroupInviteCount) fallbacks.push(groupInvites.refresh())
       await Promise.allSettled(fallbacks)
 
-      if (mounted && generation === getAuthGeneration() && user.value?.id === authUser.id) {
+      if (user.value?.id === authUser.id) {
         hydratedUserId.value = authUser.id
         hydratedAt.value = Date.now()
       }
@@ -124,12 +102,12 @@ export function useBadgeHydration() {
       if (badgeRefreshByApp.get(nuxtApp)?.promise === request) badgeRefreshByApp.delete(nuxtApp)
     })
 
-    badgeRefreshByApp.set(nuxtApp, { userId: authUser.id, generation, promise: request })
+    badgeRefreshByApp.set(nuxtApp, { userId: authUser.id, promise: request })
     await request
   }
 
   function refreshIfStale() {
-    if (!mounted || !import.meta.client || !user.value?.id) return
+    if (!user.value?.id) return
     if (Date.now() - hydratedAt.value < BADGE_REFRESH_STALE_MS) return
     void refresh({ force: true })
   }
@@ -145,7 +123,7 @@ export function useBadgeHydration() {
   )
 
   watch(isSocketConnected, (connected) => {
-    if (!mounted || !import.meta.client || !connected) return
+    if (!connected) return
     if (!hasSeenSocketConnection.value) {
       hasSeenSocketConnection.value = true
       return
@@ -164,14 +142,11 @@ export function useBadgeHydration() {
 
   if (getCurrentInstance()) {
     onMounted(() => {
-      mounted = true
-      void refresh()
       addCrewCallback(crewCallback)
       addGroupInviteCallback(groupInviteCallback)
       document.addEventListener('visibilitychange', onVisibilityChange)
     })
     onBeforeUnmount(() => {
-      mounted = false
       removeCrewCallback(crewCallback)
       removeGroupInviteCallback(groupInviteCallback)
       document.removeEventListener('visibilitychange', onVisibilityChange)
@@ -184,5 +159,5 @@ export function useBadgeHydration() {
     }
   }
 
-  return { seed, refresh }
+  return { refresh }
 }

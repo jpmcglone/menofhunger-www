@@ -1,5 +1,5 @@
+import { getAuthGeneration } from '~/composables/auth/authState'
 import type { GetMessagesUnreadCountResponse } from '~/types/api'
-import { userColorTier } from '~/utils/user-tier'
 
 export function useMessagesBadge() {
   const { user } = useAuth()
@@ -25,19 +25,15 @@ export function useMessagesBadge() {
     return n >= 99 ? '99+' : String(n)
   })
 
-  const toneClass = computed(() => {
-    const tier = userColorTier(user.value)
-    if (tier === 'organization' || tier === 'premium') return 'moh-notif-badge-premium'
-    if (tier === 'verified') return 'moh-notif-badge-verified'
-    return 'moh-notif-badge-normal'
-  })
+  const toneClass = useActivityBadgeTone()
 
   async function fetchUnreadCounts() {
+    const generation = getAuthGeneration()
     const userId = user.value?.id
     if (!userId) return
     try {
       const res = await apiFetchData<GetMessagesUnreadCountResponse['data']>('/messages/unread-count')
-      if (user.value?.id !== userId) return
+      if (generation !== getAuthGeneration() || user.value?.id !== userId) return
       const primary = Math.max(0, Number(res?.primary ?? 0) || 0)
       const requests = Math.max(0, Number(res?.requests ?? 0) || 0)
       setMessageUnreadCounts({ primary, requests })

@@ -16,7 +16,7 @@
 
     <div class="relative z-[2] min-w-0 flex-1 pointer-events-none">
       <div class="flex items-start gap-1.5">
-        <span v-if="thread.viewerCanAccess && thread.unreadActivity" class="mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--moh-brass)]" aria-label="Unread activity" />
+        <span v-if="thread.viewerCanAccess && thread.unreadActivity" class="mt-1.5 size-1.5 shrink-0 rounded-full " :class="activityBadgeTone" aria-label="Unread activity" />
         <Icon v-if="!thread.viewerCanAccess" name="tabler:lock" class="mt-0.5 shrink-0 text-[15px] moh-text-muted" aria-hidden="true" />
         <!-- The title opens the discussion like the rest of the row; the link or article lives in "…". -->
         <p class="min-w-0 text-[15px] font-semibold leading-snug break-words">
@@ -65,7 +65,7 @@
           <AppIconGlyph name="reply" :size="14" />
           <AppAnimatedCount :value="liveCommentCount" :format="formatShortCount" :min-ch="2" />
         </span>
-        <span v-if="activityLabel" class="font-semibold text-[var(--moh-brass)]">{{ activityLabel }}</span>
+        <span v-if="activityLabel" class="font-semibold" :style="{ color: activityColor }">{{ activityLabel }}</span>
         <AppPostRowViewerBreakdown
           v-if="thread.viewerCanAccess"
           :entity-id="thread.id"
@@ -132,6 +132,9 @@
 </template>
 
 <script setup lang="ts">
+const activityViewer = useAuth()
+const activityColor = computed(() => userActionColor(activityViewer.user.value))
+const activityBadgeTone = useActivityBadgeTone()
 import type { MenuItem } from 'primevue/menuitem'
 import type { BoardThread } from '~/types/api'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'

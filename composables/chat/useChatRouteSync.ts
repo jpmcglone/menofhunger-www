@@ -48,6 +48,7 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
     thread,
   } = opts
 
+  const journeys = useNuxtApp().$journeys
   const route = useRoute()
   const router = useRouter()
   const { apiFetchData } = useApiClient()
@@ -56,6 +57,11 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
 
   async function selectConversation(id: string, selectOpts?: { replace?: boolean; jumpToMessageId?: string }) {
     const targetMsgId = selectOpts?.jumpToMessageId ?? null
+    if ((selectedChatKey.value !== null && selectedChatKey.value !== id)
+      || (thread.jumpTargetMessageId.value !== null && thread.jumpTargetMessageId.value !== targetMsgId)
+      || !journeys?.token('thread_ready')) {
+      journeys?.begin('thread_ready', 'navigation')
+    }
     thread.beginThreadSwitch({ jumpToMessageId: targetMsgId })
     selectedConversationId.value = id
     selectedChatKey.value = id
@@ -72,10 +78,17 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
       if (replace) await router.replace({ query: nextQuery })
       else await router.push({ query: nextQuery })
     }
-    await thread.loadThread(id, { jumpToMessageId: targetMsgId })
+    const journey = journeys?.token('thread_ready')
+    try {
+      await thread.loadThread(id, { jumpToMessageId: targetMsgId })
+    } catch (error) {
+      journeys?.finish('thread_ready', journey, 'error')
+      throw error
+    }
   }
 
   async function clearSelection(clearOpts?: { replace?: boolean; preserveDraft?: boolean }) {
+    journeys?.finish('thread_ready', journeys.token('thread_ready'), 'navigation')
     thread.resetThread()
     selectedConversationId.value = null
     selectedChatKey.value = null

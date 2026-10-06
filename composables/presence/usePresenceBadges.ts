@@ -36,6 +36,8 @@ function getSenderIdFromMessageNewPayload(payload: unknown): string | null {
  * handlers; callback fan-out for the same events lives in usePresenceDomains.
  */
 export function usePresenceBadges() {
+  const hasUnreadNotifications = useState<boolean>('notifications-has-unread', () => false)
+  const notificationBadgeRevision = useState<number>('notifications-badge-revision', () => 0)
   const notificationUndeliveredCount = useState<number>(NOTIFICATIONS_UNDELIVERED_COUNT_KEY, () => 0)
   /**
    * "Waiting on you" dot — count of unread reply notifications.
@@ -111,10 +113,13 @@ export function usePresenceBadges() {
     messageUnreadCounts.value = { primary: nextPrimary, requests: nextRequests }
   }
 
-  function setNotificationNavUnread(data: { boardUnreadCount?: number; articlesUnreadCount?: number }) {
+  function setNotificationNavUnread(data: { undeliveredCount?: number; boardUnreadCount?: number; articlesUnreadCount?: number; hasUnreadNotifications?: boolean }) {
+    notificationBadgeRevision.value += 1
+    if (typeof data.undeliveredCount === 'number') notificationUndeliveredCount.value = Math.max(0, data.undeliveredCount)
+    if (typeof data.hasUnreadNotifications === 'boolean') hasUnreadNotifications.value = data.hasUnreadNotifications
     notificationNavUnread.value = {
-      board: Math.max(0, Math.floor(Number(data?.boardUnreadCount)) || 0),
-      articles: Math.max(0, Math.floor(Number(data?.articlesUnreadCount)) || 0),
+      board: data.boardUnreadCount === undefined ? notificationNavUnread.value.board : Math.max(0, Math.floor(Number(data.boardUnreadCount)) || 0),
+      articles: data.articlesUnreadCount === undefined ? notificationNavUnread.value.articles : Math.max(0, Math.floor(Number(data.articlesUnreadCount)) || 0),
     }
   }
 
@@ -132,6 +137,7 @@ export function usePresenceBadges() {
 
   function registerSocketHandlers(socket: Socket) {
     socket.on('notifications:updated', (data: { undeliveredCount?: number }) => {
+      notificationBadgeRevision.value += 1
       const raw = typeof data?.undeliveredCount === 'number' ? data.undeliveredCount : 0
       notificationUndeliveredCount.value = Math.max(0, Math.floor(raw))
     })
@@ -169,7 +175,7 @@ export function usePresenceBadges() {
       messageUnreadCounts.value = incoming
     })
 
-    socket.on('notifications:navUnreadChanged', (data: { boardUnreadCount?: number; articlesUnreadCount?: number }) => {
+    socket.on('notifications:navUnreadChanged', (data: { undeliveredCount?: number; boardUnreadCount?: number; articlesUnreadCount?: number; hasUnreadNotifications?: boolean }) => {
       setNotificationNavUnread(data)
     })
 
@@ -189,6 +195,8 @@ export function usePresenceBadges() {
   }
 
   return {
+    hasUnreadNotifications,
+    notificationBadgeRevision,
     notificationUndeliveredCount,
     notificationUnreadCommentCount,
     messageUnreadCounts,

@@ -1,4 +1,4 @@
-import { userColorTier } from '~/utils/user-tier'
+import { getAuthGeneration } from '~/composables/auth/authState'
 
 /**
  * Badge state for the Crew nav icon: count of pending invites the viewer has
@@ -17,14 +17,10 @@ export function useCrewInvitesBadge() {
 
   const show = computed(() => count.value > 0)
   const displayCount = computed(() => (count.value >= 99 ? '99+' : String(count.value)))
-  const toneClass = computed(() => {
-    const tier = userColorTier(user.value)
-    if (tier === 'organization' || tier === 'premium') return 'moh-notif-badge-premium'
-    if (tier === 'verified') return 'moh-notif-badge-verified'
-    return 'moh-notif-badge-normal'
-  })
+  const toneClass = useActivityBadgeTone()
 
   async function refresh() {
+    const generation = getAuthGeneration()
     const userId = user.value?.id
     if (!userId || isPageAccount.value) {
       setCount(0)
@@ -32,7 +28,7 @@ export function useCrewInvitesBadge() {
     }
     try {
       const inbox = await crewApi.listInbox()
-      if (user.value?.id !== userId) return
+      if (generation !== getAuthGeneration() || user.value?.id !== userId) return
       const next = inbox.filter((i) => i.status === 'pending').length
       setCount(next)
     } catch {

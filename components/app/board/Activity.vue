@@ -12,10 +12,10 @@
       </div>
       <div class="moh-divide">
         <NuxtLink v-for="item in items" :key="boardActivityKey(item)" :to="boardActivityHref(item)!" class="moh-focus flex min-h-11 gap-3 moh-gutter-x py-4 hover:bg-[var(--moh-surface-hover)]">
-          <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--moh-brass)]" aria-label="Unread activity" />
+          <span class="mt-1.5 size-1.5 shrink-0 rounded-full " :class="activityBadgeTone" aria-label="Unread activity" />
           <div class="min-w-0">
             <p class="text-[15px] font-semibold moh-text">{{ presentation(item).title }}</p>
-            <p class="mt-1 text-xs moh-text-muted">{{ presentation(item).actor }} <span class="text-[var(--moh-brass)]">{{ presentation(item).activity }}</span></p>
+            <p class="mt-1 text-xs moh-text-muted">{{ presentation(item).actor }} <span :style="{ color: activityColor }">{{ presentation(item).activity }}</span></p>
             <p v-if="presentation(item).body" class="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-sm moh-text-muted">{{ presentation(item).body }}</p>
           </div>
         </NuxtLink>
@@ -32,6 +32,10 @@
 </template>
 
 <script setup lang="ts">
+import { userActionColor } from '~/utils/user-tier'
+const activityViewer = useAuth()
+const activityColor = computed(() => userActionColor(activityViewer.user.value))
+const activityBadgeTone = useActivityBadgeTone()
 import type { NotificationFeedItem } from '~/types/api'
 import { boardActivityHref, boardActivityKey } from '~/composables/useBoardActivity'
 

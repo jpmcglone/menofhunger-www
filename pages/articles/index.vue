@@ -4,6 +4,12 @@
     <div class="flex items-center justify-between moh-gutter-x pt-3 pb-1">
       <h1 class="moh-h1">Articles</h1>
       <div class="flex items-center">
+        <details v-if="isAuthed" class="relative">
+          <summary class="moh-focus flex size-11 cursor-pointer list-none items-center justify-center" aria-label="More Articles options"><Icon name="tabler:dots" /></summary>
+          <div class="absolute right-0 top-11 z-30 min-w-60 rounded-lg border moh-border bg-[var(--moh-bg)] p-2 shadow-lg">
+            <button class="moh-focus min-h-11 w-full px-3 text-left text-sm" :disabled="markingArticlesRead" @click="markAllArticlesRead($event)">Mark all article activity as read</button>
+          </div>
+        </details>
         <AppFeedFiltersBar
           icon-only
           :sort="sort"
@@ -97,7 +103,7 @@
 
     <!-- Published articles feed -->
     <div v-if="tabActivated.published" v-show="activeTab === 'published'" role="tabpanel">
-      <AppArticlesActivity v-if="isAuthed" />
+      <AppArticlesActivity v-if="isAuthed" :key="articleActivityRevision" />
       <AppSubtleSectionLoader :loading="publishedInitialLoading" :refreshing="publishedFeed.loading.value && !publishedInitialLoading" min-height-class="min-h-[220px]">
         <AppScreenState
           v-if="publishedFeed.error.value" title="Couldn’t load articles" icon="warning" error
@@ -153,6 +159,29 @@
 </template>
 
 <script setup lang="ts">
+const markingArticlesRead = ref(false)
+const articleActivityRevision = ref(0)
+const articleReadToast = useAppToast()
+const articleReadApi = useApiClient()
+const articleReadAuth = useAuth()
+const articleBadges = useNotificationsBadge()
+async function markAllArticlesRead(event: Event) {
+  if (markingArticlesRead.value) return
+  const account = articleReadAuth.user.value?.id
+  markingArticlesRead.value = true
+  try {
+    await articleReadApi.apiFetch('/notifications/mark-read', { method: 'POST', body: { filter: 'articles' } })
+    if (account !== articleReadAuth.user.value?.id) return
+    articleActivityRevision.value += 1
+    await articleBadges.fetchUndeliveredCount()
+    ;(event.target as HTMLElement)?.closest('details')?.removeAttribute('open')
+  } catch {
+    articleReadToast.push({ title: 'Couldn’t mark article activity read. Try again.', tone: 'error' })
+  } finally {
+    markingArticlesRead.value = false
+  }
+}
+
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'

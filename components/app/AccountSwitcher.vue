@@ -44,13 +44,9 @@
           @{{ item.account.username }}
         </div>
       </div>
-      <span
-        v-if="item.account.unreadBadgeCount > 0 && !item.account.isCurrent"
-        class="shrink-0 flex min-w-[1.125rem] h-[1.125rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white"
-        aria-hidden="true"
-      ><AppAnimatedCount :value="item.account.unreadBadgeCount" :format="formatBadge" /></span>
+      <AppActivityBadge :count="item.account.isCurrent ? activeBadgeCount : item.account.unreadBadgeCount" :has-unread="item.account.isCurrent ? hasUnreadNotifications : item.account.hasUnreadNotifications" />
       <Icon
-        v-else-if="item.account.isCurrent"
+        v-if="item.account.isCurrent"
         name="tabler:check"
         size="16"
         class="shrink-0 text-gray-900 dark:text-gray-50"
@@ -66,9 +62,11 @@
 import type { SwitchableAccount } from '~/types/api'
 import Menu from 'primevue/menu'
 import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
-const formatBadge = (n: number) => (n > 99 ? '99+' : String(n))
 
 const { accounts, canSwitch, switchingId, refresh, switchTo } = useAccountSwitcher()
+const { notificationUndeliveredCount, messageUnreadCounts, hasUnreadNotifications } = usePresence()
+const { total: activeGroupsCount } = useGroupsBadge()
+const activeBadgeCount = computed(() => notificationUndeliveredCount.value + activeGroupsCount.value + messageUnreadCounts.value.primary + messageUnreadCounts.value.requests)
 const menuRef = ref<InstanceType<typeof Menu>>()
 const menuOpen = ref(false)
 const triggerRef = ref<HTMLButtonElement>()
@@ -110,8 +108,10 @@ function accountLabel(account: SwitchableAccount): string {
 }
 
 function accountActionLabel(account: SwitchableAccount): string {
-  if (account.isCurrent) return `${accountLabel(account)}, current account`
-  return `Switch to ${accountLabel(account)}`
+  const label = account.isCurrent ? `${accountLabel(account)}, current account` : `Switch to ${accountLabel(account)}`
+  const count = account.isCurrent ? activeBadgeCount.value : account.unreadBadgeCount
+  const unread = account.isCurrent ? hasUnreadNotifications.value : account.hasUnreadNotifications
+  return count > 0 ? `${label}, ${count} pending updates` : unread ? `${label}, unread notifications` : label
 }
 
 function onPick(account: SwitchableAccount) {

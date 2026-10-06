@@ -80,6 +80,7 @@ export function useHomeFeed(options?: { mediaOnly?: Ref<boolean>; topLevelOnly?:
 
   const {
     posts,
+    hasLoaded,
     displayPosts,
     displayItems,
     collapsedSiblingReplyCountFor,
@@ -197,6 +198,7 @@ export function useHomeFeed(options?: { mediaOnly?: Ref<boolean>; topLevelOnly?:
     feedSort,
     forYou,
     posts,
+    hasLoaded,
     displayPosts,
     displayItems,
     collapsedSiblingReplyCountFor,

@@ -68,11 +68,7 @@
             :enable-preview="false"
             :show-status="false"
           />
-          <span
-            v-if="otherAccountsUnread > 0"
-            class="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[1.125rem] h-[1.125rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[var(--moh-bg)]"
-            aria-hidden="true"
-          >{{ otherAccountsUnread > 99 ? '99+' : otherAccountsUnread }}</span>
+          <AppActivityBadge class="pointer-events-none absolute -right-0.5 -top-0.5 ring-2 ring-[var(--moh-bg)]" :count="otherAccountsUnread" :has-unread="otherAccountsHaveUnread" unread-label="Unread notifications on other accounts" />
         </div>
         <div
           :class="[
@@ -187,7 +183,7 @@ const route = useRoute()
 const { user, isVerifiedMember } = useAuth()
 const { getPresenceStatus, getUserStatus, isSocketConnecting, setMyStatus, editMyStatus, clearMyStatus } = usePresence()
 const { menuItems } = useUserMenu()
-const { canSwitch, otherAccountsUnread } = useAccountSwitcher()
+const { canSwitch, otherAccountsUnread, otherAccountsHaveUnread } = useAccountSwitcher()
 const { currentSpace: currentSpaceForNav } = useSpaceLobby()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const isXlUp = useHydratedMediaQuery('(min-width: 1280px)')

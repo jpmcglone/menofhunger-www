@@ -45,6 +45,8 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   const nextCursorByTab = ref<{ primary: string | null; requests: string | null }>({ primary: null, requests: null })
   const listLoadingByTab = ref<{ primary: boolean; requests: boolean }>({ primary: false, requests: false })
   const loadedByTab = ref({ primary: false, requests: false })
+  const failedByTab = ref({ primary: false, requests: false })
+  const listFailed = computed(() => failedByTab.value[activeTab.value])
   const loadingMore = ref(false)
 
   const selectedConversation = computed(() =>
@@ -81,6 +83,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
     const forceRefresh = fetchOpts?.forceRefresh ?? false
     if (!forceRefresh && !cursor && conversations.value[tab].length > 0) return
     listLoadingByTab.value = { ...listLoadingByTab.value, [tab]: true }
+    failedByTab.value = { ...failedByTab.value, [tab]: false }
     try {
       const res = await apiFetch<MessageConversationWithTone[]>('/messages/conversations', {
         query: { tab, cursor: cursor || undefined },
@@ -93,6 +96,9 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
         [tab]: cursor ? [...conversations.value[tab], ...list] : list,
       }
       nextCursorByTab.value = { ...nextCursorByTab.value, [tab]: res.pagination?.nextCursor ?? null }
+    } catch (error) {
+      failedByTab.value = { ...failedByTab.value, [tab]: true }
+      throw error
     } finally {
       loadedByTab.value = { ...loadedByTab.value, [tab]: true }
       listLoadingByTab.value = { ...listLoadingByTab.value, [tab]: false }
@@ -454,6 +460,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
     activeList,
     nextCursor,
     listLoading,
+    listFailed,
     listRefreshing,
     requestsBadgeCount,
     showRequestsBadge,

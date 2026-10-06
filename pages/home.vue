@@ -549,7 +549,14 @@ const {
   setFeedSort,
   resetFilters,
   onFeedScopeChange,
+  hasLoaded,
 } = useHomeFeed({ mediaOnly: mediaOnlyFeed, topLevelOnly: topLevelOnlyFeed })
+
+const homeOpenedFromCache = posts.value.length > 0
+useJourneyReady('home_ready', () => didAttempt.value && !loading.value && (posts.value.length > 0 || hasLoaded.value), {
+  failed: () => Boolean(error.value), source: () => homeOpenedFromCache ? 'cache' : (posts.value.length ? 'network' : 'empty'),
+})
+
 const homeTabReturnGate = useTabReturnRefreshGate('home')
 
 const homeFeedContentEl = ref<HTMLElement | null>(null)

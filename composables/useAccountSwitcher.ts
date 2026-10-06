@@ -11,7 +11,7 @@ export function useAccountSwitcher() {
   const toast = useAppToast()
 
   const accounts = useState<SwitchableAccount[]>('switchable-accounts', () => [])
-  const pendingBadges = useState<Record<string, number>>('switchable-accounts-pending-badges', () => ({}))
+  const pendingBadges = useState<Record<string, Partial<Pick<SwitchableAccount, 'unreadBadgeCount' | 'hasUnreadNotifications'>>>>('switchable-accounts-pending-badges', () => ({}))
   const loading = useState<boolean>('switchable-accounts-loading', () => false)
   const { switchingId } = useAccountSwitchState()
   const listening = useState<boolean>('switchable-accounts-listening', () => false)
@@ -25,6 +25,8 @@ export function useAccountSwitcher() {
       .filter((account) => !account.isCurrent)
       .reduce((sum, account) => sum + Math.max(0, account.unreadBadgeCount ?? 0), 0),
   )
+
+  const otherAccountsHaveUnread = computed(() => accounts.value.some(account => !account.isCurrent && account.hasUnreadNotifications))
 
   async function refresh() {
     if (switchingId.value) return
@@ -40,7 +42,11 @@ export function useAccountSwitcher() {
       try {
         const fetched = await listSwitchableAccounts()
         if (generation !== getAuthGeneration() || switchingId.value) return
-        accounts.value = mergeSwitchableAccountBadges(fetched, pendingBadges.value)
+        const previous = new Map(accounts.value.map(account => [account.id, account]))
+        accounts.value = mergeSwitchableAccountBadges(fetched.map(account => ({
+          ...account,
+          hasUnreadNotifications: account.hasUnreadNotifications ?? previous.get(account.id)?.hasUnreadNotifications,
+        })), pendingBadges.value)
         pendingBadges.value = {}
       } catch {
         // Keep known accounts available for retry after a transient failure.
@@ -57,11 +63,12 @@ export function useAccountSwitcher() {
     const userId = String(payload?.userId ?? '').trim()
     if (!userId) return
     const next = Math.max(0, Math.floor(Number(payload.unreadBadgeCount) || 0))
-    pendingBadges.value = { ...pendingBadges.value, [userId]: next }
+    const patch = { unreadBadgeCount: next, ...(typeof payload.hasUnreadNotifications === 'boolean' ? { hasUnreadNotifications: payload.hasUnreadNotifications } : {}) }
+    pendingBadges.value = { ...pendingBadges.value, [userId]: { ...pendingBadges.value[userId], ...patch } }
     const found = accounts.value.some((account) => account.id === userId)
     if (found) {
       accounts.value = accounts.value.map((account) =>
-        account.id === userId ? { ...account, unreadBadgeCount: next } : account,
+        account.id === userId ? { ...account, ...patch } : account,
       )
       return
     }
@@ -118,5 +125,5 @@ export function useAccountSwitcher() {
     })
   }
 
-  return { accounts, canSwitch, loading, switchingId, otherAccountsUnread, refresh, switchTo }
+  return { accounts, canSwitch, loading, switchingId, otherAccountsUnread, otherAccountsHaveUnread, refresh, switchTo }
 }

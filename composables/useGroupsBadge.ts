@@ -1,4 +1,4 @@
-import { userColorTier } from '~/utils/user-tier'
+import { getAuthGeneration } from '~/composables/auth/authState'
 
 /**
  * Badge state for the Groups nav icon: unseen group posts plus pending invites
@@ -13,12 +13,7 @@ export function useGroupsBadge() {
   const { groupsUnread, setGroupsUnread } = usePresence()
   const { count: pendingInviteCount } = useGroupInvitesBadge()
 
-  const toneClass = computed(() => {
-    const tier = userColorTier(user.value)
-    if (tier === 'organization' || tier === 'premium') return 'moh-notif-badge-premium'
-    if (tier === 'verified') return 'moh-notif-badge-verified'
-    return 'moh-notif-badge-normal'
-  })
+  const toneClass = useActivityBadgeTone()
 
   const unreadPosts = computed(() => groupsUnread.value.total)
   const total = computed(() => unreadPosts.value + pendingInviteCount.value)
@@ -30,6 +25,7 @@ export function useGroupsBadge() {
   }
 
   async function refresh() {
+    const generation = getAuthGeneration()
     const userId = user.value?.id
     if (!userId) {
       if (groupsUnread.value.total !== 0) setGroupsUnread({ total: 0, byGroupId: {} })
@@ -37,7 +33,7 @@ export function useGroupsBadge() {
     }
     try {
       const data = await apiFetchData<{ total: number; byGroupId: Record<string, number> }>('/notifications/groups-unread')
-      if (user.value?.id !== userId) return
+      if (generation !== getAuthGeneration() || user.value?.id !== userId) return
       setGroupsUnread(data)
     } catch {
       // Non-fatal — count will refresh on the next event or reconnect.

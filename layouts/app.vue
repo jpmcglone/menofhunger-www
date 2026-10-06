@@ -542,7 +542,7 @@ function formatCompactNumber(n: number): string {
 // Initialize here too so SSR and first client render agree on auth-dependent layout branches.
 if (import.meta.server) {
   await initAuth()
-  await badgeHydration.refresh()
+  badgeHydration.seed()
 } else {
   void initAuth().then(() => badgeHydration.refresh()).catch(() => undefined)
 }

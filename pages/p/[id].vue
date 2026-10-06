@@ -417,6 +417,12 @@ const {
   refreshPost,
 } = await usePostPermalink(postId)
 
+useJourneyReady('post_detail_ready', () => Boolean(post.value || accessHint.value), {
+  context: () => postId.value,
+  failed: () => Boolean(errorText.value && !accessHint.value),
+  source: () => accessHint.value ? 'access' : 'network',
+})
+
 // Board posts live on the Board; old /p links, pushes, and shares land on the thread.
 const boardRedirect = post.value ? boardPostHref(post.value) : null
 if (boardRedirect) {

@@ -374,6 +374,7 @@ const {
   activeList,
   nextCursor,
   listLoading,
+  listFailed,
   listRefreshing,
   loadingMore,
   showRequestsBadge,
@@ -895,6 +896,15 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
       updateConversationUnread(convoId, 0)
     },
   },
+})
+
+useJourneyReady('inbox_ready', () => chatBootState.value === 'ready' && !listLoading.value, {
+  failed: () => listFailed.value,
+  source: () => activeList.value.length ? 'network' : 'empty',
+})
+useJourneyReady('thread_ready', () => chatBootState.value === 'ready' && messagesPaneState.value === 'ready' && !messagesLoading.value, {
+  context: () => `${selectedChatKey.value}:${jumpTargetMessageId.value}`,
+  source: () => messages.value.length ? 'network' : 'empty',
 })
 
 // ─── Lifecycle ───────────────────────────────────────────────────────────────

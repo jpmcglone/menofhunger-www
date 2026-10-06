@@ -34,8 +34,6 @@ export function useNotifications() {
     setNotificationUndeliveredCount,
     groupsUnread,
     setGroupsUnread,
-    notificationNavUnread,
-    setNotificationNavUnread,
   } = usePresence()
 
   const stateKey = 'notifications:session'
@@ -270,13 +268,7 @@ export function useNotifications() {
   }
 
   async function markDelivered() {
-    try {
-      await apiFetch('/notifications/mark-delivered', { method: 'POST' })
-    } catch (e: unknown) {
-      if (import.meta.dev) {
-        console.warn('[notifications] markDelivered failed', e)
-      }
-    }
+    await apiFetch('/notifications/mark-delivered', { method: 'POST' })
   }
 
   async function clearLockScreen(section: 'inbox' | 'groups') {
@@ -294,10 +286,6 @@ export function useNotifications() {
 
   async function markBoardNotificationsRead() {
     if (!me.value?.id) return
-    setNotificationNavUnread({
-      boardUnreadCount: 0,
-      articlesUnreadCount: notificationNavUnread.value.articles,
-    })
     try {
       await apiFetch('/notifications/mark-read', {
         method: 'POST',
@@ -366,25 +354,13 @@ export function useNotifications() {
    */
   async function markReadById(id: string) {
     if (!id) return
-    try {
-      await apiFetch(`/notifications/${encodeURIComponent(id)}/mark-read`, { method: 'POST' })
-      closeBrowserNotificationsForIds([id])
-    } catch (e: unknown) {
-      if (import.meta.dev) {
-        console.warn('[notifications] markReadById failed', e)
-      }
-    }
+    await apiFetch(`/notifications/${encodeURIComponent(id)}/mark-read`, { method: 'POST' })
+    closeBrowserNotificationsForIds([id])
   }
 
   async function markAllRead() {
-    try {
-      await apiFetch('/notifications/mark-all-read', { method: 'POST' })
-      closeAllBrowserNotifications()
-    } catch (e: unknown) {
-      if (import.meta.dev) {
-        console.warn('[notifications] markAllRead failed', e)
-      }
-    }
+    await apiFetch('/notifications/mark-all-read', { method: 'POST' })
+    closeAllBrowserNotifications()
   }
 
   async function markReadByKind(kind: 'word_of_the_day' | 'quote_of_the_day' | 'checkin_reminder' | 'on_this_day') {

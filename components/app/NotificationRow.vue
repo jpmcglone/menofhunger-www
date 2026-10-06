@@ -1,6 +1,6 @@
 <template>
   <div class="relative transition-colors" :class="subjectTierRowClass(notification)">
-    <div v-if="!notification.readAt" class="absolute inset-y-0 left-0 w-0.5 bg-[var(--moh-brass)]" aria-hidden="true" />
+    <div v-if="!notification.readAt" class="absolute inset-y-0 left-0 w-0.5" :class="activityBadgeTone" aria-hidden="true" />
     <div class="flex min-w-0 gap-3 px-4 py-4" :class="{ 'items-center': notification.kind === 'follow' }">
       <AppNotificationActors v-if="notification.kind === 'follow'" :actors="notification.actor ? [notification.actor] : []" :size="40" class="shrink-0" />
       <AppNotificationEventIcon v-else :kind="notification.kind" :actors="notification.actor ? [notification.actor] : []" />
@@ -438,6 +438,7 @@
 </template>
 
 <script setup lang="ts">
+const activityBadgeTone = useActivityBadgeTone()
 import { notificationShowsActor } from '~/utils/notification-presentation'
 import type { CommunityGroupShell, FollowSummaryResponse, Notification } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
