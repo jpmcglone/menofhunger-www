@@ -26,11 +26,11 @@
         <ToggleSwitch v-model="shareToFeed" input-id="article-board-to-feed" :disabled="!postToBoard" />
       </div>
     </div>
-    <AppPostCrosspostDestinations v-if="destinations.length" ref="destinationsRef" :destinations="destinations" />
+    <AppPostCrosspostDestinations :destinations="destinations" @change="crosspost = $event" />
 
     <div class="mt-5 flex items-center justify-end gap-2">
       <button type="button" class="moh-tap min-h-11 px-4 text-sm moh-text-muted hover:text-[var(--moh-text)]" @click="emit('close')">Cancel</button>
-      <AppActionButton label="Publish" kind="brand" :loading="publishing" @click="emit('confirm', { postToBoard, shareToFeed, crosspost: destinationsRef?.payload() ?? {} })" />
+      <AppActionButton label="Publish" kind="brand" :loading="publishing" @click="emit('confirm', { postToBoard, shareToFeed, crosspost })" />
     </div>
   </Dialog>
 </template>
@@ -52,7 +52,7 @@ const postToBoard = ref(true)
 const shareToFeed = ref(false)
 const pickaxIntegration = usePickaxIntegration()
 const xIntegration = useXIntegration()
-const destinationsRef = ref<{ payload: () => CrosspostPayload } | null>(null)
+const crosspost = ref<CrosspostPayload>({})
 
 const destinations = computed<CrosspostDestinationView[]>(() => {
   if (props.visibility !== 'public') return []

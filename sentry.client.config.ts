@@ -111,6 +111,8 @@ Sentry.init({
     // Browser extensions that reject their own promises at our URL. PayPal Honey's Safari
     // extension throws UnavailableError when its backend is unreachable (MENOFHUNGER-WWW-1W).
     'UnavailableError',
+    // DuckDuckGo's injected extension bridge rejects after its tab disappears.
+    /^Invalid call to runtime\.sendMessage\(\)\. Tab not found\.$/,
   ],
 
   // Anything whose stack lives in an extension bundle is not our code.

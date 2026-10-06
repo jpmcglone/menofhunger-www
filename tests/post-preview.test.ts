@@ -69,4 +69,23 @@ describe('post preview', () => {
       wrapper.unmount()
     }
   })
+  it('confirms selected destinations and clears selections that become unavailable', async () => {
+    const wrapper = await mountSuspended(PreviewDialog, {
+      props: { post: null, destinations: [{ id: 'x', modes: ['native'] }], initialSelection: { x: 'native' } },
+      global: { stubs: { teleport: true, Icon: true } },
+    })
+    try {
+      const confirm = () => wrapper.findAll('button').find(button => button.text() === 'Post')!.trigger('click')
+      await confirm()
+      expect(wrapper.emitted('confirm')?.at(-1)).toEqual([{ crosspost: { x: 'native' } }])
+      await wrapper.get('input').setValue(false)
+      await confirm()
+      expect(wrapper.emitted('confirm')?.at(-1)).toEqual([{ crosspost: {} }])
+      await wrapper.get('input').setValue(true)
+      await wrapper.setProps({ destinations: [{ id: 'x', modes: [], disabled: true }] })
+      await confirm()
+      expect(wrapper.emitted('confirm')?.at(-1)).toEqual([{ crosspost: {} }])
+    } finally { wrapper.unmount() }
+  })
+
 })

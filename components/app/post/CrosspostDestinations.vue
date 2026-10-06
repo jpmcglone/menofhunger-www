@@ -169,5 +169,8 @@ function payload(): CrosspostPayload {
   return out
 }
 
-defineExpose({ payload })
+// Keep selections in the parent through Vue events. Template refs can point at
+// a component wrapper rather than its exposed instance during dialog mounting.
+const emit = defineEmits<{ change: [selection: CrosspostPayload] }>()
+watch(payload, selection => emit('change', selection), { immediate: true, deep: true })
 </script>

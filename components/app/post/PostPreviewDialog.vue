@@ -30,7 +30,7 @@
         Publishes {{ scheduledLabel }}
       </p>
 
-      <AppPostCrosspostDestinations v-if="destinations?.length" ref="destinationsRef" :destinations="destinations" :initial-selection="initialSelection" />
+      <AppPostCrosspostDestinations :destinations="destinations ?? []" :initial-selection="initialSelection" @change="crosspost = $event" />
 
       <div class="flex justify-end gap-2" :class="{ 'mt-5': Boolean(destinations?.length) }">
         <button
@@ -44,7 +44,7 @@
           :label="editingScheduled ? 'Save' : scheduledLabel ? 'Schedule' : 'Post'"
           kind="brand"
           :loading="busy"
-          @click="emit('confirm', { crosspost: destinationsRef?.payload() ?? {} })"
+          @click="emit('confirm', { crosspost })"
         />
       </div>
     </div>
@@ -74,7 +74,7 @@ const emit = defineEmits<{
   confirm: [options: { crosspost: CrosspostPayload }]
 }>()
 
-const destinationsRef = ref<{ payload: () => CrosspostPayload } | null>(null)
+const crosspost = ref<CrosspostPayload>({})
 const { width: columnWidth } = useElementSize(useMiddleScroller())
 
 useOverlayDismiss(() => true, () => emit('close'))

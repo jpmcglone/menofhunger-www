@@ -17,9 +17,9 @@ describe('cross-post choice menu', () => {
     })
     try {
       const toggle = wrapper.get('input')
-      expect((wrapper.vm as unknown as { payload: () => unknown }).payload()).toEqual({})
+      expect(wrapper.emitted('change')?.at(-1)?.[0]).toEqual({})
       await toggle.setValue(true)
-      expect((wrapper.vm as unknown as { payload: () => unknown }).payload()).toEqual({ pickax: 'native' })
+      expect(wrapper.emitted('change')?.at(-1)?.[0]).toEqual({ pickax: 'native' })
       await wrapper.get('button[aria-label="Post on Pickax"]').trigger('click')
       await vi.waitFor(() => {
         const popup = document.querySelector<HTMLElement>('[data-pc-name="menu"]')
@@ -48,7 +48,7 @@ for (const id of ['pickax'] as const) {
       props: { destinations: [{ id, modes: ['link', 'native'], allowanceNote }] },
       global: { stubs: { Icon: true, Transition: false } },
     })
-    const payload = () => (wrapper.vm as unknown as { payload: () => unknown }).payload()
+    const payload = () => wrapper.emitted('change')?.at(-1)?.[0]
     try {
       expect(wrapper.text()).toContain(`Post on ${name}`)
       expect(wrapper.text()).toContain(allowanceNote)
@@ -77,7 +77,7 @@ it('uses only an on/off toggle for X, and clears an unsupported saved selection'
     props: { destinations: [{ id: 'x', modes: ['native'], allowanceNote: '40 posts left this month' }], initialSelection: { x: 'native' } },
     global: { stubs: { Icon: true } },
   })
-  const payload = () => (wrapper.vm as unknown as { payload: () => unknown }).payload()
+  const payload = () => wrapper.emitted('change')?.at(-1)?.[0]
   try {
     expect(wrapper.text()).toContain('Post to X')
     expect(wrapper.find('button').exists()).toBe(false)
@@ -102,7 +102,7 @@ it('retains an explicitly offered X Article link choice', async () => {
   })
   try {
     await wrapper.get('input').setValue(true)
-    expect((wrapper.vm as unknown as { payload: () => unknown }).payload()).toEqual({ x: 'link' })
+    expect(wrapper.emitted('change')?.at(-1)?.[0]).toEqual({ x: 'link' })
     expect(wrapper.text()).toContain('A link back')
   } finally { wrapper.unmount() }
 })

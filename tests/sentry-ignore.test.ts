@@ -34,3 +34,13 @@ describe('Sentry client ignore list', () => {
   })
 })
 
+
+it('drops only the known missing-tab browser bridge error', () => {
+  const patterns = sentryInitOptions().ignoreErrors ?? []
+  const ignored = (message: string) => patterns.some(pattern =>
+    typeof pattern === 'string' ? message.includes(pattern) : pattern.test(message),
+  )
+  expect(ignored('Invalid call to runtime.sendMessage(). Tab not found.')).toBe(true)
+  expect(ignored('Invalid call to runtime.sendMessage(). Permission denied.')).toBe(false)
+  expect(ignored('payload is not a function')).toBe(false)
+})
