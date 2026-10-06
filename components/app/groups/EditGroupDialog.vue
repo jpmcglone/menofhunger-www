@@ -229,8 +229,17 @@
       <AppInlineAlert v-if="editError" severity="danger">
         {{ editError }}
       </AppInlineAlert>
+
+      <section v-if="canEdit" class="space-y-2 border-t moh-border pt-4" aria-labelledby="group-danger-zone">
+        <h3 id="group-danger-zone" class="text-base font-semibold moh-text">Danger zone</h3>
+        <div class="flex items-center gap-3 rounded-xl border border-red-300 bg-red-50 p-3 dark:border-red-500/40 dark:bg-red-500/10">
+          <p class="min-w-0 flex-1 text-sm moh-text">Delete this group and everything in it.</p>
+          <Button label="Delete group…" severity="danger" outlined rounded size="small" :disabled="saving" @click="deleteOpen = true" />
+        </div>
+      </section>
     </div>
   </AppFormModal>
+  <AppGroupsDeleteGroupDialog v-model="deleteOpen" :shell="shell" @deleted="onDeleted" />
 </template>
 
 <script setup lang="ts">
@@ -267,6 +276,11 @@ const canEdit = computed(() => isOwner.value || isAdminOverride.value)
 const isCurrentlyPrivate = computed(() => props.shell?.joinPolicy === 'approval')
 const avatarRoundClass = groupAvatarRoundClass()
 const { confirm } = useAppConfirm()
+const deleteOpen = ref(false)
+async function onDeleted() {
+  emit('update:modelValue', false)
+  await navigateTo('/groups')
+}
 
 const coverUrl = computed(() => props.shell?.coverImageUrl ?? null)
 const avatarUrl = computed(() => props.shell?.avatarImageUrl ?? null)
