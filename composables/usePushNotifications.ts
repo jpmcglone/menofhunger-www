@@ -1,12 +1,11 @@
 /**
  * Web Push: request permission, subscribe with VAPID, and send subscription to the API.
  * The browser's native "Allow/Block notifications" prompt is triggered by Notification.requestPermission().
- * We auto-prompt when the user is logged in and permission is still "ask" (default); otherwise
- * the user can enable via Settings → Notifications. On logout or disable, unsubscribe and remove from API.
+ * Permission is requested from Settings → Notifications after a user action.
+ * On logout or disable, unsubscribe and remove from API.
  */
 
 const SW_PUSH_PATH = '/sw-push.js'
-const PUSH_HAS_AUTO_PROMPTED_KEY = 'push-has-auto-prompted'
 
 function isIosDevice(): boolean {
   if (typeof navigator === 'undefined') return false
@@ -48,16 +47,15 @@ function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
 export function usePushNotifications() {
   const config = useRuntimeConfig()
   const vapidPublicKey = config.public.vapidPublicKey as string
-  const { apiUrl, apiFetch } = useApiClient()
+  const { apiFetch } = useApiClient()
   const { user } = useAuth()
 
   const permission = ref<NotificationPermission | 'unsupported'>(
     typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
   )
-  const isSubscribed = ref(false)
-  const isRegistering = ref(false)
+  const isSubscribed = useState<boolean>('push-is-subscribed', () => false)
+  const isRegistering = useState<boolean>('push-is-registering', () => false)
   const errorMessage = ref<string | null>(null)
-  const hasAutoPrompted = useState<boolean>(PUSH_HAS_AUTO_PROMPTED_KEY, () => false)
   const hasPermissionWatcher = useState<boolean>('push-has-permission-watcher', () => false)
   // Tracks which userId the server-side push subscription is currently registered for.
   // If it doesn't match the logged-in user, we re-register (handles user switching).
@@ -76,16 +74,26 @@ export function usePushNotifications() {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null
     try {
       const reg = await navigator.serviceWorker.register(SW_PUSH_PATH, { scope: '/' })
-      await reg.update()
-      return reg
+      // An update check must not prevent using an already working registration.
+      void reg.update().catch(() => {})
+      return reg.active ? reg : await navigator.serviceWorker.ready
     } catch (e) {
       console.warn('[push] SW register failed', e)
       return null
     }
   }
 
-  async function subscribe(): Promise<boolean> {
-    if (!import.meta.client || !user.value?.id) return false
+  function disabledKey(): string {
+    return `push-disabled:${pushOwnerUserId(user.value) ?? 'anonymous'}`
+  }
+
+  function isExplicitlyDisabled(): boolean {
+    try { return localStorage.getItem(disabledKey()) === 'true' } catch { return false }
+  }
+
+  async function subscribe(options: { automatic?: boolean } = {}): Promise<boolean> {
+    if (!import.meta.client || !user.value?.id || isRegistering.value) return false
+    if (options.automatic && isExplicitlyDisabled()) return false
     if (!vapidPublicKey?.trim()) {
       errorMessage.value = 'Push notifications are not configured.'
       return false
@@ -101,6 +109,8 @@ export function usePushNotifications() {
       return false
     }
 
+    const ownerId = pushOwnerUserId(user.value)
+    const preferenceKey = disabledKey()
     isRegistering.value = true
     errorMessage.value = null
     try {
@@ -145,7 +155,10 @@ export function usePushNotifications() {
         }
       })
       isSubscribed.value = true
-      subscribedForUserId.value = pushOwnerUserId(user.value)
+      subscribedForUserId.value = ownerId
+      if (!options.automatic) {
+        try { localStorage.removeItem(preferenceKey) } catch { /* Storage may be unavailable. */ }
+      }
       return true
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to subscribe.'
@@ -156,8 +169,11 @@ export function usePushNotifications() {
     }
   }
 
-  async function unsubscribe(): Promise<void> {
+  async function unsubscribe(options: { disable?: boolean } = {}): Promise<void> {
     if (!import.meta.client || !('serviceWorker' in navigator)) return
+    if (options.disable !== false) {
+      try { localStorage.setItem(disabledKey(), 'true') } catch { /* Best effort. */ }
+    }
     errorMessage.value = null
     try {
       const reg = await registerSw()
@@ -184,22 +200,8 @@ export function usePushNotifications() {
 
   /** Call when user logs out: unsubscribe and clear state. */
   async function onLogout(): Promise<void> {
-    await unsubscribe()
+    await unsubscribe({ disable: false })
     permission.value = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
-  }
-
-  /**
-   * Auto-prompt once per session when user is logged in and permission is still "ask".
-   * Call from app layout (or similar) when auth is ready.
-   */
-  function tryAutoPrompt(): void {
-    if (!import.meta.client || !user.value?.id) return
-    if (!vapidPublicKey?.trim()) return
-    if (requiresInstall.value) return
-    if (typeof Notification === 'undefined' || Notification.permission !== 'default') return
-    if (hasAutoPrompted.value) return
-    hasAutoPrompted.value = true
-    void subscribe()
   }
 
   /**
@@ -210,7 +212,7 @@ export function usePushNotifications() {
   async function ensureSubscribedWhenGranted(): Promise<void> {
     if (!import.meta.client || !user.value?.id || !vapidPublicKey?.trim()) return
     if (typeof Notification === 'undefined' || !('PushManager' in self)) return
-    if (isRegistering.value) return
+    if (isRegistering.value || isExplicitlyDisabled()) return
     await refreshSubscriptionState()
     if (Notification.permission !== 'granted') return
     // Re-register if: (a) no browser subscription exists, or (b) the subscription is registered
@@ -218,7 +220,7 @@ export function usePushNotifications() {
     // logout (e.g. network failure) and a new user has since logged in.
     const alreadyCorrectUser = isSubscribed.value && subscribedForUserId.value === pushOwnerUserId(user.value)
     if (alreadyCorrectUser) return
-    void subscribe()
+    await subscribe({ automatic: true })
   }
 
   /** Re-check subscription state (e.g. on app load when logged in). Also triggers SW update so latest sw-push.js is used. */
@@ -226,12 +228,8 @@ export function usePushNotifications() {
     if (!import.meta.client || !('serviceWorker' in navigator) || !user.value?.id) return
     try {
       const reg = await registerSw()
-      // `update()` is fire-and-forget but must NOT escape unhandled: in Safari, SW update
-      // failures can surface as a CustomEvent rejection rather than a plain Error, which
-      // Sentry captures as an unhandled promise rejection if the Promise is discarded with void.
-      if (reg) reg.update().catch(() => {})
       const sub = reg?.pushManager ? await reg.pushManager.getSubscription() : null
-      isSubscribed.value = !!sub
+      isSubscribed.value = !!sub && Notification.permission === 'granted' && !isExplicitlyDisabled()
       permission.value = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
     } catch {
       isSubscribed.value = false
@@ -270,7 +268,6 @@ export function usePushNotifications() {
     subscribe,
     unsubscribe,
     onLogout,
-    tryAutoPrompt,
     ensureSubscribedWhenGranted,
     refreshSubscriptionState,
     vapidConfigured: !!vapidPublicKey?.trim()

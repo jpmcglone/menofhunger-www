@@ -269,7 +269,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   function markConversationReadIfVisible(conversationId: string) {
     const id = (conversationId ?? '').trim()
     if (!id) return
-    if (typeof document === 'undefined' || document.visibilityState !== 'visible') return
+    if (typeof document === 'undefined' || document.visibilityState !== 'visible' || !document.hasFocus()) return
 
     // Always patch the local count to zero — cheap and keeps the badge in sync.
     updateConversationUnread(id, 0)

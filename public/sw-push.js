@@ -1,5 +1,6 @@
 /**
- * Push-only Service Worker. Shows OS notification only when no app tab has visibilityState === 'visible'.
+ * Chat notifications are suppressed only for the focused conversation.
+ * Other notifications are suppressed while an app window is visible and focused.
  * Test payloads (payload.test === true or title "Test notification") are always shown.
  * On notification click: focus existing app window and navigate, or open a new window.
  */
@@ -195,7 +196,18 @@ self.addEventListener('push', function (event) {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clients) {
       const isActivelyInApp = clients.some(function (client) {
-        return client.visibilityState === 'visible' && client.focused
+        if (client.visibilityState !== 'visible' || !client.focused) return false
+        if (kind !== 'message') return true
+        // A focused feed or another chat must not swallow a direct message.
+        try {
+          const target = new URL(url, self.location.origin)
+          const current = new URL(client.url)
+          const conversationId = target.searchParams.get('c')
+          return Boolean(conversationId) && current.origin === target.origin &&
+            current.pathname === '/chat' && current.searchParams.get('c') === conversationId
+        } catch {
+          return false
+        }
       })
       if (!isTest && isActivelyInApp) return
       return self.registration.showNotification(title, {
@@ -204,7 +216,7 @@ self.addEventListener('push', function (event) {
         icon,
         badge,
         renotify,
-        data: { url, kind, tag, recipientUserId: payload.recipientUserId || '' }
+        data: { url, kind, tag, notificationId: payload.notificationId || '', recipientUserId: payload.recipientUserId || '' }
       }).catch(function (err) {
         console.error('[sw-push] showNotification failed', err)
       })
@@ -242,7 +254,7 @@ self.addEventListener('notificationclick', function (event) {
           all: false,
           kinds: new Set(),
           tags: tag ? new Set([String(tag)]) : new Set(),
-          paths: new Set([notificationPath(event.notification)]),
+          paths: kind === 'message' ? new Set() : new Set([notificationPath(event.notification)]),
           notificationIds: data.notificationId ? new Set([String(data.notificationId)]) : new Set()
         })
       })

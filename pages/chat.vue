@@ -248,6 +248,7 @@ import { useChatScroll } from '~/composables/chat/useChatScroll'
 import { useChatRealtime } from '~/composables/chat/useChatRealtime'
 import { useChatConversations, type MessageTone } from '~/composables/chat/useChatConversations'
 import { useChatThread, MESSAGES_PANE_FADE_MS } from '~/composables/chat/useChatThread'
+import { useChatScreenPresence } from '~/composables/chat/useChatScreenPresence'
 import { useChatRouteSync } from '~/composables/chat/useChatRouteSync'
 import { useRefcountedInterest } from '~/composables/chat/useRefcountedInterest'
 import ChatConversationList from '~/components/app/chat/ChatConversationList.vue'
@@ -310,10 +311,11 @@ const {
   addCallsCallback,
   removeCallsCallback,
   emitMessagesTyping,
-  emitMessagesScreen,
+  emitMessagesScreen: emitRawMessagesScreen,
   suppressMessageUnreadBumpsForMs,
   isSocketConnected,
 } = usePresence()
+const emitMessagesScreen = useChatScreenPresence(emitRawMessagesScreen)
 const { toneClass } = useMessagesBadge()
 const badgeToneClass = computed(() => toneClass.value)
 const marv = useMarv()
@@ -828,7 +830,7 @@ const { register: registerRealtime, teardown: teardownRealtime } = useChatRealti
         })
       }
       const isIncoming = msg.sender.id !== me.value?.id
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && shouldStick) {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && document.hasFocus() && shouldStick) {
         if (isIncoming) suppressMessageUnreadBumpsForMs(900)
         // Routes through the throttled helper: bursts of incoming messages
         // collapse to one POST per 250ms per conversation; the optimistic
