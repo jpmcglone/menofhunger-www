@@ -11,7 +11,7 @@ export function mergeChannel(current: GroupChannel | undefined, incoming: GroupC
   const viewer = viewerFresh ? incoming : current
   // New messages can raise unread state even when the snapshot's read position is older.
   const counts = incoming.revision > current.revision ? incoming : viewer
-  return { ...content, readThrough: viewer.readThrough, preference: viewer.preference, viewerUpdatedAt: viewer.viewerUpdatedAt, hasUnread: counts.hasUnread, personalCount: counts.personalCount }
+  return { ...content, readThrough: viewer.readThrough, preference: viewer.preference, mutedUntil: viewer.mutedUntil, hidden: viewer.hidden, viewerUpdatedAt: viewer.viewerUpdatedAt, hasUnread: counts.hasUnread, personalCount: counts.personalCount }
 }
 /** The title shown for a channel; the unique handle in `name` is the fallback. */
 export const channelTitle = (channel: { name: string; displayName?: string | null }) => channel.displayName?.trim() || channel.name

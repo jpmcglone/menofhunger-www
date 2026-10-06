@@ -6,9 +6,14 @@
       <nav class="channel-list w-full shrink-0 overflow-y-auto border-r moh-border p-2" aria-label="Channels">
         <button type="button" class="moh-focus flex min-h-11 w-full items-center justify-between rounded-lg px-3 text-sm" @click="openAttention"><span>For you</span><span v-if="state.personalCount.value" class="font-semibold">{{ state.personalCount.value }}</span></button>
         <div class="my-2 border-t moh-border" />
-        <NuxtLink v-for="channel in shownChannels" :key="channel.id" :to="channelLink(group.slug, channel.id)" class="moh-focus flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm" :class="[channel.id === channelId ? 'bg-[var(--moh-surface-2)]' : 'moh-surface-hover', channel.hasUnread ? 'font-bold' : '']" :aria-current="channel.id === channelId ? 'page' : undefined">
-          <AppChannelsChannelIcon :channel="channel" /><span class="truncate">{{ channelTitle(channel) }}</span><AppChannelsTypingDots v-if="state.typingByChannel.value[channel.id]?.length" class="shrink-0 moh-text-muted" :label="`${state.typingByChannel.value[channel.id]!.map(item => item.username).join(', ')} typing`" /><span v-if="channel.personalCount" class="ml-auto rounded-full bg-[var(--moh-text)] px-2 text-xs text-[var(--moh-bg)]">{{ channel.personalCount }}</span><span v-else-if="channel.hasUnread" class="ml-auto size-1.5 rounded-full bg-current" aria-label="Unread activity" />
-        </NuxtLink>
+        <div v-for="channel in shownChannels" :key="channel.id" class="group relative" @contextmenu.prevent="openMenu($event, channel)">
+          <NuxtLink :to="channelLink(group.slug, channel.id)" class="moh-focus flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm" :class="[channel.id === channelId ? 'bg-[var(--moh-surface-2)]' : 'moh-surface-hover', channel.hasUnread ? 'font-bold' : '', isMuted(channel) || channel.hidden ? 'opacity-60' : '']" :aria-current="channel.id === channelId ? 'page' : undefined">
+            <AppChannelsChannelIcon :channel="channel" /><span class="truncate">{{ channelTitle(channel) }}</span><AppChannelsTypingDots v-if="state.typingByChannel.value[channel.id]?.length" class="shrink-0 moh-text-muted" :label="`${state.typingByChannel.value[channel.id]!.map(item => item.username).join(', ')} typing`" /><Icon v-if="isMuted(channel)" name="tabler:bell-off" class="ml-auto shrink-0 moh-text-muted" aria-label="Muted" /><span v-if="channel.personalCount" class="rounded-full bg-[var(--moh-text)] px-2 text-xs text-[var(--moh-bg)]" :class="isMuted(channel) ? '' : 'ml-auto'">{{ channel.personalCount }}</span><span v-else-if="channel.hasUnread" class="ml-auto size-1.5 rounded-full bg-current" aria-label="Unread activity" />
+          </NuxtLink>
+          <button type="button" class="moh-focus absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-[var(--moh-surface-2)] opacity-0 focus-visible:opacity-100 group-hover:opacity-100" :aria-label="`Options for ${channelTitle(channel)}`" @click.prevent="openMenu($event, channel)"><Icon name="tabler:dots" /></button>
+        </div>
+        <button v-if="hiddenCount" type="button" class="moh-focus min-h-11 px-3 text-sm moh-text-muted" @click="showHidden = !showHidden">{{ showHidden ? 'Hide hidden channels' : `Hidden channels (${hiddenCount})` }}</button>
+        <TieredMenu v-if="menuMounted" ref="menuRef" :model="menuItems" popup />
         <button v-if="leader" type="button" class="moh-focus flex min-h-11 w-full items-center gap-2 px-3 text-sm moh-text-muted" @click="createOpen = true"><Icon name="tabler:plus" />New channel</button>
         <button type="button" class="moh-focus min-h-11 px-3 text-sm moh-text-muted" @click="showArchived = !showArchived">{{ showArchived ? 'Hide archived channels' : 'Archived channels' }}</button>
       </nav>
@@ -20,6 +25,7 @@
     </div>
     <div v-else-if="!loading && group" class="p-6">Channels aren’t available for this group.</div>
     <AppChannelsManagement v-if="group" v-model="createOpen" :group="group" @updated="state.load" />
+    <AppChannelsManagement v-if="group && menuChannel" v-model="manageOpen" :group="group" :channel="menuChannel" @updated="state.load" />
     <Dialog v-model:visible="attentionOpen" modal header="For you" class="w-full max-w-xl">
       <p v-if="!state.attention.value.length" class="moh-text-muted">You’re caught up.</p>
       <div class="moh-divide">
@@ -29,8 +35,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import type { CommunityGroupShell } from '~/types/api'
+import type { MenuItem } from 'primevue/menuitem'
+import type { CommunityGroupShell, GroupChannel } from '~/types/api'
+import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
 import { useGroupChannels, groupChannelsKey } from '~/composables/channels/useGroupChannels'
+import { isGroupRoute } from '~/utils/group-header'
 import { channelLink, channelTitle } from '~/utils/channels/reducer'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 // Keep the page (and its channel list) mounted while the channel param changes.
@@ -50,7 +59,46 @@ const channelId = computed(() => typeof route.params.channelId === 'string' ? ro
 const threadId = computed(() => typeof route.query.thread === 'string' ? route.query.thread : undefined)
 const messageId = computed(() => typeof route.query.message === 'string' ? route.query.message : undefined)
 const selected = computed(() => state.channels.value.find(channel => channel.id === channelId.value))
-const shownChannels = computed(() => state.channels.value.filter(channel => showArchived.value || !channel.archivedAt))
+const showHidden = ref(false)
+const manageOpen = ref(false)
+const menuChannel = ref<GroupChannel | null>(null)
+const { mounted: menuMounted, menuRef, toggle: toggleMenu } = useAutoToggleMenu()
+const toast = useAppToast()
+const { copyText } = useCopyToClipboard()
+const isMuted = (channel: GroupChannel) => !!channel.mutedUntil && new Date(channel.mutedUntil) > new Date()
+const hiddenCount = computed(() => state.channels.value.filter(channel => channel.hidden && !channel.archivedAt).length)
+const shownChannels = computed(() => state.channels.value.filter(channel => (showArchived.value || !channel.archivedAt) && (!channel.hidden || showHidden.value || channel.id === channelId.value)))
+const channelPathFor = (channel: GroupChannel) => `/groups/${group.value!.id}/channels/${channel.id}`
+async function act(channel: GroupChannel, request: () => Promise<unknown>) {
+  try { await request(); await state.load() } catch (cause) { toast.pushError(cause, 'Couldn’t update the channel.') }
+}
+const muteFor = (channel: GroupChannel, ms: number | null) => act(channel, () => apiFetchData(`${channelPathFor(channel)}/mute`, { method: 'PUT', body: { until: ms === null ? 'forever' : new Date(Date.now() + ms).toISOString() } }))
+const menuItems = computed<MenuItem[]>(() => {
+  const channel = menuChannel.value
+  if (!channel || !group.value) return []
+  const minutes = (n: number) => n * 60_000
+  const muted = isMuted(channel)
+  const prefs = [['all', 'All messages'], ['mentions', 'Mentions & replies'], ['off', 'Nothing']] as const
+  return [
+    { label: 'Mark as read', icon: 'pi pi-check', disabled: !channel.hasUnread && !channel.personalCount, command: () => act(channel, () => apiFetchData(`${channelPathFor(channel)}/read-all`, { method: 'POST' })) },
+    ...(channel.privacy === 'private' && channel.capabilities.canInvite ? [{ label: 'Invite to channel', icon: 'pi pi-user-plus', command: () => { manageOpen.value = true } }] : []),
+    { label: 'Copy link', icon: 'pi pi-link', command: async () => { await copyText(`${window.location.origin}${channelLink(group.value!.slug, channel.id)}`); toast.push({ title: 'Link copied', tone: 'success' }) } },
+    { separator: true },
+    muted
+      ? { label: 'Unmute channel', icon: 'pi pi-bell', command: () => act(channel, () => apiFetchData(`${channelPathFor(channel)}/mute`, { method: 'PUT', body: { until: null } })) }
+      : { label: 'Mute channel', icon: 'pi pi-bell-slash', items: [
+        { label: 'For 15 minutes', command: () => muteFor(channel, minutes(15)) },
+        { label: 'For 1 hour', command: () => muteFor(channel, minutes(60)) },
+        { label: 'For 8 hours', command: () => muteFor(channel, minutes(480)) },
+        { label: 'For 24 hours', command: () => muteFor(channel, minutes(1440)) },
+        { label: 'Until I turn it back on', command: () => muteFor(channel, null) },
+      ] },
+    { label: 'Notification settings', icon: 'pi pi-cog', items: prefs.map(([value, label]) => ({ label, icon: channel.preference === value ? 'pi pi-check' : 'pi pi-minus', command: () => act(channel, () => apiFetchData(`${channelPathFor(channel)}/preference`, { method: 'PUT', body: { preference: value } })) })) },
+    { separator: true },
+    { label: channel.hidden ? 'Show channel' : 'Hide channel', icon: channel.hidden ? 'pi pi-eye' : 'pi pi-eye-slash', command: () => act(channel, () => apiFetchData(`${channelPathFor(channel)}/hidden`, { method: 'PUT', body: { hidden: !channel.hidden } })) },
+  ]
+})
+function openMenu(event: Event, channel: GroupChannel) { menuChannel.value = channel; void toggleMenu(event) }
 const leader = computed(() => ['owner', 'moderator'].includes(group.value?.viewerMembership?.role ?? ''))
 const context = usePageGroupContext()
 const groupTabs = useGroupTabs()
@@ -90,7 +138,7 @@ async function load() {
 async function openAttention() { attentionOpen.value = true; await state.loadAttention() }
 onMounted(load)
 watch(() => route.params.slug, load)
-onBeforeUnmount(() => { request++; context.value = null; if (appHeader.value?.title === group.value?.name) appHeader.value = null })
+onBeforeUnmount(() => { request++; context.value = null; if (!isGroupRoute(route.path) && appHeader.value?.title === group.value?.name) appHeader.value = null })
 </script>
 <style scoped>
 .channel-page { container-type: inline-size; }

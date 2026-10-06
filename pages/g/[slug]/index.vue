@@ -1109,7 +1109,7 @@ onBeforeUnmount(() => {
   unregisterReplyPostedHandler()
   stopGroupFeedAutoRefresh()
   stopGroupRealtime()
-  if (appHeader.value?.title === (shell.value?.name || 'Group')) appHeader.value = null
+  if (!isGroupRoute(route.path) && appHeader.value?.title === (shell.value?.name || 'Group')) appHeader.value = null
 })
 </script>
 

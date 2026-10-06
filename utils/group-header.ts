@@ -6,3 +6,6 @@ export function groupHeader(group: Pick<CommunityGroupShell, 'name' | 'avatarIma
   const description = group.description?.trim() || `${group.memberCount.toLocaleString()} ${group.memberCount === 1 ? 'member' : 'members'}`
   return { title: group.name || 'Group', icon: 'tabler:users', group: { name: group.name, avatarUrl: group.avatarImageUrl }, description }
 }
+
+/** Posts and Channels share one title bar; leaving for the sibling tab must not clear it. */
+export const isGroupRoute = (path: string) => /^\/(g\/[^/]+|groups\/[^/]+\/channels)(\/|$)/.test(path)

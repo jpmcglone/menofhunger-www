@@ -43,6 +43,7 @@
         <AppActionButton
           :label="editingScheduled ? 'Save' : scheduledLabel ? 'Schedule' : 'Post'"
           kind="brand"
+          :style="post?.kind === 'checkin' ? { '--moh-action-fill': 'var(--moh-verified)', '--moh-action-label': '#fff' } : undefined"
           :loading="busy"
           @click="emit('confirm', { crosspost })"
         />
