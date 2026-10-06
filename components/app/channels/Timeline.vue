@@ -21,7 +21,7 @@
       <TransitionGroup tag="div" :name="loading ? 'channel-static' : 'channel-rows'">
       <div v-for="(message, index) in rows" :key="message.id">
         <div v-if="startsDay(index)" class="flex items-center gap-3 py-5 text-xs moh-text-muted"><span class="h-px flex-1 bg-[var(--moh-border)]" /><time :datetime="message.createdAt">{{ new Date(message.createdAt).toLocaleDateString([], { month: 'long', day: 'numeric' }) }}</time><span class="h-px flex-1 bg-[var(--moh-border)]" /></div>
-        <div v-if="message.id === newMarkerId" class="flex items-center gap-3 text-xs text-orange-600"><span class="h-px flex-1 bg-current" />New<span class="h-px flex-1 bg-current" /></div>
+        <button v-if="message.id === newMarkerId" type="button" class="moh-focus flex min-h-11 w-full items-center gap-3 text-xs text-orange-600" aria-label="New messages. Dismiss marker" title="Dismiss (Esc)" @click="newDismissed = true"><span class="h-px flex-1 bg-current" />New<span class="h-px flex-1 bg-current" /></button>
         <div :id="`channel-message-${message.id}`" :data-message-id="message.id" :class="targetId === message.id ? 'bg-[var(--moh-surface-2)]' : ''"><AppChannelsMessageRow :message="message" :permalink="permalink(message)" :grouped="grouped(index)" :latest-own="message.id === latestOwnId && !pending.length" :fresh="freshlySent.has(message.id)" :can-react="channel.capabilities.canReact" :actions="actions(message)" :reactions="reactions" @react="react(message, $event)" @reply="openThread(message)" @hide-preview="hidePreview(message, $event)" /></div>
       </div>
       </TransitionGroup>
@@ -79,7 +79,8 @@ const atBottom = list.atBottom
 // Messages that arrive while you are here, and your own, never get one.
 const entryReadThrough = props.channel.readThrough
 const entryHadUnread = props.channel.hasUnread && entryReadThrough > 0
-const newMarkerId = computed(() => entryHadUnread ? rows.value.find(message => message.sequence > entryReadThrough && message.sender.id !== user.value?.id)?.id : undefined)
+const newDismissed = ref(false)
+const newMarkerId = computed(() => entryHadUnread && !newDismissed.value ? rows.value.find(message => message.sequence > entryReadThrough && message.sender.id !== user.value?.id)?.id : undefined)
 function followLatest() { list.lockToBottom() }
 let newestId: string | null = null, opened = false
 const pending = computed(() => outbox.entries.value.filter(entry => entry.channelId === props.channel.id && entry.rootId === props.rootId && entry.status !== 'sent'))
@@ -174,7 +175,12 @@ watch(() => outbox.entries.value.filter(entry => entry.status === 'sent').map(en
 })
 watch(presence.isSocketConnected, connected => { if (connected) { void load().then(() => channelAnalytics.capture('channel_reconnect_recovered', { success: !error.value })); void acknowledge() } })
 watch(() => props.targetId, () => load())
+function dismissNewOnEscape(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || event.defaultPrevented || !newMarkerId.value || document.querySelector('[role="dialog"]')) return
+  newDismissed.value = true
+}
 onMounted(async () => {
+  document.addEventListener('keydown', dismissNewOnEscape)
   if (!props.targetId) followLatest()
   observer = new IntersectionObserver(entries => {
     for (const entry of entries) { const id = (entry.target as HTMLElement).dataset.messageId; if (id) { if (entry.isIntersecting) visible.add(id); else visible.delete(id) } }
@@ -185,7 +191,7 @@ onMounted(async () => {
   reactions.value = await apiFetchData<MessageReaction[]>('/messages/reactions').catch(() => [])
   await load()
 })
-onBeforeUnmount(() => { closed = true; observer?.disconnect(); clearTimeout(ackTimer); clearInterval(lease); document.removeEventListener('visibilitychange', visibility); void viewing(false) })
+onBeforeUnmount(() => { closed = true; observer?.disconnect(); clearTimeout(ackTimer); clearInterval(lease); document.removeEventListener('visibilitychange', visibility); document.removeEventListener('keydown', dismissNewOnEscape); void viewing(false) })
 </script>
 <style scoped>
 .channel-rows-enter-active { transition: opacity 180ms ease-out, transform 180ms ease-out; }

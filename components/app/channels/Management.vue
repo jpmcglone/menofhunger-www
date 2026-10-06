@@ -2,7 +2,7 @@
   <Dialog v-model:visible="visible" modal :header="channel ? `${channel.icon ? `${channel.icon} ` : '#'}${channelTitle(channel)}` : 'New channel'" class="w-full max-w-lg">
     <form class="flex flex-col gap-4" @submit.prevent="save">
       <p v-if="error" role="alert" class="text-sm text-red-600">{{ error }}</p>
-      <div v-if="!channel || channel.capabilities.canManage" class="text-sm">
+      <div v-if="!fixedIdentity && (!channel || channel.capabilities.canManage)" class="text-sm">
         <span id="channel-icon-label">Icon</span>
         <div class="mt-1 flex items-center gap-3">
           <span class="flex size-12 items-center justify-center rounded-xl border moh-border bg-[var(--moh-surface-1)]" aria-hidden="true"><AppChannelsChannelIcon :channel="{ icon, privacy: privateChannel ? 'private' : 'normal' }" :size="26" /></span>
@@ -17,9 +17,10 @@
           </div>
         </div>
       </div>
-      <label class="text-sm">Display name<InputText v-model="displayName" class="mt-1 w-full" maxlength="80" placeholder="Morning Workout" :disabled="!!channel && !channel.capabilities.canRename" @input="syncHandle" /></label>
-      <label class="text-sm">Handle<span class="mt-1 flex items-center gap-1"><span class="moh-text-muted" aria-hidden="true">#</span><InputText v-model="name" class="w-full" maxlength="80" placeholder="morning-workout" aria-describedby="channel-handle-hint" :disabled="!!channel && !channel.capabilities.canRename" required @input="handleTouched = true" /></span><span id="channel-handle-hint" class="mt-1 block text-xs moh-text-soft">Lowercase letters, numbers and hyphens. It doesn’t have to match the display name.</span></label>
+      <label v-if="!fixedIdentity" class="text-sm">Display name<InputText v-model="displayName" class="mt-1 w-full" maxlength="80" placeholder="Morning Workout" @input="syncHandle" /></label>
+      <label v-if="!fixedIdentity" class="text-sm">Handle<span class="mt-1 flex items-center gap-1"><span class="moh-text-muted" aria-hidden="true">#</span><InputText v-model="name" class="w-full" maxlength="80" placeholder="morning-workout" aria-describedby="channel-handle-hint" required @input="handleTouched = true" /></span><span id="channel-handle-hint" class="mt-1 block text-xs moh-text-soft">Lowercase letters, numbers and hyphens. It doesn’t have to match the display name.</span></label>
       <label class="text-sm">Topic<textarea v-model="topic" class="moh-focus mt-1 min-h-20 w-full rounded-lg border moh-border bg-transparent p-3" maxlength="500" :disabled="!!channel && !channel.capabilities.canManage" /></label>
+      <p v-if="fixedIdentity" class="text-xs moh-text-soft">The name and icon of this default channel can’t be changed.</p>
       <label v-if="!channel" class="flex min-h-11 items-center gap-3 text-sm"><input v-model="privateChannel" type="checkbox">Private channel</label>
       <p class="text-sm moh-text-muted">{{ privateChannel ? 'Only invited members can see this channel and its retained history. Private channels stay private.' : `Everyone in ${group.name} can see this channel.` }}</p>
       <Button v-if="!channel || channel.capabilities.canManage" type="submit" :label="channel ? 'Save changes' : 'Create channel'" :loading="busy" />
@@ -64,11 +65,12 @@ const members = ref<Member[]>([]), inviteTarget = ref<CommunityGroupMemberListIt
 const marv = ref<GroupChannelMarvStatusDto | null>(null), marvConfirm = ref(false)
 async function loadMarv() { marv.value = props.channel ? await apiFetchData<GroupChannelMarvStatusDto>(`${path.value}/marv`) : null }
 async function setMarv() { await run(async () => { await apiFetchData(`${path.value}/marv`, { method: 'PUT', body: { invited: !marv.value?.participating, historyAcknowledged: true } }); marvConfirm.value = false; await loadMarv() }) }
+const fixedIdentity = computed(() => !!props.channel && !props.channel.capabilities.canRename)
 const path = computed(() => channelPath(props.group.id, props.channel?.id ?? ''))
 async function run(operation: () => Promise<void>) { busy.value = true; error.value = null; try { await operation(); emit('updated') } catch (cause) { error.value = getSafeUserErrorMessage(cause) } finally { busy.value = false } }
 async function loadMembers() { if (props.channel?.privacy === 'private') members.value = await apiFetchData<Member[]>(`${path.value}/members`) }
 function syncHandle() { if (!props.channel && !handleTouched.value) name.value = channelHandleFor(displayName.value) }
-async function save() { await run(async () => { if (props.channel) await apiFetchData(path.value, { method: 'PATCH', body: { ...(props.channel.capabilities.canRename ? { name: name.value, displayName: displayName.value.trim() || null } : {}), topic: topic.value, icon: icon.value } }); else await apiFetchData(`/groups/${props.group.id}/channels`, { method: 'POST', body: { name: name.value, displayName: displayName.value.trim() || null, topic: topic.value, icon: icon.value, privacy: privateChannel.value ? 'private' : 'normal' } }); visible.value = false }) }
+async function save() { await run(async () => { if (props.channel) await apiFetchData(path.value, { method: 'PATCH', body: { ...(props.channel.capabilities.canRename ? { name: name.value, displayName: displayName.value.trim() || null } : {}), topic: topic.value, ...(props.channel.capabilities.canRename ? { icon: icon.value } : {}) } }); else await apiFetchData(`/groups/${props.group.id}/channels`, { method: 'POST', body: { name: name.value, displayName: displayName.value.trim() || null, topic: topic.value, icon: icon.value, privacy: privateChannel.value ? 'private' : 'normal' } }); visible.value = false }) }
 async function updatePreference() { await run(async () => { await apiFetchData(`${path.value}/preference`, { method: 'PUT', body: { preference: preference.value } }) }) }
 async function addMember() { if (!inviteTarget.value) return; await run(async () => { await apiFetchData(`${path.value}/members`, { method: 'POST', body: { userId: inviteTarget.value!.userId, historyAcknowledged: true } }); inviteTarget.value = undefined; await loadMembers() }) }
 async function removeMember() { const userId = leaveConfirm.value ? user.value?.id : removeTarget.value?.user.id; if (!userId) return; await run(async () => { await apiFetchData(`${path.value}/members/${userId}`, { method: 'DELETE' }); removeTarget.value = undefined; if (leaveConfirm.value) { leaveConfirm.value = false; visible.value = false } else await loadMembers() }) }

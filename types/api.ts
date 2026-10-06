@@ -2547,6 +2547,8 @@ export type AdminAnalyticsAI = {
   interactions: AdminAnalyticsTimeSeriesPoint[]
 }
 
+export type AdminAnalyticsChannelsTopRow = Contracts.AdminAnalyticsChannelsTopRowDto
+export type AdminAnalyticsChannels = Contracts.AdminAnalyticsChannelsDto
 export type AdminAnalyticsBoard = Contracts.AdminAnalyticsBoardDto
 export type AdminAnalyticsBoardTopThread = Contracts.AdminAnalyticsBoardTopThreadDto
 
@@ -2581,6 +2583,7 @@ export type AdminAnalytics = {
   /** Board threads and comments, reported apart from posts. */
   board: AdminAnalyticsBoard
   groups: AdminAnalyticsGroups
+  channels: AdminAnalyticsChannels
   spaces: AdminAnalyticsSpaces
   ai: AdminAnalyticsAI
   asOf: string

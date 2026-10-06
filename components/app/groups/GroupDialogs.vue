@@ -26,8 +26,12 @@
           <p class="text-sm moh-text-muted">{{ shell.memberCount.toLocaleString() }} members · {{ shell.joinPolicy === 'open' ? 'Open to verified members' : 'Approval required' }}</p>
           <p v-if="shell.description" class="mt-1 text-sm moh-text">{{ shell.description }}</p>
         </div>
-        <Button v-if="canEdit" label="Edit" severity="secondary" size="small" @click="editOpen = true" />
       </section>
+
+      <Button v-if="canEdit" label="Edit group" class="w-full" rounded @click="editOpen = true">
+        <template #icon><Icon name="tabler:pencil" aria-hidden="true" /></template>
+      </Button>
+      <p v-if="canEdit" class="-mt-3 text-xs moh-text-muted">Name, description, rules, photos, join policy and URL.</p>
 
       <section v-if="shell.rules" class="space-y-1" aria-label="Rules">
         <h3 class="text-sm font-semibold moh-text">Rules</h3>
