@@ -1004,6 +1004,7 @@ export type AdminImageReviewBelongsTo =
   | 'article_inline'
   | 'announcement'
   | 'newsletter'
+  | 'channel_upload'
   | 'orphan'
 
 export type AdminImageReviewListItem = {
@@ -1028,6 +1029,11 @@ export type AdminImageReviewListItem = {
   articleId?: string | null
   articleSlug?: string | null
   messageId?: string | null
+  channelId?: string | null
+  channelName?: string | null
+  channelPrivacy?: string | null
+  uploaderUsername?: string | null
+  uploaderId?: string | null
   announcementId?: string | null
   newsletterId?: string | null
 }
@@ -1134,10 +1140,28 @@ export type AdminImageReviewDetailResponse = {
       deletedAt: string | null
       isThumbnail: boolean
     }>
-    channelUploads?: Array<{ uploadId: string; channelId: string; userId: string; expiresAt: string }>
+    channelUploads?: Array<{
+      uploadId: string
+      channelId: string
+      userId: string
+      username: string | null
+      channelName: string
+      groupId: string
+      groupName: string
+      groupSlug: string
+      expiresAt: string
+    }>
     messages: Array<{
       channelId?: string
+      channelName?: string
+      channelPrivacy?: string
       groupId?: string
+      groupName?: string
+      groupSlug?: string
+      sentAt: string
+      senderId: string
+      senderUsername: string | null
+      senderName: string | null
       messageMediaId: string
       messageId: string
       conversationId: string

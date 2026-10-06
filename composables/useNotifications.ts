@@ -857,7 +857,7 @@ export function useNotifications() {
       return `/messages/${encodeURIComponent(n.subjectConversationId)}`
     }
     if (n.kind === 'group_join_request' && n.subjectGroupSlug) {
-      return `/g/${encodeURIComponent(n.subjectGroupSlug)}/pending`
+      return `/g/${encodeURIComponent(n.subjectGroupSlug)}?dialog=pending`
     }
     // Community group invites — invitee and inviter both land on the group
     // page; the row's inline Accept/Decline buttons take care of the action

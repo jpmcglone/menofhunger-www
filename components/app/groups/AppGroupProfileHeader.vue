@@ -10,7 +10,7 @@
       <Button aria-label="About this group and membership actions" text rounded size="small" severity="secondary" @click="aboutOpen = true"><template #icon><Icon name="tabler:dots" /></template></Button>
     </div>
     <p v-if="shell.description && !focused" class="mt-2 text-[13px] moh-text-muted">{{ shell.description }}</p>
-    <NuxtLink v-if="isAdminViewer && pendingMemberCount" :to="`/g/${encodeURIComponent(shell.slug)}/pending`" class="moh-focus mt-2 inline-flex min-h-11 items-center text-sm">{{ pendingMemberCount }} pending join requests</NuxtLink>
+    <NuxtLink v-if="isAdminViewer && pendingMemberCount" to="?dialog=pending" class="moh-focus mt-2 inline-flex min-h-11 items-center text-sm">{{ pendingMemberCount }} pending join requests</NuxtLink>
   </section>
   <AppGroupsGroupNotificationPreferences v-if="isMember" v-model="preferencesOpen" :group="shell" />
   <Dialog v-model:visible="aboutOpen" modal header="About this group" :style="{ width: '680px', maxWidth: 'calc(100vw - 24px)' }">
@@ -18,7 +18,7 @@
     <div class="mt-4 flex flex-wrap gap-2">
       <Button v-if="isAdminViewer" label="Invite members" @click="$emit('invite')" />
       <Button v-if="canEdit" label="Edit group" severity="secondary" @click="$emit('edit')" />
-      <NuxtLink v-if="isMember" :to="`/g/${encodeURIComponent(shell.slug)}/settings`" class="moh-focus inline-flex min-h-11 items-center px-3 text-sm">{{ isAdminViewer ? 'Manage group' : 'Group settings' }}</NuxtLink>
+      <NuxtLink v-if="isMember" to="?dialog=settings" class="moh-focus inline-flex min-h-11 items-center px-3 text-sm">{{ isAdminViewer ? 'Manage group' : 'Group settings' }}</NuxtLink>
       <Button label="Notification preferences" text @click="preferencesOpen = true" />
       <Button label="Share group" text @click="shareGroup" />
       <Button label="Copy invite link" text @click="copyGroupLink" />
@@ -60,7 +60,7 @@
         <div class="absolute right-3 top-3 z-10 flex flex-wrap items-center justify-end gap-2">
           <NuxtLink
             v-if="showSettingsLink"
-            :to="`/g/${encodeURIComponent(shell.slug)}/settings`"
+            to="?dialog=settings"
             class="moh-tap hidden sm:inline-flex items-center gap-1.5 rounded-full bg-black/35 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm hover:bg-black/50"
           >
             <Icon name="tabler:settings" class="text-[15px] opacity-90" aria-hidden="true" />
@@ -68,7 +68,7 @@
           </NuxtLink>
           <NuxtLink
             v-if="showSettingsLink"
-            :to="`/g/${encodeURIComponent(shell.slug)}/settings`"
+            to="?dialog=settings"
             class="moh-tap flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-sm hover:bg-black/50 sm:hidden"
             aria-label="Group settings"
           >
@@ -246,7 +246,7 @@
           <!-- Pending requests badge (owners + mods of approval-policy groups) -->
           <NuxtLink
             v-if="isAdminViewer && shell.joinPolicy === 'approval'"
-            :to="`/g/${encodeURIComponent(shell.slug)}/pending`"
+            to="?dialog=pending"
             class="relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold moh-surface-hover border moh-border"
             :aria-label="pendingMemberCount > 0 ? `${pendingMemberCount} pending request${pendingMemberCount !== 1 ? 's' : ''}` : 'Pending requests'"
           >

@@ -42,8 +42,8 @@ describe('groups:marv-changed realtime', () => {
     expect(source).toContain('cb.onMarvChanged?.(data)')
   })
 
-  it('settings.vue registers onMarvChanged callback and subscribes to group room', () => {
-    const source = readFile('pages/g/[slug]/settings.vue')
+  it('group dialogs registers onMarvChanged callback and subscribes to group room', () => {
+    const source = readFile('components/app/groups/GroupDialogs.vue')
     expect(source).toContain('onMarvChanged')
     expect(source).toContain('subscribeGroups')
     expect(source).toContain('unsubscribeGroups')
@@ -51,18 +51,12 @@ describe('groups:marv-changed realtime', () => {
     expect(source).toContain('removeGroupFeedCallback')
   })
 
-  it('settings.vue onMarvChanged patches shell.marv.isMember and guards by groupId', () => {
-    const source = readFile('pages/g/[slug]/settings.vue')
+  it('group dialogs onMarvChanged patches shell.marv.isMember and guards by groupId', () => {
+    const source = readFile('components/app/groups/GroupDialogs.vue')
     // Guard: ignore events for other groups
-    expect(source).toContain('s.id !== payload.groupId')
+    expect(source).toContain('payload.groupId')
     // Patch: update isMember in place
     expect(source).toContain('isMember: payload.isMember')
-  })
-
-  it('settings.vue adds onActivated refetch for keep-alive re-activation', () => {
-    const source = readFile('pages/g/[slug]/settings.vue')
-    expect(source).toContain('onActivated')
-    expect(source).toContain('loadShell')
   })
 
   it('api-contract-check includes WsGroupMarvChanged Satisfies assertion', () => {

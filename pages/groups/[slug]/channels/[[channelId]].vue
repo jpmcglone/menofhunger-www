@@ -79,7 +79,7 @@ async function load() {
     if (generation !== request) return
     group.value = next
     context.value = next
-    appHeader.value = { title: next.name, icon: 'tabler:users' }
+    appHeader.value = groupHeader(next)
     await state.load()
     if (channelId.value && lastChannelKey.value) localStorage.setItem(lastChannelKey.value, channelId.value)
     await nextTick()

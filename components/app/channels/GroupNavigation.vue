@@ -22,7 +22,7 @@
           aria-hidden="true"
         />
       </nav>
-      <NuxtLink :to="`/g/${encodeURIComponent(group.slug)}/settings`" class="moh-focus flex size-11 items-center justify-center" aria-label="Group settings"><Icon name="tabler:settings" /></NuxtLink>
+      <NuxtLink to="?dialog=settings" class="moh-focus flex size-11 items-center justify-center" aria-label="Group settings"><Icon name="tabler:settings" /></NuxtLink>
     </div>
   </div>
 </template>

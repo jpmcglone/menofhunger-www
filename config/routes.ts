@@ -229,9 +229,11 @@ export function routeHeaderDefaultsFor(path: string): RouteHeaderDefaults {
   if (path === '/chat') return { icon: 'tabler:mail', description: 'Chat conversations and chat requests.' }
   if (path.startsWith('/bookmarks')) return { icon: 'tabler:bookmark', description: 'Saved posts and folders.' }
   if (path === '/explore') return { icon: 'tabler:search', description: 'Search and discover.' }
-  if (path === '/groups' || path.startsWith('/groups/') || path.startsWith('/g/')) {
+  // Only the groups directory describes groups in general. A single group supplies its own header.
+  if (path === '/groups' || path === '/groups/explore' || path === '/groups/feed' || path === '/groups/mine') {
     return { icon: 'tabler:users', description: 'Community groups and shared conversations.' }
   }
+  if (path.startsWith('/groups/') || path.startsWith('/g/')) return { icon: 'tabler:users', description: undefined }
   if (path === '/feedback') return { icon: 'tabler:send', description: 'Help us improve.' }
   if (path === '/only-me') return { icon: undefined, description: 'Private posts that only you can see. These never appear in feeds.' }
   if (path === '/roadmap') return { icon: 'tabler:map', description: 'What’s available and what’s next.' }

@@ -74,7 +74,8 @@
                   <AppTitleBar>
                     <div class="flex items-center justify-between gap-3">
                       <div class="min-w-0 flex items-center gap-2">
-                        <Icon v-if="headerIcon" :name="headerIcon" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
+                        <AppGroupsGroupAvatar v-if="hydrated && appHeader?.group" :name="appHeader.group.name" :src="appHeader.group.avatarUrl" :size="32" />
+                        <Icon v-else-if="headerIcon" :name="headerIcon" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
                         <h1 class="min-w-0 truncate moh-h1">
                           {{ headerTitle }}
                         </h1>
@@ -91,7 +92,7 @@
                         <span class="ml-1">posts</span>
                       </div>
                     </div>
-                    <p v-if="headerDescription" class="moh-meta">
+                    <p v-if="headerDescription" class="moh-meta truncate">
                       {{ headerDescription }}
                     </p>
                   </AppTitleBar>
@@ -126,6 +127,7 @@
               <template v-else>
                 <AppChannelsGroupNavigation v-if="groupTabsView" :group="groupTabsView.group" :selected="groupTabsView.selected" />
                 <div :class="groupTabsView ? 'min-h-0 flex-1' : 'contents'"><slot /></div>
+                <AppGroupsGroupDialogs v-if="groupDialogGroup" :group="groupDialogGroup" />
               </template>
             </div>
             </div>
@@ -322,6 +324,12 @@ const groupTabsView = computed(() => {
     : match[1] === 'g' && (rest === '' || rest === 'members') ? 'posts' as const : null
   if (!selected || shell.group.slug !== decodeURIComponent(match[2]!)) return null
   return { group: { ...shell.group, channelPersonalCount: shell.personalCount ?? shell.group.channelPersonalCount }, selected }
+})
+const groupDialogGroup = computed(() => {
+  const match = /^\/(?:g|groups)\/([^/]+)/.exec(route.path)
+  const shell = groupTabs.value
+  if (!match || !shell || shell.group.slug !== decodeURIComponent(match[1]!)) return null
+  return shell.group
 })
 /**
  * Shell + overlays share `useKeyboardPinnedFixedStyle` so fixed layers stay above the

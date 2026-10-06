@@ -156,7 +156,7 @@
           <div class="flex items-center justify-between px-3 py-1 border-b border-gray-200 dark:border-zinc-800">
             <NuxtLink
               v-if="isMod && shell.joinPolicy === 'approval'"
-              :to="`/g/${encodeURIComponent(slug)}/pending`"
+              to="?dialog=pending"
               class="text-xs font-medium hover:underline moh-text"
             >
               Pending requests
@@ -698,10 +698,7 @@ watch(
   [shell, shellError],
   ([s, err]) => {
     if (s) {
-      appHeader.value = {
-        title: s.name || 'Group',
-        icon: 'tabler:users',
-      }
+      appHeader.value = groupHeader(s)
       return
     }
     if (err) {
