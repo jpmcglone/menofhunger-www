@@ -6,7 +6,7 @@ export function sanitizeAnalyticsProperties(properties: Record<string, unknown>)
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       sanitized[key] = sanitizeAnalyticsProperties(value as Record<string, unknown>)
     } else if (typeof value === 'string' && /url|referrer|pathname/i.test(key)) {
-      sanitized[key] = value.split(/[?#]/)[0]
+      sanitized[key] = value.split(/[?#]/)[0]?.replace(/\/groups\/[^/]+\/channels(?:\/[^/]+)?/g, '/groups/:group/channels/:channel')
     } else sanitized[key] = value
   }
   return sanitized

@@ -43,7 +43,6 @@ describe('unique people + total views', () => {
       'pages/u/[username].vue',
       'pages/check-ins/day/[dayKey].vue',
       'pages/check-ins/[sort].vue',
-      'pages/groups/index.vue',
       'pages/g/[slug]/index.vue',
       'pages/c/[slug]/index.vue',
       'pages/state/[code].vue',

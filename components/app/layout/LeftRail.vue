@@ -15,23 +15,11 @@
         ]"
       >
         <div ref="leftNavLogoRef" class="mb-3">
-          <NuxtLink
-            :to="'/home'"
-            :class="[
-              'flex items-center moh-focus',
-              isAuthed && (user?.premium || (user?.verifiedStatus && user.verifiedStatus !== 'none')) && !compact ? 'gap-1.5' : 'gap-2'
-            ]"
-            aria-label="Home"
-            @click="onHomeClick"
-          >
-            <div class="flex h-12 w-12 shrink-0 items-center justify-center">
-              <AppLogo
-                :alt="siteConfig.name"
-                :width="28"
-                :height="28"
-                img-class="h-7 w-7 rounded"
-              />
-            </div>
+          <div class="flex items-center" :class="isAuthed && (user?.premium || (user?.verifiedStatus && user.verifiedStatus !== 'none')) && !compact ? 'gap-1.5' : 'gap-2'">
+            <AppLayoutLeftRailLogoMenu v-if="isAuthed" @home="onHomeClick" />
+            <NuxtLink v-else to="/home" class="moh-focus flex h-12 w-12 shrink-0 items-center justify-center" aria-label="Home" @click="onHomeClick">
+              <AppLogo :alt="siteConfig.name" :width="28" :height="28" img-class="h-7 w-7 rounded" />
+            </NuxtLink>
             <span
               v-if="isAuthed && (user?.premiumPlus || user?.premium) && !compact"
               class="hidden xl:inline text-[10px] font-bold tracking-[0.2em] text-[var(--moh-premium)] uppercase"
@@ -44,7 +32,7 @@
             >
               VERIFIED
             </span>
-          </NuxtLink>
+          </div>
         </div>
 
         <nav class="space-y-1 flex-1">

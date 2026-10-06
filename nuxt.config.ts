@@ -135,8 +135,8 @@ export default defineNuxtConfig({
         { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
         { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/android-chrome-192x192.png' },
         { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/android-chrome-512x512.png' },
-        { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
-        { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
+        { key: 'favicon-32', rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
+        { key: 'favicon-16', rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
         // ——— Performance / Core Web Vitals ———
         // preconnect: browser opens the TCP+TLS handshake early for these origins,
         // cutting request latency for the first resource loaded from each domain.

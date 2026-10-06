@@ -53,7 +53,7 @@
 
     <Button
       as="NuxtLink"
-      to="/groups/explore"
+      to="/groups"
       label="Browse groups"
       text
       severity="secondary"

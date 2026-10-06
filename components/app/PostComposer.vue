@@ -154,6 +154,7 @@
           >
             <AppStyledTextarea
               ref="composerEditorEl"
+              :disabled="destinationDrafts.loading.value || submitting"
               :model-value="draft"
               :placeholder="composerPlaceholder"
               :auto-focus="props.autoFocus"
@@ -637,6 +638,8 @@ import { seedPermalinkPost } from '~/utils/permalink-seed'
 import { buildPostedToastParams } from '~/utils/posted-toast'
 import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
+import { useDestinationComposerDraft } from '~/composables/composer/useDestinationComposerDraft'
+import { destinationDraftKey } from '~/utils/channels/drafts'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { buildOptimisticPost } from '~/utils/optimistic-post'
 import { buildPostPreview } from '~/utils/post-preview'
@@ -665,17 +668,6 @@ import { useFormSubmit } from '~/composables/useFormSubmit'
 let _lastPickedScheduleTime: Date | null = null
 const _scheduleMore = ref(false)
 
-// In-memory draft cache (survives SPA navigation, not a full reload).
-// Keep module-scoped so it persists across route changes.
-type CachedComposerDraft = {
-  body: string
-  // Keep as-is (may include non-serializable objects); never SSR-serialized.
-
-  media: any[]
-
-  poll: any | null
-}
-const COMPOSER_DRAFT_CACHE = new Map<string, CachedComposerDraft>()
 
 const emit = defineEmits<{
   (e: 'handoff-chat', payload: { body: string; files: File[] }): void
@@ -835,11 +827,13 @@ async function loadMyGroups() {
 const { rememberFeed, rememberGroup } = useShareDestination()
 
 function selectDestinationVisibility(value: PostVisibility) {
+  if (submitting.value || composerUploading.value) return
   visibility.value = value
   selectGroup(null)
 }
 
 function selectGroup(id: string | null) {
+  if (submitting.value || composerUploading.value) return
   selectedGroupId.value = id
   if (id) {
     const name = myGroups.value.find((group) => group.id === id)?.name
@@ -1074,11 +1068,8 @@ const quotedPostUrl = computed(() => {
 })
 
 const persistKey = computed(() => {
-  if (!import.meta.client) return null
-  const raw = (props.persistKey ?? '').trim()
-  if (!raw) return null
-  const uid = (user.value?.id ?? 'anon').trim() || 'anon'
-  return `composer-draft:${raw}:${uid}`
+  if (!import.meta.client || !user.value?.id || mode.value !== 'create' || props.checkinPrompt || props.quotedPost) return null
+  return destinationDraftKey({ identity: user.value.id, surface: 'post', destination: effectiveGroupId.value ? `group:${effectiveGroupId.value}` : `feed:${effectiveVisibility.value}`, root: props.replyTo?.parentId })
 })
 
 const myProfilePath = computed(() => {
@@ -1127,6 +1118,7 @@ function onPollStatus(v: { uploading: boolean; hasFailed: boolean }) {
 
 const {
   composerMedia,
+  restoreDraftMedia,
   canAddMoreMedia,
   remainingMediaSlots,
   displaySlots,
@@ -1483,7 +1475,7 @@ function registerUnsavedGuardIfNeeded() {
   const { register } = useUnsavedDraftGuard()
   unregisterUnsavedGuard = register({
     id: unsavedGuardId,
-    hasUnsaved: () => Boolean(hasUnsavedContent.value),
+    hasUnsaved: () => Boolean(hasUnsavedContent.value) && (!persistKey.value || !destinationDrafts.saved.value),
     snapshot: () => draftSnapshot(),
     clear: () => clearComposer(),
   })
@@ -1504,7 +1496,7 @@ onActivated(() => {
   // Keepalive pages can deactivate/activate; ensure guard stays registered.
   registerUnsavedGuardIfNeeded()
   // If the component was kept alive and re-activated, ensure we rehydrate from cache if needed.
-  restoreDraftFromCacheIfNeeded()
+  void destinationDrafts.persist()
   if (isAuthed.value && !props.communityGroupId) void loadMyGroups()
 })
 
@@ -1513,51 +1505,32 @@ onBeforeUnmount(() => {
   unregisterUnsavedGuard = null
 })
 
-function restoreDraftFromCacheIfNeeded() {
-  if (!import.meta.client) return
-  const key = persistKey.value
-  if (!key) return
-
-  const cached = COMPOSER_DRAFT_CACHE.get(key)
-  if (!cached) return
-
-  // Only restore into an empty composer to avoid clobbering.
-  const hasAny = Boolean((draft.value?.trim() ?? '') !== '' || (composerMedia.value?.length ?? 0) > 0 || hasPoll.value)
-  if (hasAny) return
-
-  draft.value = String(cached.body ?? '')
-
-  composerMedia.value = (cached.media ?? []) as any
-  poll.value = (cached.poll ?? null) as any
-}
-
-watch(
-  [draft, composerMedia, poll, persistKey],
-  () => {
-    if (!import.meta.client) return
-    const key = persistKey.value
-    if (!key) return
-    COMPOSER_DRAFT_CACHE.set(key, {
-      body: String(draft.value ?? ''),
-
-      media: (composerMedia.value ?? []) as any,
-
-      poll: (poll.value ?? null) as any,
-    })
+const crosspostChoice = ref<CrosspostPayload>(props.initialCrosspost ?? {})
+const destinationDrafts = useDestinationComposerDraft({
+  key: persistKey,
+  hasContent: () => hasUnsavedContent.value,
+  preserveInitial: () => Boolean(props.initialText || props.initialMedia?.length || props.initialFiles?.length),
+  snapshot: () => ({
+    body: draft.value,
+    media: composerMedia.value.map(item => {
+      const { abortController: _abort, ...media } = toRaw(item)
+      return { ...media, previewUrl: media.previewUrl?.startsWith('blob:') ? '' : media.previewUrl }
+    }),
+    poll: poll.value ? JSON.parse(JSON.stringify(poll.value)) as ComposerPollPayload : null,
+    scheduledAt: scheduledAt.value?.toISOString() ?? null,
+    crosspost: { ...crosspostChoice.value },
+  }),
+  restore: value => {
+    clearAll()
+    draft.value = value?.body ?? ''
+    restoreDraftMedia(value?.media ?? [])
+    poll.value = value?.poll ?? null
+    scheduledAt.value = value?.scheduledAt ? new Date(value.scheduledAt) : null
+    crosspostChoice.value = value?.crosspost ?? {}
   },
-  { deep: true },
-)
+})
 
-// If auth finishes after mount (persistKey changes from anon → userId), try a restore once.
-watch(
-  persistKey,
-  () => {
-    restoreDraftFromCacheIfNeeded()
-  },
-  { flush: 'post' },
-)
-
-const canPost = computed(() => Boolean(isAuthed.value && (viewerIsVerified.value || effectiveVisibility.value === 'onlyMe')))
+const canPost = computed(() => Boolean(!destinationDrafts.loading.value && isAuthed.value && (viewerIsVerified.value || effectiveVisibility.value === 'onlyMe')))
 
 /** True when any upload slot is in error state; user must remove before posting. */
 const composerHasFailedMedia = computed(
@@ -1611,6 +1584,7 @@ function performCreate(
   mediaPayload: CreateMediaPayload[],
   pollPayload: ComposerPollPayload | null,
   crosspost: CrosspostPayload = {},
+  groupId: string | null = effectiveGroupId.value,
 ) {
   if (props.createPost) {
     return props.createPost(submitBody, vis, mediaPayload, pollPayload)
@@ -1631,7 +1605,7 @@ function performCreate(
           visibility: vis,
           media: mediaPayload,
           ...(pollPayload ? { poll: pollPayload } : {}),
-          ...(effectiveGroupId.value ? { community_group_id: effectiveGroupId.value } : {}),
+          ...(groupId ? { community_group_id: groupId } : {}),
           ...(Object.keys(crosspost).length ? { crosspost } : {}),
         },
   })
@@ -1639,7 +1613,6 @@ function performCreate(
 
 const pickaxIntegration = usePickaxIntegration()
 const xIntegration = useXIntegration()
-const crosspostChoice = ref<CrosspostPayload>(props.initialCrosspost ?? {})
 
 function mediaAllImages(media: CreateMediaPayload[]): boolean {
   return media.every((m) => {
@@ -1768,6 +1741,8 @@ function makeOptimisticAuthor(): PostAuthor | null {
 // Composer submit (sync path: edit + reply + opt-out via `syncSubmit`).
 const { submit: submitPost, submitting, submitError } = useFormSubmit(
   async () => {
+    await destinationDrafts.persist()
+    const submittedDraft = destinationDrafts.capture()
     // ── Edit scheduled post ───────────────────────────────────────────────
     if (scheduledEditId.value) {
       const id = scheduledEditId.value
@@ -1824,7 +1799,8 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
       const wantsMore = scheduleMore.value
       const scheduledPost = await performSchedule(submitBody, vis, mediaPayload, pollPayload)
       incScheduledCount()
-      clearComposer()
+      if (destinationDrafts.unchanged(submittedDraft)) clearComposer()
+      await destinationDrafts.submitted(submittedDraft)
       if (!wantsMore) {
         clearSchedule()
       }
@@ -1845,7 +1821,8 @@ const { submit: submitPost, submitting, submitError } = useFormSubmit(
     const { post, streakReward } = unwrapCreated(created)
     notifyCrosspostSkipped(created)
 
-    clearComposer()
+    if (destinationDrafts.unchanged(submittedDraft)) clearComposer()
+    await destinationDrafts.submitted(submittedDraft)
 
     if (post?.id) {
       recordWelcomeProgress(post.author.id, { posted: true })
@@ -1877,6 +1854,7 @@ function pushPostedToast(post: FeedPost) {
  * are surfaced by the parent after the real post lands.
  */
 function submitOptimistic(): boolean {
+  void destinationDrafts.persist()
   const author = makeOptimisticAuthor()
   if (!author) return false
 
@@ -1908,13 +1886,18 @@ function submitOptimistic(): boolean {
     mediaPayload,
     pollPayload,
     crosspost: crosspostChoice.value,
+    groupId: effectiveGroupId.value,
+    identity: user.value?.id,
+    draft: destinationDrafts.capture(),
   }
 
   emit('pending', {
     localId,
     optimisticPost,
     perform: async () => {
-      const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload, snapshot.crosspost)
+      if (user.value?.id !== snapshot.identity) throw new Error('Your account changed. Reopen this draft to send it.')
+      const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload, snapshot.crosspost, snapshot.groupId)
+      await destinationDrafts.submitted(snapshot.draft)
       const { post } = unwrapCreated(created)
       notifyCrosspostSkipped(created)
       if (post) {
@@ -2096,7 +2079,7 @@ function seedInitialScheduledAtIfNeeded() {
 }
 
 onMounted(() => {
-  restoreDraftFromCacheIfNeeded()
+  // Destination draft restoration runs after the explicit initial values are seeded.
   applyInitialTextIfNeeded()
   seedInitialMediaIfNeeded()
   seedInitialFilesIfNeeded()

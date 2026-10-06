@@ -32,6 +32,8 @@ export type BoardCreateThreadBody = {
   tags?: string[]
   visibility: BoardVisibility
   showInFeed: boolean
+  /** Honored only for public threads also posted to the feed; always a link to the thread. */
+  crosspost?: { pickax?: 'link'; x?: 'link' }
 }
 
 function clean<T extends Record<string, unknown>>(query: T): Record<string, string | number> {

@@ -1,17 +1,9 @@
 <template>
-  <span
-    :class="[
-      'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center tabular-nums',
-      toneClass,
-      !(badgeCount > 0) ? 'invisible pointer-events-none' : '',
-    ]"
-  >
-    <AppAnimatedCount v-if="badgeCount > 0" :value="badgeCount" :format="() => badgeText" />
-  </span>
+  <AppActivityBadge class="absolute -top-0.5 -right-0.5" :count="badgeCount" count-label="unread messages" />
 </template>
 
 <script setup lang="ts">
 // Run composable so count is fetched on load / socket connect / tab visible (badge is in layout + TabBar).
 // Show total (primary + requests) so recipients with pending message requests also see the badge.
-const { totalCount: badgeCount, displayTotal: badgeText, toneClass } = useMessagesBadge()
+const { totalCount: badgeCount } = useMessagesBadge()
 </script>

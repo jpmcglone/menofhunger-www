@@ -114,10 +114,18 @@
                   :key="`${m.messageMediaId}-${m.isThumbnail ? 't' : 'm'}`"
                   class="rounded-lg border moh-border px-2 py-2"
                 >
-                  <div class="text-xs moh-text-muted">{{ m.isThumbnail ? 'Message video poster' : 'Message media' }}</div>
+                  <div class="text-xs moh-text-muted">{{ m.channelId ? (m.isThumbnail ? 'Protected channel poster' : 'Protected channel media') : (m.isThumbnail ? 'Message video poster' : 'Message media') }}</div>
                   <div class="font-mono text-xs truncate">{{ m.messageId }}</div>
                   <div class="mt-1 text-xs moh-text-muted truncate">Conversation {{ m.conversationId }}</div>
+                  <NuxtLink v-if="m.channelId" to="/admin/reports" class="moh-focus inline-flex min-h-11 items-center text-xs underline">Review reported evidence</NuxtLink>
                 </div>
+              </div>
+            </div>
+
+            <div v-if="data.references.channelUploads?.length" class="pt-2 border-t moh-border">
+              <h3 class="font-semibold">Protected channel uploads</h3>
+              <div v-for="upload in data.references.channelUploads" :key="upload.uploadId" class="mt-2 text-xs moh-text-muted">
+                <p>Upload {{ upload.uploadId }}</p><p>Retained until {{ new Date(upload.expiresAt).toLocaleString() }}</p>
               </div>
             </div>
 

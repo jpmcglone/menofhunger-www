@@ -174,7 +174,8 @@
 
         <div v-if="voice.recording.value || voice.starting.value || pendingVoice" class="rounded-2xl border moh-border px-3 py-2" data-testid="chat-voice-recording">
           <div v-if="voice.recording.value || voice.starting.value" class="flex items-center gap-2">
-            <span class="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
+            <AppChatVoiceLevel v-if="voice.recording.value" :level="voice.level.value" />
+            <span v-else class="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
             <span class="min-w-0 flex-1 text-sm tabular-nums">{{ voice.starting.value ? 'Allow microphone access…' : `Recording · ${formatVoiceClock(voice.elapsed.value)} / 2:00` }}</span>
             <button type="button" class="min-h-11 px-2 text-sm" @click="cancelVoice">Discard</button>
             <button v-if="voice.recording.value" type="button" class="min-h-11 px-3 text-sm font-semibold" @click="stopVoice">Stop</button>
@@ -281,7 +282,7 @@
 
 <script setup lang="ts">
 import type { FollowListUser, MessageReplySnippet } from '~/types/api'
-import type { CreateMediaPayload } from '~/composables/composer/types'
+import type { ComposerMediaItem, CreateMediaPayload } from '~/composables/composer/types'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 import { useComposerMedia } from '~/composables/useComposerMedia'
 import { useVoiceRecorder } from '~/composables/chat/useVoiceRecorder'
@@ -334,6 +335,7 @@ const canAcceptVideoRef = computed(() => isPremium.value)
 
 const {
   composerMedia,
+  restoreDraftMedia,
   canAddMoreMedia,
   remainingMediaSlots,
   composerUploading,
@@ -548,7 +550,13 @@ function checkMultiline() {
 
 watch(() => props.modelValue, checkMultiline)
 
-defineExpose({ focus, insertMention, getMedia, clearMedia })
+function getDraftMedia(): ComposerMediaItem[] {
+  return composerMedia.value.map(item => {
+    const { abortController: _abort, ...value } = toRaw(item)
+    return { ...value, previewUrl: value.previewUrl.startsWith('blob:') ? '' : value.previewUrl }
+  })
+}
+defineExpose({ focus, insertMention, getMedia, clearMedia, getDraftMedia, restoreDraftMedia })
 </script>
 
 <style scoped>

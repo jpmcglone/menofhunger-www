@@ -19,6 +19,7 @@
         @mousemove="onMove"
         @mouseleave="onLeave"
       >{{ seg.text }}</NuxtLink>
+      <AppGroupsGroupMention v-else-if="seg.groupSlug" :slug="seg.groupSlug" :text="seg.text" />
       <span v-else>{{ seg.text }}</span>
     </template>
   </span>
@@ -36,7 +37,7 @@ const props = defineProps<{ text: string }>()
 
 const { onEnter, onMove, onLeave } = useUserPreviewMultiTrigger()
 
-type Segment = { text: string; href?: string; username?: string }
+type Segment = { text: string; href?: string; username?: string; groupSlug?: string }
 
 const linkify = new LinkifyIt()
 
@@ -120,7 +121,7 @@ const segments = computed<Segment[]>(() => {
 
 function buildMentionSegments(text: string): Segment[] {
   return splitTextByMentionsDisplay(text).map((s) =>
-    s.mention ? { text: s.text, username: s.mention.username } : { text: s.text },
+    s.group ? { text: s.text, groupSlug: s.group.slug } : s.mention ? { text: s.text, username: s.mention.username } : { text: s.text },
   )
 }
 </script>

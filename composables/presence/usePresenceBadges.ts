@@ -1,20 +1,11 @@
 import type { Socket } from 'socket.io-client'
+import { suppressSoundsFor } from '~/utils/sound-policy'
 
 const NOTIFICATIONS_UNDELIVERED_COUNT_KEY = 'notifications-undelivered-count'
 const NOTIFICATIONS_UNREAD_COMMENT_COUNT_KEY = 'notifications-unread-comment-count'
 const MESSAGES_UNREAD_COUNTS_KEY = 'messages-unread-counts'
 const GROUPS_UNREAD_KEY = 'groups-unread'
 const NOTIFICATIONS_NAV_UNREAD_KEY = 'notifications-nav-unread'
-const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3'
-const MESSAGE_SOUND_PATH = '/sounds/new-message.mp3'
-/** Min ms between plays so we don't ding repeatedly (e.g. multiple sockets on mobile or burst of events). */
-const NOTIFICATION_SOUND_COOLDOWN_MS = 3000
-const MESSAGE_SOUND_COOLDOWN_MS = 1800
-
-/** Suppress sounds during initial sync after (re)connect. Module-scoped: only the socket-owning tab plays sounds. */
-let suppressSoundsUntilMs = 0
-let lastNotificationSoundPlayedAt = 0
-let lastMessageSoundPlayedAt = 0
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return Boolean(v && typeof v === 'object')
@@ -54,8 +45,9 @@ export function usePresenceBadges() {
     byGroupId: {},
   }))
   /** Unread Board / Articles notifications — drives the nav dots. Updated via `notifications:navUnreadChanged`. */
-  const notificationNavUnread = useState<{ board: number; articles: number }>(NOTIFICATIONS_NAV_UNREAD_KEY, () => ({
+  const notificationNavUnread = useState<{ board: number; boardMentions: number; articles: number }>(NOTIFICATIONS_NAV_UNREAD_KEY, () => ({
     board: 0,
+    boardMentions: 0,
     articles: 0,
   }))
   // When the viewer is actively reading a chat, the server may briefly bump unread counts
@@ -63,32 +55,13 @@ export function usePresenceBadges() {
   const suppressMessageUnreadBumpsUntilMs = useState<number>('presence-messages-unread-suppress-until', () => 0)
 
   const { user } = useAuth()
-  const sfx = useSfx()
 
-  function maybePlayNotificationSound() {
-    const now = Date.now()
-    if (now < suppressSoundsUntilMs) return
-    const withinCooldown = now - lastNotificationSoundPlayedAt < NOTIFICATION_SOUND_COOLDOWN_MS
-    if (withinCooldown) return
-    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-    lastNotificationSoundPlayedAt = now
-    void sfx.playUrl(NOTIFICATION_SOUND_PATH, { volume: 0.9 })
-  }
-
-  function maybePlayMessageSound() {
-    const now = Date.now()
-    if (now < suppressSoundsUntilMs) return
-    const withinCooldown = now - lastMessageSoundPlayedAt < MESSAGE_SOUND_COOLDOWN_MS
-    if (withinCooldown) return
-    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-    lastMessageSoundPlayedAt = now
-    void sfx.playUrl(MESSAGE_SOUND_PATH, { volume: 0.5 })
-  }
+  const sounds = useSoundPolicy()
 
   /** Called from the socket 'connect' handler: mute dings during backlog sync, preload sounds. */
   function onSocketConnected() {
-    suppressSoundsUntilMs = Date.now() + 1500
-    void sfx.preloadUrls([NOTIFICATION_SOUND_PATH, MESSAGE_SOUND_PATH])
+    suppressSoundsFor(1500)
+    sounds.preload(['notification', 'message', 'channel-message', 'channel-mention'])
   }
 
   function suppressMessageUnreadBumpsForMs(ms: number) {
@@ -113,12 +86,13 @@ export function usePresenceBadges() {
     messageUnreadCounts.value = { primary: nextPrimary, requests: nextRequests }
   }
 
-  function setNotificationNavUnread(data: { undeliveredCount?: number; boardUnreadCount?: number; articlesUnreadCount?: number; hasUnreadNotifications?: boolean }) {
+  function setNotificationNavUnread(data: { undeliveredCount?: number; boardUnreadCount?: number; boardMentionCount?: number; articlesUnreadCount?: number; hasUnreadNotifications?: boolean }) {
     notificationBadgeRevision.value += 1
     if (typeof data.undeliveredCount === 'number') notificationUndeliveredCount.value = Math.max(0, data.undeliveredCount)
     if (typeof data.hasUnreadNotifications === 'boolean') hasUnreadNotifications.value = data.hasUnreadNotifications
     notificationNavUnread.value = {
       board: data.boardUnreadCount === undefined ? notificationNavUnread.value.board : Math.max(0, Math.floor(Number(data.boardUnreadCount)) || 0),
+      boardMentions: data.boardMentionCount === undefined ? notificationNavUnread.value.boardMentions : Math.max(0, Math.floor(Number(data.boardMentionCount)) || 0),
       articles: data.articlesUnreadCount === undefined ? notificationNavUnread.value.articles : Math.max(0, Math.floor(Number(data.articlesUnreadCount)) || 0),
     }
   }
@@ -148,7 +122,7 @@ export function usePresenceBadges() {
       if (data?.silent) return
       // Play sound for realtime arrivals, even if viewer is on /notifications.
       // (Count updates can be suppressed if the page marks delivered immediately.)
-      maybePlayNotificationSound()
+      sounds.play('notification')
     })
 
     socket.on('notifications:waitingCountChanged', (data: { unreadCommentCount?: number }) => {
@@ -175,7 +149,7 @@ export function usePresenceBadges() {
       messageUnreadCounts.value = incoming
     })
 
-    socket.on('notifications:navUnreadChanged', (data: { undeliveredCount?: number; boardUnreadCount?: number; articlesUnreadCount?: number; hasUnreadNotifications?: boolean }) => {
+    socket.on('notifications:navUnreadChanged', (data: { undeliveredCount?: number; boardUnreadCount?: number; boardMentionCount?: number; articlesUnreadCount?: number; hasUnreadNotifications?: boolean }) => {
       setNotificationNavUnread(data)
     })
 
@@ -189,7 +163,7 @@ export function usePresenceBadges() {
       const meId = user.value?.id ?? null
       const senderId = getSenderIdFromMessageNewPayload(data)
       if (!meId || !senderId || senderId !== meId) {
-        maybePlayMessageSound()
+        sounds.play('message')
       }
     })
   }

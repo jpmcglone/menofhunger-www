@@ -18,18 +18,7 @@
           >
             <div class="relative h-10 w-10 flex items-center justify-center">
               <Icon :name="item.icon" size="24" class="opacity-90" aria-hidden="true" />
-              <span
-                v-if="moreHasAlert"
-                class="pointer-events-none absolute -right-0.5 -top-0.5 flex min-w-[1.125rem] h-[1.125rem] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none ring-2 ring-[var(--moh-bg)]"
-                :class="activityBadgeTone"
-                aria-hidden="true"
-              >{{ moreBadgeTotal > 99 ? '99+' : moreBadgeTotal }}</span>
-              <span
-                v-else-if="moreHasDot"
-                class="pointer-events-none absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[var(--moh-bg)]"
-                :class="activityBadgeTone"
-                aria-hidden="true"
-              />
+              <AppActivityBadge ring class="pointer-events-none absolute -right-0.5 -top-0.5" :count="moreBadgeTotal" :has-unread="moreHasDot" :count-label="'pending updates'" unread-label="Unread activity" />
             </div>
           </button>
 
@@ -278,11 +267,11 @@ const { count: pendingCrewInviteCount } = useCrewInvitesBadge()
 const { total: groupsUnreadTotal } = useGroupsBadge()
 const { count: notificationsCount } = useNotificationsBadge()
 const { totalCount: messagesTotal } = useMessagesBadge()
-const activityBadgeTone = useActivityBadgeTone()
 const { otherAccountsUnread, otherAccountsHaveUnread } = useAccountSwitcher()
 
 // Sum badges only for items hidden in the More sheet (not visible as tabs),
 // plus unread on other identities so the switcher is discoverable.
+const { notificationNavUnread, hasUnreadNotifications } = usePresence()
 const moreBadgeTotal = computed(() => {
   const keysInMore = new Set(mainMenuItems.value.map((mi) => mi.key))
   let sum = 0
@@ -290,11 +279,10 @@ const moreBadgeTotal = computed(() => {
   if (keysInMore.has('messages')) sum += messagesTotal.value
   if (keysInMore.has('crew')) sum += pendingCrewInviteCount.value
   if (keysInMore.has('groups')) sum += groupsUnreadTotal.value
+  if (keysInMore.has('board')) sum += notificationNavUnread.value.boardMentions
   return sum + otherAccountsUnread.value
 })
-const moreHasAlert = computed(() => moreBadgeTotal.value > 0)
 // Board / Articles unread already count in the bell, so they add a dot rather than a number.
-const { notificationNavUnread, hasUnreadNotifications } = usePresence()
 const moreHasDot = computed(() => {
   const keysInMore = new Set(mainMenuItems.value.map((mi) => mi.key))
   return otherAccountsHaveUnread.value

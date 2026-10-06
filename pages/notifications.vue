@@ -217,7 +217,6 @@ const kindChips = computed(() => {
     { label: 'Statuses', kind: 'status_update' },
     { label: 'Follows', kind: 'follow' },
     { label: 'Boosts', kind: 'boost' },
-    { label: 'Board', kind: 'board' },
     { label: 'Other', kind: 'other' },
   ]
   return chips

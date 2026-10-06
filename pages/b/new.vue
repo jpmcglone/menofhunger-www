@@ -105,6 +105,7 @@
           </label>
           <ToggleSwitch v-model="showInFeed" input-id="board-share-to-feed" />
         </div>
+        <AppPostCrosspostDestinations v-if="showInFeed && visibility === 'public'" :destinations="destinations" @change="crosspost = $event" />
 
         <p v-if="submitError" class="text-sm text-red-500">{{ submitError }}</p>
 
@@ -122,6 +123,8 @@
 import type { BoardThread, BoardVisibility, PostVisibility } from '~/types/api'
 import { formatListTime } from '~/utils/time-format'
 import { getApiErrorMessage } from '~/utils/api-error'
+import type { CrosspostPayload } from '~/utils/crosspost'
+import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
 
 definePageMeta({ layout: 'app', title: 'New Board post', hideTopBar: true })
 usePageSeo({ title: 'New Board post', noindex: true })
@@ -134,6 +137,31 @@ const title = ref('')
 const url = ref('')
 const body = ref('')
 const showInFeed = ref(false)
+const crosspost = ref<CrosspostPayload>({})
+const pickaxIntegration = usePickaxIntegration()
+const xIntegration = useXIntegration()
+const { user } = useAuth()
+const verified = computed(() => user.value?.verifiedStatus === 'manual' || user.value?.verifiedStatus === 'identity')
+
+// Board posts always share a link back to the thread, never a copy.
+const destinations = computed<CrosspostDestinationView[]>(() => {
+  const rows: CrosspostDestinationView[] = []
+  if (pickaxIntegration.connected.value) {
+    rows.push(verified.value
+      ? { id: 'pickax', modes: ['link'], linkOnlyReason: 'A link back to this Board post' }
+      : { id: 'pickax', modes: [], disabled: true, disabledNote: 'Verify your MOH account to share outward', premiumHref: '/settings/verification' })
+  }
+  if (xIntegration.connected.value) {
+    const status = xIntegration.status.value
+    if (!status?.canPost) {
+      rows.push({ id: 'x', modes: [], disabled: true, disabledNote: 'Verify your MOH account to post to X', premiumHref: '/settings/verification' })
+    } else {
+      const modes: Array<'link'> = status.linksEnabled ? ['link'] : []
+      rows.push({ id: 'x', modes, disabled: !modes.length, disabledNote: modes.length ? undefined : 'Link sharing to X requires Premium+.', allowanceNote: modes.length ? 'Link: estimated $0.20 · Shared high-cost allowance' : undefined })
+    }
+  }
+  return rows
+})
 const visibility = ref<BoardVisibility>('public')
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
@@ -188,6 +216,9 @@ async function submit() {
       image: upload.image.value,
       visibility: visibility.value,
       showInFeed: showInFeed.value,
+      ...(showInFeed.value && visibility.value === 'public' && (crosspost.value.pickax || crosspost.value.x)
+        ? { crosspost: { ...(crosspost.value.pickax ? { pickax: 'link' as const } : {}), ...(crosspost.value.x ? { x: 'link' as const } : {}) } }
+        : {}),
     })
     memory.remember(visibility.value)
     await navigateTo(boardThreadHref(created))
@@ -202,11 +233,7 @@ onMounted(async () => {
   const remembered = memory.hydrate()
   visibility.value = remembered === 'premiumOnly' && !isPremium.value ? 'public' : remembered
   if (!isAuthed.value) return
-  try {
-    const prefs = await api.getPreferences()
-    showInFeed.value = prefs.shareToFeedDefault
-  } catch {
-    // Keep the default (off).
-  }
+  void pickaxIntegration.refresh()
+  void xIntegration.refresh()
 })
 </script>

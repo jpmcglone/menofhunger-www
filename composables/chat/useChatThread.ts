@@ -11,9 +11,13 @@ import type {
 import { redactDeletedChatMessage } from '~/utils/chat-message-deletion'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useChatTimeFormatting } from '~/composables/chat/useChatTimeFormatting'
-import type { CreateMediaPayload } from '~/composables/composer/types'
+import type { ComposerMediaItem, CreateMediaPayload } from '~/composables/composer/types'
 import type { AuthUser } from '~/composables/useAuth'
 import type { MessageConversationWithTone } from '~/composables/chat/useChatConversations'
+
+import { useApiClient } from '~/composables/useApiClient'
+import { useDestinationComposerDraft } from '~/composables/composer/useDestinationComposerDraft'
+import { destinationDraftKey } from '~/utils/channels/drafts'
 
 export type ChatMessage = Message & { __clientKey?: string }
 
@@ -35,6 +39,8 @@ export interface UseChatThreadOptions {
     focus: () => void
     getMedia: () => CreateMediaPayload[]
     clearMedia: () => void
+    getDraftMedia?: () => ComposerMediaItem[]
+    restoreDraftMedia?: (items: ComposerMediaItem[]) => void
   }
   scroll: {
     stickToBottom: (opts?: { behavior?: ScrollBehavior; ifNearBottom?: boolean; userInitiated?: boolean; reason?: string }) => boolean | void
@@ -69,7 +75,6 @@ export function useChatThread(opts: UseChatThreadOptions) {
     selectedConversationId,
     selectedChatKey,
     isDraftChat,
-    isGroupChat,
     draftRecipients,
     viewerCanStartChats,
     showCantStartChat,
@@ -128,6 +133,27 @@ export function useChatThread(opts: UseChatThreadOptions) {
   const infoMessage = ref<Message | null>(null)
   const infoModalVisible = ref(false)
   const availableReactions = ref<MessageReaction[]>([])
+  const draftKey = computed(() => {
+    const identity = me.value?.id
+    const destination = selectedConversationId.value ?? (isDraftChat.value && draftRecipients.value.length
+      ? `recipients:${draftRecipients.value.map(user => user.id).sort().join(',')}` : null)
+    return identity && destination ? destinationDraftKey({ identity, surface: 'chat', destination }) : null
+  })
+  function draftSnapshot() {
+    return { text: composerText.value, media: composer.getDraftMedia?.() ?? [],
+      reply: replyToMessage.value ? JSON.parse(JSON.stringify(replyToMessage.value)) as Message : null }
+  }
+  function restoreComposer(value: ReturnType<typeof draftSnapshot> | null) {
+    editingMessage.value = null
+    composerText.value = value?.text ?? ''
+    replyToMessage.value = value?.reply ?? null
+    composer.restoreDraftMedia?.(value?.media ?? [])
+  }
+  const drafts = useDestinationComposerDraft({ key: draftKey, snapshot: draftSnapshot,
+    restore: restoreComposer, hasContent: () => !!composerText.value || !!composer.getDraftMedia?.().length,
+    preserveInitial: () => false, suspended: () => !!editingMessage.value })
+  let beforeEdit: ReturnType<typeof draftSnapshot> | null = null
+
 
   const messagesReady = ref(false)
   const animateMessageList = ref(true)
@@ -506,8 +532,8 @@ export function useChatThread(opts: UseChatThreadOptions) {
   }
 
   function cancelEdit() {
-    composerText.value = ''
-    editingMessage.value = null
+    restoreComposer(beforeEdit)
+    beforeEdit = null
   }
 
   /** Draft path: creates the conversation and sends the first message. */
@@ -516,21 +542,29 @@ export function useChatThread(opts: UseChatThreadOptions) {
       void showCantStartChat()
       return
     }
+    const identity = me.value?.id
+    const key = draftKey.value
     const body = composerText.value
     const mediaPayload = composer.getMedia()
+    const recipients = draftRecipients.value.map(user => user.id)
+    await drafts.persist()
+    const submitted = drafts.capture()
+    if (me.value?.id !== identity || draftKey.value !== key) return
     try {
       const res = await apiFetchData<CreateMessageConversationResponse['data']>('/messages/conversations', {
         method: 'POST',
         body: {
-          user_ids: draftRecipients.value.map((u) => u.id),
+          user_ids: recipients,
           title: undefined,
           body,
           ...(mediaPayload.length > 0 ? { media: mediaPayload } : {}),
         },
       })
-      composerText.value = ''
-      composer.clearMedia()
+      await drafts.submitted(submitted)
+      if (me.value?.id !== identity || draftKey.value !== key) return
+      if (drafts.unchanged(submitted)) { composerText.value = ''; composer.clearMedia() }
       await conversationsApi.refreshAllConversationTabs()
+      if (me.value?.id !== identity || draftKey.value !== key) return
       const conversationId = res?.conversationId
       if (conversationId) {
         const inPrimary = conversationsApi.conversations.value.primary.some((c) => c.id === conversationId)
@@ -539,7 +573,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
         await selectConversation(conversationId, { replace: true })
       }
     } catch (e) {
-      sendError.value = getApiErrorMessage(e) || 'Failed to send message.'
+      if (me.value?.id === identity && draftKey.value === key) sendError.value = getApiErrorMessage(e) || 'Failed to send message.'
     }
   }
 
@@ -553,6 +587,10 @@ export function useChatThread(opts: UseChatThreadOptions) {
 
     const body = composerText.value
     const mediaPayload = composer.getMedia()
+    const snapshot = draftSnapshot()
+    await drafts.persist()
+    const submitted = drafts.capture()
+    if (me.value?.id !== my.id || selectedConversationId.value !== conversationId) return
     let localId: string | null = null
     try {
       try { emitMessagesTyping(conversationId, false) } catch { /* ignore */ }
@@ -579,8 +617,8 @@ export function useChatThread(opts: UseChatThreadOptions) {
       ]
       markMessageAnimated(localId)
       sendingMessageIds.value = new Set([...sendingMessageIds.value, localId])
-      composerText.value = ''
-      composer.clearMedia()
+      // Text typed while the draft was persisting was not sent and must stay in the composer.
+      if (composerText.value === body) { composerText.value = ''; composer.clearMedia() }
       replyToMessage.value = null
       await nextTick()
       scroll.stickToBottom({ behavior: 'smooth', reason: 'send-message-optimistic' })
@@ -597,8 +635,9 @@ export function useChatThread(opts: UseChatThreadOptions) {
         },
       )
 
+      if (res?.message) await drafts.submitted(submitted)
       // Guard: user switched conversations while this was in flight — remove the stale optimistic row.
-      if (selectedConversationId.value !== conversationId) {
+      if (me.value?.id !== my.id || selectedConversationId.value !== conversationId) {
         messages.value = messages.value.filter((m) => m.id !== localId)
         clearSendingId(localId)
         return
@@ -621,7 +660,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
         // API returned no message — remove the optimistic row and restore the composer.
         messages.value = messages.value.filter((m) => m.id !== localId)
         clearSendingId(localId)
-        composerText.value = body
+        if (!composerText.value && !composer.getMedia().length) restoreComposer(snapshot)
       }
 
       if (conversationsApi.selectedConversation.value?.viewerStatus === 'pending') {
@@ -632,7 +671,8 @@ export function useChatThread(opts: UseChatThreadOptions) {
         messages.value = messages.value.filter((m) => m.id !== localId)
         clearSendingId(localId)
       }
-      if (body && !composerText.value.trim()) composerText.value = body
+      if (me.value?.id !== my.id || selectedConversationId.value !== conversationId) return
+      if (!composerText.value && !composer.getMedia().length) restoreComposer(snapshot)
       sendError.value = getApiErrorMessage(e) || 'Failed to send message.'
     }
   }
@@ -727,6 +767,8 @@ export function useChatThread(opts: UseChatThreadOptions) {
   }
 
   function handleEdit(message: Message) {
+    void drafts.persist()
+    beforeEdit = draftSnapshot()
     editingMessage.value = message
     composerText.value = message.body
     void nextTick(() => composer.focus())
@@ -740,6 +782,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
     }
     const body = composerText.value.trim()
     const conversationId = msg.conversationId
+    const identity = me.value?.id
 
     // Optimistic update
     const idx = messages.value.findIndex((m) => m.id === msg.id)
@@ -747,8 +790,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
     if (idx !== -1) {
       mutateMessageAt(idx, { ...messages.value[idx]!, body, editedAt: new Date().toISOString() })
     }
-    composerText.value = ''
-    editingMessage.value = null
+    cancelEdit()
 
     try {
       await apiFetch(`/messages/conversations/${conversationId}/messages/${msg.id}`, {
@@ -756,14 +798,16 @@ export function useChatThread(opts: UseChatThreadOptions) {
         body: { body },
       })
     } catch {
+      if (me.value?.id !== identity || selectedConversationId.value !== conversationId) return
       if (idx !== -1) {
         const current = messages.value[idx]
         if (current) {
           mutateMessageAt(idx, { ...current, body: originalBody, editedAt: msg.editedAt })
         }
       }
-      composerText.value = body
+      beforeEdit = draftSnapshot()
       editingMessage.value = msg
+      composerText.value = body
     }
   }
 

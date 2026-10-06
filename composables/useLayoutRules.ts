@@ -15,7 +15,7 @@ export function useLayoutRules(route = useRoute()) {
   })
 
   const isRightRailForcedHidden = computed(() => {
-    return isRightRailForcedHiddenPath(route.path)
+    return /^\/groups\/[^/]+\/channels(?:\/|$)/.test(route.path) || isRightRailForcedHiddenPath(route.path)
   })
 
   const isRightRailSearchHidden = computed(() => {

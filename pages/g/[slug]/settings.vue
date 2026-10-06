@@ -199,7 +199,7 @@ async function doLeave() {
   if (!s || leaveBusy.value) return
   const ok = await confirm({
     header: 'Leave group?',
-    message: "You'll lose access to the group's posts and feed. You can rejoin later.",
+    message: "You'll lose group and channel access. Rejoining will not restore private channel invitations.",
     confirmLabel: 'Leave',
     confirmSeverity: 'danger',
   })

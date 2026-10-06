@@ -30,14 +30,14 @@
             v-model="details"
             class="w-full"
             rows="4"
-            autoResize
+            auto-resize
             placeholder="Add context (what happened, why it’s harmful, etc.)"
           />
           <AppMentionAutocompletePopover
             v-bind="detailsMention.popoverProps"
             @select="detailsMention.onSelect"
             @highlight="detailsMention.onHighlight"
-            @requestClose="detailsMention.onRequestClose"
+            @request-close="detailsMention.onRequestClose"
           />
         </div>
       </div>
@@ -72,11 +72,13 @@ const props = withDefaults(
   defineProps<{
     visible: boolean
     targetType: ReportTargetType
+    subjectMessageId?: string | null
+    subjectArticleId?: string | null
     subjectPostId?: string | null
     subjectUserId?: string | null
     subjectLabel?: string | null
   }>(),
-  { subjectPostId: null, subjectUserId: null, subjectLabel: null }
+  { subjectMessageId: null, subjectArticleId: null, subjectPostId: null, subjectUserId: null, subjectLabel: null }
 )
 
 const emit = defineEmits<{
@@ -93,8 +95,7 @@ useOverlayDismiss(visibleProxy, () => (visibleProxy.value = false))
 
 const headerText = computed(() => {
   const label = (props.subjectLabel ?? '').trim()
-  if (props.targetType === 'post') return label ? `Report post (${label})` : 'Report post'
-  return label ? `Report user (${label})` : 'Report user'
+  return label ? `Report ${props.targetType} (${label})` : `Report ${props.targetType}`
 })
 
 const reasonOptions: Array<{ label: string; value: ReportReason }> = [
@@ -159,6 +160,8 @@ async function submit() {
       body: {
         targetType: props.targetType,
         subjectPostId: props.subjectPostId ?? undefined,
+        subjectMessageId: props.subjectMessageId ?? undefined,
+        subjectArticleId: props.subjectArticleId ?? undefined,
         subjectUserId: props.subjectUserId ?? undefined,
         reason: reason.value,
         details: details.value.trim() ? details.value.trim() : null,

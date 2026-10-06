@@ -192,22 +192,30 @@ export type MentionDisplayMatch = {
   usernameLower: string
 }
 
-export type MentionTextSegment = { text: string; mention?: MentionDisplayMatch }
+/** `&slug` group shortcut. Slugs are lowercase letters, digits and hyphens; `R&D` and `&amp;` never match. */
+export const GROUP_MENTION_IN_TEXT_DISPLAY_RE = /(?<![A-Za-z0-9_&])&([A-Za-z0-9][A-Za-z0-9-]{0,59})(?![A-Za-z0-9&;])/g
 
-/** Split text into segments with display-safe @username tokens (email-safe). */
+export type GroupMentionDisplayMatch = { raw: string; slug: string }
+
+export type MentionTextSegment = { text: string; mention?: MentionDisplayMatch; group?: GroupMentionDisplayMatch }
+
+/** Split text into segments with display-safe @username and &group tokens (email-safe). */
 export function splitTextByMentionsDisplay(text: string): MentionTextSegment[] {
   const value = (text ?? '').toString()
   if (!value) return []
-  const re = new RegExp(MENTION_IN_TEXT_DISPLAY_RE.source, 'g')
+  const re = new RegExp(`${MENTION_IN_TEXT_DISPLAY_RE.source}|${GROUP_MENTION_IN_TEXT_DISPLAY_RE.source}`, 'g')
   const out: MentionTextSegment[] = []
   let lastEnd = 0
   let m: RegExpExecArray | null
   while ((m = re.exec(value))) {
     const raw = m[0] ?? ''
     const username = m[1] ?? ''
+    const groupSlug = m[2] ?? ''
     const start = m.index
     if (start > lastEnd) out.push({ text: value.slice(lastEnd, start) })
-    if (raw && username) {
+    if (raw && groupSlug) {
+      out.push({ text: raw, group: { raw, slug: groupSlug.toLowerCase() } })
+    } else if (raw && username) {
       out.push({ text: raw, mention: { raw, username, usernameLower: username.toLowerCase() } })
     } else if (raw) {
       out.push({ text: raw })

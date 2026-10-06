@@ -98,7 +98,7 @@
                 rounded
                 size="small"
                 severity="secondary"
-                class="shrink-0 !p-1.5"
+                class="shrink-0 !min-h-11 !min-w-11 !p-1.5"
                 aria-label="Member actions"
                 @click.stop="openMemberMenu($event, m)"
               >
@@ -126,6 +126,7 @@
 import type { CommunityGroupMemberListItem, CommunityGroupShell } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import ContextMenu from 'primevue/contextmenu'
+import { surfaceMenuItems, type SurfaceAction } from '~/utils/surface-actions'
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
@@ -133,6 +134,7 @@ const slug = computed(() => String(route.params.slug ?? '').trim())
 definePageMeta({ layout: 'app', title: 'Members', hideTopBar: true })
 
 const { apiFetch, apiFetchData } = useApiClient()
+const { confirm } = useAppConfirm()
 const { markReadBySubject } = useNotifications()
 
 // SSR-friendly shell fetch mirrors pages/g/[slug]/index.vue. We never throw
@@ -158,6 +160,8 @@ const isAdminViewer = computed(() => {
   const role = shell.value?.viewerMembership?.role
   return role === 'owner' || role === 'moderator'
 })
+const groupTabs = useGroupTabs()
+watch(shell, next => { if (next) groupTabs.value = { group: next } }, { immediate: true })
 
 const pendingCopy = computed(() => {
   if (shell.value?.viewerPendingApproval) return 'Your join request is still pending approval.'
@@ -279,14 +283,31 @@ const removingUserId = ref<string | null>(null)
 const memberMenuItems = computed(() => {
   const m = menuTargetMember.value
   if (!m) return []
-  return [
-    {
-      label: 'Remove from group',
-      icon: 'tabler:user-minus',
-      command: () => removeMember(m),
-    },
+  const owner = shell.value?.viewerMembership?.role === 'owner'
+  const actions: SurfaceAction[] = [
+    { id: 'role', label: m.role === 'moderator' ? 'Make member' : 'Make moderator', icon: 'tabler:shield', section: 'role', available: owner, run: () => changeRole(m) },
+    { id: 'ownership', label: 'Transfer ownership', icon: 'tabler:key', section: 'role', available: owner && m.role !== 'owner' && m.userId !== shell.value?.marv?.userId, run: () => transferOwnership(m) },
+    { id: 'remove', label: 'Remove from group', icon: 'tabler:user-minus', section: 'membership', destructive: true, run: () => removeMember(m) },
   ]
+  return surfaceMenuItems(actions)
 })
+
+async function changeRole(m: CommunityGroupMemberListItem) {
+  if (!shell.value) return
+  try {
+    await apiFetchData(`/groups/${shell.value.id}/members/${m.userId}/${m.role === 'moderator' ? 'demote' : 'promote'}-moderator`, { method: 'POST', body: {} })
+    await reloadFromServer()
+  } catch (cause) { error.value = getApiErrorMessage(cause) || 'Could not change this role.' }
+}
+async function transferOwnership(m: CommunityGroupMemberListItem) {
+  const group = shell.value
+  if (!group || !await confirm({ header: 'Transfer ownership?', message: `${m.name || m.username || 'This member'} will own the group. You will become a moderator.`, confirmLabel: 'Transfer ownership' })) return
+  try {
+    await apiFetchData(`/groups/${group.id}/members/${m.userId}/transfer-ownership`, { method: 'POST', body: {} })
+    shell.value = await apiFetchData<CommunityGroupShell>(`/groups/by-slug/${encodeURIComponent(slug.value)}`)
+    await reloadFromServer()
+  } catch (cause) { error.value = getApiErrorMessage(cause) || 'Could not transfer ownership.' }
+}
 
 function openMemberMenu(event: Event, m: CommunityGroupMemberListItem) {
   menuTargetMember.value = m
@@ -296,6 +317,7 @@ function openMemberMenu(event: Event, m: CommunityGroupMemberListItem) {
 async function removeMember(m: CommunityGroupMemberListItem) {
   const s = shell.value
   if (!s || removingUserId.value) return
+  if (!await confirm({ header: 'Remove member?', message: `${m.name || m.username || 'This member'} will lose group and channel access. Rejoining will not restore private channel invitations.`, confirmLabel: 'Remove', confirmSeverity: 'danger' })) return
   removingUserId.value = m.userId
   try {
     await apiFetchData(`/groups/${encodeURIComponent(s.id)}/members/${encodeURIComponent(m.userId)}`, {

@@ -168,6 +168,12 @@
         </div>
       </div>
 
+      <div v-if="selected.evidenceText || selected.subjectMessage" class="space-y-2 rounded-xl border moh-border p-3">
+        <h3 class="text-sm font-semibold">Reported evidence</h3>
+        <p v-if="selected.evidenceText" class="whitespace-pre-wrap text-sm">{{ selected.evidenceText }}</p>
+        <AppAdminReportedMedia v-for="media in selected.subjectMessage?.media ?? []" :key="media.id" :report-id="selected.id" :media="media" />
+      </div>
+
       <div class="space-y-1">
         <div class="text-xs moh-text-muted">Details</div>
         <div v-if="selected.details" class="whitespace-pre-wrap text-sm moh-text">{{ selected.details }}</div>
@@ -188,7 +194,7 @@
         </div>
         <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Admin note</label>
-          <Textarea v-model="editAdminNote" class="w-full" rows="3" autoResize placeholder="Optional internal note…" />
+          <Textarea v-model="editAdminNote" class="w-full" rows="3" auto-resize placeholder="Optional internal note…" />
         </div>
       </div>
 
@@ -225,7 +231,7 @@ usePageSeo({
 
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
-import type { AdminReportItem, AdminReportListData, ReportReason, ReportStatus, ReportTargetType } from '~/types/api'
+import type { AdminReportItem, ReportReason, ReportStatus } from '~/types/api'
 import type { AdminCallback } from '~/composables/usePresence'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 
@@ -243,6 +249,8 @@ const targetOptions = [
   { label: 'All targets', value: 'all' as const },
   { label: 'Post', value: 'post' as const },
   { label: 'User', value: 'user' as const },
+  { label: 'Message', value: 'message' as const },
+  { label: 'Article', value: 'article' as const },
 ]
 
 const reasonOptions = [
@@ -361,7 +369,9 @@ function reasonLabel(reason: ReportReason) {
   return 'Spam'
 }
 
-function targetLabel(item: Pick<AdminReportItem, 'targetType' | 'subjectUser' | 'subjectPost'>) {
+function targetLabel(item: AdminReportItem) {
+  if (item.targetType === 'message') return 'Reported message'
+  if (item.targetType === 'article') return item.subjectArticle?.title ?? 'Article'
   if (item.targetType === 'post') {
     const post = item.subjectPost
     const author = post?.user?.username ? `@${post.user.username}` : post?.user?.name || 'User'
@@ -371,7 +381,9 @@ function targetLabel(item: Pick<AdminReportItem, 'targetType' | 'subjectUser' | 
   return u?.username ? `User @${u.username}` : u?.name ? `User ${u.name}` : 'User'
 }
 
-function targetLink(item: Pick<AdminReportItem, 'targetType' | 'subjectUser' | 'subjectPost'>): string | null {
+function targetLink(item: AdminReportItem): string | null {
+  if (item.targetType === 'message') return null
+  if (item.targetType === 'article') return item.subjectArticle ? `/a/${encodeURIComponent(item.subjectArticle.id)}` : null
   if (item.targetType === 'post') {
     const pid = item.subjectPost?.id
     return pid ? `/p/${encodeURIComponent(pid)}` : null

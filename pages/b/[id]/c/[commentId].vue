@@ -107,6 +107,11 @@ function revealPending() {
 
 useBoardThreadSeo(computed(() => ctxData.value?.thread), computed(() => ctxData.value?.comment))
 
+useRailContextPublisher(() => {
+  const thread = ctxData.value?.thread
+  return thread && !error.value ? { kind: 'board', id: thread.id, tags: thread.tags ?? [] } : null
+})
+
 // Opening a comment permalink counts a view of that comment, like a post permalink.
 const { markOpened } = usePostViewTracker()
 watch(

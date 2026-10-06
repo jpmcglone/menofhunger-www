@@ -192,6 +192,10 @@ function onThreadDeleted() {
 
 useBoardThreadSeo(thread)
 
+useRailContextPublisher(() =>
+  thread.value && !error.value ? { kind: 'board', id: thread.value.id, tags: thread.value.tags ?? [] } : null,
+)
+
 // Opening a thread counts as a view, exactly like a post permalink (unique + impression).
 const { markOpened } = usePostViewTracker()
 watch(

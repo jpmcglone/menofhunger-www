@@ -212,6 +212,19 @@ export function createPresenceEmitters(socketRef: Ref<Socket | null>) {
       if (!socket?.connected || !id) return
       socket.emit('posts:typing', { postId: id, typing: Boolean(typing), ...(replyToId ? { replyToId } : {}) })
     },
+    subscribeChannels(groupId: string) {
+      const socket = socketRef.value
+      if (socket?.connected && groupId) socket.emit('group-channels:subscribe', { groupId })
+    },
+    unsubscribeChannels(groupId: string) {
+      const socket = socketRef.value
+      if (socket?.connected && groupId) socket.emit('group-channels:unsubscribe', { groupId })
+    },
+    emitChannelTyping(channelId: string, typing: boolean, threadRootId?: string | null) {
+      const socket = socketRef.value
+      if (!socket?.connected || !channelId) return
+      socket.emit('group-channels:typing', { channelId, typing, ...(threadRootId ? { threadRootId } : {}) })
+    },
     emitMessagesTyping(conversationId: string, typing: boolean) {
       const socket = socketRef.value
       const id = (conversationId ?? '').trim()

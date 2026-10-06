@@ -16,7 +16,10 @@ export function useGroupsBadge() {
   const toneClass = useActivityBadgeTone()
 
   const unreadPosts = computed(() => groupsUnread.value.total)
-  const total = computed(() => unreadPosts.value + pendingInviteCount.value)
+  const { badges: channelBadges } = useGroupChannelBadges()
+  const channelMentions = computed(() => Object.values(channelBadges.value).reduce((sum, badge) => sum + badge.personalCount, 0))
+  const channelDot = computed(() => Object.values(channelBadges.value).some(badge => badge.hasUnread))
+  const total = computed(() => unreadPosts.value + pendingInviteCount.value + channelMentions.value)
   const show = computed(() => total.value > 0)
   const displayCount = computed(() => (total.value >= 99 ? '99+' : String(total.value)))
 
@@ -40,5 +43,5 @@ export function useGroupsBadge() {
     }
   }
 
-  return { total, show, displayCount, toneClass, getCountForGroup, refresh }
+  return { total, channelDot, show, displayCount, toneClass, getCountForGroup, refresh }
 }

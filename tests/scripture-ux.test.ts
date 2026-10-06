@@ -67,20 +67,22 @@ describe('scripture verse presentation', () => {
 })
 
 describe('primary app navigation order', () => {
-  it('keeps Home then Explore first, and the phone floor at Home, Board, Notifications, and Chat', () => {
+  it('keeps Home, Explore, then Groups first, and the phone floor at Home, Groups, Board, Notifications, and Chat', () => {
     const source = readFromRepo('composables/useAppNav.ts')
     const home = source.indexOf("key: 'home'")
     const explore = source.indexOf("key: 'explore'")
+    const groups = source.indexOf("key: 'groups'")
     const board = source.indexOf("key: 'board'")
     const notifications = source.indexOf("key: 'notifications'")
     const messages = source.indexOf("key: 'messages'")
 
     expect(home).toBeGreaterThan(-1)
     expect(home).toBeLessThan(explore)
-    expect(explore).toBeLessThan(board)
+    expect(explore).toBeLessThan(groups)
+    expect(groups).toBeLessThan(board)
     expect(board).toBeLessThan(notifications)
     expect(notifications).toBeLessThan(messages)
-    expect(source).toMatch(/APP_NAV_FLOOR_KEYS = \['home', 'board', 'notifications', 'messages'\]/)
+    expect(source).toMatch(/APP_NAV_FLOOR_KEYS = \['home', 'groups', 'board', 'notifications', 'messages'\]/)
     expect(source).not.toMatch(/isNew: true/)
   })
 

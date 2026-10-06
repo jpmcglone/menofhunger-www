@@ -51,6 +51,12 @@ render("record-start", 0.095, lambda t: tone(t, 660, .095, decay=32), .24)
 render("record-stop", 0.105, lambda t: tone(t, 440, .105, decay=30), .24)
 render("upload-ready", 0.24, lambda t: tone(t, 659.25, .24, decay=18), .26)
 render("save", 0.08, lambda t: tone(t, 392, .08, decay=38), .25)
+render("message-sent", 0.09, lambda t: tone(t, 587.33, .09, decay=34), .2)
+render("reaction", 0.12, lambda t: tone(t, 880, .12, .8, decay=30)
+       + tone(t, 1318.51, .08, .35, start=.02, decay=40), .16)
+render("channel-message", 0.11, lambda t: tone(t, 698.46, .11, decay=30), .22)
+render("channel-mention", 0.34, lambda t: tone(t, 783.99, .2, .8, decay=14)
+       + tone(t, 1174.66, .3, .7, start=.1, decay=11), .34)
 
 rng = random.Random(20260924)
 filtered = 0

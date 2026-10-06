@@ -15,7 +15,7 @@ export type AdminOperationsHealth = Contracts.AdminOperationsHealthDto
 export type AdminOperationsContent = Contracts.AdminOperationsContentDto
 
 /** Success envelope: payload in `data`, optional cursor/counts in `pagination`. */
-export type ApiEnvelope<T> = { data: T; pagination?: ApiPagination }
+export type ApiEnvelope<T, Pagination = ApiPagination> = { data: T; pagination?: Pagination }
 
 /** Minimal org account shown alongside affiliated users. */
 export type OrgAffiliation = Contracts.OrgAffiliationDto
@@ -68,6 +68,7 @@ export type SwitchableAccount = {
   isCurrent: boolean
   unreadBadgeCount: number
   hasUnreadNotifications?: boolean
+  hasUnreadBoard?: boolean
 }
 
 export type ApiPagination = {
@@ -990,6 +991,7 @@ export type GetUserPostsResponse = {
 }
 
 export type AdminImageReviewBelongsTo =
+  | 'channel_upload'
   | 'post'
   | 'post_thumbnail'
   | 'message'
@@ -1049,32 +1051,8 @@ export type AdminFeedbackItem = FeedbackItem & {
 /** Data type for GET /admin/feedback (array); pagination in envelope. */
 export type AdminFeedbackListData = AdminFeedbackItem[]
 
-export type ReportItem = {
-  id: string
-  createdAt: string
-  updatedAt: string
-  targetType: ReportTargetType
-  reason: ReportReason
-  details: string | null
-  status: ReportStatus
-  subjectUserId: string | null
-  subjectPostId: string | null
-}
-
-export type AdminReportItem = ReportItem & {
-  adminNote: string | null
-  resolvedAt: string | null
-  reporter: { id: string; username: string | null; name: string | null }
-  subjectUser: { id: string; username: string | null; name: string | null } | null
-  subjectPost: {
-    id: string
-    createdAt: string
-    body: string
-    deletedAt: string | null
-    user: { id: string; username: string | null; name: string | null }
-  } | null
-  resolvedByAdmin: { id: string; username: string | null; name: string | null } | null
-}
+export type ReportItem = Contracts.ReportDto
+export type AdminReportItem = Contracts.ReportAdminDto
 
 /** Data type for GET /admin/reports (array); pagination in envelope. */
 export type AdminReportListData = AdminReportItem[]
@@ -1156,7 +1134,10 @@ export type AdminImageReviewDetailResponse = {
       deletedAt: string | null
       isThumbnail: boolean
     }>
+    channelUploads?: Array<{ uploadId: string; channelId: string; userId: string; expiresAt: string }>
     messages: Array<{
+      channelId?: string
+      groupId?: string
       messageMediaId: string
       messageId: string
       conversationId: string
@@ -1676,6 +1657,8 @@ export type GetNotificationsUnreadCountResponse = {
     unreadCommentCount: number
     /** Unread Board notifications — drives the Board nav dot. */
     boardUnreadCount: number
+    /** Unseen Board mentions, counted into the Board nav badge. */
+    boardMentionCount?: number
     /** Unread article notifications — drives the Articles nav dot. */
     articlesUnreadCount: number
     hasUnreadNotifications?: boolean
@@ -1899,6 +1882,7 @@ export type WsAccountsBadgeUpdatedPayload = {
   userId: string
   unreadBadgeCount: number
   hasUnreadNotifications?: boolean
+  hasUnreadBoard?: boolean
 }
 
 export type WsMessagesReadPayload = {
@@ -2673,6 +2657,9 @@ export type LandingSnapshot = {
 
 /** Community group shell (public to signed-in users). */
 export type CommunityGroupShell = {
+  channelsAvailable?: boolean
+  channelPersonalCount?: number
+  channelHasUnread?: boolean
   id: string
   slug: string
   name: string
@@ -3593,3 +3580,17 @@ export type PartnerConnection = {
   createdAt: string
   expiresAt: string
 }
+
+export type GroupChannel = Contracts.GroupChannelDto
+export type ChannelMessage = Contracts.GroupChannelMessageDto
+export type ChannelAttention = Contracts.GroupChannelAttentionDto
+export type ChannelChangedEvent = Contracts.GroupChannelChangedPayloadDto
+export type ChannelMessagesEvent = Contracts.GroupChannelMessagesPayloadDto
+export type ChannelTypingEvent = {
+  groupId: string
+  channelId: string
+  threadRootId: string | null
+  user: WsPostsTypingPayload['user']
+  typing: boolean
+}
+export type ChannelViewerEvent = Contracts.GroupChannelViewerPayloadDto

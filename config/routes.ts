@@ -193,6 +193,7 @@ export function navCompactModePath(path: string): boolean {
     path.startsWith('/radio/') ||
     path === '/map' ||
     path.startsWith('/a/') ||
+    /^\/groups\/[^/]+\/channels(\/|$)/.test(path) ||
     path === '/admin/analytics' ||
     path.startsWith('/admin/analytics/') ||
     isSpacePermalinkPath(path)

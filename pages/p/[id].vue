@@ -281,7 +281,7 @@
         <!-- Discover more: lazy-loaded near end of thread (client-only; not part of SSR). -->
         <ClientOnly>
           <div
-            v-if="!isOnlyMe && showDiscoverSection"
+            v-if="!isOnlyMe && showDiscoverSection && !railShowsDiscover"
             class="border-b moh-border"
           >
             <div ref="discoverSentinelEl" class="h-1 w-full" aria-hidden="true" />
@@ -590,6 +590,8 @@ const conversationGateSecondaryTo = computed(() => {
   return `/login?redirect=${encodeURIComponent(replyRedirectPath.value)}`
 })
 
+// One discovery state serves both the right rail (wide screens) and the list below replies.
+const discoverState = usePostDiscoverMore({ postId, viewerId: computed(() => user.value?.id ?? null) })
 const {
   posts: discoverPosts,
   nextCursor: discoverNextCursor,
@@ -597,7 +599,16 @@ const {
   showSection: showDiscoverSection,
   arm: armDiscoverMore,
   loadMore: loadMoreDiscover,
-} = usePostDiscoverMore({ postId })
+} = discoverState
+
+const railCanRecommend = computed(() =>
+  Boolean(post.value && post.value.viewerCanAccess !== false && !isDeleted.value && !isOnlyMe.value),
+)
+useRailContextPublisher(() =>
+  railCanRecommend.value ? { kind: 'post', id: postId.value, discover: discoverState } : null,
+)
+const { recommendationsDisplayed: railRecommendationsDisplayed } = useRailContext()
+const railShowsDiscover = computed(() => railCanRecommend.value && railRecommendationsDisplayed.value)
 
 const discoverSentinelEl = ref<HTMLElement | null>(null)
 const discoverMoreSentinelEl = ref<HTMLElement | null>(null)

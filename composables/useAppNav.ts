@@ -35,7 +35,7 @@ export type AppNavItem = {
 }
 
 /** Phone tab floor. The left rail shows as many ordered items as fit; overflow uses More. */
-export const APP_NAV_FLOOR_KEYS = ['home', 'board', 'notifications', 'messages'] as const
+export const APP_NAV_FLOOR_KEYS = ['home', 'groups', 'board', 'notifications', 'messages'] as const
 
 export function isAppNavFloorKey(key: string): boolean {
   return (APP_NAV_FLOOR_KEYS as readonly string[]).includes(key)
@@ -94,13 +94,13 @@ export function useAppNav() {
   const allItems = computed<AppNavItem[]>(() => [
     { key: 'home', label: 'Home', to: '/home', icon: 'tabler:home', iconActive: 'tabler:home-filled', showInPrimaryNav: true, menuSection: 'main' },
     { key: 'explore', label: 'Explore', to: '/explore', icon: 'tabler:search', iconActive: 'tabler:search', showInPrimaryNav: true, menuSection: 'main' },
+    { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: false, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'board', label: 'Board', to: '/b', icon: 'tabler:layout-list', iconActive: 'tabler:layout-list-filled', showInPrimaryNav: true, menuSection: 'main' },
     { key: 'notifications', label: 'Notifications', to: '/notifications', icon: 'tabler:bell', iconActive: 'tabler:bell-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'messages', label: 'Chat', to: '/chat', icon: 'tabler:message-circle', iconActive: 'tabler:message-circle-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'articles', label: 'Articles', to: '/articles', icon: 'tabler:article', iconActive: 'tabler:article-filled', showInPrimaryNav: true, menuSection: 'main' },
     { key: 'check-ins', label: 'Check-ins', to: '/check-ins', icon: 'tabler:flame', iconActive: 'tabler:flame-filled', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'fitness', label: 'Fitness', to: '/fitness', icon: 'tabler:heart-rate-monitor', iconActive: 'tabler:heart-rate-monitor', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
-    { key: 'groups', label: 'Groups', to: '/groups', icon: 'heroicons-outline:user-group', iconActive: 'heroicons-solid:user-group', requiresAuth: false, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'map', label: 'Map', to: '/map', icon: 'tabler:map-pin', iconActive: 'tabler:map-pin-filled', showInPrimaryNav: true, menuSection: 'main' },
     { key: 'crew', label: crewLabel.value, to: '/crew', icon: 'tabler:shield-check', iconActive: 'tabler:shield-check-filled', requiresAuth: true, requiresVerified: true, requiresPersonAccount: true, showInPrimaryNav: true, menuSection: 'main' },
     { key: 'bookmarks', label: 'Bookmarks', to: '/bookmarks', icon: 'tabler:bookmark', iconActive: 'tabler:bookmark-filled', requiresAuth: true, showInPrimaryNav: true, menuSection: 'main' },

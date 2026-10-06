@@ -1,7 +1,4 @@
-import type { Ref } from 'vue'
-import type { Socket } from 'socket.io-client'
-import { useWotdData } from '~/composables/useWebsters1828Wotd'
-import type {
+import type { ChannelChangedEvent, ChannelMessagesEvent, ChannelTypingEvent, ChannelViewerEvent,
   RadioChatMessage,
   RadioListener,
   SpaceChatSender,
@@ -40,8 +37,10 @@ import type {
   WsCallsIncomingPayload,
   WsCallsUpdatedPayload,
   WsRtcSignalPayload,
-  WsCallsSeatTakenPayload,
-} from '~/types/api'
+  WsCallsSeatTakenPayload } from "~/types/api"
+import type { Ref } from 'vue'
+import type { Socket } from 'socket.io-client'
+import { useWotdData } from '~/composables/useWebsters1828Wotd'
 import type {
   AccountsCallback,
   AdminCallback,
@@ -78,6 +77,13 @@ import type {
   WsReferralRecruitUpdatedPayload,
 } from './types'
 import { useUsersStore } from '~/composables/useUsersStore'
+
+export type ChannelCallback = (event:
+  | { type: 'changed'; payload: ChannelChangedEvent }
+  | { type: 'messages'; payload: ChannelMessagesEvent }
+  | { type: 'viewer'; payload: ChannelViewerEvent }
+  | { type: 'typing'; payload: ChannelTypingEvent }
+) => void
 
 const PRESENCE_USER_CURRENT_SPACE_KEY = 'presence-user-current-space-by-id'
 
@@ -120,6 +126,7 @@ export function usePresenceDomains() {
   const { user: authUser } = useAuth()
   const userCurrentSpaceById = useState<Record<string, string | null>>(PRESENCE_USER_CURRENT_SPACE_KEY, () => ({}))
 
+  const channelCallbacks = useState<Set<ChannelCallback>>('presence-channel-callbacks', () => new Set())
   const messagesCallbacks = useState<Set<MessagesCallback>>('presence-messages-callbacks', () => new Set())
   const radioCallbacks = useState<Set<RadioCallback>>('presence-radio-callbacks', () => new Set())
   const spacesCallbacks = useState<Set<SpacesCallback>>('presence-spaces-callbacks', () => new Set())
@@ -154,6 +161,7 @@ export function usePresenceDomains() {
     }
   }
 
+  const channels = makeRegistry(channelCallbacks)
   const messages = makeRegistry(messagesCallbacks)
   const radio = makeRegistry(radioCallbacks)
   const spaces = makeRegistry(spacesCallbacks)
@@ -178,6 +186,18 @@ export function usePresenceDomains() {
   const calls = makeRegistry(callsCallbacks)
 
   function registerSocketHandlers(socket: Socket) {
+    socket.on('group-channels:changed', (payload: ChannelChangedEvent) => {
+      for (const callback of channelCallbacks.value) callback({ type: 'changed', payload })
+    })
+    socket.on('group-channels:messages', (payload: ChannelMessagesEvent) => {
+      for (const callback of channelCallbacks.value) callback({ type: 'messages', payload })
+    })
+    socket.on('group-channels:typing', (payload: ChannelTypingEvent) => {
+      for (const callback of channelCallbacks.value) callback({ type: 'typing', payload })
+    })
+    socket.on('group-channels:viewer', (payload: ChannelViewerEvent) => {
+      for (const callback of channelCallbacks.value) callback({ type: 'viewer', payload })
+    })
     // ── Notifications / Marv ──────────────────────────────────────────
     socket.on('notifications:updated', (data: WsNotificationsUpdatedPayload) => {
       if (!notificationsCallbacks.value.size) return
@@ -717,6 +737,7 @@ export function usePresenceDomains() {
   }
 
   return {
+    channels,
     messages,
     radio,
     spaces,

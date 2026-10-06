@@ -13,7 +13,7 @@ v-for="topic in topics.slice(0, 6)" :key="topic.value" :to="categories ? `/explo
     <section class="border-t moh-border pt-6 space-y-3">
       <h2 class="text-xl font-semibold moh-text">A place to show up</h2>
       <p class="text-[15px] moh-text-muted">Follow people and topics you care about. Join a group and keep the conversation going.</p>
-      <NuxtLink to="/groups/explore" class="inline-flex min-h-11 items-center rounded-full border moh-border px-4 text-sm font-semibold moh-focus">Browse groups</NuxtLink>
+      <NuxtLink to="/groups" class="inline-flex min-h-11 items-center rounded-full border moh-border px-4 text-sm font-semibold moh-focus">Browse groups</NuxtLink>
     </section>
     <section v-if="!isPageAccount" class="border-t moh-border pt-6 space-y-3">
       <h2 class="text-xs font-semibold uppercase text-[var(--moh-checkin)]">Daily check-in</h2>

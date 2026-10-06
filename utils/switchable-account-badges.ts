@@ -3,7 +3,7 @@ import type { SwitchableAccount } from '~/types/api'
 /** Overlay live socket counts onto a freshly fetched switcher list. */
 export function mergeSwitchableAccountBadges(
   accounts: SwitchableAccount[],
-  pending: Record<string, number | Partial<Pick<SwitchableAccount, 'unreadBadgeCount' | 'hasUnreadNotifications'>>>,
+  pending: Record<string, number | Partial<Pick<SwitchableAccount, 'unreadBadgeCount' | 'hasUnreadNotifications' | 'hasUnreadBoard'>>>,
 ): SwitchableAccount[] {
   if (!accounts.length) return accounts
   const ids = Object.keys(pending)

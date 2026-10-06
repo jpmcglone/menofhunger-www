@@ -16,6 +16,7 @@
         <span class="block truncate text-sm font-semibold">{{ currentAccount.name || currentAccount.username || 'Account' }}</span>
         <span v-if="currentAccount.username" class="moh-text-muted block truncate text-xs">@{{ currentAccount.username }}</span>
       </span>
+      <AppActivityBadge v-if="!menuOpen" :count="totalCount" :has-unread="hasAnyDot" unread-label="Unread activity" />
       <Icon :name="switchingId ? 'tabler:loader-2' : 'tabler:chevron-down'" size="16" :class="switchingId ? 'animate-spin' : ''" aria-hidden="true" />
     </button>
     <Menu :id="menuId" ref="menuRef" :model="menuItems" popup append-to="body" :base-z-index="OVERLAY_LAYERS.nestedMenu" class="max-h-[60vh] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto" @show="menuOpen = true" @hide="menuOpen = false">
@@ -44,7 +45,7 @@
           @{{ item.account.username }}
         </div>
       </div>
-      <AppActivityBadge :count="item.account.isCurrent ? activeBadgeCount : item.account.unreadBadgeCount" :has-unread="item.account.isCurrent ? hasUnreadNotifications : item.account.hasUnreadNotifications" />
+      <AppActivityBadge :count="item.account.isCurrent ? activeBadgeCount : item.account.unreadBadgeCount" :has-unread="item.account.isCurrent ? currentHasDot : (item.account.hasUnreadNotifications || item.account.hasUnreadBoard)" />
       <Icon
         v-if="item.account.isCurrent"
         name="tabler:check"
@@ -64,9 +65,7 @@ import Menu from 'primevue/menu'
 import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 
 const { accounts, canSwitch, switchingId, refresh, switchTo } = useAccountSwitcher()
-const { notificationUndeliveredCount, messageUnreadCounts, hasUnreadNotifications } = usePresence()
-const { total: activeGroupsCount } = useGroupsBadge()
-const activeBadgeCount = computed(() => notificationUndeliveredCount.value + activeGroupsCount.value + messageUnreadCounts.value.primary + messageUnreadCounts.value.requests)
+const { currentCount: activeBadgeCount, currentHasDot, totalCount, hasAnyDot } = useAttentionTotals()
 const menuRef = ref<InstanceType<typeof Menu>>()
 const menuOpen = ref(false)
 const triggerRef = ref<HTMLButtonElement>()
@@ -110,7 +109,7 @@ function accountLabel(account: SwitchableAccount): string {
 function accountActionLabel(account: SwitchableAccount): string {
   const label = account.isCurrent ? `${accountLabel(account)}, current account` : `Switch to ${accountLabel(account)}`
   const count = account.isCurrent ? activeBadgeCount.value : account.unreadBadgeCount
-  const unread = account.isCurrent ? hasUnreadNotifications.value : account.hasUnreadNotifications
+  const unread = account.isCurrent ? currentHasDot.value : (account.hasUnreadNotifications || account.hasUnreadBoard)
   return count > 0 ? `${label}, ${count} pending updates` : unread ? `${label}, unread notifications` : label
 }
 

@@ -38,7 +38,7 @@ export function useBadgeHydration() {
     setNotificationUnreadCommentCount(0)
     setMessageUnreadCounts({ primary: 0, requests: 0 })
     setGroupsUnread({ total: 0, byGroupId: {} })
-    setNotificationNavUnread({ boardUnreadCount: 0, articlesUnreadCount: 0, hasUnreadNotifications: false })
+    setNotificationNavUnread({ boardUnreadCount: 0, boardMentionCount: 0, articlesUnreadCount: 0, hasUnreadNotifications: false })
     crewInvites.setCount(0)
     groupInvites.setCount(0)
     seededUserId.value = null

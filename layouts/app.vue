@@ -116,13 +116,17 @@
                 'flex-1 min-h-0',
                 // Layout containers should not add padding. Pages/components own gutters and spacing.
                 isMessagesPage && hideTopBar ? 'flex h-full min-h-0 flex-col overflow-hidden' : '',
+                groupTabsView ? 'flex flex-col' : '',
               ]"
             >
               <AppPersonAccountSwitchPrompt
                 v-if="personOnlyBlockedFeature"
                 :feature="personOnlyBlockedFeature"
               />
-              <slot v-else />
+              <template v-else>
+                <AppChannelsGroupNavigation v-if="groupTabsView" :group="groupTabsView.group" :selected="groupTabsView.selected" />
+                <div :class="groupTabsView ? 'min-h-0 flex-1' : 'contents'"><slot /></div>
+              </template>
             </div>
             </div>
 
@@ -297,14 +301,28 @@ const personOnlyBlockedFeature = computed(() =>
   isPageAccount.value ? personOnlyFeatureForPath(route.path) : null,
 )
 const { isAuthed, tabItems } = useAppNav()
-const notifBadge = useNotificationsBadge()
+const attention = useAttentionTotals()
 const badgeHydration = useBadgeHydration()
 
 // App icon badge (PWA): notifications + chat unread. Works on Android/Chrome; no-op on iOS.
 useAppIconBadge()
+useChannelSounds()
+useGroupChannelBadgeSync()
+const currentGroup = useCurrentGroup()
 
 const { hideTopBar, navCompactMode: _navCompactModeBase, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
+const groupTabs = useGroupTabs()
+const groupTabsView = computed(() => {
+  const match = /^\/(g|groups)\/([^/]+)(?:\/(.*))?$/.exec(route.path)
+  const shell = groupTabs.value
+  if (!match || !shell?.group.channelsAvailable) return null
+  const rest = match[3] ?? ''
+  const selected = match[1] === 'groups' && rest.startsWith('channels') ? 'channels' as const
+    : match[1] === 'g' && (rest === '' || rest === 'members') ? 'posts' as const : null
+  if (!selected || shell.group.slug !== decodeURIComponent(match[2]!)) return null
+  return { group: { ...shell.group, channelPersonalCount: shell.personalCount ?? shell.group.channelPersonalCount }, selected }
+})
 /**
  * Shell + overlays share `useKeyboardPinnedFixedStyle` so fixed layers stay above the
  * software keyboard (Android overlays-content + iOS visual-viewport pan). See
@@ -408,7 +426,7 @@ useSpacePlayPauseShortcut(radioHasStation)
 // Compact the left nav on space-hungry routes, and whenever the viewer is in a space
 // (live chat takes the right rail; icon-only nav frees the rest for the player/feed).
 const isSettingsOrAdminPage = computed(() => isSettingsPath(route.path) || isAdminPath(route.path))
-const navCompactMode = computed(() => _navCompactModeBase.value || radioHasStation.value)
+const navCompactMode = computed(() => _navCompactModeBase.value || radioHasStation.value || !!groupTabsView.value)
 
 // Global keyboard shortcuts
 const searchInputRef = ref<{ focus: () => void } | null>(null)
@@ -443,6 +461,10 @@ const isRightRailVisible = computed(() => Boolean(isRightRailBreakpointUp.value)
 // Prefer live chat in the right rail whenever a space is selected (where rail is available).
 const showRadioChat = computed(() => radioHasStation.value && isRightRailVisible.value)
 const hideRightRailSearch = computed(() => isRightRailSearchHidden.value)
+const { recommendationsDisplayed: railRecommendationsDisplayed } = useRailContext()
+watchEffect(() => {
+  railRecommendationsDisplayed.value = isRightRailVisible.value && !showRadioChat.value
+})
 // Keep space chat subscription alive while a space is selected (even when not on /spaces).
 useSpaceLiveChat()
 
@@ -516,6 +538,8 @@ watch(
 const headerTitle = computed(() => {
   // During SSR + initial hydration, prefer route meta title for stable markup.
   if (!hydrated.value) return title.value
+  // Moving between a group's Channels and Posts must not flash a generic title.
+  if (currentGroup.value) return currentGroup.value.name
   const t = (appHeader.value?.title ?? '').trim()
   return t || title.value
 })
@@ -596,7 +620,8 @@ onBeforeUnmount(() => {
 
 if (import.meta.client) {
   watchEffect(() => {
-    const prefix = notifBadge.show.value ? `(${notifBadge.displayCount.value}) ` : ''
+    // Counted activity shows its number; countless activity (a dot) shows (*). Both clear together.
+    const prefix = attention.totalCount.value > 0 ? `(${attention.totalLabel.value}) ` : attention.hasAnyDot.value ? '(*) ' : ''
     useHead({
       titleTemplate: (title) => `${prefix}${title || siteConfig.meta.title}`,
     })

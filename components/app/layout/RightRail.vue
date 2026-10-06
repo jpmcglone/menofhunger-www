@@ -43,6 +43,14 @@
           <AppRadioLiveChatPanel class="flex-1 min-h-0" />
         </div>
 
+        <div v-else-if="groupChannelsRail" key="rightRailGroupChannels">
+          <AppLayoutRightRailGroupChannels :group="groupChannelsRail" />
+        </div>
+
+        <div v-else-if="showRecommendations" key="rightRailRecommendations">
+          <AppLayoutRightRailRecommendations />
+        </div>
+
         <div v-else-if="route.path !== '/explore'" key="rightRailDefault">
           <AppRightRailContent v-if="hydrated && secondaryLoadsEnabled">
           <AppOperatorSwitchRailCard v-if="isPageAccount" class="mt-4 mb-4" />
@@ -277,6 +285,20 @@ const { initialFeedResolved } = useHomeLoadState()
 const secondaryLoadsEnabled = computed(() => route.path !== '/home' || initialFeedResolved.value)
 const isOnDailyQuoteRoute = computed(() => route.path === '/daily' || route.path === '/daily/quote')
 const isOnDailyWordRoute = computed(() => route.path === '/daily' || route.path === '/daily/word')
+
+const { context: railContext } = useRailContext()
+// Post, article, and Board thread detail screens recommend related content instead of generic widgets.
+const isRecommendationRoute = computed(() => /^\/(?:p|a)\/[^/]+/.test(route.path) || /^\/b\/(?!new(?:\/|$))[^/]+/.test(route.path))
+const showRecommendations = computed(() => hydrated.value && (railContext.value !== null || isRecommendationRoute.value))
+
+const groupTabs = useGroupTabs()
+// On a group's Posts tab the rail lists its channels (live) so a conversation is one tap away.
+const groupChannelsRail = computed(() => {
+  const group = groupTabs.value?.group
+  const match = /^\/g\/([^/]+)(?:\/members)?\/?$/.exec(route.path)
+  if (!hydrated.value || !group?.channelsAvailable || !match || decodeURIComponent(match[1]!) !== group.slug) return null
+  return group
+})
 
 const rightRailEl = ref<HTMLElement | null>(null)
 defineExpose({

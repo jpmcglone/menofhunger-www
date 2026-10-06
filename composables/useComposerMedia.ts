@@ -218,7 +218,19 @@ export function useComposerMedia(opts?: {
     composerMedia.value = []
   }
 
+  function restoreDraftMedia(items: ComposerMediaItem[]) {
+    clearAll()
+    composerMedia.value = items.slice(0, MEDIA_SLOTS).map(item => ({ ...item,
+      localId: makeLocalId(),
+      previewUrl: item.file ? URL.createObjectURL(item.file) : item.previewUrl || item.url || '',
+      uploadStatus: item.r2Key ? 'done' : item.file ? 'queued' : item.uploadStatus,
+      abortController: undefined,
+    }))
+    processUploadQueue()
+  }
+
   return {
+    restoreDraftMedia,
     MEDIA_SLOTS,
     composerMedia,
     canAddMoreMedia,

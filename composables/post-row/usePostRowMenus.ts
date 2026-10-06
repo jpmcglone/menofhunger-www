@@ -1,5 +1,6 @@
 import type { ComputedRef } from 'vue'
 import type { FeedPost } from '~/types/api'
+import { sharedMenuActions } from '~/utils/surface-actions'
 import type { MenuItem } from 'primevue/menuitem'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { MOH_OPEN_COMPOSER_FROM_ONLYME_KEY } from '~/utils/injection-keys'
@@ -290,7 +291,7 @@ export function usePostRowMenus(opts: {
     }
 
     if (isDeletedPost.value) {
-      return items
+      return sharedMenuActions(items)
     }
 
     if (viewerIsAdmin.value) {
@@ -410,7 +411,7 @@ export function usePostRowMenus(opts: {
       })
     }
 
-    return items
+    return sharedMenuActions(items)
   })
 
   return {

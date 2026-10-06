@@ -135,6 +135,7 @@
 const activityViewer = useAuth()
 const activityColor = computed(() => userActionColor(activityViewer.user.value))
 const activityBadgeTone = useActivityBadgeTone()
+import { sharedMenuActions } from '~/utils/surface-actions'
 import type { MenuItem } from 'primevue/menuitem'
 import type { BoardThread } from '~/types/api'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
@@ -204,7 +205,7 @@ const menuItems = computed<BoardMenuItem[]>(() => {
       command: () => emit('toggle-hide', props.thread),
     })
   }
-  return items
+  return sharedMenuActions(items)
 })
 const tone = computed(() => boardScopeTone(props.thread.visibility))
 const scopeStyle = computed(() => (tone.value ? { boxShadow: `inset 3px 0 0 var(--moh-${tone.value})` } : undefined))

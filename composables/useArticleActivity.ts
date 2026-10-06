@@ -100,7 +100,7 @@ export function useArticleActivity() {
     const countTicket = ++countGeneration
     const current = () => active && visit === lifetime && account === user.value?.id && revision === generation && countTicket === countGeneration
     try {
-      const counts = await apiFetch<{ boardUnreadCount?: number; articlesUnreadCount?: number }>('/notifications/unread-count', { mohDedupe: false })
+      const counts = await apiFetch<{ boardUnreadCount?: number; boardMentionCount?: number; articlesUnreadCount?: number }>('/notifications/unread-count', { mohDedupe: false })
       if (current()) presence.setNotificationNavUnread(counts.data)
     } catch {
       if (current()) error.value = 'Couldn’t refresh the activity badge.'

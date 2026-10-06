@@ -153,6 +153,7 @@
 </template>
 
 <script setup lang="ts">
+import { sharedMenuActions } from '~/utils/surface-actions'
 import type { MenuItem } from 'primevue/menuitem'
 import type { BoardThread } from '~/types/api'
 import { formatListTime, formatDateTime } from '~/utils/time-format'
@@ -209,7 +210,7 @@ const gate = computed(() => gateCopy(props.thread.visibility, props.thread.comme
 type BoardMenuItem = MenuItem & { iconName?: string }
 const menuItems = computed<BoardMenuItem[]>(() => {
   const items: BoardMenuItem[] = []
-  if (!isAuthed.value || !props.thread.viewerCanAccess) return items
+  if (!isAuthed.value || !props.thread.viewerCanAccess) return sharedMenuActions(items)
   if (!isOwn.value) {
     items.push({
       label: hidden.value ? 'Show on my Board' : 'Hide from my Board',
@@ -229,7 +230,7 @@ const menuItems = computed<BoardMenuItem[]>(() => {
       command: () => void onDelete(),
     })
   }
-  return items
+  return sharedMenuActions(items)
 })
 
 const shareTooltip = tinyTooltip('Share')

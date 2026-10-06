@@ -226,6 +226,8 @@ export function usePresence() {
     unsubscribeOnlineFeed: online.unsubscribeOnlineFeed,
     addOnlineFeedCallback: online.addOnlineFeedCallback,
     removeOnlineFeedCallback: online.removeOnlineFeedCallback,
+    addChannelCallback: domains.channels.add,
+    removeChannelCallback: domains.channels.remove,
     addMessagesCallback: domains.messages.add,
     removeMessagesCallback: domains.messages.remove,
     addRadioCallback: domains.radio.add,

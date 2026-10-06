@@ -22,10 +22,21 @@ Playback applies an additional 0.7 gain.
 - record-start / record-stop: distinct high/low ticks outside microphone capture
 - upload-ready: soft tone after a successful upload that took at least 3 seconds
 - save: quiet fitness confirmation click
+- channel-message: quiet tick for a new message in a channel you are not viewing (preference "all")
+- channel-mention: two-note ping for a mention or reply to you (also unless the channel is off)
+- message-sent: tiny pop when your channel message is acknowledged
+- reaction: soft pop when someone else reacts to your message
 
-Action sounds default on, with a device-local Settings toggle. They do not change
-notification/message sound preferences. Hidden/inactive apps and occupied media/call
+Sounds default on, with a device-local Settings toggle. Hidden/inactive apps and occupied media/call
 sessions stay silent; iOS uses ambient audio to respect the silent switch.
 Visual feedback remains authoritative. Failed/cancelled actions and passive feed arrivals
 do not play success sounds. iOS publishing already includes its upload, so its single
 publish cue confirms both; the standalone upload cue is used for profile media.
+
+Channel rules (Discord-style): your own messages, the channel you are viewing, muted
+channels, and backlog replays after a reconnect are silent; each cue is rate limited.
+
+One "Sounds" toggle (device-local) governs every cue, including notification and message
+alerts. The catalog lives in web `utils/sound-policy.ts` and iOS `InAppSoundPlayer`; APNs
+picks `channel-mention.caf` / `channel-message.caf` / `new-message.caf` / `notification.caf`
+in the API `soundForKind`. Web push cannot choose a sound.

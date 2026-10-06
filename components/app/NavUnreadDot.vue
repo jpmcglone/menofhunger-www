@@ -1,25 +1,25 @@
 <template>
-  <span
-    v-if="show"
-    :class="['pointer-events-none absolute right-0.5 top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[var(--moh-bg)]', toneClass]"
-    aria-hidden="true"
+  <AppActivityBadge
+    class="pointer-events-none absolute -right-0.5 -top-0.5"
+    :count="count"
+    :has-unread="hasDot"
+    :count-label="countLabel"
+    :unread-label="dotLabel"
   />
-  <span v-if="show" class="sr-only">{{ srLabel }}</span>
 </template>
 
 <script setup lang="ts">
 /**
- * Unread-notification dot for sections whose notifications also count in the bell
- * (Board, Articles). A dot, not a number, so the same activity isn't counted twice.
+ * Board and Articles are their own surfaces, not part of the Notifications bell.
+ * Board shows a count of direct mentions, or a dot when there is other unread activity.
  */
 const props = defineProps<{ section: string }>()
 
 const { notificationNavUnread } = usePresence()
-const { toneClass } = useNotificationsBadge()
 
-const show = computed(() => {
-  const counts = notificationNavUnread.value
-  return (props.section === 'board' ? counts.board : counts.articles) > 0
-})
-const srLabel = computed(() => (props.section === 'board' ? 'Unread Board activity' : 'Unread article activity'))
+const isBoard = computed(() => props.section === 'board')
+const count = computed(() => (isBoard.value ? notificationNavUnread.value.boardMentions : 0))
+const hasDot = computed(() => (isBoard.value ? notificationNavUnread.value.board : notificationNavUnread.value.articles) > 0)
+const countLabel = 'Board mentions'
+const dotLabel = computed(() => (isBoard.value ? 'Unread Board activity' : 'Unread article activity'))
 </script>

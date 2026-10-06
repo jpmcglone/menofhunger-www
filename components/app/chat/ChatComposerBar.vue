@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import type { Message, MessageConversation, MessageUser } from '~/types/api'
-import type { CreateMediaPayload } from '~/composables/composer/types'
+import type { ComposerMediaItem, CreateMediaPayload } from '~/composables/composer/types'
 import { useKeyboardHeight } from '~/composables/useKeyboardHeight'
 
 defineProps<{
@@ -94,11 +94,13 @@ const composerBarStyle = computed<Record<string, string>>(() => {
   return { paddingBottom: 'calc(var(--moh-safe-bottom, 0px) - 4px)' }
 })
 
-const dmComposerRef = ref<{ focus?: () => void; getMedia?: () => CreateMediaPayload[]; clearMedia?: () => void } | null>(null)
+const dmComposerRef = ref<{ focus?: () => void; getMedia?: () => CreateMediaPayload[]; clearMedia?: () => void; getDraftMedia?: () => ComposerMediaItem[]; restoreDraftMedia?: (items: ComposerMediaItem[]) => void } | null>(null)
 
 defineExpose({
   focus: () => dmComposerRef.value?.focus?.(),
   getMedia: () => dmComposerRef.value?.getMedia?.() ?? [],
   clearMedia: () => dmComposerRef.value?.clearMedia?.(),
+  getDraftMedia: () => dmComposerRef.value?.getDraftMedia?.() ?? [],
+  restoreDraftMedia: (items: ComposerMediaItem[]) => dmComposerRef.value?.restoreDraftMedia?.(items),
 })
 </script>

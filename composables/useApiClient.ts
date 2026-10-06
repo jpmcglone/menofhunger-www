@@ -1,4 +1,4 @@
-import type { ApiEnvelope } from '~/types/api'
+import type { ApiEnvelope, ApiPagination } from '~/types/api'
 import { bumpAuthGeneration, clearAuthClientState, getAuthGeneration } from '~/composables/auth/authState'
 import { joinUrl } from '~/utils/url'
 import { isAdminPath, isArticlePermalinkPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isSpacePermalinkPath, isUserProfilePath } from '~/config/routes'
@@ -212,19 +212,19 @@ export function useApiClient() {
     )
   }
 
-  async function runFetch<T>(
+  async function runFetch<T, Pagination = ApiPagination>(
     url: string,
     fetchOptions: ApiFetchOptions,
     method: string,
     retryCount: number,
     unauthorized: 'redirect' | 'ignore' = 'redirect',
-  ): Promise<ApiEnvelope<T>> {
+  ): Promise<ApiEnvelope<T, Pagination>> {
     let attempt = 0
     let requestedConsent = false
     const authGeneration = getAuthGeneration()
     while (true) {
       try {
-        return await $fetch<ApiEnvelope<T>>(url, fetchOptions)
+        return await $fetch<ApiEnvelope<T, Pagination>>(url, fetchOptions)
       } catch (e) {
         // The API refuses personal MARV requests before any write, so one retry after consent is safe.
         if (getErrorReason(e) === 'ai_consent_required' && !requestedConsent && import.meta.client) {
@@ -248,7 +248,7 @@ export function useApiClient() {
     }
   }
 
-  async function apiFetch<T>(path: string, options: MohApiFetchOptions = {}): Promise<ApiEnvelope<T>> {
+  async function apiFetch<T, Pagination = ApiPagination>(path: string, options: MohApiFetchOptions = {}): Promise<ApiEnvelope<T, Pagination>> {
     const url = apiUrl(path)
 
     let ssrHeaders: HeadersInit | undefined
@@ -288,7 +288,7 @@ export function useApiClient() {
         const now = Date.now()
         const cacheKey = cacheOpt.key ?? baseKey
         const hit = clientResponseCache.get(cacheKey)
-        if (hit && hit.expiresAt > now) return hit.value as ApiEnvelope<T>
+        if (hit && hit.expiresAt > now) return hit.value as ApiEnvelope<T, Pagination>
 
         const swrMs = Math.max(0, Math.floor(cacheOpt.staleWhileRevalidateMs ?? 0))
         if (hit && swrMs > 0) {
@@ -297,7 +297,7 @@ export function useApiClient() {
             // Return stale immediately, and refresh in background.
             const refreshKey = `${inflightKey}:swr:${cacheKey}`
             if (!inflight.get(refreshKey)) {
-              const refresh = runFetch<T>(url, {
+              const refresh = runFetch<T, Pagination>(url, {
                 ...fetchOptions,
                 credentials: fetchOptions.credentials ?? 'include',
                 headers,
@@ -328,7 +328,7 @@ export function useApiClient() {
               inflight.set(refreshKey, refresh as Promise<unknown>)
             }
 
-            return hit.value as ApiEnvelope<T>
+            return hit.value as ApiEnvelope<T, Pagination>
           }
         }
 
@@ -337,10 +337,10 @@ export function useApiClient() {
 
       if (dedupe) {
         const existing = inflight.get(inflightKey)
-        if (existing) return (await existing) as ApiEnvelope<T>
+        if (existing) return (await existing) as ApiEnvelope<T, Pagination>
       }
 
-      const p = runFetch<T>(url, {
+      const p = runFetch<T, Pagination>(url, {
         ...fetchOptions,
         credentials: fetchOptions.credentials ?? 'include',
         headers,
@@ -367,7 +367,7 @@ export function useApiClient() {
       return await p
     }
 
-    return await runFetch<T>(url, {
+    return await runFetch<T, Pagination>(url, {
       ...fetchOptions,
       credentials: fetchOptions.credentials ?? 'include',
       headers,
@@ -380,5 +380,11 @@ export function useApiClient() {
     return result.data
   }
 
-  return { apiBaseUrl, apiUrl, apiFetch, apiFetchData }
+  async function apiFetchBlob(path: string): Promise<Blob> {
+    const result: unknown = await apiFetch<never>(path, { responseType: 'blob', mohCache: false, mohDedupe: false, cache: 'no-store' })
+    if (!(result instanceof Blob)) throw new Error('Invalid media response.')
+    return result
+  }
+
+  return { apiBaseUrl, apiUrl, apiFetch, apiFetchData, apiFetchBlob }
 }

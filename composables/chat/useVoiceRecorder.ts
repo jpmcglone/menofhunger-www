@@ -139,6 +139,16 @@ export function useVoiceRecorder(): VoiceRecorder {
     starting.value = true
     draft.value = null
     stopPromise = null
+    // Create and resume the context inside the click's user activation. After the first-time
+    // permission prompt the activation is gone and a new context would stay suspended, so the
+    // meter and PCM fallback would hear nothing.
+    const Ctor =
+      (window as unknown as { AudioContext?: typeof AudioContext }).AudioContext
+      ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (Ctor) {
+      ctx = new Ctor()
+      void ctx.resume().catch(() => {})
+    }
     try {
     const acquired = await navigator.mediaDevices.getUserMedia({ audio: true })
     if (attempt !== generation) { acquired.getTracks().forEach(t => t.stop()); return }
@@ -150,11 +160,8 @@ export function useVoiceRecorder(): VoiceRecorder {
     elapsed.value = 0
     recording.value = true
 
-    const Ctor =
-      (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
-      ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-    if (Ctor) {
-      ctx = new Ctor()
+    if (ctx) {
+      if (ctx.state === 'suspended') await ctx.resume().catch(() => {})
       const source = ctx.createMediaStreamSource(stream)
       analyser = ctx.createAnalyser()
       analyser.fftSize = 1024

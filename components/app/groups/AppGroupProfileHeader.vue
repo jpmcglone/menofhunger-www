@@ -1,16 +1,17 @@
 <template>
-  <section v-if="isMember" class="moh-gutter-x border-b moh-border py-5">
-    <div class="flex items-center gap-3">
-      <AppGroupsGroupAvatar :name="shell.name" :src="avatarUrl" :size="40" />
-      <button type="button" class="moh-focus flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left" aria-haspopup="dialog" @click="switcherOpen = true"><h1 class="moh-h2 truncate">{{ shell.name }}</h1><Icon name="tabler:chevron-down" class="shrink-0 text-base moh-text-muted" /></button>
-      <Button aria-label="Group membership and actions" text severity="secondary" @click="aboutOpen = true"><template #icon><Icon name="tabler:dots" /></template></Button>
+  <section v-if="isMember" class="moh-gutter-x border-b moh-border py-3">
+    <div class="flex items-center gap-2.5">
+      <div class="min-w-0 flex-1">
+        <p v-if="!focused" class="truncate text-xs moh-text-muted"><NuxtLink :to="`/g/${encodeURIComponent(shell.slug)}/members`" class="moh-focus hover:underline">{{ shell.memberCount.toLocaleString() }} members</NuxtLink> · {{ shell.joinPolicy === 'open' ? 'Verified members can read' : 'Members only' }}</p>
+      </div>
+      <Button v-if="!focused" label="Post" size="small" rounded class="!bg-[var(--moh-group)] !border-[var(--moh-group)] !text-white" aria-label="Post to group" @click="$emit('post')" />
+      <Button v-if="!focused" aria-label="Group notification preferences" text rounded size="small" severity="secondary" @click="preferencesOpen = true"><template #icon><Icon name="tabler:bell" /></template></Button>
+      <Button v-if="canEdit && !focused" aria-label="Edit group avatar and banner" text rounded size="small" severity="secondary" @click="$emit('edit')"><template #icon><Icon name="tabler:camera" /></template></Button>
+      <Button aria-label="About this group and membership actions" text rounded size="small" severity="secondary" @click="aboutOpen = true"><template #icon><Icon name="tabler:dots" /></template></Button>
     </div>
-    <p v-if="shell.description && !focused" class="mt-4 moh-meta">{{ shell.description }}</p>
-    <p v-if="!focused" class="mt-2 text-[13px] moh-text-muted"><NuxtLink :to="`/g/${encodeURIComponent(shell.slug)}/members`" class="moh-focus hover:underline">{{ shell.memberCount.toLocaleString() }} members</NuxtLink> · {{ shell.joinPolicy === 'open' ? 'Verified members can read' : 'Members only' }}</p>
-    <div v-if="!focused" class="mt-4 flex items-center gap-2"><Button label="Post to group" class="flex-1 !bg-[var(--moh-group)] !border-[var(--moh-group)] !text-white" @click="$emit('post')" /><Button label="About" severity="secondary" @click="aboutOpen = true" /><Button aria-label="Group notification preferences" text severity="secondary" @click="preferencesOpen = true"><template #icon><Icon name="tabler:bell" /></template></Button></div>
-    <NuxtLink v-if="isAdminViewer && pendingMemberCount" :to="`/g/${encodeURIComponent(shell.slug)}/pending`" class="moh-focus mt-3 inline-flex min-h-11 items-center text-sm">{{ pendingMemberCount }} pending join requests</NuxtLink>
+    <p v-if="shell.description && !focused" class="mt-2 text-[13px] moh-text-muted">{{ shell.description }}</p>
+    <NuxtLink v-if="isAdminViewer && pendingMemberCount" :to="`/g/${encodeURIComponent(shell.slug)}/pending`" class="moh-focus mt-2 inline-flex min-h-11 items-center text-sm">{{ pendingMemberCount }} pending join requests</NuxtLink>
   </section>
-  <AppGroupsGroupSwitcherDialog v-model="switcherOpen" :current-group-id="shell.id" />
   <AppGroupsGroupNotificationPreferences v-if="isMember" v-model="preferencesOpen" :group="shell" />
   <Dialog v-model:visible="aboutOpen" modal header="About this group" :style="{ width: '680px', maxWidth: 'calc(100vw - 24px)' }">
     <AppGroupsGroupAbout :shell="shell" @avatar="emitOpenAvatar($event)" @banner="emitOpenBanner($event)" />
@@ -440,7 +441,6 @@ const emit = defineEmits<{
   (e: 'post' | 'edit' | 'invite' | 'join' | 'leave' | 'cancel-request'): void
 }>()
 
-const switcherOpen = ref(false)
 const aboutOpen = ref(false)
 const preferencesOpen = ref(false)
 const avatarRoundClass = groupAvatarRoundClass()

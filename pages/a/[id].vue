@@ -35,7 +35,7 @@
             :alt="article.title"
             :class="['h-full w-full object-cover', article.viewerCanAccess === false ? 'blur-xl scale-110' : 'cursor-zoom-in']"
             @click="onThumbnailClick"
-          />
+          >
           <!-- Lock overlay for gated articles -->
           <div
             v-if="article.viewerCanAccess === false"
@@ -207,8 +207,8 @@
         <div
           v-if="article.viewerCanAccess !== false"
           class="prose prose-gray mt-8 dark:prose-invert max-w-none article-body"
-          v-html="bodyWithHeadingIds"
           @click="onArticleBodyClick"
+          v-html="bodyWithHeadingIds"
         />
 
         <!-- Gated: show faded excerpt teaser then access gate -->
@@ -270,7 +270,7 @@
         <div v-if="article.viewerCanAccess !== false" ref="viewSentinelEl" aria-hidden="true" />
 
         <!-- Divider -->
-        <hr class="my-8 border-[var(--moh-border)]" />
+        <hr class="my-8 border-[var(--moh-border)]" >
 
         <!-- Engagement bar — same style as PostRow -->
         <div class="flex items-center justify-between moh-text-muted">
@@ -346,7 +346,7 @@
             <button
               type="button"
               class="moh-tap inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors moh-surface-hover"
-            aria-label="Share article"
+            aria-label="Article actions"
             @click="toggleShareMenu($event)"
           >
             <svg viewBox="0 0 24 24" class="h-5 w-5" aria-hidden="true">
@@ -355,6 +355,7 @@
               <path d="M5 11.5v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18.5v-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
             </button>
+            <AppReportDialog v-if="article" v-model:visible="showArticleReport" target-type="article" :subject-article-id="article.id" />
             <Menu v-if="shareMenuMounted" ref="shareMenuRef" :model="shareMenuItems" popup>
               <template #item="{ item, props: itemProps }">
                 <a v-bind="itemProps.action" class="flex items-center gap-2">
@@ -411,7 +412,7 @@
                           class="min-w-0 flex-1 rounded-xl border moh-border moh-surface px-2 py-1.5 text-center text-xs moh-text focus:outline-none focus:ring-1 focus:ring-amber-400"
                           placeholder="Custom"
                           @click.stop
-                        />
+                        >
                         <button
                           type="button"
                           :disabled="tipLoading || !tipAmount || tipAmount < 1"
@@ -532,6 +533,7 @@
 <script setup lang="ts">
 import { formatShortCount } from '~/utils/text'
 import Menu from 'primevue/menu'
+import { surfaceMenuItems } from '~/utils/surface-actions'
 import type { Article, ArticleSharePreview } from '~/types/api'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
 import { siteConfig } from '~/config/site'
@@ -618,6 +620,18 @@ const articleIsNotFound = computed(() => !articleError.value || articleErrorStat
 
 // SEO / OG
 useArticleSeo(article)
+
+useRailContextPublisher(() => {
+  const a = article.value
+  if (!a || a.deletedAt || a.isDraft) return null
+  return {
+    kind: 'article',
+    id: a.id,
+    tag: a.tags?.[0]?.tag ?? null,
+    authorUsername: a.author?.username ?? null,
+    authorName: a.author?.name?.trim() || a.author?.username || null,
+  }
+})
 
 // Lazily load Tiptap rendering deps to keep them out of the main page chunk.
 // The shared factory in ~/utils/tiptap-render-extensions is also used by
@@ -1045,6 +1059,7 @@ async function deleteArticle() {
     deletingArticle.value = false
   }
 }
+const showArticleReport = ref(false)
 const sharing = ref(false)
 const shareCommentModalOpen = ref(false)
 useOverlayDismiss(shareCommentModalOpen, () => (shareCommentModalOpen.value = false))
@@ -1052,28 +1067,12 @@ const shareCommentText = ref('')
 
 const { mounted: shareMenuMounted, menuRef: shareMenuRef, toggle: toggleShareMenu } = useAutoToggleMenu()
 
-const shareMenuItems = computed(() => {
-  const items: Array<{ label: string; iconName: string; command: () => void }> = [
-    {
-      label: 'Copy link',
-      iconName: 'tabler:link',
-      command: () => void onCopyLink(),
-    },
-  ]
-  if (isAuthed.value && article.value?.viewerCanAccess !== false) {
-    items.push({
-      label: 'Share to feed',
-      iconName: 'tabler:repeat',
-      command: () => void onShareToFeed(),
-    })
-    items.push({
-      label: 'Share with note',
-      iconName: 'tabler:message-share',
-      command: () => onShareWithComment(),
-    })
-  }
-  return items
-})
+const shareMenuItems = computed(() => surfaceMenuItems([
+  { id: 'copy', label: 'Copy link', icon: 'tabler:link', section: 'share', run: onCopyLink },
+  { id: 'share', label: 'Share to feed', icon: 'tabler:repeat', section: 'share', available: isAuthed.value && article.value?.viewerCanAccess !== false, run: onShareToFeed },
+  { id: 'note', label: 'Share with note', icon: 'tabler:message-share', section: 'share', available: isAuthed.value && article.value?.viewerCanAccess !== false, run: onShareWithComment },
+  { id: 'report', label: 'Report article', icon: 'tabler:flag', section: 'moderation', available: isAuthed.value && article.value?.viewerCanAccess !== false, run: () => { showArticleReport.value = true } },
+]))
 
 async function onCopyLink() {
   try {

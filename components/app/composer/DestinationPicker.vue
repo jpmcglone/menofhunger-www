@@ -27,7 +27,7 @@
       </AppComposerSelectionRow>
       <p v-if="!loading && !error && !filteredGroups.length" class="px-3 py-5 moh-meta">{{ query ? 'No groups match your search.' : 'You haven’t joined any groups yet.' }}</p>
     </div>
-    <NuxtLink v-if="!loading && !groups.length" to="/groups/explore" class="moh-focus inline-flex min-h-11 items-center px-3 text-sm moh-text" @click="open = false">Explore groups</NuxtLink>
+    <NuxtLink v-if="!loading && !groups.length" to="/groups" class="moh-focus inline-flex min-h-11 items-center px-3 text-sm moh-text" @click="open = false">Explore groups</NuxtLink>
     </div>
     <template v-if="showsChat"><div class="my-3 border-t moh-border" /><AppComposerSelectionRow label="Chat" description="Send as a message" icon="tabler:messages" @select="open = false; emit('select-chat')" /></template>
   </AppComposerSelectionDialog>

@@ -44,7 +44,8 @@ describe('media link chat preview', () => {
   it('waits for the viewport latch before fetching remote metadata', () => {
     const body = read('components/app/chat/ChatMessageRichBody.vue')
     const card = read('components/app/chat/MediaLinkChatCard.vue')
-    expect(body).toMatch(/everVisible && showLinkPreview && mediaPreviewHref/)
+    expect(body).toMatch(/everVisible && showLinkPreview && previewLink/)
+    expect(body).toMatch(/v-else-if="mediaPreviewHref"[\s\S]*:enabled="everVisible"/)
     expect(card).toContain('enabled')
     expect(card).toMatch(/!enabled/)
   })

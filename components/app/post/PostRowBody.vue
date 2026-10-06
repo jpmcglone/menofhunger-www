@@ -29,6 +29,7 @@
       >
         {{ seg.text }}
       </NuxtLink>
+      <AppGroupsGroupMention v-else-if="seg.groupSlug" :slug="seg.groupSlug" :text="seg.text" />
       <NuxtLink
         v-else-if="seg.hashtagTag"
         :to="{ path: '/explore', query: { q: `#${seg.hashtagTag}` } }"
@@ -75,6 +76,7 @@ type TextSegment = {
   text: string
   href?: string
   mentionUsername?: string
+  groupSlug?: string
   mentionTier?: MentionTier
   hashtagTag?: string
   hashtagTier?: MentionTier
@@ -267,6 +269,10 @@ function splitByMentions(text: string): TextSegment[] {
   const base = splitTextByMentionsDisplay(text)
   const out: TextSegment[] = []
   for (const seg of base) {
+    if (seg.group) {
+      out.push({ text: seg.text, groupSlug: seg.group.slug })
+      continue
+    }
     const m = seg.mention
     if (m) {
       const entry = mentionMap.get(m.usernameLower)

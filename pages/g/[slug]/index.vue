@@ -414,6 +414,8 @@ const {
   },
 )
 
+const layoutTabs = useGroupTabs()
+watch(shell, next => { if (next) layoutTabs.value = { group: next } }, { immediate: true })
 const shellLoading = computed(() => shellFetchStatus.value === 'pending')
 const shellError = computed(() =>
   shellFetchError.value ? getApiErrorMessage(shellFetchError.value) || 'Group not found.' : null,

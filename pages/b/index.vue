@@ -400,7 +400,7 @@ async function enterBoard() {
   try {
     await apiFetch('/notifications/mark-delivered', { method: 'POST', body: { filter: 'board' } })
     const revision = notificationRevision
-    const counts = await apiFetch<{ boardUnreadCount?: number; articlesUnreadCount?: number }>('/notifications/unread-count', { mohDedupe: false })
+    const counts = await apiFetch<{ boardUnreadCount?: number; boardMentionCount?: number; articlesUnreadCount?: number }>('/notifications/unread-count', { mohDedupe: false })
     if (user.value?.id === account && revision === notificationRevision) presence.setNotificationNavUnread(counts.data)
   } catch (error) {
     toast.push({ title: getApiErrorMessage(error) || 'Couldn’t acknowledge Board activity.', tone: 'error' })

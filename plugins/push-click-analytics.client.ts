@@ -21,9 +21,11 @@ export default defineNuxtPlugin((nuxtApp) => {
       posthog.capture('notification_clicked', {
         source: 'push',
         kind: kind || 'generic',
-        tag: tag || '',
+        ...(route.path.includes('/channels') ? {} : { tag: tag || '' }),
       })
     }
+
+    if (route.path.includes('/channels')) posthog?.capture?.('channel_notification_opened', { source: 'push' })
 
     const cleanQuery = { ...route.query }
     delete cleanQuery.from

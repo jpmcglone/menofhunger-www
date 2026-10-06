@@ -11,7 +11,7 @@ export function useAccountSwitcher() {
   const toast = useAppToast()
 
   const accounts = useState<SwitchableAccount[]>('switchable-accounts', () => [])
-  const pendingBadges = useState<Record<string, Partial<Pick<SwitchableAccount, 'unreadBadgeCount' | 'hasUnreadNotifications'>>>>('switchable-accounts-pending-badges', () => ({}))
+  const pendingBadges = useState<Record<string, Partial<Pick<SwitchableAccount, 'unreadBadgeCount' | 'hasUnreadNotifications' | 'hasUnreadBoard'>>>>('switchable-accounts-pending-badges', () => ({}))
   const loading = useState<boolean>('switchable-accounts-loading', () => false)
   const { switchingId } = useAccountSwitchState()
   const listening = useState<boolean>('switchable-accounts-listening', () => false)
@@ -26,7 +26,7 @@ export function useAccountSwitcher() {
       .reduce((sum, account) => sum + Math.max(0, account.unreadBadgeCount ?? 0), 0),
   )
 
-  const otherAccountsHaveUnread = computed(() => accounts.value.some(account => !account.isCurrent && account.hasUnreadNotifications))
+  const otherAccountsHaveUnread = computed(() => accounts.value.some(account => !account.isCurrent && (account.hasUnreadNotifications || account.hasUnreadBoard)))
 
   async function refresh() {
     if (switchingId.value) return
@@ -46,6 +46,7 @@ export function useAccountSwitcher() {
         accounts.value = mergeSwitchableAccountBadges(fetched.map(account => ({
           ...account,
           hasUnreadNotifications: account.hasUnreadNotifications ?? previous.get(account.id)?.hasUnreadNotifications,
+          hasUnreadBoard: account.hasUnreadBoard ?? previous.get(account.id)?.hasUnreadBoard,
         })), pendingBadges.value)
         pendingBadges.value = {}
       } catch {
@@ -63,7 +64,7 @@ export function useAccountSwitcher() {
     const userId = String(payload?.userId ?? '').trim()
     if (!userId) return
     const next = Math.max(0, Math.floor(Number(payload.unreadBadgeCount) || 0))
-    const patch = { unreadBadgeCount: next, ...(typeof payload.hasUnreadNotifications === 'boolean' ? { hasUnreadNotifications: payload.hasUnreadNotifications } : {}) }
+    const patch = { unreadBadgeCount: next, ...(typeof payload.hasUnreadNotifications === 'boolean' ? { hasUnreadNotifications: payload.hasUnreadNotifications } : {}), ...(typeof payload.hasUnreadBoard === 'boolean' ? { hasUnreadBoard: payload.hasUnreadBoard } : {}) }
     pendingBadges.value = { ...pendingBadges.value, [userId]: { ...pendingBadges.value[userId], ...patch } }
     const found = accounts.value.some((account) => account.id === userId)
     if (found) {

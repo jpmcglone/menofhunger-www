@@ -464,6 +464,8 @@ const thread = useChatThread({
     focus: () => { composerBarRef.value?.focus() },
     getMedia: () => composerBarRef.value?.getMedia() ?? [],
     clearMedia: () => { composerBarRef.value?.clearMedia() },
+    getDraftMedia: () => composerBarRef.value?.getDraftMedia() ?? [],
+    restoreDraftMedia: items => { composerBarRef.value?.restoreDraftMedia(items) },
   },
   scroll: {
     stickToBottom,

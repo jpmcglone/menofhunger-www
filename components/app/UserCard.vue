@@ -68,7 +68,7 @@
             :enable-preview="false"
             :show-status="false"
           />
-          <AppActivityBadge class="pointer-events-none absolute -right-0.5 -top-0.5 ring-2 ring-[var(--moh-bg)]" :count="otherAccountsUnread" :has-unread="otherAccountsHaveUnread" unread-label="Unread notifications on other accounts" />
+          <AppActivityBadge ring class="pointer-events-none absolute -right-0.5 -top-0.5" :count="totalCount" :has-unread="hasAnyDot" unread-label="Unread activity" />
         </div>
         <div
           :class="[
@@ -183,7 +183,8 @@ const route = useRoute()
 const { user, isVerifiedMember } = useAuth()
 const { getPresenceStatus, getUserStatus, isSocketConnecting, setMyStatus, editMyStatus, clearMyStatus } = usePresence()
 const { menuItems } = useUserMenu()
-const { canSwitch, otherAccountsUnread, otherAccountsHaveUnread } = useAccountSwitcher()
+const { canSwitch } = useAccountSwitcher()
+const { totalCount, hasAnyDot } = useAttentionTotals()
 const { currentSpace: currentSpaceForNav } = useSpaceLobby()
 const { openShortcutsModal } = useKeyboardShortcuts()
 const isXlUp = useHydratedMediaQuery('(min-width: 1280px)')

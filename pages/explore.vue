@@ -275,7 +275,7 @@ v-else-if="searchActive && !activeTopic && !activeCategory"
             </h2>
             <NuxtLink
               v-if="isAuthed"
-              to="/groups/explore"
+              to="/groups"
               class="text-sm font-medium hover:underline underline-offset-2 text-[var(--p-primary-color)] moh-focus"
             >
               Browse groups

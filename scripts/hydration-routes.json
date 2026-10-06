@@ -30,7 +30,6 @@
     "/admin/attention",
     "/admin/activation",
     "/groups",
-    "/groups/explore",
     "/g/this-group-does-not-exist",
     "/notifications",
     "/online",
@@ -45,6 +44,8 @@
     "/g/this-group-does-not-exist/members",
     "/developers",
     "/connect/partner",
-    "/connect/pickax"
+    "/connect/pickax",
+    "/groups/this-group-does-not-exist/channels",
+    "/groups/this-group-does-not-exist/channels/unavailable"
   ]
 }

@@ -85,7 +85,7 @@ export function useBoardActivity() {
       await load()
       // Never zero a badge optimistically: another update may arrive during the mutation.
       const countRevision = generation
-      const counts = await apiFetch<{ boardUnreadCount?: number; articlesUnreadCount?: number }>('/notifications/unread-count', { mohDedupe: false })
+      const counts = await apiFetch<{ boardUnreadCount?: number; boardMentionCount?: number; articlesUnreadCount?: number }>('/notifications/unread-count', { mohDedupe: false })
       if (active && account === user.value?.id && countRevision === generation) presence.setNotificationNavUnread(counts.data)
     } catch (cause) {
       if (active && account === user.value?.id) error.value = getApiErrorMessage(cause) || 'Couldn’t mark Board activity read.'

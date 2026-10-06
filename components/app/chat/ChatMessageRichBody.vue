@@ -25,6 +25,7 @@
           @mouseleave="onMentionLeave"
           @click.stop
         >{{ seg.text }}</NuxtLink>
+        <AppGroupsGroupMention v-else-if="seg.kind === 'group'" :slug="seg.slug" :text="seg.text" />
         <span
           v-else-if="seg.kind === 'mention'"
           class="font-bold opacity-60"
@@ -47,45 +48,55 @@
       </template><slot v-if="!hasBlockPreview" name="tail" /></p>
 
     <!-- MoH internal link — branded card, navigates in-app -->
-    <AppFeatureLinkPreview
-      v-if="everVisible && showLinkPreview && isMohInternalLink && mohInternalPath"
-      :path="mohInternalPath"
-      :metadata="linkMeta"
-      class="mt-2"
-    />
+    <AppChannelsDismissablePreview
+      v-if="everVisible && showLinkPreview && previewLink"
+      :dismissible="dismissiblePreviews"
+      @dismiss="emit('dismiss-preview', previewLink)"
+    >
+      <AppFeatureLinkPreview
+        v-if="isMohInternalLink && mohInternalPath"
+        :path="mohInternalPath"
+        :metadata="linkMeta"
+        class="mt-2"
+      />
 
-    <AppChatMediaLinkChatCard
-      v-else-if="everVisible && showLinkPreview && mediaPreviewHref"
-      :href="mediaPreviewHref"
-      :enabled="everVisible"
-    />
+      <AppChatMediaLinkChatCard
+        v-else-if="mediaPreviewHref"
+        :href="mediaPreviewHref"
+        :enabled="everVisible"
+      />
 
-    <AppXPostPreviewCard
-      v-else-if="everVisible && showLinkPreview && xPostMeta && previewLink"
-      :post="xPostMeta"
-      :href="previewLink"
-      compact
-      class="mt-2"
-    />
+      <AppXPostPreviewCard
+        v-else-if="xPostMeta"
+        :post="xPostMeta"
+        :href="previewLink"
+        compact
+        class="mt-2"
+      />
 
-    <AppWebsitePreviewCard
-      v-else-if="everVisible && showLinkPreview && previewLink"
-      class="mt-2"
-      :href="previewLink"
-      :title="genericPreviewTitle"
-      :source-label="previewSourceLine"
-      :description="linkMeta?.description"
-      :image-url="linkMeta?.imageUrl"
-    />
+      <AppWebsitePreviewCard
+        v-else
+        class="mt-2"
+        :href="previewLink"
+        :title="genericPreviewTitle"
+        :source-label="previewSourceLine"
+        :description="linkMeta?.description"
+        :image-url="linkMeta?.imageUrl"
+      />
+    </AppChannelsDismissablePreview>
 
     <!-- Post embed — same component as posts, viewport-gated via enabled prop -->
-    <div v-if="everVisible && embeddedPostId" @click.stop>
-      <AppEmbeddedPostPreview :post-id="embeddedPostId" :enabled="true" />
+    <div v-if="everVisible && embeddedPostId && embeddedPostLink" @click.stop>
+      <AppChannelsDismissablePreview :dismissible="dismissiblePreviews" @dismiss="emit('dismiss-preview', embeddedPostLink)">
+        <AppEmbeddedPostPreview :post-id="embeddedPostId" :enabled="true" />
+      </AppChannelsDismissablePreview>
     </div>
 
     <!-- Article embed -->
-    <div v-if="everVisible && embeddedArticleId && embeddedArticle" @click.stop>
-      <AppArticleShareCard :article="embeddedArticle" />
+    <div v-if="everVisible && embeddedArticleId && embeddedArticle && embeddedArticleLink" @click.stop>
+      <AppChannelsDismissablePreview :dismissible="dismissiblePreviews" @dismiss="emit('dismiss-preview', embeddedArticleLink)">
+        <AppArticleShareCard :article="embeddedArticle" />
+      </AppChannelsDismissablePreview>
     </div>
 
     <!-- Space preview — compact single-line variant for chat bubbles -->
@@ -106,14 +117,18 @@
         </div>
       </div>
       <!-- Resolved space -->
-      <div v-else class="mt-2 overflow-hidden rounded-lg border border-current/20 bg-black/20" @click.stop>
-        <AppSpaceRow :space="embeddedSpace" compact />
-      </div>
+      <AppChannelsDismissablePreview v-else :dismissible="dismissiblePreviews && !!embeddedSpaceLink" @dismiss="embeddedSpaceLink && emit('dismiss-preview', embeddedSpaceLink)">
+        <div class="mt-2 overflow-hidden rounded-lg border border-current/20 bg-black/20" @click.stop>
+          <AppSpaceRow :space="embeddedSpace" compact />
+        </div>
+      </AppChannelsDismissablePreview>
     </template>
 
     <!-- User profile link → compact user card -->
-    <div v-if="everVisible && embeddedUsername" @click.stop>
-      <AppUserLinkCard :username="embeddedUsername" />
+    <div v-if="everVisible && embeddedUsername && embeddedUserLink" @click.stop>
+      <AppChannelsDismissablePreview :dismissible="dismissiblePreviews" @dismiss="emit('dismiss-preview', embeddedUserLink)">
+        <AppUserLinkCard :username="embeddedUsername" />
+      </AppChannelsDismissablePreview>
     </div>
 
     <div v-if="hasBlockPreview">
@@ -137,6 +152,7 @@ import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata } from '~/utils/link-metadata'
 import { stableListKey } from '~/utils/stable-list-key'
 
+import { GROUP_MENTION_IN_TEXT_DISPLAY_RE } from '~/utils/mention-autocomplete'
 import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
 import { CASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/cashtag-autocomplete'
 import { userTierColorVar } from '~/utils/user-tier'
@@ -150,6 +166,7 @@ type TextSegment =
   | { kind: 'text'; text: string }
   | { kind: 'link'; text: string; href: string }
   | { kind: 'mention'; text: string; username: string; isKnown: boolean }
+  | { kind: 'group'; text: string; slug: string }
   | { kind: 'hashtag'; text: string; tag: string }
   | { kind: 'cashtag'; text: string; symbol: string }
 
@@ -159,7 +176,12 @@ const props = defineProps<{
   body: string
   /** Sender's tier — hashtags are colored to match the sender. */
   senderTier?: UserColorTier
+  /** Link URLs whose rich previews the author removed. */
+  hiddenPreviews?: string[]
+  /** Show a remove control on each preview (the message author in channels). */
+  dismissiblePreviews?: boolean
 }>()
+const emit = defineEmits<{ 'dismiss-preview': [url: string] }>()
 
 const { validSet, tierForUsername, validateMentionsInBody } = useValidatedChatUsernames()
 
@@ -204,7 +226,10 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-const capturedLinks = computed(() => extractLinksFromText((props.body ?? '').toString()))
+const capturedLinks = computed(() => {
+  const hidden = new Set(props.hiddenPreviews ?? [])
+  return extractLinksFromText((props.body ?? '').toString()).filter(url => !hidden.has(url))
+})
 
 // ── Embedded special content ─────────────────────────────────────────────────
 
@@ -391,6 +416,14 @@ const displayBodySegments = computed<TextSegment[]>(() => {
     }
   }
 
+  const groupRe = new RegExp(GROUP_MENTION_IN_TEXT_DISPLAY_RE.source, 'g')
+  for (const m of input.matchAll(groupRe)) {
+    const start = m.index!
+    const end = start + m[0].length
+    const overlaps = allMatches.some((rm) => start < rm.end && end > rm.start)
+    if (!overlaps) allMatches.push({ start, end, seg: { kind: 'group', text: m[0], slug: m[1]!.toLowerCase() } })
+  }
+
   // Hashtag matches (skip ranges already claimed)
   const hashRe = new RegExp(HASHTAG_IN_TEXT_DISPLAY_RE.source, 'g')
   for (const m of input.matchAll(hashRe)) {
@@ -431,6 +464,7 @@ const displayBodySegments = computed<TextSegment[]>(() => {
 function bodySegmentKey(seg: TextSegment, idx: number): string {
   if (seg.kind === 'link') return stableListKey('link', seg.href, seg.text, idx)
   if (seg.kind === 'mention') return stableListKey('mention', seg.username, seg.text, idx)
+  if (seg.kind === 'group') return stableListKey('group', seg.slug, seg.text, idx)
   if (seg.kind === 'hashtag') return stableListKey('hashtag', seg.tag, seg.text, idx)
   if (seg.kind === 'cashtag') return stableListKey('cashtag', seg.symbol, seg.text, idx)
   return stableListKey('text', seg.text, idx)

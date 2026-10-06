@@ -1,533 +1,298 @@
 <template>
-  <AppPageContent bottom="standard">
+  <AppPageContent bottom="standard" class="relative">
+    <AppRefreshIndicator :loading="(metaLoading && !metaInitialLoading) || searchLoading" />
     <div class="w-full">
-      <div class="moh-gutter-x border-b moh-border pb-4 pt-4 space-y-4">
+      <!-- Header band: edge-to-edge with gutter padding, divided by border-b. -->
+      <div class="moh-gutter-x border-b moh-border pb-4 pt-4 space-y-3">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+          <div class="min-w-0">
             <h1 class="moh-h1">Groups</h1>
-
+            <p class="mt-1 moh-meta max-w-xl">
+              {{ mine.length ? 'Jump into one of your groups, or find another community.' : 'Find a community to join. Each group is its own space.' }}
+            </p>
           </div>
-          <div class="flex items-center gap-2">
-            <Button v-if="mine.length" label="Post to a group" class="!bg-[var(--moh-group)] !border-[var(--moh-group)] !text-white" @click="postPickerOpen = true" />
-            <Button as="NuxtLink" to="/groups/explore" label="Explore" text severity="secondary" />
-            <Button v-if="canCreateGroup" as="NuxtLink" to="/groups/new" label="Create group" text severity="secondary" />
-            <Button v-else-if="isAuthed" as="NuxtLink" to="/tiers" label="Upgrade to create" text severity="secondary" />
+          <div class="flex flex-wrap gap-2 shrink-0 sm:pt-1">
+            <Button
+              v-if="isAuthed && canCreateGroup"
+              as="NuxtLink"
+              to="/groups/new"
+              label="Create group"
+              rounded
+            >
+              <template #icon>
+                <Icon name="tabler:plus" aria-hidden="true" />
+              </template>
+            </Button>
+            <Button
+              v-else-if="isAuthed"
+              as="NuxtLink"
+              to="/tiers"
+              label="Upgrade to create"
+              rounded
+              severity="secondary"
+            >
+              <template #icon>
+                <Icon name="tabler:sparkles" aria-hidden="true" />
+              </template>
+            </Button>
           </div>
         </div>
 
-        <AppInlineAlert v-if="error" severity="danger">
-          {{ error }} <Button label="Try again" text @click="loadMeta" />
+        <AppInlineAlert v-if="metaError" severity="danger">
+          {{ metaError }}
         </AppInlineAlert>
-
-        <div v-if="metaLoading && !mine.length && !inboxInvites.length" class="flex justify-center py-8">
-          <AppLogoLoader />
-        </div>
       </div>
 
-      <template v-if="!isAuthed">
-        <div class="moh-gutter-x py-12 text-center text-sm moh-text-muted">
-          Log in to see posts from your groups.
-        </div>
-      </template>
-
-      <template v-else>
-        <section
-          v-if="inboxInvites.length > 0"
-          class="border-b moh-border py-3"
-          aria-labelledby="groups-invites-heading"
-        >
+      <template v-if="isAuthed">
+        <section v-if="inboxInvites.length" class="border-b moh-border py-3" aria-labelledby="groups-invites-heading">
           <button type="button" class="moh-focus moh-gutter-x flex min-h-11 w-full items-center justify-between gap-3 text-left" :aria-expanded="invitesExpanded" @click="invitesExpanded = !invitesExpanded">
             <span id="groups-invites-heading" class="text-sm font-semibold">{{ inboxInvites.length }} group {{ inboxInvites.length === 1 ? 'invitation' : 'invitations' }}</span>
-            <span class="text-sm moh-text-muted">{{ invitesExpanded ? 'Hide' : 'Review' }}</span>
+            <span class="text-sm moh-text-muted">{{ invitesExpanded || !mine.length ? 'Hide' : 'Review' }}</span>
           </button>
           <ul v-show="invitesExpanded || !mine.length" class="moh-divide">
             <li v-for="inv in inboxInvites" :key="inv.id">
-              <AppGroupInviteInboxRow
-                :invite="inv"
-                @accepted="onInboxAccepted"
-                @declined="onInboxDeclined"
-              />
+              <AppGroupInviteInboxRow :invite="inv" @accepted="removeInboxInvite(inv.id)" @declined="removeInboxInvite(inv.id)" />
             </li>
           </ul>
         </section>
 
-        <section v-if="mine.length" class="border-b moh-border p-3" aria-label="Your groups">
-          <div class="flex items-center justify-between px-3 pb-2"><h2 class="text-xs font-semibold uppercase moh-text-muted">Your groups</h2><Button :label="`View all ${mine.length}`" text size="small" @click="switcherOpen = true" /></div>
-          <div class="grid sm:grid-cols-2"><AppGroupsGroupRow v-for="group in mine.slice(0, 2)" :key="group.id" :group="group" :new-count="groupsUnread.byGroupId[group.id] ?? 0" /></div>
-        </section>
-
-        <!-- Explore — spotlight surface -->
-        <section
-          v-if="!mine.length && spotlight.length > 0"
-          class="border-b moh-border py-3"
-          aria-labelledby="groups-explore-heading"
-        >
-          <div class="moh-gutter-x mb-3 flex items-baseline justify-between gap-3">
-            <h2 id="groups-explore-heading" class="text-sm font-semibold uppercase tracking-wide moh-text-muted">
-              Explore
-            </h2>
-            <NuxtLink
-              to="/groups/explore"
-              class="inline-flex items-center gap-0.5 text-xs font-semibold moh-text-muted transition-colors hover:text-[color:var(--moh-group)]"
-            >
-              See all
-              <Icon name="tabler:chevron-right" class="text-sm" aria-hidden="true" />
-            </NuxtLink>
+        <section v-if="mine.length" class="border-b moh-border py-3" aria-labelledby="groups-mine-heading">
+          <h2 id="groups-mine-heading" class="moh-gutter-x pb-1 text-sm font-semibold uppercase tracking-wide moh-text-muted">Your groups</h2>
+          <div class="grid px-1 sm:grid-cols-2 sm:px-3">
+            <AppGroupsGroupRow v-for="group in mine" :key="group.id" :group="group" :new-count="groupsUnread.byGroupId[group.id] ?? 0" />
           </div>
-          <AppHorizontalScroller
-            ref="otherCarouselEl"
-            scroller-class="no-scrollbar snap-x snap-mandatory scroll-px-4 sm:scroll-px-6 px-4 sm:px-6 py-1.5"
-          >
-            <div class="flex gap-2">
-              <AppGroupCompactCard
-                v-for="g in spotlight"
-                :key="g.id"
-                :group="g"
-                dense
-              />
-            </div>
-          </AppHorizontalScroller>
         </section>
+      </template>
 
-        <div v-if="!mine.length" class="moh-gutter-x py-10 space-y-4 text-center">
-          <p class="text-sm moh-text-muted max-w-md mx-auto">
-            You're not in any groups yet. Explore and join one — then posts will show up here.
-          </p>
-          <Button as="NuxtLink" to="/groups/explore" label="Explore groups" rounded />
+      <!-- Discover section -->
+      <section class="pt-5" aria-labelledby="explore-discover-heading">
+        <div class="moh-gutter-x space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="explore-discover-heading" class="text-sm font-semibold uppercase tracking-wide moh-text-muted">
+              {{ hasQuery ? 'Search results' : mine.length ? 'Find more groups' : 'Discover' }}
+            </h2>
+            <span v-if="!hasQuery && spotlightCount" class="text-xs moh-text-muted tabular-nums">
+              {{ spotlightCount }}
+            </span>
+          </div>
+
+          <IconField icon-position="left" class="w-full">
+            <InputIcon>
+              <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
+            </InputIcon>
+            <InputText
+              v-model="searchInput"
+              class="w-full"
+              :placeholder="isAuthed ? 'Search groups by name…' : 'Search open groups by name…'"
+              autocomplete="off"
+              aria-label="Search groups"
+            />
+          </IconField>
         </div>
 
-        <template v-if="mine.length">
-          <!-- Filter bar (sort only) -->
-          <div class="flex items-center justify-end px-3 py-1 border-b border-gray-200 dark:border-zinc-800">
-            <AppFeedFiltersBar
-              :sort="hubSort"
-              :filter="'all'"
-              :viewer-is-verified="false"
-              :viewer-is-premium="false"
-              :show-visibility-filter="false"
-              @update:sort="onHubSortChange"
-            />
-          </div>
+        <AppInlineAlert v-if="searchError" class="moh-gutter-x mt-3" severity="danger">
+          {{ searchError }}
+        </AppInlineAlert>
 
-          <!-- Animated tab bar -->
-          <div ref="hubTabBarEl" class="sticky top-[var(--moh-title-bar-height,0px)] z-10 moh-surface flex gap-0 border-b border-gray-200 dark:border-zinc-800">
-            <button
-              v-for="tab in hubTabs"
-              :key="tab.key"
-              :ref="(el) => setHubTabButtonRef(tab.key, el as HTMLElement | null)"
-              type="button"
-              class="relative cursor-pointer px-5 py-3 text-sm font-semibold transition-colors"
-              :class="activeHubTab === tab.key
-                ? 'text-gray-900 dark:text-gray-100'
-                : 'text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300'"
-              @click="setHubTab(tab.key)"
-            >
-              {{ tab.label }}
-            </button>
-            <!-- Animated sliding underline -->
-            <span
-              class="absolute bottom-0 h-[2px] rounded-full"
-              :style="{
-                left: `${hubUnderlineLeft}px`,
-                width: `${hubUnderlineWidth}px`,
-                backgroundColor: 'var(--moh-group)',
-                transition: hubUnderlineReady ? 'left 220ms ease-in-out, width 220ms ease-in-out' : 'none',
-              }"
+        <!-- Initial spotlight loading -->
+        <div v-if="metaInitialLoading" class="flex justify-center py-10">
+          <AppLogoLoader />
+        </div>
+
+        <!-- Empty state: search returned nothing -->
+        <AppScreenState
+          v-else-if="hasQuery && !searchLoading && searchResults.length === 0"
+          title="No matching groups" icon="search" :description="`No groups match “${trimmedQuery}”. Try a different name.`" />
+        <AppScreenState
+          v-else-if="!hasQuery && discoverRows.length === 0" title="No new groups" icon="group"
+          :description="isAuthed ? 'You’re in every group we have right now.' : 'Check back soon for new groups.'" />
+
+        <!-- Result list — full-bleed divided rows. NO outer card wrapper. -->
+        <div
+          v-else
+          class="mt-3 moh-divide"
+        >
+          <NuxtLink
+            v-for="g in discoverRows"
+            :key="g.id"
+            :to="`/g/${encodeURIComponent(g.slug)}`"
+            class="relative flex items-center gap-3 px-4 sm:px-6 py-4 overflow-hidden hover:bg-gray-50/60 dark:hover:bg-zinc-900/40 transition-colors"
+          >
+            <div
+              v-if="g.coverImageUrl"
+              class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-[0.04]"
+              :style="{ backgroundImage: `url(${g.coverImageUrl})` }"
               aria-hidden="true"
             />
-          </div>
-          <div ref="hubFeedContentEl" class="h-0 overflow-hidden" aria-hidden="true" />
 
-          <!-- ─── Posts tab (top-level only) ─────────────────────────────── -->
-          <div v-if="tabActivated.posts" v-show="activeHubTab === 'posts'" class="min-h-[75vh]">
-            <AppInlineAlert v-if="postsFeedError" class="moh-gutter-x mt-3" severity="danger">
-              {{ postsFeedError }}
-            </AppInlineAlert>
-            <AppSubtleSectionLoader :loading="postsFeedInitialLoading" :refreshing="postsFeedLoading && !postsFeedInitialLoading" min-height-class="min-h-[200px]">
-              <AppScreenState
-                v-if="!postsFeedPosts.length && !postsFeedError" title="No posts in your groups yet" icon="group" />
-              <div v-else class="relative mt-3">
-                <template v-for="item in postsFeedDisplayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
-                  <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
-                  <AppFeedPostRow
-                    v-else
-                    :post="item.post"
-                    collapse-ancestors
-                    :feed-group="shellForPost(item.post) ?? null"
-                    subtle-border-bottom
-                    :group-wall="null"
-                    :collapsed-sibling-replies-count="postsFeedCollapsedSiblingReplyCountFor(item.post)"
-                    :show-collapsed-replies-footer="hubSort === 'trending'"
-                    :replies-sort="hubSort"
-                    @deleted="postsFeedRemovePost"
-                    @edited="onPostsTabEdited"
-                    @group-pin-changed="onGroupPinChanged"
-                  />
-                </template>
-              </div>
-            </AppSubtleSectionLoader>
-            <div v-if="postsFeedNextCursor" class="relative flex justify-center items-center py-6 min-h-12">
-              <div ref="postsLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
-              <div
-                class="transition-opacity duration-150"
-                :class="postsFeedLoadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                :aria-hidden="!postsFeedLoadingMore"
+            <!-- Owner crown: top-right of the row, just the icon (yellow).
+                 Mirrors AppGroupCompactCard so ownership reads consistently
+                 across carousel + list + search. -->
+            <Icon
+              v-if="g.viewerMembership?.role === 'owner' && g.viewerMembership.status === 'active'"
+              name="tabler:crown-filled"
+              class="absolute top-2 right-3 z-[1] text-base text-amber-400"
+              :title="`You own ${g.name}`"
+              :aria-label="`You own ${g.name}`"
+            />
+
+            <div
+              class="relative h-12 w-12 shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-800"
+              :class="avatarRoundClass"
+            >
+              <img
+                v-if="g.avatarImageUrl"
+                :src="g.avatarImageUrl"
+                alt=""
+                class="h-full w-full object-cover"
+                loading="lazy"
               >
-                <AppLogoLoader compact />
+              <div
+                v-else
+                class="flex h-full w-full items-center justify-center text-sm font-bold moh-text"
+              >
+                {{ initials(g.name) }}
               </div>
             </div>
-          </div>
-
-          <!-- ─── Replies tab (all posts including replies) ──────────────── -->
-          <div v-if="tabActivated.replies" v-show="activeHubTab === 'replies'" class="min-h-[75vh]">
-            <AppInlineAlert v-if="repliesFeedError" class="moh-gutter-x mt-3" severity="danger">
-              {{ repliesFeedError }}
-            </AppInlineAlert>
-            <AppSubtleSectionLoader :loading="repliesFeedInitialLoading" :refreshing="repliesFeedLoading && !repliesFeedInitialLoading" min-height-class="min-h-[200px]">
-              <AppScreenState
-                v-if="!repliesFeedPosts.length && !repliesFeedError" title="No posts in your groups yet" icon="group" />
-              <div v-else class="relative mt-3">
-                <template v-for="item in repliesFeedDisplayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
-                  <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
-                  <AppFeedPostRow
-                    v-else
-                    :post="item.post"
-                    collapse-ancestors
-                    :feed-group="shellForPost(item.post) ?? null"
-                    subtle-border-bottom
-                    :group-wall="null"
-                    :collapsed-sibling-replies-count="repliesFeedCollapsedSiblingReplyCountFor(item.post)"
-                    :show-collapsed-replies-footer="hubSort === 'trending'"
-                    :replies-sort="hubSort"
-                    @deleted="repliesFeedRemovePost"
-                    @edited="onRepliesTabEdited"
-                    @group-pin-changed="onGroupPinChanged"
-                  />
-                </template>
-              </div>
-            </AppSubtleSectionLoader>
-            <div v-if="repliesFeedNextCursor" class="relative flex justify-center items-center py-6 min-h-12">
-              <div ref="repliesLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
-              <div
-                class="transition-opacity duration-150"
-                :class="repliesFeedLoadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                :aria-hidden="!repliesFeedLoadingMore"
-              >
-                <AppLogoLoader compact />
-              </div>
-            </div>
-          </div>
-
-          <!-- ─── Media tab ──────────────────────────────────────────────── -->
-          <div v-if="tabActivated.media" v-show="activeHubTab === 'media'" class="min-h-[75vh]">
-            <AppSubtleSectionLoader :loading="!mediaFeed.hasLoadedOnce.value && !mediaFeed.error.value && !mediaFeed.items.value.length" :refreshing="mediaFeed.loading.value && mediaFeed.hasLoadedOnce.value" min-height-class="min-h-[200px]">
-              <div v-if="mediaFeed.error.value" class="px-3 py-6 text-sm text-red-700 dark:text-red-300 sm:px-4">
-                {{ mediaFeed.error.value }}
-              </div>
-              <div v-else class="relative mt-3">
-                <TransitionGroup
-                  name="media-grid"
-                  tag="div"
-                  class="grid gap-0.5 bg-gray-200 dark:bg-zinc-800"
-                  style="grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr))"
+            <div class="relative min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-medium moh-text">{{ g.name }}</span>
+                <!-- Membership comes FIRST — most relevant signal for search
+                     results. "Member" trumps the visibility chip visually. -->
+                <span
+                  v-if="g.viewerMembership?.status === 'active'"
+                  class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded bg-[color:rgba(var(--moh-group-rgb),0.18)] text-[color:var(--moh-group)]"
                 >
-                  <NuxtLink
-                    v-for="item in mediaFeed.items.value"
-                    :key="item.id"
-                    :to="`/p/${item.postId}`"
-                    class="relative aspect-square overflow-hidden bg-gray-100 dark:bg-zinc-900 hover:opacity-90 transition-opacity"
-                  >
-                    <img
-                      :src="item.kind === 'video' ? (item.thumbnailUrl ?? item.url ?? '') : (item.url ?? '')"
-                      :alt="item.kind === 'video' ? 'Video' : 'Photo'"
-                      class="absolute inset-0 h-full w-full object-cover moh-img-outline"
-                      loading="lazy"
-                    >
-                    <div v-if="item.kind === 'video'" class="absolute inset-0 flex items-center justify-center">
-                      <div class="rounded-full bg-black/50 p-2">
-                        <Icon name="tabler:player-play-filled" class="text-white text-lg" aria-hidden="true" />
-                      </div>
-                    </div>
-                  </NuxtLink>
-                </TransitionGroup>
-                <div v-if="mediaFeed.nextCursor.value" class="relative flex justify-center items-center py-6 min-h-12">
-                  <div ref="mediaLoadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
-                  <div
-                    class="transition-opacity duration-150"
-                    :class="mediaFeed.loadingMore.value ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                    :aria-hidden="!mediaFeed.loadingMore.value"
-                  >
-                    <AppLogoLoader compact />
-                  </div>
-                </div>
-                <AppScreenState
-                  v-if="mediaFeed.hasLoadedOnce.value && mediaFeed.items.value.length === 0" title="No photos or videos yet" icon="image" description="Media shared in your groups will appear here." />
+                  <Icon name="tabler:check" class="text-[10px]" aria-hidden="true" />
+                  {{ g.viewerMembership.role === 'owner' ? 'Owner' : g.viewerMembership.role === 'moderator' ? 'Moderator' : 'Member' }}
+                </span>
+                <span
+                  v-else-if="g.viewerMembership?.status === 'pending'"
+                  class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded border moh-border moh-text-muted"
+                >
+                  <Icon name="tabler:clock" class="text-[10px]" aria-hidden="true" />
+                  Requested
+                </span>
+                <span
+                  v-if="g.joinPolicy === 'approval'"
+                  class="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded border moh-border moh-text-muted"
+                >
+                  <Icon name="tabler:lock" class="text-[10px]" aria-hidden="true" />
+                  Approval
+                </span>
+                <span
+                  v-else
+                  class="text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                >
+                  Open
+                </span>
               </div>
-            </AppSubtleSectionLoader>
+              <p
+                v-if="g.description"
+                class="mt-0.5 text-sm moh-text-muted line-clamp-2"
+              >
+                {{ g.description }}
+              </p>
+              <div class="mt-1 text-xs moh-text-muted tabular-nums">
+                {{ g.memberCount.toLocaleString() }} members
+              </div>
+            </div>
+            <Icon
+              name="tabler:chevron-right"
+              class="relative text-lg opacity-50 shrink-0"
+              aria-hidden="true"
+            />
+          </NuxtLink>
+        </div>
+
+        <!-- Pagination sentinel + loader (drives both spotlight and search) -->
+        <div
+          v-if="hasNextPage || isPaginating"
+          class="relative flex justify-center items-center py-6 min-h-12"
+        >
+          <div ref="loadMoreSentinelEl" class="absolute bottom-0 left-0 right-0 h-px" aria-hidden="true" />
+          <div
+            class="transition-opacity duration-150"
+            :class="isPaginating ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+            :aria-hidden="!isPaginating"
+          >
+            <AppLogoLoader compact />
           </div>
-        </template>
-      </template>
+        </div>
+      </section>
     </div>
-    <AppGroupsGroupSwitcherDialog v-model="switcherOpen" />
-    <AppGroupsGroupSwitcherDialog v-model="postPickerOpen" for-post />
   </AppPageContent>
 </template>
 
 <script setup lang="ts">
-import type { CommunityGroupInvite, CommunityGroupShell, FeedPost } from '~/types/api'
-import AppGroupInviteInboxRow from '~/components/app/groups/AppGroupInviteInboxRow.vue'
+import type { CommunityGroupInvite, CommunityGroupShell, ApiEnvelope } from '~/types/api'
+import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
+import { getApiErrorMessage } from '~/utils/api-error'
 import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
-import { useGroupsHubMedia } from '~/composables/useGroupsHubMedia'
-import { getApiErrorMessage } from '~/utils/api-error'
-import AppGroupCompactCard from '~/components/app/groups/AppGroupCompactCard.vue'
 
 definePageMeta({
   layout: 'app',
   title: 'Groups',
   hideTopBar: true,
-  alias: ['/groups/posts', '/groups/replies', '/groups/media'],
 })
 
 usePageSeo({
   title: 'Groups',
-    description: "Posts and media from every group you're in.",
+  description: 'Your groups and communities to join on Men of Hunger.',
   canonicalPath: '/groups',
   noindex: true,
 })
 
-const route = useRoute()
-const { apiFetchData } = useApiClient()
+const { apiFetch } = useApiClient()
 const { user, isAuthed } = useAuth()
 const { groupsUnread, addGroupInviteCallback, removeGroupInviteCallback } = usePresence()
 const { clearLockScreen } = useNotifications()
-
-const switcherOpen = ref(false)
-const postPickerOpen = ref(false)
-const invitesExpanded = ref(false)
-const metaLoading = ref(true)
-const error = ref<string | null>(null)
-const mine = ref<CommunityGroupShell[]>([])
-const spotlight = ref<CommunityGroupShell[]>([])
 const { groups: sharedMyGroups, load: loadMyGroups } = useMyGroups()
 const groupInvitesApi = useGroupInvites()
 const { setCount: setGroupInviteBadgeCount } = useGroupInvitesBadge()
+const mine = computed(() => (isAuthed.value ? sharedMyGroups.value : []))
 const inboxInvites = ref<CommunityGroupInvite[]>([])
+const invitesExpanded = ref(false)
 
 function removeInboxInvite(inviteId: string) {
   inboxInvites.value = inboxInvites.value.filter((i) => i.id !== inviteId)
   setGroupInviteBadgeCount(inboxInvites.value.length)
 }
-
-function onInboxAccepted(inv: CommunityGroupInvite) {
-  removeInboxInvite(inv.id)
+async function loadInbox() {
+  if (!isAuthed.value) return
+  try {
+    inboxInvites.value = (await groupInvitesApi.listInbox()).filter((i) => i.status === 'pending')
+    setGroupInviteBadgeCount(inboxInvites.value.length)
+  } catch { /* keep the last list; badge hydration recovers */ }
 }
-
-function onInboxDeclined(inv: CommunityGroupInvite) {
-  removeInboxInvite(inv.id)
-}
-
-const inboxInviteCb = {
-  onReceived: () => { void loadInboxOnly() },
+const inviteCallback = {
+  onReceived: () => { void loadInbox() },
   onUpdated: (payload: { invite: { id: string; status: string } }) => {
-    const status = payload?.invite?.status
-    const id = payload?.invite?.id
+    const { id, status } = payload?.invite ?? {}
     if (!id) return
     if (status && status !== 'pending') removeInboxInvite(id)
-    else void loadInboxOnly()
+    else void loadInbox()
   },
 }
 
-async function loadInboxOnly() {
-  if (!isAuthed.value) return
-  try {
-    const inbox = await groupInvitesApi.listInbox()
-    inboxInvites.value = inbox.filter((i) => i.status === 'pending')
-    setGroupInviteBadgeCount(inboxInvites.value.length)
-  } catch {
-    // Keep the last list; badge hydration will recover.
-  }
-}
+const avatarRoundClass = groupAvatarRoundClass()
 
-// ─── URL-backed sort ───────────────────────────────────────────────────────────
-const { sort: hubSort } = useUrlFeedFilters({ historyBacked: true })
+// ─── State ───────────────────────────────────────────────────────────────
+const metaLoading = ref(true)
+const metaError = ref<string | null>(null)
+const spotlight = ref<CommunityGroupShell[]>([])
+const spotlightNextCursor = ref<string | null>(null)
+const spotlightLoadingMore = ref(false)
+let spotlightToken = 0
 
-function onHubSortChange(next: 'new' | 'trending') {
-  hubSort.value = next
-  scrollFeedToTop()
-}
-
-function onHubSortReset() {
-  hubSort.value = 'new'
-  scrollFeedToTop()
-}
-
-// ─── Tab state ─────────────────────────────────────────────────────────────────
-type HubTabKey = 'posts' | 'replies' | 'media'
-
-const basePath = '/groups'
-
-function tabFromRoute(path: string): HubTabKey {
-  if (/\/groups\/replies\/?$/.test(path)) return 'replies'
-  if (/\/groups\/media\/?$/.test(path)) return 'media'
-  return 'posts'
-}
-
-// currentPathname tracks real browser URL for pushState-based tab routing
-const currentPathname = ref(import.meta.client ? location.pathname : route.path)
-watch(() => route.path, (path) => { currentPathname.value = path })
-if (import.meta.client) {
-  const onPopState = () => { currentPathname.value = location.pathname }
-  onMounted(() => window.addEventListener('popstate', onPopState))
-  onBeforeUnmount(() => window.removeEventListener('popstate', onPopState))
-}
-
-const activeHubTab = computed<HubTabKey>(() => tabFromRoute(currentPathname.value))
-
-const tabActivated = reactive<Record<HubTabKey, boolean>>({
-  posts: true,
-  replies: tabFromRoute(route.path) === 'replies',
-  media: tabFromRoute(route.path) === 'media',
-})
-
-watch(activeHubTab, (tab) => {
-  if (!tabActivated[tab]) tabActivated[tab] = true
-  nextTick(updateHubUnderline)
-}, { immediate: true })
-
-const hubTabs = computed<Array<{ key: HubTabKey; label: string }>>(() => [
-  { key: 'posts', label: 'Posts' },
-  { key: 'replies', label: 'Replies' },
-  { key: 'media', label: 'Media' },
-])
-
-// ─── Animated tab underline ────────────────────────────────────────────────────
-const hubTabBarEl = ref<HTMLElement | null>(null)
-const hubFeedContentEl = ref<HTMLElement | null>(null)
-const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(hubFeedContentEl, hubTabBarEl)
-const hubTabButtonEls = new Map<HubTabKey, HTMLElement>()
-const hubUnderlineLeft = ref(0)
-const hubUnderlineWidth = ref(0)
-const hubUnderlineReady = ref(false)
-
-function setHubTabButtonRef(key: HubTabKey, el: HTMLElement | null) {
-  if (el) hubTabButtonEls.set(key, el)
-  else hubTabButtonEls.delete(key)
-}
-
-function updateHubUnderline() {
-  if (!import.meta.client) return
-  const bar = hubTabBarEl.value
-  const btn = hubTabButtonEls.get(activeHubTab.value)
-  if (!bar || !btn) return
-  const barRect = bar.getBoundingClientRect()
-  const btnRect = btn.getBoundingClientRect()
-  hubUnderlineLeft.value = Math.round(btnRect.left - barRect.left)
-  hubUnderlineWidth.value = Math.round(btnRect.width)
-}
-
-function pushHubPath(path: string) {
-  const qs: Record<string, string> = {}
-  if (import.meta.client) {
-    new URLSearchParams(location.search).forEach((value, key) => { qs[key] = value })
-  }
-  currentPathname.value = path
-  if (!import.meta.client) return
-  const search = new URLSearchParams(qs)
-  const newUrl = search.toString() ? `${path}?${search}` : path
-  const state = {
-    ...history.state,
-    back: history.state?.current ?? null,
-    current: newUrl,
-    forward: null,
-  }
-  history.pushState(state, '', newUrl)
-}
-
-function setHubTab(key: HubTabKey) {
-  if (activeHubTab.value === key) return
-  const path = key === 'posts' ? basePath : `${basePath}/${key}`
-  pushHubPath(path)
-  scrollFeedToTop()
-}
-
-onMounted(() => nextTick(() => {
-  updateHubUnderline()
-  requestAnimationFrame(() => { hubUnderlineReady.value = true })
-}))
-
-// ─── Posts feed (top-level only) ──────────────────────────────────────────────
-const groupsHubRef = ref(true)
-
-const {
-  posts: postsFeedPosts,
-  displayItems: postsFeedDisplayItems,
-  collapsedSiblingReplyCountFor: postsFeedCollapsedSiblingReplyCountFor,
-  nextCursor: postsFeedNextCursor,
-  loading: postsFeedLoading,
-  initialLoading: postsFeedInitialLoading,
-  loadingMore: postsFeedLoadingMore,
-  error: postsFeedError,
-  refresh: postsFeedRefresh,
-  softRefreshNewer: postsFeedSoftRefreshNewer,
-  startAutoSoftRefresh: postsFeedStartAutoSoftRefresh,
-  loadMore: postsFeedLoadMore,
-  removePost: postsFeedRemovePost,
-  replacePost: postsFeedReplacePost,
-  addReply: postsFeedAddReply,
-  replaceOptimistic: postsFeedReplaceOptimistic,
-  markOptimisticFailed: postsFeedMarkOptimisticFailed,
-  markOptimisticPosting: postsFeedMarkOptimisticPosting,
-  removeOptimistic: postsFeedRemoveOptimistic,
-} = usePostsFeed({
-  feedStateKey: 'groups-hub-posts',
-  localInsertsStateKey: 'groups-hub-posts-inserts',
-  groupsHub: groupsHubRef,
-  enabled: computed(() => isAuthed.value && mine.value.length > 0 && tabActivated.posts),
-  sort: hubSort,
-  visibility: ref('all'),
-  followingOnly: ref(false),
-  showAds: ref(false),
-  topLevelOnly: ref(true),
-})
-
-// ─── Replies feed (all posts including replies) ────────────────────────────────
-const {
-  posts: repliesFeedPosts,
-  displayItems: repliesFeedDisplayItems,
-  collapsedSiblingReplyCountFor: repliesFeedCollapsedSiblingReplyCountFor,
-  nextCursor: repliesFeedNextCursor,
-  loading: repliesFeedLoading,
-  initialLoading: repliesFeedInitialLoading,
-  loadingMore: repliesFeedLoadingMore,
-  error: repliesFeedError,
-  refresh: repliesFeedRefresh,
-  softRefreshNewer: repliesFeedSoftRefreshNewer,
-  startAutoSoftRefresh: repliesFeedStartAutoSoftRefresh,
-  loadMore: repliesFeedLoadMore,
-  removePost: repliesFeedRemovePost,
-  replacePost: repliesFeedReplacePost,
-  addReply: repliesFeedAddReply,
-  replaceOptimistic: repliesFeedReplaceOptimistic,
-  markOptimisticFailed: repliesFeedMarkOptimisticFailed,
-  markOptimisticPosting: repliesFeedMarkOptimisticPosting,
-  removeOptimistic: repliesFeedRemoveOptimistic,
-} = usePostsFeed({
-  feedStateKey: 'groups-hub-replies',
-  localInsertsStateKey: 'groups-hub-replies-inserts',
-  groupsHub: groupsHubRef,
-  enabled: computed(() => isAuthed.value && mine.value.length > 0 && tabActivated.replies),
-  sort: hubSort,
-  visibility: ref('all'),
-  followingOnly: ref(false),
-  showAds: ref(false),
-})
-
-// ─── Media feed ───────────────────────────────────────────────────────────────
-const mediaFeed = useGroupsHubMedia({
-  enabled: computed(() => isAuthed.value && mine.value.length > 0 && tabActivated.media),
-  sort: hubSort,
-})
+const searchInput = ref('')
+const trimmedQuery = ref('')
+const searchResults = ref<CommunityGroupShell[]>([])
+const searchNextCursor = ref<string | null>(null)
+const searchLoading = ref(false)
+const searchError = ref<string | null>(null)
+let searchToken = 0
 
 const canCreateGroup = computed(() => {
   const u = user.value
@@ -535,252 +300,174 @@ const canCreateGroup = computed(() => {
   return Boolean(u.premium || u.premiumPlus || u.siteAdmin)
 })
 
-function shellForPost(p: FeedPost) {
-  const id = p.communityGroupId ?? null
-  if (!id) return null
-  return mine.value.find((g) => g.id === id) ?? null
+const hasQuery = computed(() => trimmedQuery.value.length >= 2)
+
+const spotlightCount = computed(() => discoverRows.value.length)
+
+// What we render in the discover list.
+//  - Spotlight (default): server-filtered with `excludeMine=1`, so the
+//    viewer never sees groups they're already in here.
+//  - Search results: NOT excluded — surfacing groups the viewer is in is
+//    legitimate when they typed a name. Membership is indicated on the row.
+const discoverRows = computed(() => (hasQuery.value ? searchResults.value : spotlight.value))
+
+function initials(name: string) {
+  const n = (name ?? '').trim()
+  if (!n) return '?'
+  const parts = n.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
+  return n.slice(0, 2).toUpperCase()
 }
 
-function onPostsTabEdited(payload: { id: string; post: FeedPost }) {
-  postsFeedReplacePost(payload.post)
-}
-
-function onRepliesTabEdited(payload: { id: string; post: FeedPost }) {
-  repliesFeedReplacePost(payload.post)
-}
-
-async function onGroupPinChanged() {
-  await postsFeedRefresh()
-  await repliesFeedRefresh()
-}
-
-/** Legacy `/groups?group=<id>` → canonical `/g/:slug`. */
-async function redirectIfLegacyGroupQuery(): Promise<boolean> {
-  if (!isAuthed.value || metaLoading.value) return false
-  const raw = route.query.group
-  const gid = typeof raw === 'string' && raw.trim() ? raw.trim() : null
-  if (!gid) return false
-  const shell = mine.value.find((g) => g.id === gid)
-  if (shell) {
-    await navigateTo(`/g/${encodeURIComponent(shell.slug)}`, { replace: true })
-    return true
-  }
-  await navigateTo({ path: '/groups', query: {}, replace: true })
-  return true
-}
-
-/** Legacy `/groups?tab=my` → `/groups/explore`. */
-async function redirectIfLegacyMyTab(): Promise<boolean> {
-  if (route.query.tab !== 'my') return false
-  await navigateTo('/groups/explore', { replace: true })
-  return true
-}
-
-function applyMyGroups(rows: readonly CommunityGroupShell[]) {
-  // Preserve the API's stable membership order as live activity counts change.
-  mine.value = [...rows]
-}
-
+// ─── Loading ─────────────────────────────────────────────────────────────
 async function loadMeta() {
   metaLoading.value = true
-  error.value = null
+  metaError.value = null
+  spotlightToken += 1
+  const token = spotlightToken
   try {
-    const [, e, inbox] = await Promise.all([
-      loadMyGroups(),
-      apiFetchData<CommunityGroupShell[]>('/groups/explore?excludeMine=1&limit=24'),
-      groupInvitesApi.listInbox(),
-    ])
-    applyMyGroups(sharedMyGroups.value)
-    spotlight.value = Array.isArray(e) ? e : []
-    inboxInvites.value = inbox.filter((i) => i.status === 'pending')
-    setGroupInviteBadgeCount(inboxInvites.value.length)
+    // Server-side excludeMine guarantees the spotlight only contains groups
+    // the viewer can actually join — so the Discover surface is "never empty"
+    // unless the system literally has no other groups.
+    const params = new URLSearchParams({ limit: '24' })
+    if (isAuthed.value) params.set('excludeMine', '1')
+    const res = await apiFetch<CommunityGroupShell[]>(`/groups/explore?${params.toString()}`) as ApiEnvelope<CommunityGroupShell[]>
+    if (token !== spotlightToken) return
+    spotlight.value = Array.isArray(res.data) ? res.data : []
+    spotlightNextCursor.value = res.pagination?.nextCursor ?? null
   } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load your groups.'
-    // Keep the last successful content available while offline.
+    if (token !== spotlightToken) return
+    metaError.value = getApiErrorMessage(e) || 'Failed to load groups.'
+    spotlight.value = []
+    spotlightNextCursor.value = null
   } finally {
-    metaLoading.value = false
+    if (token === spotlightToken) metaLoading.value = false
   }
 }
 
-watch(sharedMyGroups, rows => applyMyGroups(rows))
+async function loadMoreSpotlight() {
+  const cursor = spotlightNextCursor.value
+  if (!cursor || spotlightLoadingMore.value) return
+  spotlightLoadingMore.value = true
+  const token = spotlightToken
+  try {
+    const params = new URLSearchParams({ limit: '24', cursor })
+    if (isAuthed.value) params.set('excludeMine', '1')
+    const res = await apiFetch<CommunityGroupShell[]>(`/groups/explore?${params.toString()}`) as ApiEnvelope<CommunityGroupShell[]>
+    if (token !== spotlightToken) return
+    const rows = Array.isArray(res.data) ? res.data : []
+    // Defensive client-side dedup: the cursor branch may overlap with the
+    // tiered first page in rare cases (featured/trending overlays).
+    const seen = new Set(spotlight.value.map((g) => g.id))
+    const fresh = rows.filter((g) => !seen.has(g.id))
+    spotlight.value = [...spotlight.value, ...fresh]
+    spotlightNextCursor.value = res.pagination?.nextCursor ?? null
+  } catch (e: unknown) {
+    if (token !== spotlightToken) return
+    metaError.value = getApiErrorMessage(e) || 'Failed to load more groups.'
+  } finally {
+    if (token === spotlightToken) spotlightLoadingMore.value = false
+  }
+}
 
-// Snap carousels back to first card on data changes
-type ScrollerHandle = { scrollToStart: () => void } | null
-const carouselEl = ref<ScrollerHandle>(null)
-const otherCarouselEl = ref<ScrollerHandle>(null)
-watch(
-  () => mine.value.length,
-  () => {
-    if (!import.meta.client) return
-    carouselEl.value?.scrollToStart()
-  },
-)
-watch(
-  () => spotlight.value.length,
-  () => {
-    if (!import.meta.client) return
-    otherCarouselEl.value?.scrollToStart()
-  },
-)
+async function runSearch(q: string, opts: { append?: boolean; cursor?: string | null } = {}) {
+  const token = ++searchToken
+  if (!opts.append) {
+    searchResults.value = []
+    searchNextCursor.value = null
+    searchError.value = null
+  }
+  if (q.length < 2) {
+    searchLoading.value = false
+    return
+  }
+  searchLoading.value = true
+  try {
+    // NOTE: search intentionally does NOT pass excludeMine — when the user
+    // is hunting a specific group by name, hiding ones they're already in
+    // is confusing ("why doesn't my group appear?"). Membership is indicated
+    // on the row instead.
+    const params = new URLSearchParams({ q, limit: '20' })
+    if (opts.cursor) params.set('cursor', opts.cursor)
+    const res = await apiFetch<CommunityGroupShell[]>(`/groups/search?${params.toString()}`) as ApiEnvelope<CommunityGroupShell[]>
+    if (token !== searchToken) return
+    const rows = Array.isArray(res.data) ? res.data : []
+    searchResults.value = opts.append ? [...searchResults.value, ...rows] : rows
+    searchNextCursor.value = res.pagination?.nextCursor ?? null
+  } catch (e: unknown) {
+    if (token !== searchToken) return
+    searchError.value = getApiErrorMessage(e) || 'Search failed.'
+  } finally {
+    if (token === searchToken) searchLoading.value = false
+  }
+}
 
-// ─── Load-more sentinels ──────────────────────────────────────────────────────
-const postsLoadMoreSentinelEl = ref<HTMLElement | null>(null)
-const repliesLoadMoreSentinelEl = ref<HTMLElement | null>(null)
-const mediaLoadMoreSentinelEl = ref<HTMLElement | null>(null)
+// Debounced reaction to typing. 250ms felt right in playtests; shorter and
+// keystrokes thrash the API, longer and the UI feels laggy.
+let debounceHandle: ReturnType<typeof setTimeout> | null = null
+watch(searchInput, (raw) => {
+  if (debounceHandle) clearTimeout(debounceHandle)
+  debounceHandle = setTimeout(() => {
+    debounceHandle = null
+    const q = (raw ?? '').trim().slice(0, 80)
+    trimmedQuery.value = q
+    void runSearch(q)
+  }, 250)
+})
+
+// ─── Pagination ──────────────────────────────────────────────────────────
+// One sentinel handles both surfaces — whichever has a `nextCursor` and is
+// not currently loading drives the next fetch. They are mutually exclusive
+// because the result list either renders search rows OR spotlight rows.
+const loadMoreSentinelEl = ref<HTMLElement | null>(null)
 const middleScrollerRef = useMiddleScroller()
-
-useLoadMoreObserver(
-  postsLoadMoreSentinelEl,
-  middleScrollerRef,
-  computed(() => Boolean(isAuthed.value && mine.value.length && postsFeedNextCursor.value)),
-  () => void postsFeedLoadMore(),
+const canLoadMore = computed(() => {
+  if (hasQuery.value) return Boolean(searchNextCursor.value) && !searchLoading.value
+  return Boolean(spotlightNextCursor.value) && !spotlightLoadingMore.value && !metaLoading.value
+})
+const isPaginating = computed(() =>
+  hasQuery.value ? searchLoading.value : spotlightLoadingMore.value,
+)
+const hasNextPage = computed(() =>
+  hasQuery.value ? Boolean(searchNextCursor.value) : Boolean(spotlightNextCursor.value),
 )
 useLoadMoreObserver(
-  repliesLoadMoreSentinelEl,
+  loadMoreSentinelEl,
   middleScrollerRef,
-  computed(() => Boolean(isAuthed.value && mine.value.length && repliesFeedNextCursor.value)),
-  () => void repliesFeedLoadMore(),
+  canLoadMore,
+  () => {
+    if (hasQuery.value) {
+      void runSearch(trimmedQuery.value, { append: true, cursor: searchNextCursor.value })
+    } else {
+      void loadMoreSpotlight()
+    }
+  },
 )
-useLoadMoreObserver(
-  mediaLoadMoreSentinelEl,
-  middleScrollerRef,
-  computed(() => Boolean(isAuthed.value && mine.value.length && mediaFeed.nextCursor.value)),
-  () => void mediaFeed.loadMore(),
-)
-
-// ─── Reply pending handler ────────────────────────────────────────────────────
-const replyModal = useReplyModal()
-const pendingPosts = usePendingPostsManager()
-let unregisterReplyPending: null | (() => void) = null
-let stopAutoSoftRefreshPosts: null | (() => void) = null
-let stopAutoSoftRefreshReplies: null | (() => void) = null
-
-function registerReplyPostedHandler() {
-  if (!import.meta.client || unregisterReplyPending) return
-  const pendingCb = (payload: import('~/composables/useReplyModal').ReplyPendingPayload) => {
-    postsFeedAddReply(payload.parentPost.id, payload.optimisticPost, payload.parentPost)
-    repliesFeedAddReply(payload.parentPost.id, payload.optimisticPost, payload.parentPost)
-    pendingPosts.submit({
-      localId: payload.localId,
-      optimisticPost: payload.optimisticPost,
-      perform: payload.perform,
-      callbacks: {
-        insert: () => {},
-        replace: (lid, real) => {
-          postsFeedReplaceOptimistic(lid, real)
-          repliesFeedReplaceOptimistic(lid, real)
-        },
-        markFailed: (lid, msg) => {
-          postsFeedMarkOptimisticFailed(lid, msg)
-          repliesFeedMarkOptimisticFailed(lid, msg)
-        },
-        markPosting: (lid) => {
-          postsFeedMarkOptimisticPosting(lid)
-          repliesFeedMarkOptimisticPosting(lid)
-        },
-        remove: (lid) => {
-          postsFeedRemoveOptimistic(lid)
-          repliesFeedRemoveOptimistic(lid)
-        },
-      },
-    })
-  }
-  unregisterReplyPending = replyModal.registerOnReplyPending(pendingCb)
-}
-
-function unregisterReplyPostedHandler() {
-  unregisterReplyPending?.()
-  unregisterReplyPending = null
-}
-
-function startHubAutoRefresh() {
-  if (!stopAutoSoftRefreshPosts) {
-    stopAutoSoftRefreshPosts = postsFeedStartAutoSoftRefresh({ everyMs: 12_000 }) ?? null
-  }
-  if (!stopAutoSoftRefreshReplies) {
-    stopAutoSoftRefreshReplies = repliesFeedStartAutoSoftRefresh({ everyMs: 12_000 }) ?? null
-  }
-}
-
-function stopHubAutoRefresh() {
-  stopAutoSoftRefreshPosts?.()
-  stopAutoSoftRefreshPosts = null
-  stopAutoSoftRefreshReplies?.()
-  stopAutoSoftRefreshReplies = null
-}
 
 watch(
   isAuthed,
-  async (a) => {
-    if (!a) {
-      mine.value = []
-      spotlight.value = []
-      inboxInvites.value = []
-      postsFeedPosts.value = []
-      postsFeedNextCursor.value = null
-      repliesFeedPosts.value = []
-      repliesFeedNextCursor.value = null
-      return
-    }
-    await loadMeta()
-    if (await redirectIfLegacyMyTab()) return
-    if (await redirectIfLegacyGroupQuery()) return
-    await postsFeedRefresh()
+  () => {
+    void loadMeta()
   },
   { immediate: true },
 )
 
-watch(
-  () => route.query.group,
-  async () => {
-    if (!isAuthed.value || metaLoading.value) return
-    if (await redirectIfLegacyGroupQuery()) return
-  },
-)
-
-watch(
-  () => route.query.tab,
-  async () => {
-    await redirectIfLegacyMyTab()
-  },
-)
-
 onMounted(() => {
-  if (!import.meta.client) return
-  addGroupInviteCallback(inboxInviteCb)
-  registerReplyPostedHandler()
-  startHubAutoRefresh()
-  if (isAuthed.value) void clearLockScreen('groups')
+  addGroupInviteCallback(inviteCallback)
+  if (isAuthed.value) { void clearLockScreen('groups'); void loadMyGroups(); void loadInbox() }
 })
-
 onActivated(() => {
-  if (!import.meta.client) return
-  registerReplyPostedHandler()
-  startHubAutoRefresh()
-  if (isAuthed.value) {
-    void clearLockScreen('groups')
-    // Force-refresh so lastViewerPostAt reflects any posts made since the last visit.
-    void loadMyGroups({ force: true })
-      .then(() => applyMyGroups(sharedMyGroups.value))
-      .catch(() => undefined) // Keep the last successful membership list while offline.
-    void loadInboxOnly()
-  }
-  if (postsFeedPosts.value.length > 0) {
-    setTimeout(() => void postsFeedSoftRefreshNewer(), 300)
-  }
-  if (repliesFeedPosts.value.length > 0) {
-    setTimeout(() => void repliesFeedSoftRefreshNewer(), 300)
-  }
+  if (!isAuthed.value) return
+  void clearLockScreen('groups')
+  void loadMyGroups({ force: true }).catch(() => undefined)
+  void loadInbox()
 })
-
-onDeactivated(() => {
-  unregisterReplyPostedHandler()
-  stopHubAutoRefresh()
-})
-
+watch(isAuthed, signedIn => { if (signedIn) { void loadMyGroups(); void loadInbox() } else inboxInvites.value = [] })
 onBeforeUnmount(() => {
-  removeGroupInviteCallback(inboxInviteCb)
-  unregisterReplyPostedHandler()
-  stopHubAutoRefresh()
+  removeGroupInviteCallback(inviteCallback)
+  if (debounceHandle) clearTimeout(debounceHandle)
+  searchToken += 1 // invalidate any inflight requests
 })
+const metaInitialLoading = useInitialLoading(metaLoading, () => discoverRows.value.length > 0, metaError)
 </script>
+

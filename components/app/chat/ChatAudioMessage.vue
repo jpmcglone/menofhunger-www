@@ -30,6 +30,7 @@
         <span>{{ formatClock(isThis ? currentTime : 0) }}</span>
         <span>{{ formatClock(displayDuration) }}</span>
       </div>
+      <AppChatTranscript :media="media" />
     </div>
     <button
       type="button"

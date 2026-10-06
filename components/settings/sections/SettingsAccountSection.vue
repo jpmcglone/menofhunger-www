@@ -10,8 +10,8 @@
     <!-- Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=860-302 -->
     <div class="flex min-h-11 items-center justify-between gap-3">
       <label for="action-sounds" class="flex-1 cursor-pointer py-2">
-        <span class="block">Action sounds</span>
-        <span class="mt-1 block text-sm text-[var(--moh-text-muted)]">Sounds for actions on this device.</span>
+        <span class="block">Sounds</span>
+        <span class="mt-1 block text-sm text-[var(--moh-text-muted)]">Alerts, channel messages, and action sounds on this device.</span>
       </label>
       <ToggleSwitch v-model="actionSoundsEnabled" input-id="action-sounds" />
     </div>
