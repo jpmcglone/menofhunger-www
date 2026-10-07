@@ -176,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import type { GetPresenceOnlineData, GetPresenceOnlinePageData, GetPresenceRecentData, OnlineUser, RecentlyOnlineUser } from '~/types/api'
+import type { GetPresenceOnlineData, GetPresenceOnlinePageData, OnlineUser, RecentlyOnlineUser } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { hydrateFollowRelationship } from '~/utils/follow-relationship'
 import { formatListTime } from '~/utils/time-format'
@@ -210,10 +210,16 @@ const anonymousOnline = useState<number | null>('online-page-anonymous-online', 
 const loading = useState<boolean>('online-page-loading', () => true)
 const error = useState<string | null>('online-page-error', () => null)
 
-const recentUsers = useState<RecentlyOnlineUser[]>('online-page-recent-users', () => [])
-const recentNextCursor = useState<string | null>('online-page-recent-next-cursor', () => null)
-const recentLoading = useState<boolean>('online-page-recent-loading', () => false)
-const recentError = useState<string | null>('online-page-recent-error', () => null)
+// The first recent page arrives with /presence/online-page; this feed only pages it further.
+const recentFeed = useCursorFeed<RecentlyOnlineUser>({
+  stateKey: 'online-page-recent-users',
+  buildRequest: (cursor) => (cursor && viewerCanSeeLastOnline.value ? { path: '/presence/recent', query: { limit: 30, cursor } } : null),
+  mergeOnLoadMore: (incoming) => incoming.filter((u) => !u.isBot),
+  onDataLoaded: (data) => addStatusesFromRest(data.map((u) => u.status)),
+  defaultErrorMessage: 'Failed to load recently online.',
+  loadMoreErrorMessage: 'Failed to load recently online.',
+})
+const { items: recentUsers, nextCursor: recentNextCursor, loadingMore: recentLoading, error: recentError } = recentFeed
 
 const { user: authUser } = useAuth()
 const { membersVisible } = useMembersAccess()
@@ -500,38 +506,6 @@ async function fetchOnlinePage() {
   }
 }
 
-/** Resolves to whether the fetch succeeded, so the caller can stop auto-paginating. */
-async function fetchRecent(params?: { cursor?: string | null }): Promise<boolean> {
-  if (!viewerCanSeeLastOnline.value) return false
-  recentLoading.value = true
-  recentError.value = null
-  try {
-    const res = await apiFetch<GetPresenceRecentData>('/presence/recent', {
-      method: 'GET',
-      query: {
-        limit: 30,
-        ...(params?.cursor ? { cursor: params.cursor } : {}),
-      },
-    })
-    const data = res.data ?? []
-    addStatusesFromRest(data.map((u) => u.status))
-    const next = res.pagination?.nextCursor ?? null
-    if (params?.cursor) recentUsers.value = [...recentUsers.value, ...data.filter((u) => !u.isBot)]
-    else recentUsers.value = data.filter((u) => !u.isBot)
-    recentNextCursor.value = typeof next === 'string' && next.trim() ? next : null
-    return true
-  } catch (e: unknown) {
-    recentError.value = getApiErrorMessage(e) || 'Failed to load recently online.'
-    if (!params?.cursor) {
-      recentUsers.value = []
-      recentNextCursor.value = null
-    }
-    return false
-  } finally {
-    recentLoading.value = false
-  }
-}
-
 /**
  * A failed page leaves the cursor intact and the sentinel on screen, so without
  * this latch the observer would re-fire the moment loading flips false and spin
@@ -545,8 +519,8 @@ async function loadMoreRecent() {
   if (recentLoading.value) return
   // Release the latch up front so a retry shows the inline spinner, not the button.
   recentLoadMoreFailed.value = false
-  const ok = await fetchRecent({ cursor: recentNextCursor.value })
-  recentLoadMoreFailed.value = !ok
+  await recentFeed.loadMore()
+  recentLoadMoreFailed.value = Boolean(recentError.value)
 }
 
 const loadMoreSentinelEl = ref<HTMLElement | null>(null)

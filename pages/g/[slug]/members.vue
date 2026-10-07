@@ -133,7 +133,7 @@ const slug = computed(() => String(route.params.slug ?? '').trim())
 
 definePageMeta({ layout: 'app', title: 'Members', hideTopBar: true })
 
-const { apiFetch, apiFetchData } = useApiClient()
+const { apiFetchData } = useApiClient()
 const { confirm } = useAppConfirm()
 const { markReadBySubject } = useNotifications()
 
@@ -168,14 +168,23 @@ const pendingCopy = computed(() => {
   return 'Join the group to see who else is in it.'
 })
 
-const rows = ref<CommunityGroupMemberListItem[]>([])
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const loadingMore = ref(false)
-const error = ref<string | null>(null)
-
 const searchInput = ref('')
 const debouncedQ = ref('')
+const membersFeed = useCursorFeed<CommunityGroupMemberListItem>({
+  stateKey: 'group-members',
+  stateMode: 'local',
+  getItemId: (m) => m.userId,
+  buildRequest: (cursor) => {
+    const s = shell.value
+    if (!s) return null
+    return {
+      path: `/groups/${encodeURIComponent(s.id)}/members`,
+      query: { limit: 50, ...(cursor ? { cursor } : {}), ...(debouncedQ.value ? { q: debouncedQ.value } : {}) },
+    }
+  },
+  defaultErrorMessage: 'Failed to load members.',
+})
+const { items: rows, nextCursor, loading, loadingMore, error, loadMore } = membersFeed
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(searchInput, (v) => {
@@ -213,55 +222,8 @@ function roleBadgeClass(role: CommunityGroupMemberListItem['role']) {
 }
 
 async function reloadFromServer() {
-  const s = shell.value
-  if (!s) return
-  loading.value = true
-  error.value = null
-  nextCursor.value = null
-  rows.value = []
-  try {
-    const res = await apiFetch<CommunityGroupMemberListItem[]>(
-      `/groups/${encodeURIComponent(s.id)}/members`,
-      { query: { limit: 50, ...(debouncedQ.value ? { q: debouncedQ.value } : {}) } },
-    )
-    rows.value = res.data ?? []
-    nextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load members.'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadMore() {
-  const s = shell.value
-  if (!s || !nextCursor.value || loadingMore.value) return
-  loadingMore.value = true
-  try {
-    const res = await apiFetch<CommunityGroupMemberListItem[]>(
-      `/groups/${encodeURIComponent(s.id)}/members`,
-      {
-        query: {
-          limit: 50,
-          cursor: nextCursor.value,
-          ...(debouncedQ.value ? { q: debouncedQ.value } : {}),
-        },
-      },
-    )
-    const chunk = res.data ?? []
-    const seen = new Set(rows.value.map((r) => r.userId))
-    for (const r of chunk) {
-      if (!seen.has(r.userId)) {
-        seen.add(r.userId)
-        rows.value.push(r)
-      }
-    }
-    nextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load more.'
-  } finally {
-    loadingMore.value = false
-  }
+  if (!shell.value) return
+  await membersFeed.refresh({ reset: true })
 }
 
 function flushSearch() {

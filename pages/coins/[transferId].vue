@@ -5,7 +5,7 @@ import type { CoinTransferItem, CoinTransferReceipt } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 const route = useRoute()
-const { apiFetchData, apiFetch } = useApiClient()
+const { apiFetchData } = useApiClient()
 
 const transferId = computed(() => String(route.params.transferId ?? '').trim())
 const receipt = ref<CoinTransferReceipt | null>(null)
@@ -60,25 +60,6 @@ function receiptLabel(direction: CoinTransferReceipt['direction']): string {
   return 'Amount'
 }
 
-async function loadTransferFromHistoryById(id: string): Promise<CoinTransferItem | null> {
-  let cursor: string | null = null
-  let rounds = 0
-  while (rounds < 12) {
-    rounds += 1
-    const res: { data: CoinTransferItem[]; pagination?: { nextCursor?: string | null } } = await apiFetch<CoinTransferItem[]>('/coins/transfers', {
-      method: 'GET',
-      query: cursor ? { cursor, limit: 50 } : { limit: 50 },
-    })
-    const items = Array.isArray(res.data) ? res.data : []
-    const found = items.find((t) => t.id === id)
-    if (found) return found
-    const nextCursor = res.pagination?.nextCursor ?? null
-    if (!nextCursor) return null
-    cursor = nextCursor
-  }
-  return null
-}
-
 async function loadReceipt() {
   if (!transferId.value) {
     error.value = 'Transfer not found.'
@@ -98,7 +79,7 @@ async function loadReceipt() {
     // Fallback path: if dedicated receipt lookup fails, scan the paginated history.
     // This keeps permalink pages useful even when receipt endpoint behavior differs by env.
     try {
-      const fromHistory = await loadTransferFromHistoryById(transferId.value)
+      const fromHistory = await findCoinTransferInHistory(transferId.value)
       if (fromHistory) {
         fallbackTransfer.value = fromHistory
       } else {

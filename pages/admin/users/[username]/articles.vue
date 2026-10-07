@@ -39,14 +39,21 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { apiFetch, apiFetchData } = useApiClient()
+const { apiFetchData } = useApiClient()
 const username = computed(() => String(route.params.username ?? '').trim())
-const items = ref<AdminUserRecentArticle[]>([])
 const profile = ref<AdminUserDetailData | null>(null)
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const loadingMore = ref(false)
-const error = ref<string | null>(null)
+const profileError = ref<string | null>(null)
+const feed = useCursorFeed<AdminUserRecentArticle>({
+  stateKey: 'admin-user-articles',
+  stateMode: 'local',
+  buildRequest: (cursor) => username.value
+    ? { path: `/admin/users/by-username/${encodeURIComponent(username.value)}/recent/articles`, query: { limit: 25, cursor: cursor ?? undefined } }
+    : null,
+  defaultErrorMessage: 'Failed to load articles.',
+  loadMoreErrorMessage: 'Failed to load more articles.',
+})
+const { items, nextCursor, loadingMore, loadMore } = feed
+const error = computed(() => profileError.value ?? feed.error.value)
 
 function toArticleRow(item: AdminUserRecentArticle): Article {
   const author = profile.value
@@ -89,49 +96,21 @@ function toArticleRow(item: AdminUserRecentArticle): Article {
   }
 }
 
-const articleRows = computed(() => items.value.map(toArticleRow))
+// Rows wait for the author profile so cards never render with a blank byline.
+const articleRows = computed(() => (profile.value ? items.value.map(toArticleRow) : []))
+const initialLoading = computed(() => feed.initialLoading.value || (!profile.value && !error.value && Boolean(username.value)))
 
-async function fetchPage(cursor?: string) {
-  const res = await apiFetch<AdminUserRecentArticle[]>(
-    `/admin/users/by-username/${encodeURIComponent(username.value)}/recent/articles`,
-    { query: { limit: 25, cursor } },
-  )
-  return { data: res.data ?? [], next: res.pagination?.nextCursor ?? null }
-}
-
-async function loadInitial() {
-  if (!username.value) return
-  loading.value = true
-  error.value = null
+async function loadProfile() {
+  profileError.value = null
   try {
-    const [page, detail] = await Promise.all([
-      fetchPage(),
-      apiFetchData<AdminUserDetailData>(`/admin/users/by-username/${encodeURIComponent(username.value)}`),
-    ])
-    profile.value = detail
-    items.value = page.data
-    nextCursor.value = page.next
+    profile.value = await apiFetchData<AdminUserDetailData>(`/admin/users/by-username/${encodeURIComponent(username.value)}`)
   } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load articles.'
-  } finally {
-    loading.value = false
+    profileError.value = getApiErrorMessage(e) || 'Failed to load articles.'
   }
 }
 
-async function loadMore() {
-  if (!nextCursor.value || loadingMore.value) return
-  loadingMore.value = true
-  try {
-    const page = await fetchPage(nextCursor.value)
-    items.value = [...items.value, ...page.data]
-    nextCursor.value = page.next
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load more articles.'
-  } finally {
-    loadingMore.value = false
-  }
-}
-
-watch(() => username.value, () => void loadInitial(), { immediate: true })
-const initialLoading = useInitialLoading(loading, () => items.value.length > 0, error)
+watch(() => username.value, (name) => {
+  if (!name) return
+  void Promise.all([loadProfile(), feed.refresh()])
+}, { immediate: true })
 </script>

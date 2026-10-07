@@ -369,37 +369,23 @@ const highlightedPostRef = ref<HTMLElement | null>(null)
 
 // ─── Quotes section ───────────────────────────────────────────────────────────
 const quotesOpen = ref(false)
-const quotePosts = ref<FeedPost[]>([])
-const quotesNextCursor = ref<string | null>(null)
-const quotesLoading = ref(false)
-
-async function fetchQuotes(cur: string | null) {
-  quotesLoading.value = true
-  try {
-    const res = await apiFetchData<{ data: FeedPost[]; pagination: { nextCursor: string | null } }>(
-      `/posts/${encodeURIComponent(postId.value)}/quotes`,
-      { method: 'GET', query: cur ? { cursor: cur, limit: 20 } : { limit: 20 } },
-    )
-    if (cur) {
-      quotePosts.value = [...quotePosts.value, ...res.data]
-    } else {
-      quotePosts.value = res.data
-    }
-    quotesNextCursor.value = res.pagination.nextCursor
-  } catch {
-    // silently fail
-  } finally {
-    quotesLoading.value = false
-  }
-}
-
-async function loadMoreQuotes() {
-  if (!quotesNextCursor.value) return
-  await fetchQuotes(quotesNextCursor.value)
-}
+const quotesFeed = useCursorFeed<FeedPost>({
+  stateKey: 'post-quotes',
+  stateMode: 'local',
+  buildRequest: (cursor) => (postId.value
+    ? { path: `/posts/${encodeURIComponent(postId.value)}/quotes`, query: cursor ? { cursor, limit: 20 } : { limit: 20 } }
+    : null),
+  getItemId: (p) => p.id,
+})
+const { items: quotePosts, nextCursor: quotesNextCursor, loadMore: loadMoreQuotes } = quotesFeed
+const quotesLoading = computed(() => quotesFeed.loading.value || quotesFeed.loadingMore.value)
 
 watch(quotesOpen, (val) => {
-  if (val && !quotePosts.value.length) fetchQuotes(null)
+  if (val && !quotePosts.value.length) void quotesFeed.refresh()
+})
+watch(postId, () => {
+  quotesFeed.reset()
+  if (quotesOpen.value) void quotesFeed.refresh()
 })
 
 const { user, ensureLoaded, isAuthed, isVerified: viewerIsVerified, isPremium: viewerIsPremium } = useAuth()

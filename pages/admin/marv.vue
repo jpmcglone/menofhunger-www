@@ -178,14 +178,14 @@
               v-model="userQuery"
               class="w-full sm:w-72"
               placeholder="Search username or name…"
-              @keydown.enter.prevent="loadUsers(true)"
+              @keydown.enter.prevent="loadUsers()"
             />
             <Button
               label="Search"
               severity="secondary"
               :loading="loadingUsers"
               :disabled="loadingUsers"
-              @click="loadUsers(true)"
+              @click="loadUsers()"
             >
               <template #icon><Icon name="tabler:search" aria-hidden="true" /></template>
             </Button>
@@ -339,7 +339,7 @@ usePageSeo({
   noindex: true,
 })
 
-const { apiFetchData, apiFetch } = useApiClient()
+const { apiFetchData } = useApiClient()
 
 const modeKeys = ['fast', 'regular', 'smart'] as const
 type ModeKey = (typeof modeKeys)[number]
@@ -417,41 +417,25 @@ const totalCostStr = computed(() =>
 
 // ─── Users ─────────────────────────────────────────────────────────────────
 const userQuery = ref('')
-const loadingUsers = ref(false)
-const loadingUsersMore = ref(false)
-const userRows = ref<MarvAdminUserRowDto[]>([])
-const usersNextCursor = ref<string | null>(null)
-
-async function loadUsers(reset = true) {
-  if (reset) loadingUsers.value = true
-  try {
-    const params = new URLSearchParams()
+const usersFeed = useCursorFeed<MarvAdminUserRowDto>({
+  stateKey: 'admin-marv-users',
+  stateMode: 'local',
+  buildRequest: (cursor) => {
     const q = userQuery.value.trim()
-    if (q) params.set('q', q)
-    params.set('limit', '25')
-    const env = await apiFetch<MarvAdminUserRowDto[]>(`/admin/marvin/users?${params.toString()}`)
-    userRows.value = env.data
-    usersNextCursor.value = env.pagination?.nextCursor ?? null
-  } finally {
-    if (reset) loadingUsers.value = false
-  }
-}
+    return { path: '/admin/marvin/users', query: { q: q || undefined, cursor: cursor ?? undefined, limit: 25 } }
+  },
+  defaultErrorMessage: 'Failed to load Marv users.',
+})
+const {
+  items: userRows,
+  nextCursor: usersNextCursor,
+  loading: loadingUsers,
+  loadingMore: loadingUsersMore,
+  loadMore: loadMoreUsers,
+} = usersFeed
 
-async function loadMoreUsers() {
-  if (!usersNextCursor.value || loadingUsersMore.value) return
-  loadingUsersMore.value = true
-  try {
-    const params = new URLSearchParams()
-    const q = userQuery.value.trim()
-    if (q) params.set('q', q)
-    params.set('cursor', usersNextCursor.value)
-    params.set('limit', '25')
-    const env = await apiFetch<MarvAdminUserRowDto[]>(`/admin/marvin/users?${params.toString()}`)
-    userRows.value.push(...env.data)
-    usersNextCursor.value = env.pagination?.nextCursor ?? null
-  } finally {
-    loadingUsersMore.value = false
-  }
+function loadUsers() {
+  return usersFeed.refresh()
 }
 
 // ─── Edit user ─────────────────────────────────────────────────────────────
@@ -490,17 +474,17 @@ async function saveEdit() {
       `/admin/marvin/users/${encodeURIComponent(editing.value.userId)}`,
       { method: 'PATCH', body: patch },
     )
-    // Patch the row in-place so the table reflects the change immediately.
-    const target = userRows.value.find((r) => r.userId === editing.value!.userId)
-    if (target) {
+    const editedUserId = editing.value.userId
+    userRows.value = userRows.value.map((r) => {
+      if (r.userId !== editedUserId) return r
+      const next = { ...r }
       if (updated.credits) {
-        target.credits = updated.credits.credits
-        target.creditsLastRefilledAt = updated.credits.lastRefilledAt
+        next.credits = updated.credits.credits
+        next.creditsLastRefilledAt = updated.credits.lastRefilledAt
       }
-      if (typeof updated.disabledByAdmin === 'boolean') {
-        target.disabledByAdmin = updated.disabledByAdmin
-      }
-    }
+      if (typeof updated.disabledByAdmin === 'boolean') next.disabledByAdmin = updated.disabledByAdmin
+      return next
+    })
     editOpen.value = false
   } catch (err) {
     editError.value = err instanceof Error ? err.message : 'Failed to save.'
@@ -514,7 +498,8 @@ async function loadAll() {
   loading.value = true
   loadError.value = null
   try {
-    await Promise.all([loadSettings(), loadCost(), loadUsers(true)])
+    await Promise.all([loadSettings(), loadCost(), loadUsers()])
+    if (usersFeed.error.value) loadError.value = usersFeed.error.value
   } catch (err) {
     loadError.value = err instanceof Error ? err.message : 'Failed to load Marv admin data.'
   } finally {

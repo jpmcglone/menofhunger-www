@@ -19,42 +19,48 @@ import { getSafeUserErrorMessage } from '~/utils/api-error'
 const props = defineProps<{ group: CommunityGroupShell; channel: GroupChannel; startOnPins?: boolean }>()
 const visible = defineModel<boolean>({ required: true })
 const state = inject(groupChannelsKey, null)
-const { apiFetch, apiFetchData } = useApiClient()
-const nextCursor = ref<string | null>(null), loadingMore = ref(false)
-const query = ref(''), pins = ref(false), scope = ref<'channel' | 'group'>('channel'), loading = ref(false), error = ref<string | null>(null), results = ref<ChannelMessage[]>([])
+const query = ref(''), pins = ref(false), scope = ref<'channel' | 'group'>('channel')
+const searchFeed = useCursorFeed<ChannelMessage>({
+  stateKey: 'channel-search',
+  stateMode: 'local',
+  getItemId: (item) => item.id,
+  buildRequest: (before) => {
+    if (!visible.value) return null
+    // Pins are a single unpaged list.
+    if (pins.value) return before ? null : { path: `${channelPath(props.group.id, props.channel.id)}/pins` }
+    if (!query.value.trim()) return null
+    return {
+      path: `/groups/${encodeURIComponent(props.group.id)}/channels/search`,
+      query: { q: query.value, channelId: scope.value === 'channel' ? props.channel.id : undefined, before: before ?? undefined },
+    }
+  },
+  formatError: (cause) => getSafeUserErrorMessage(cause),
+})
+const { items: results, nextCursor, loadingMore, error } = searchFeed
+const debouncing = ref(false)
+const loading = computed(() => debouncing.value || searchFeed.loading.value)
 const scopes = computed(() => [{ id: 'channel' as const, label: channelTitle(props.channel) }, { id: 'group' as const, label: 'All channels' }])
 const channelName = (id: string) => { const found = state?.channels.value.find(item => item.id === id); return found ? channelTitle(found) : 'channel' }
-const searchQuery = (before?: string) => ({ q: query.value, channelId: scope.value === 'channel' ? props.channel.id : undefined, before })
-let request = 0
+let debounce: ReturnType<typeof setTimeout> | undefined
 watch(visible, open => { if (open) pins.value = !!props.startOnPins })
-watch([visible, query, pins, scope], async () => {
-  const generation = ++request
-  nextCursor.value = null; loadingMore.value = false
-  if (!visible.value) { results.value = []; return }
-  if (!pins.value && !query.value.trim()) { results.value = []; return }
-  loading.value = true
-  try {
-    await new Promise(resolve => setTimeout(resolve, 250))
-    if (generation !== request) return
-    const response = pins.value
-      ? { data: await apiFetchData<ChannelMessage[]>(`${channelPath(props.group.id, props.channel.id)}/pins`), pagination: { nextCursor: null } }
-      : await apiFetch<ChannelMessage[]>(`/groups/${encodeURIComponent(props.group.id)}/channels/search`, { query: searchQuery() })
-    if (generation === request) { results.value = response.data; nextCursor.value = typeof response.pagination?.nextCursor === 'string' ? response.pagination.nextCursor : null; error.value = null }
-  } catch (cause) { if (generation === request) error.value = getSafeUserErrorMessage(cause) }
-  finally { if (generation === request) loading.value = false }
+watch([visible, query, pins, scope], () => {
+  clearTimeout(debounce)
+  searchFeed.invalidate()
+  nextCursor.value = null
+  loadingMore.value = false
+  if (!visible.value || (!pins.value && !query.value.trim())) {
+    debouncing.value = false
+    results.value = []
+    return
+  }
+  debouncing.value = true
+  debounce = setTimeout(() => {
+    debouncing.value = false
+    void searchFeed.refresh()
+  }, 250)
 })
-async function more() {
-  if (!nextCursor.value || loadingMore.value) return
-  const generation = request
-  loadingMore.value = true
-  try {
-    const response = await apiFetch<ChannelMessage[]>(`/groups/${encodeURIComponent(props.group.id)}/channels/search`, { query: searchQuery(nextCursor.value) })
-    if (generation !== request) return
-    const ids = new Set(results.value.map(item => item.id))
-    results.value.push(...response.data.filter(item => !ids.has(item.id)))
-    nextCursor.value = typeof response.pagination?.nextCursor === 'string' ? response.pagination.nextCursor : null
-  } catch (cause) { if (generation === request) error.value = getSafeUserErrorMessage(cause) }
-  finally { if (generation === request) loadingMore.value = false }
+function more() {
+  void searchFeed.loadMore()
 }
-onBeforeUnmount(() => { request++ })
+onBeforeUnmount(() => { clearTimeout(debounce); searchFeed.invalidate() })
 </script>

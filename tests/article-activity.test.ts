@@ -37,7 +37,7 @@ describe('Article activity', () => {
   it('does not read on fetch and links to the exact comment', async () => {
     await flushPromises()
     expect(mocks.fetch).toHaveBeenCalledWith('/notifications', expect.objectContaining({ query: expect.objectContaining({ kind: 'articles', unreadOnly: true }) }))
-    expect(mocks.fetch.mock.calls.every(call => !call[1]?.method)).toBe(true)
+    expect(mocks.fetch.mock.calls.every(call => !call[1]?.method || call[1].method === 'GET')).toBe(true)
     expect(articleActivityHref(row('one'))).toBe('/a/thread#comment-reply')
     expect(unreadArticleActivity([row('one'), row('one'), row('old', 'now')])).toHaveLength(1)
   })

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useCursorFeed } from '~/composables/useCursorFeed'
+import { useCursorFeed, useCursorFeeds } from '~/composables/useCursorFeed'
 
 const mocks = vi.hoisted(() => ({ fetch: vi.fn() }))
 vi.mock('~/composables/useApiClient', () => ({ useApiClient: () => ({ apiFetch: mocks.fetch }) }))
@@ -51,5 +51,66 @@ describe('cursor feed lifecycle', () => {
     resolve({ data: ['obsolete'] })
     await Promise.all([first, second])
     expect(feed.items.value).toEqual(['latest'])
+  })
+
+  it('resolves empty without fetching when buildRequest returns null', async () => {
+    const feed = useCursorFeed<string>({ stateKey: 'skip', stateMode: 'local', buildRequest: () => null })
+    feed.items.value = ['stale']
+    await feed.refresh()
+    expect(mocks.fetch).not.toHaveBeenCalled()
+    expect(feed.items.value).toEqual([])
+    expect(feed.hasLoaded.value).toBe(true)
+    expect(feed.hasMore.value).toBe(false)
+  })
+
+  it('clears rows up front on reset refresh and on failure with clearOnError', async () => {
+    const feed = useCursorFeed<string>({ stateKey: 'clear', stateMode: 'local', clearOnError: true, buildRequest: () => ({ path: '/x' }) })
+    mocks.fetch.mockResolvedValueOnce({ data: ['a'], pagination: { nextCursor: 'c1' } })
+    await feed.refresh()
+    mocks.fetch.mockImplementationOnce(async () => {
+      expect(feed.items.value).toEqual([])
+      throw new Error('down')
+    })
+    await feed.refresh({ reset: true })
+    expect(feed.items.value).toEqual([])
+    expect(feed.nextCursor.value).toBeNull()
+    expect(feed.error.value).toBeTruthy()
+  })
+
+  it('drops a loadMore page that resolves after a newer refresh', async () => {
+    const feed = useCursorFeed<string>({ stateKey: 'gen', stateMode: 'local', buildRequest: (c) => ({ path: '/x', query: { cursor: c ?? undefined } }) })
+    mocks.fetch.mockResolvedValueOnce({ data: ['a'], pagination: { nextCursor: 'c1' } })
+    await feed.refresh()
+    let resolveMore!: (v: { data: string[] }) => void
+    mocks.fetch.mockImplementationOnce(() => new Promise(r => { resolveMore = r }))
+    const more = feed.loadMore()
+    mocks.fetch.mockResolvedValueOnce({ data: ['fresh'] })
+    await feed.refresh()
+    resolveMore({ data: ['stale-page'] })
+    await more
+    expect(feed.items.value).toEqual(['fresh'])
+    expect(feed.loadingMore.value).toBe(false)
+  })
+})
+
+describe('named cursor streams', () => {
+  it('pages each stream independently', async () => {
+    const feeds = useCursorFeeds<{ followers: string; following: string }>({
+      stateKey: 'follow',
+      stateMode: 'local',
+      streams: {
+        followers: { buildRequest: (c) => ({ path: '/followers', query: { cursor: c ?? undefined } }) },
+        following: { buildRequest: (c) => ({ path: '/following', query: { cursor: c ?? undefined } }) },
+      },
+    })
+    mocks.fetch.mockImplementation(async (path: string) => ({ data: [path], pagination: { nextCursor: path === '/followers' ? 'n' : null } }))
+    await Promise.all([feeds.followers.refresh(), feeds.following.refresh()])
+    expect(feeds.followers.items.value).toEqual(['/followers'])
+    expect(feeds.following.items.value).toEqual(['/following'])
+    expect(feeds.followers.hasMore.value).toBe(true)
+    expect(feeds.following.hasMore.value).toBe(false)
+    await feeds.followers.loadMore()
+    expect(feeds.followers.items.value).toEqual(['/followers', '/followers'])
+    expect(mocks.fetch).toHaveBeenLastCalledWith('/followers', { method: 'GET', query: { cursor: 'n' } })
   })
 })

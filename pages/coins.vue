@@ -102,69 +102,19 @@ function sleep(ms: number) {
 }
 
 // --- Transaction history ---
-const transfers = ref<CoinTransferItem[]>([])
-const nextCursor = ref<string | null>(null)
-const isLoadingHistory = ref(false)
-const historyError = ref<string | null>(null)
-const historyLoaded = ref(false)
-
-async function loadTransfers(reset = true) {
-  if (isLoadingHistory.value) return
-  isLoadingHistory.value = true
-  historyError.value = null
-  try {
-    const cursor = reset ? null : nextCursor.value
-    const res = await apiFetchData<CoinTransferItem[]>('/coins/transfers', {
-      method: 'GET',
-      query: cursor ? { cursor, limit: 20 } : { limit: 20 },
-    })
-    if (reset) {
-      transfers.value = Array.isArray(res) ? res : []
-    } else {
-      transfers.value = [...transfers.value, ...(Array.isArray(res) ? res : [])]
-    }
-    // pagination comes back via the envelope — need to use apiFetch directly
-    historyLoaded.value = true
-  } catch {
-    historyError.value = 'Could not load transfer history.'
-  } finally {
-    isLoadingHistory.value = false
-  }
-}
-
-async function loadTransfersWithPagination(reset = true) {
-  if (isLoadingHistory.value) return
-  isLoadingHistory.value = true
-  historyError.value = null
-  try {
-    const cursor = reset ? null : nextCursor.value
-    const { apiFetch } = useApiClient()
-    const res = await apiFetch<CoinTransferItem[]>('/coins/transfers', {
-      method: 'GET',
-      query: cursor ? { cursor, limit: 20 } : { limit: 20 },
-    })
-    const items = Array.isArray(res.data) ? res.data : []
-    if (reset) {
-      transfers.value = items
-    } else {
-      transfers.value = [...transfers.value, ...items]
-    }
-    nextCursor.value = (res as any).pagination?.nextCursor ?? null
-    historyLoaded.value = true
-  } catch {
-    historyError.value = 'Could not load transfer history.'
-  } finally {
-    isLoadingHistory.value = false
-  }
-}
-
-function loadMore() {
-  loadTransfersWithPagination(false)
-}
+const {
+  transfers,
+  nextCursor,
+  loading: isLoadingHistory,
+  loaded: historyLoaded,
+  error: historyError,
+  refresh: loadTransfers,
+  loadMore,
+} = useCoinTransfers()
 
 onMounted(() => {
   if (!canUseCoins.value) return
-  loadTransfersWithPagination(true)
+  void loadTransfers()
 })
 
 // --- Formatting ---

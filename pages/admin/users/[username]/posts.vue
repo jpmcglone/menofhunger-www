@@ -44,7 +44,6 @@
 <script setup lang="ts">
 import type { AdminUserRecentPost } from '~/types/api'
 import { formatDateTime } from '~/utils/time-format'
-import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
   layout: 'app',
@@ -53,51 +52,16 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { apiFetch } = useApiClient()
 const username = computed(() => String(route.params.username ?? '').trim())
-const items = ref<AdminUserRecentPost[]>([])
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const loadingMore = ref(false)
-const error = ref<string | null>(null)
+const { items, nextCursor, loadingMore, error, initialLoading, refresh, loadMore } = useCursorFeed<AdminUserRecentPost>({
+  stateKey: 'admin-user-posts',
+  stateMode: 'local',
+  buildRequest: (cursor) => username.value
+    ? { path: `/admin/users/by-username/${encodeURIComponent(username.value)}/recent/posts`, query: { limit: 25, cursor: cursor ?? undefined } }
+    : null,
+  defaultErrorMessage: 'Failed to load posts.',
+  loadMoreErrorMessage: 'Failed to load more posts.',
+})
 
-async function fetchPage(cursor?: string) {
-  const res = await apiFetch<AdminUserRecentPost[]>(
-    `/admin/users/by-username/${encodeURIComponent(username.value)}/recent/posts`,
-    { query: { limit: 25, cursor } },
-  )
-  return { data: res.data ?? [], next: res.pagination?.nextCursor ?? null }
-}
-
-async function loadInitial() {
-  if (!username.value) return
-  loading.value = true
-  error.value = null
-  try {
-    const page = await fetchPage()
-    items.value = page.data
-    nextCursor.value = page.next
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load posts.'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadMore() {
-  if (!nextCursor.value || loadingMore.value) return
-  loadingMore.value = true
-  try {
-    const page = await fetchPage(nextCursor.value)
-    items.value = [...items.value, ...page.data]
-    nextCursor.value = page.next
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load more posts.'
-  } finally {
-    loadingMore.value = false
-  }
-}
-
-watch(() => username.value, () => void loadInitial(), { immediate: true })
-const initialLoading = useInitialLoading(loading, () => items.value.length > 0, error)
+watch(() => username.value, () => void refresh(), { immediate: true })
 </script>

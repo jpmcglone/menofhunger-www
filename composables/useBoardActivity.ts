@@ -1,8 +1,9 @@
 import { useApiClient } from '~/composables/useApiClient'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 import { useAuth } from '~/composables/useAuth'
 import { usePresence } from '~/composables/usePresence'
 import { useDocumentVisibility } from '@vueuse/core'
-import type { GetNotificationsResponse, NotificationFeedItem } from '~/types/api'
+import type { NotificationFeedItem } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { boardCommentHref, boardThreadHref } from '~/composables/useBoardApi'
 
@@ -35,41 +36,38 @@ export function useBoardActivity() {
   const { apiFetch } = useApiClient()
   const { user } = useAuth()
   const presence = usePresence()
-  const items = ref<NotificationFeedItem[]>([])
-  const nextCursor = ref<string | null>(null)
-  const loading = ref(false)
+  const feed = useCursorFeed<NotificationFeedItem>({
+    stateKey: 'board-activity',
+    stateMode: 'local',
+    buildRequest: (cursor) => ({
+      path: '/notifications',
+      query: { kind: 'board', boardCommentsOnly: true, unreadOnly: true, limit: 30, cursor: cursor ?? undefined },
+      mohDedupe: false,
+    }),
+    mergeOnRefresh: (incoming) => unreadBoardActivity(incoming),
+    mergeOnLoadMore: (incoming, existing) => unreadBoardActivity([...existing, ...incoming]).slice(existing.length),
+    defaultErrorMessage: 'Couldn’t load Board activity.',
+    loadMoreErrorMessage: 'Couldn’t load Board activity.',
+  })
+  const { items, nextCursor, error } = feed
+  const loading = computed(() => feed.loading.value || feed.loadingMore.value)
   const markingRead = ref(false)
-  const error = ref<string | null>(null)
-  let generation = 0
+  // Bumped whenever server state may have moved, so a badge count read before the bump is not applied.
+  let revision = 0
   let active = false
   let timer: ReturnType<typeof setTimeout> | undefined
 
   async function load(reset = true) {
-    const account = user.value?.id
-    if (!account || !active || (!reset && (loading.value || !nextCursor.value))) return
-    const ticket = ++generation
-    loading.value = true
-    error.value = null
-    const current = () => active && ticket === generation && account === user.value?.id
-    try {
-      const response = await apiFetch<NotificationFeedItem[]>('/notifications', {
-        query: { kind: 'board', boardCommentsOnly: true, unreadOnly: true, limit: 30, cursor: reset ? undefined : nextCursor.value },
-        mohDedupe: false,
-      }) as unknown as GetNotificationsResponse
-      if (!current()) return
-      items.value = unreadBoardActivity([...(reset ? [] : items.value), ...response.data])
-      nextCursor.value = response.pagination.nextCursor
-    } catch (cause) {
-      if (current()) error.value = getApiErrorMessage(cause) || 'Couldn’t load Board activity.'
-    } finally {
-      if (current()) loading.value = false
-    }
+    if (!user.value?.id || !active) return
+    if (reset) await feed.refresh()
+    else await feed.loadMore()
   }
 
   function scheduleRefresh() {
     if (!active) return
     // Invalidate pending snapshots immediately, then coalesce event bursts.
-    generation += 1
+    revision += 1
+    feed.invalidate()
     clearTimeout(timer)
     timer = setTimeout(() => { void load() }, 120)
   }
@@ -84,9 +82,9 @@ export function useBoardActivity() {
       if (!active || account !== user.value?.id) return
       await load()
       // Never zero a badge optimistically: another update may arrive during the mutation.
-      const countRevision = generation
+      const countRevision = revision
       const counts = await apiFetch<{ boardUnreadCount?: number; boardMentionCount?: number; articlesUnreadCount?: number }>('/notifications/unread-count', { mohDedupe: false })
-      if (active && account === user.value?.id && countRevision === generation) presence.setNotificationNavUnread(counts.data)
+      if (active && account === user.value?.id && countRevision === revision) presence.setNotificationNavUnread(counts.data)
     } catch (cause) {
       if (active && account === user.value?.id) error.value = getApiErrorMessage(cause) || 'Couldn’t mark Board activity read.'
     } finally {
@@ -103,8 +101,8 @@ export function useBoardActivity() {
   }
   function deactivate() {
     active = false
-    generation += 1
-    loading.value = false
+    revision += 1
+    feed.invalidate()
     clearTimeout(timer)
     presence.removeNotificationsCallback(callback)
   }
@@ -113,12 +111,9 @@ export function useBoardActivity() {
   onDeactivated(deactivate)
   onBeforeUnmount(deactivate)
   watch(() => user.value?.id, () => {
-    generation += 1
-    items.value = []
-    nextCursor.value = null
-    error.value = null
+    revision += 1
+    feed.reset()
     markingRead.value = false
-    loading.value = false
     if (active) void load()
   })
   watch(() => presence.notificationNavUnread.value.board, scheduleRefresh)

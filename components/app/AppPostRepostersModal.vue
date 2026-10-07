@@ -51,50 +51,13 @@ const props = defineProps<{
 
 defineEmits<{ close: [] }>()
 
-const { apiFetchData } = useApiClient()
-
-const authors = ref<PostAuthor[]>([])
-const cursor = ref<string | null>(null)
-const hasMore = ref(false)
-const loading = ref(false)
-const loadingMore = ref(false)
-
-async function fetchPage(cur: string | null) {
-  const res = await apiFetchData<{ data: PostAuthor[]; pagination: { nextCursor: string | null } }>(
-    `/posts/${encodeURIComponent(props.postId)}/reposts`,
-    { method: 'GET', query: cur ? { cursor: cur, limit: 30 } : { limit: 30 } },
-  )
-  return res
-}
-
-async function load() {
-  loading.value = true
-  try {
-    const res = await fetchPage(null)
-    authors.value = res.data
-    cursor.value = res.pagination.nextCursor
-    hasMore.value = Boolean(res.pagination.nextCursor)
-  } catch {
-    // silently fail
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadMore() {
-  if (!cursor.value || loadingMore.value) return
-  loadingMore.value = true
-  try {
-    const res = await fetchPage(cursor.value)
-    authors.value = [...authors.value, ...res.data]
-    cursor.value = res.pagination.nextCursor
-    hasMore.value = Boolean(res.pagination.nextCursor)
-  } catch {
-    // silently fail
-  } finally {
-    loadingMore.value = false
-  }
-}
+const repostersFeed = useCursorFeed<PostAuthor>({
+  stateKey: 'post-reposters',
+  stateMode: 'local',
+  buildRequest: (cur) => ({ path: `/posts/${encodeURIComponent(props.postId)}/reposts`, query: cur ? { cursor: cur, limit: 30 } : { limit: 30 } }),
+  getItemId: (a) => a.id,
+})
+const { items: authors, loading, loadingMore, hasMore, loadMore } = repostersFeed
 
 // Intersection observer for infinite scroll
 const loadMoreTrigger = ref<HTMLElement | null>(null)
@@ -112,12 +75,10 @@ function setupObserver() {
 
 watch(() => props.open, async (val) => {
   if (!val) {
-    authors.value = []
-    cursor.value = null
-    hasMore.value = false
+    repostersFeed.reset()
     return
   }
-  await load()
+  await repostersFeed.refresh()
   await nextTick()
   setupObserver()
 })

@@ -12,8 +12,8 @@
 
     <div class="px-4 space-y-3">
       <div class="flex items-center gap-2">
-        <InputText v-model="mediaQuery" class="w-full" placeholder="Search by file key" aria-label="Search media" @keydown.enter.prevent="loadMedia(true)" />
-        <Button label="Search" severity="secondary" :loading="mediaLoading" :disabled="mediaLoading" @click="loadMedia(true)">
+        <InputText v-model="mediaQuery" class="w-full" placeholder="Search by file key" aria-label="Search media" @keydown.enter.prevent="loadMedia()" />
+        <Button label="Search" severity="secondary" :loading="mediaLoading" :disabled="mediaLoading" @click="loadMedia()">
           <template #icon><Icon name="tabler:search" aria-hidden="true" /></template>
         </Button>
         <Button
@@ -185,10 +185,10 @@ usePageSeo({
 
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateOnly, formatRelativeTime } from '~/utils/time-format'
-import type { AdminImageReviewListItem, AdminImageReviewListData } from '~/types/api'
+import type { AdminImageReviewListItem } from '~/types/api'
 import { describeMediaItem, MEDIA_REVIEW_TONE_CLASS } from '~/utils/media-review'
 
-const { apiFetch, apiFetchData } = useApiClient()
+const { apiFetchData } = useApiClient()
 
 const kindOptions = [
   { label: 'All', value: 'all' },
@@ -200,12 +200,34 @@ const mediaKindFilter = ref<'all' | 'image' | 'video'>('all')
 const mediaQuery = ref('')
 const mediaShowDeleted = ref(false)
 const mediaOnlyOrphans = ref(false)
-const mediaItems = ref<AdminImageReviewListItem[]>([])
-const mediaNextCursor = ref<string | null>(null)
-const mediaLoading = ref(false)
-const mediaLoadingMore = ref(false)
 const mediaSyncing = ref(false)
-const mediaError = ref<string | null>(null)
+let syncOnNextRefresh = false
+const mediaFeed = useCursorFeed<AdminImageReviewListItem>({
+  stateKey: 'admin-media-review',
+  stateMode: 'local',
+  buildRequest: (cursor) => ({
+    path: '/admin/media-review',
+    query: {
+      limit: 60,
+      cursor: cursor ?? undefined,
+      q: mediaQuery.value.trim() || undefined,
+      showDeleted: mediaShowDeleted.value ? '1' : undefined,
+      onlyOrphans: mediaOnlyOrphans.value ? '1' : undefined,
+      kind: mediaKindFilter.value,
+      sync: !cursor && syncOnNextRefresh ? '1' : undefined,
+    },
+  }),
+  defaultErrorMessage: 'Failed to load media.',
+  loadMoreErrorMessage: 'Failed to load more media.',
+})
+const {
+  items: mediaItems,
+  nextCursor: mediaNextCursor,
+  loading: mediaLoading,
+  loadingMore: mediaLoadingMore,
+  error: mediaError,
+  loadMore: loadMoreMedia,
+} = mediaFeed
 
 const selectedIds = ref(new Set<string>())
 const itemById = computed(() => new Map(mediaItems.value.map((it) => [it.id, it])))
@@ -282,91 +304,36 @@ async function executeBulkDelete() {
 // Filters
 function toggleOrphans() {
   mediaOnlyOrphans.value = !mediaOnlyOrphans.value
-  void loadMedia(true)
+  void loadMedia()
 }
 
 function toggleShowDeleted() {
   mediaShowDeleted.value = !mediaShowDeleted.value
-  void loadMedia(true)
+  void loadMedia()
 }
 
 const didInitialLoad = ref(false)
 onMounted(() => {
   if (didInitialLoad.value) return
   didInitialLoad.value = true
-  void loadMedia(true)
+  void loadMedia()
 })
 
-watch(mediaKindFilter, () => void loadMedia(true))
+watch(mediaKindFilter, () => void loadMedia())
 
-function queryParams(reset: boolean) {
-  return {
-    limit: 60,
-    cursor: reset ? undefined : mediaNextCursor.value ?? undefined,
-    q: mediaQuery.value.trim() || undefined,
-    showDeleted: mediaShowDeleted.value ? '1' : undefined,
-    onlyOrphans: mediaOnlyOrphans.value ? '1' : undefined,
-    kind: mediaKindFilter.value,
-  }
-}
-
-async function loadMedia(reset: boolean) {
-  if (mediaLoading.value) return
-  mediaError.value = null
-  mediaLoading.value = true
-  try {
-    if (reset) {
-      mediaItems.value = []
-      mediaNextCursor.value = null
-      selectedIds.value = new Set()
-    }
-    const res = await apiFetch<AdminImageReviewListData>('/admin/media-review', {
-      method: 'GET',
-      query: queryParams(reset) as Record<string, string | number | undefined>,
-    })
-    const list = res.data ?? []
-    mediaItems.value = reset ? list : [...mediaItems.value, ...list]
-    mediaNextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    mediaError.value = getApiErrorMessage(e) || 'Failed to load media.'
-  } finally {
-    mediaLoading.value = false
-  }
-}
-
-async function loadMoreMedia() {
-  if (!mediaNextCursor.value) return
-  if (mediaLoadingMore.value || mediaLoading.value) return
-  mediaLoadingMore.value = true
-  try {
-    const res = await apiFetch<AdminImageReviewListData>('/admin/media-review', {
-      method: 'GET',
-      query: queryParams(false) as Record<string, string | number | undefined>,
-    })
-    const list = res.data ?? []
-    mediaItems.value = [...mediaItems.value, ...list]
-    mediaNextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    mediaError.value = getApiErrorMessage(e) || 'Failed to load more media.'
-  } finally {
-    mediaLoadingMore.value = false
-  }
+function loadMedia() {
+  selectedIds.value = new Set()
+  return mediaFeed.refresh({ reset: true })
 }
 
 async function syncMedia() {
   if (mediaSyncing.value) return
   mediaSyncing.value = true
-  mediaError.value = null
+  syncOnNextRefresh = true
   try {
-    const res = await apiFetch<AdminImageReviewListData>('/admin/media-review', {
-      method: 'GET',
-      query: { ...queryParams(true), sync: '1' } as Record<string, string | number | undefined>,
-    })
-    mediaItems.value = res.data ?? []
-    mediaNextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    mediaError.value = getApiErrorMessage(e) || 'Sync failed.'
+    await mediaFeed.refresh()
   } finally {
+    syncOnNextRefresh = false
     mediaSyncing.value = false
   }
 }

@@ -55,7 +55,7 @@ v-for="tab in searchTabs" :key="tab.key"
           :category="searchTab" :query="searchQueryTrimmed" :loading="loading" :error="searchError"
           :searched="searchedOnce" :has-more="hasMore" :loading-more="loadingMore"
           :gated-count="gatedResultCount" :joining-id="joinExploreGroupId" :topics="tagSuggestions"
-          @category="selectSearchTab" @retry="fetchPage({ append: users.length + posts.length + articles.length + searchGroups.length > 0 })" @more="loadMore"
+          @category="selectSearchTab" @retry="exploreSearch.fetchPage({ append: users.length + posts.length + articles.length + searchGroups.length > 0 })" @more="loadMore"
           @clear="clearSearch" @join="joinExploreGroup" @deleted="onSearchPostDeleted" @edited="onSearchPostEdited" />
         <div v-if="isCheckinQuery && canShowSearchCheckinHint" class="px-4 py-3">
           <AppCheckinPromptContext :prompt="displayCheckinPromptText" compact />
@@ -642,18 +642,10 @@ v-else-if="searchActive && !activeTopic && !activeCategory"
 import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
 import AppGroupPreviewCard from '~/components/app/groups/AppGroupPreviewCard.vue'
 import type {
-  Article,
   CashtagResult,
   CommunityGroupShell,
   FeedPost,
   FollowListUser,
-  SearchUserResult,
-  SearchMixedResult,
-  SearchMixedPagination,
-  TaxonomyMatch,
-  GetPostsData,
-  GetCategoryPostsData,
-  GetCategoryTopicsData,
   Topic,
   TopicCategory,
   PostVisibility,
@@ -668,6 +660,9 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
 import { pickCheckinPrompt } from '~/utils/checkin-prompts'
 import type { PostsCallback } from '~/composables/usePresence'
+import { useExploreSearch } from '~/composables/explore/useExploreSearch'
+import { useTopicPostsFeed } from '~/composables/explore/useTopicPostsFeed'
+import { useCategoryPostsFeed } from '~/composables/explore/useCategoryPostsFeed'
 
 definePageMeta({
   layout: 'app',
@@ -750,7 +745,7 @@ onBeforeUnmount(() => {
   unsubscribeOnlineFeed()
   removePostsCallback(explorePostsCb)
   if (exploreSubscribedPostIds.value.length) unsubscribePosts(exploreSubscribedPostIds.value)
-  searchFetchSeq++
+  exploreSearch.cancel()
   if (debounceTimer != null) {
     clearTimeout(debounceTimer)
     debounceTimer = null
@@ -834,7 +829,7 @@ async function joinExploreGroup(g: CommunityGroupShell) {
     invalidateMyGroups()
     toast.push(communityGroupJoinToast(status, g.name))
     void refreshDiscover()
-    if (isSearching.value) void fetchPage({ append: false })
+    if (isSearching.value) void exploreSearch.search()
   } catch (e: unknown) {
     toast.pushError(e, 'Could not join group.')
   } finally {
@@ -1106,20 +1101,7 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let isUpdatingRouteFromInput = false
 
 function clearSearchResults() {
-  searchFetchSeq++
-  loading.value = false
-  loadingMore.value = false
-  searchGroups.value = []
-  users.value = []
-  articles.value = []
-  posts.value = []
-  tagSuggestions.value = []
-  gatedResultCount.value = 0
-  nextUserCursor.value = null
-  nextArticleCursor.value = null
-  nextPostCursor.value = null
-  searchError.value = null
-  searchedOnce.value = false
+  exploreSearch.clear()
 }
 
 function setRouteQueryQ(nextQ: string) {
@@ -1199,54 +1181,30 @@ function scheduleDebouncedSearch() {
   }
 }
 
-const users = ref<SearchUserResult[]>([])
-const articles = ref<Article[]>([])
-const posts = ref<FeedPost[]>([])
-const searchGroups = ref<CommunityGroupShell[]>([])
-const nextUserCursor = ref<string | null>(null)
-const nextArticleCursor = ref<string | null>(null)
-const nextPostCursor = ref<string | null>(null)
-const loading = ref(false)
-const loadingMore = ref(false)
-const searchError = ref<string | null>(null)
-const searchedOnce = ref(false)
-const activeSearchSource = ref<'explore' | 'external'>('external')
-const tagSuggestions = ref<TaxonomyMatch[]>([])
-const gatedResultCount = ref(0)
-let searchFetchSeq = 0
-
-
-const hasMore = computed(
-  () => searchTab.value === 'groups' ? false
-    : searchTab.value === 'people' ? nextUserCursor.value !== null
-    : searchTab.value === 'posts' ? nextPostCursor.value !== null
-    : searchTab.value === 'articles' ? nextArticleCursor.value !== null
-    : nextUserCursor.value !== null || nextArticleCursor.value !== null || nextPostCursor.value !== null,
-)
-
-function dedupeById<T extends { id?: string | null }>(list: T[]): T[] {
-  const out: T[] = []
-  const seen = new Set<string>()
-  for (const item of list) {
-    const id = String(item?.id ?? '').trim()
-    if (!id || seen.has(id)) continue
-    seen.add(id)
-    out.push(item)
-  }
-  return out
-}
+const exploreSearch = useExploreSearch({ query: searchQueryTrimmed, tab: searchTab })
+const {
+  users,
+  articles,
+  posts,
+  groups: searchGroups,
+  loading,
+  loadingMore,
+  error: searchError,
+  searchedOnce,
+  source: activeSearchSource,
+  tagSuggestions,
+  gatedResultCount,
+  hasMore,
+  loadMore,
+} = exploreSearch
 
 function onSearchPostDeleted(id: string) {
-  const pid = String(id ?? '').trim()
-  if (!pid) return
   // Immediately remove from search results so the list feels responsive.
-  posts.value = posts.value.filter((p) => p.id !== pid)
+  exploreSearch.removePost(id)
 }
 
 function onSearchPostEdited(payload: { id: string; post: import('~/types/api').FeedPost }) {
-  const pid = String(payload?.id ?? '').trim()
-  if (!pid) return
-  posts.value = posts.value.map((p) => (p.id === pid ? payload.post : p))
+  exploreSearch.replacePost(payload?.id, payload.post)
 }
 
 function chainIdsForPost(post: FeedPost): string[] {
@@ -1306,89 +1264,6 @@ function syncExplorePostSubscriptions() {
   exploreSubscribedPostIds.value = next
 }
 
-async function fetchPage(params: { append: boolean }) {
-  const seq = ++searchFetchSeq
-  const q = searchQueryTrimmed.value
-  if (q.length < 2) return
-
-  const isAppend = params.append
-  const cursors = { users: nextUserCursor.value, articles: nextArticleCursor.value, posts: nextPostCursor.value }
-  if (isAppend) {
-    loadingMore.value = true
-  } else {
-    users.value = []; articles.value = []; posts.value = []; searchGroups.value = []
-    loading.value = true
-  }
-  searchError.value = null
-  if (!isAppend) searchedOnce.value = true
-
-  try {
-    const query: Record<string, string> = {
-      type: 'all',
-      source: activeSearchSource.value,
-      q,
-      limit: '30',
-    }
-    if (isAppend && nextUserCursor.value) query.userCursor = nextUserCursor.value
-    if (isAppend && nextArticleCursor.value) query.articleCursor = nextArticleCursor.value
-    if (isAppend && nextPostCursor.value) query.postCursor = nextPostCursor.value
-
-    const res = await apiFetch<SearchMixedResult>('/search', {
-      method: 'GET',
-      query,
-    })
-    if (seq !== searchFetchSeq || q !== searchQueryTrimmed.value) return
-
-    const data = res.data as SearchMixedResult
-    const pagination = res.pagination as SearchMixedPagination | undefined
-    const newUsers = data.users ?? []
-    const newArticles = data.articles ?? []
-    const newPosts = data.posts ?? []
-    const newGroups = data.groups ?? []
-
-    if (isAppend) {
-      if (cursors.users) users.value = dedupeById([...users.value, ...newUsers])
-      if (cursors.articles) articles.value = dedupeById([...articles.value, ...newArticles])
-      if (cursors.posts) posts.value = dedupeById([...posts.value, ...newPosts])
-      searchGroups.value = dedupeById([...searchGroups.value, ...newGroups])
-    } else {
-      users.value = dedupeById(newUsers)
-      articles.value = dedupeById(newArticles)
-      posts.value = dedupeById(newPosts)
-      searchGroups.value = dedupeById(newGroups)
-      tagSuggestions.value = (data.taxonomyMatches ?? []).slice(0, 5)
-      gatedResultCount.value = data.gatedResultCount ?? 0
-    }
-
-    if (!isAppend || cursors.users) nextUserCursor.value = pagination?.nextUserCursor ?? null
-    if (!isAppend || cursors.articles) nextArticleCursor.value = pagination?.nextArticleCursor ?? null
-    if (!isAppend || cursors.posts) nextPostCursor.value = pagination?.nextPostCursor ?? null
-  } catch (e: unknown) {
-    if (seq !== searchFetchSeq || q !== searchQueryTrimmed.value) return
-    searchError.value = getApiErrorMessage(e) || 'Search failed.'
-    if (!isAppend) {
-      users.value = []
-      articles.value = []
-      posts.value = []
-      searchGroups.value = []
-      tagSuggestions.value = []
-      nextUserCursor.value = null
-      nextArticleCursor.value = null
-      nextPostCursor.value = null
-    }
-  } finally {
-    if (seq === searchFetchSeq) {
-      loading.value = false
-      loadingMore.value = false
-    }
-  }
-}
-
-async function loadMore() {
-  if (loadingMore.value || (!nextUserCursor.value && !nextArticleCursor.value && !nextPostCursor.value)) return
-  await fetchPage({ append: true })
-}
-
 watch(
   () => route.query.q,
   (q) => {
@@ -1401,7 +1276,7 @@ watch(
 
     if (trimmed.length >= 2) {
       activeSearchSource.value = isUpdatingRouteFromInput ? 'explore' : 'external'
-      void fetchPage({ append: false })
+      void exploreSearch.search()
     } else {
       clearSearchResults()
     }
@@ -1419,13 +1294,16 @@ watch(searchQuery, () => {
 })
 
 // Topic feed (uses API endpoint specifically for topics)
-const topicPosts = ref<FeedPost[]>([])
-const topicNextCursor = ref<string | null>(null)
-const topicLoading = ref(false)
-const topicLoadingMore = ref(false)
-const topicError = ref<string | null>(null)
-
-const topicHasMore = computed(() => topicNextCursor.value !== null)
+const topicFeed = useTopicPostsFeed(activeTopic)
+const {
+  posts: topicPosts,
+  loading: topicLoading,
+  loadingMore: topicLoadingMore,
+  error: topicError,
+  hasMore: topicHasMore,
+  initialLoading: topicLoadingInitial,
+  loadMore: loadMoreTopic,
+} = topicFeed
 
 function clearTopic() {
   const nextQuery: Record<string, any> = { ...route.query }
@@ -1435,15 +1313,17 @@ function clearTopic() {
 }
 
 // Category feed (uses API endpoint specifically for categories)
-const categoryTopics = ref<Topic[]>([])
-const categoryTopicsLoading = ref(false)
-const categoryPosts = ref<FeedPost[]>([])
-const categoryNextCursor = ref<string | null>(null)
-const categoryLoading = ref(false)
-const categoryLoadingMore = ref(false)
-const categoryError = ref<string | null>(null)
-
-const categoryHasMore = computed(() => categoryNextCursor.value !== null)
+const categoryFeed = useCategoryPostsFeed(activeCategory)
+const {
+  posts: categoryPosts,
+  topics: categoryTopics,
+  loading: categoryLoading,
+  loadingMore: categoryLoadingMore,
+  error: categoryError,
+  hasMore: categoryHasMore,
+  initialLoading: categoryLoadingInitial,
+  loadMore: loadMoreCategory,
+} = categoryFeed
 
 watch(
   [posts, topicPosts, categoryPosts, featuredPosts, trendingPosts],
@@ -1487,108 +1367,18 @@ function selectTopicInCategory(topic: string) {
   Promise.resolve(router.push({ path: route.path, query: nextQuery })).catch(() => {})
 }
 
-async function fetchCategoryTopics() {
-  const c = activeCategory.value
-  if (!c) return
-  if (categoryTopicsLoading.value) return
-  categoryTopicsLoading.value = true
-  try {
-    const res = await apiFetch<GetCategoryTopicsData>(`/topics/categories/${encodeURIComponent(c)}/topics`, { method: 'GET' })
-    categoryTopics.value = (res.data ?? []) as Topic[]
-  } catch {
-    categoryTopics.value = []
-  } finally {
-    categoryTopicsLoading.value = false
-  }
-}
-
-async function fetchCategoryPage(params: { append: boolean }) {
-  const c = activeCategory.value
-  if (!c) return
-  const isAppend = params.append
-  if (isAppend) categoryLoadingMore.value = true
-  else categoryLoading.value = true
-  categoryError.value = null
-  try {
-    const query: Record<string, string> = { limit: '30' }
-    if (isAppend && categoryNextCursor.value) query.cursor = categoryNextCursor.value
-    const res = await apiFetch<GetCategoryPostsData>(`/topics/categories/${encodeURIComponent(c)}/posts`, { method: 'GET', query })
-    const data = (res.data ?? []) as FeedPost[]
-    const next = (res.pagination as { nextCursor?: string | null } | undefined)?.nextCursor ?? null
-    if (isAppend) categoryPosts.value = [...categoryPosts.value, ...data]
-    else categoryPosts.value = data
-    categoryNextCursor.value = next
-  } catch (e: unknown) {
-    categoryError.value = getApiErrorMessage(e) || 'Failed to load category posts.'
-    if (!isAppend) {
-      categoryPosts.value = []
-      categoryNextCursor.value = null
-    }
-  } finally {
-    categoryLoading.value = false
-    categoryLoadingMore.value = false
-  }
-}
-
-async function loadMoreCategory() {
-  if (categoryLoadingMore.value || !categoryNextCursor.value) return
-  await fetchCategoryPage({ append: true })
-}
-
-async function fetchTopicPage(params: { append: boolean }) {
-  const topic = activeTopic.value
-  if (!topic) return
-  const isAppend = params.append
-  if (isAppend) topicLoadingMore.value = true
-  else topicLoading.value = true
-  topicError.value = null
-
-  try {
-    const query: Record<string, string> = { limit: '30' }
-    if (isAppend && topicNextCursor.value) query.cursor = topicNextCursor.value
-
-    const res = await apiFetch<GetPostsData>(`/topics/${encodeURIComponent(topic)}/posts`, {
-      method: 'GET',
-      query,
-    })
-
-    const data = (res.data ?? []) as FeedPost[]
-    const next = (res.pagination as { nextCursor?: string | null } | undefined)?.nextCursor ?? null
-
-    if (isAppend) topicPosts.value = [...topicPosts.value, ...data]
-    else topicPosts.value = data
-    topicNextCursor.value = next
-  } catch (e: unknown) {
-    topicError.value = getApiErrorMessage(e) || 'Failed to load topic posts.'
-    if (!isAppend) {
-      topicPosts.value = []
-      topicNextCursor.value = null
-    }
-  } finally {
-    topicLoading.value = false
-    topicLoadingMore.value = false
-  }
-}
-
-async function loadMoreTopic() {
-  if (topicLoadingMore.value || !topicNextCursor.value) return
-  await fetchTopicPage({ append: true })
-}
-
 watch(
   () => route.query.topic,
   (t) => {
     const topic = normalizeQueryParam(t)
     if (!topic) {
-      topicPosts.value = []
-      topicNextCursor.value = null
-      topicError.value = null
+      topicFeed.clear()
       return
     }
     // Clear search UI when switching to topic mode
     if (searchQuery.value) searchQuery.value = ''
     clearSearchResults()
-    void fetchTopicPage({ append: false })
+    void topicFeed.refresh()
   },
   { immediate: true },
 )
@@ -1598,22 +1388,16 @@ watch(
   (cRaw) => {
     const c = normalizeQueryParam(cRaw)
     if (!c) {
-      categoryTopics.value = []
-      categoryPosts.value = []
-      categoryNextCursor.value = null
-      categoryError.value = null
+      categoryFeed.clear()
       return
     }
     // Clear search UI when switching to category mode
     if (searchQuery.value) searchQuery.value = ''
     clearSearchResults()
-    void fetchCategoryTopics()
-    void fetchCategoryPage({ append: false })
+    void categoryFeed.refresh()
   },
   { immediate: true },
 )
-const topicLoadingInitial = useInitialLoading(topicLoading, () => topicPosts.value.length > 0, topicError)
-const categoryLoadingInitial = useInitialLoading(categoryLoading, () => categoryPosts.value.length > 0, categoryError)
 </script>
 
 <style scoped>

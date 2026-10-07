@@ -225,9 +225,8 @@
 </template>
 
 <script setup lang="ts">
-import type { CommunityGroupInvite, CommunityGroupShell, ApiEnvelope } from '~/types/api'
+import type { CommunityGroupInvite, CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
-import { getApiErrorMessage } from '~/utils/api-error'
 import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 
@@ -244,7 +243,6 @@ usePageSeo({
   noindex: true,
 })
 
-const { apiFetch } = useApiClient()
 const { user, isAuthed } = useAuth()
 const { groupsUnread, addGroupInviteCallback, removeGroupInviteCallback } = usePresence()
 const { clearLockScreen } = useNotifications()
@@ -279,20 +277,46 @@ const inviteCallback = {
 const avatarRoundClass = groupAvatarRoundClass()
 
 // ─── State ───────────────────────────────────────────────────────────────
-const metaLoading = ref(true)
-const metaError = ref<string | null>(null)
-const spotlight = ref<CommunityGroupShell[]>([])
-const spotlightNextCursor = ref<string | null>(null)
-const spotlightLoadingMore = ref(false)
-let spotlightToken = 0
-
 const searchInput = ref('')
 const trimmedQuery = ref('')
-const searchResults = ref<CommunityGroupShell[]>([])
-const searchNextCursor = ref<string | null>(null)
-const searchLoading = ref(false)
-const searchError = ref<string | null>(null)
-let searchToken = 0
+
+const groupFeeds = useCursorFeeds<{ spotlight: CommunityGroupShell; search: CommunityGroupShell }>({
+  stateKey: 'groups-index',
+  stateMode: 'local',
+  streams: {
+    // Server-side excludeMine guarantees the spotlight only contains groups
+    // the viewer can actually join — so the Discover surface is "never empty"
+    // unless the system literally has no other groups.
+    spotlight: {
+      buildRequest: (cursor) => ({
+        path: '/groups/explore',
+        query: { limit: 24, ...(cursor ? { cursor } : {}), ...(isAuthed.value ? { excludeMine: '1' } : {}) },
+      }),
+      // Defensive dedup: the cursor branch may overlap with the tiered first page (featured/trending overlays).
+      getItemId: (g) => g.id,
+      clearOnError: true,
+      defaultErrorMessage: 'Failed to load groups.',
+      loadMoreErrorMessage: 'Failed to load more groups.',
+    },
+    // Search intentionally does NOT pass excludeMine — when the user is hunting a specific
+    // group by name, hiding ones they're already in is confusing. Membership is shown on the row.
+    search: {
+      buildRequest: (cursor) => (trimmedQuery.value.length >= 2
+        ? { path: '/groups/search', query: { q: trimmedQuery.value, limit: 20, ...(cursor ? { cursor } : {}) } }
+        : null),
+      defaultErrorMessage: 'Search failed.',
+    },
+  },
+})
+const {
+  items: spotlight,
+  nextCursor: spotlightNextCursor,
+  loading: metaLoading,
+  loadingMore: spotlightLoadingMore,
+  error: metaError,
+} = groupFeeds.spotlight
+const { items: searchResults, nextCursor: searchNextCursor, error: searchError } = groupFeeds.search
+const searchLoading = computed(() => groupFeeds.search.loading.value || groupFeeds.search.loadingMore.value)
 
 const canCreateGroup = computed(() => {
   const u = user.value
@@ -319,89 +343,6 @@ function initials(name: string) {
   return n.slice(0, 2).toUpperCase()
 }
 
-// ─── Loading ─────────────────────────────────────────────────────────────
-async function loadMeta() {
-  metaLoading.value = true
-  metaError.value = null
-  spotlightToken += 1
-  const token = spotlightToken
-  try {
-    // Server-side excludeMine guarantees the spotlight only contains groups
-    // the viewer can actually join — so the Discover surface is "never empty"
-    // unless the system literally has no other groups.
-    const params = new URLSearchParams({ limit: '24' })
-    if (isAuthed.value) params.set('excludeMine', '1')
-    const res = await apiFetch<CommunityGroupShell[]>(`/groups/explore?${params.toString()}`) as ApiEnvelope<CommunityGroupShell[]>
-    if (token !== spotlightToken) return
-    spotlight.value = Array.isArray(res.data) ? res.data : []
-    spotlightNextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    if (token !== spotlightToken) return
-    metaError.value = getApiErrorMessage(e) || 'Failed to load groups.'
-    spotlight.value = []
-    spotlightNextCursor.value = null
-  } finally {
-    if (token === spotlightToken) metaLoading.value = false
-  }
-}
-
-async function loadMoreSpotlight() {
-  const cursor = spotlightNextCursor.value
-  if (!cursor || spotlightLoadingMore.value) return
-  spotlightLoadingMore.value = true
-  const token = spotlightToken
-  try {
-    const params = new URLSearchParams({ limit: '24', cursor })
-    if (isAuthed.value) params.set('excludeMine', '1')
-    const res = await apiFetch<CommunityGroupShell[]>(`/groups/explore?${params.toString()}`) as ApiEnvelope<CommunityGroupShell[]>
-    if (token !== spotlightToken) return
-    const rows = Array.isArray(res.data) ? res.data : []
-    // Defensive client-side dedup: the cursor branch may overlap with the
-    // tiered first page in rare cases (featured/trending overlays).
-    const seen = new Set(spotlight.value.map((g) => g.id))
-    const fresh = rows.filter((g) => !seen.has(g.id))
-    spotlight.value = [...spotlight.value, ...fresh]
-    spotlightNextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    if (token !== spotlightToken) return
-    metaError.value = getApiErrorMessage(e) || 'Failed to load more groups.'
-  } finally {
-    if (token === spotlightToken) spotlightLoadingMore.value = false
-  }
-}
-
-async function runSearch(q: string, opts: { append?: boolean; cursor?: string | null } = {}) {
-  const token = ++searchToken
-  if (!opts.append) {
-    searchResults.value = []
-    searchNextCursor.value = null
-    searchError.value = null
-  }
-  if (q.length < 2) {
-    searchLoading.value = false
-    return
-  }
-  searchLoading.value = true
-  try {
-    // NOTE: search intentionally does NOT pass excludeMine — when the user
-    // is hunting a specific group by name, hiding ones they're already in
-    // is confusing ("why doesn't my group appear?"). Membership is indicated
-    // on the row instead.
-    const params = new URLSearchParams({ q, limit: '20' })
-    if (opts.cursor) params.set('cursor', opts.cursor)
-    const res = await apiFetch<CommunityGroupShell[]>(`/groups/search?${params.toString()}`) as ApiEnvelope<CommunityGroupShell[]>
-    if (token !== searchToken) return
-    const rows = Array.isArray(res.data) ? res.data : []
-    searchResults.value = opts.append ? [...searchResults.value, ...rows] : rows
-    searchNextCursor.value = res.pagination?.nextCursor ?? null
-  } catch (e: unknown) {
-    if (token !== searchToken) return
-    searchError.value = getApiErrorMessage(e) || 'Search failed.'
-  } finally {
-    if (token === searchToken) searchLoading.value = false
-  }
-}
-
 // Debounced reaction to typing. 250ms felt right in playtests; shorter and
 // keystrokes thrash the API, longer and the UI feels laggy.
 let debounceHandle: ReturnType<typeof setTimeout> | null = null
@@ -411,7 +352,7 @@ watch(searchInput, (raw) => {
     debounceHandle = null
     const q = (raw ?? '').trim().slice(0, 80)
     trimmedQuery.value = q
-    void runSearch(q)
+    void groupFeeds.search.refresh({ reset: true })
   }, 250)
 })
 
@@ -436,18 +377,14 @@ useLoadMoreObserver(
   middleScrollerRef,
   canLoadMore,
   () => {
-    if (hasQuery.value) {
-      void runSearch(trimmedQuery.value, { append: true, cursor: searchNextCursor.value })
-    } else {
-      void loadMoreSpotlight()
-    }
+    void (hasQuery.value ? groupFeeds.search.loadMore() : groupFeeds.spotlight.loadMore())
   },
 )
 
 watch(
   isAuthed,
   () => {
-    void loadMeta()
+    void groupFeeds.spotlight.refresh()
   },
   { immediate: true },
 )
@@ -466,7 +403,6 @@ watch(isAuthed, signedIn => { if (signedIn) { void loadMyGroups(); void loadInbo
 onBeforeUnmount(() => {
   removeGroupInviteCallback(inviteCallback)
   if (debounceHandle) clearTimeout(debounceHandle)
-  searchToken += 1 // invalidate any inflight requests
 })
 const metaInitialLoading = useInitialLoading(metaLoading, () => discoverRows.value.length > 0, metaError)
 </script>

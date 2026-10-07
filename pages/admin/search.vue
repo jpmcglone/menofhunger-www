@@ -81,7 +81,6 @@
 </template>
 
 <script setup lang="ts">
-import { getApiErrorMessage } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 
 definePageMeta({
@@ -104,69 +103,29 @@ type AdminSearchItem = {
   user: { id: string; username: string | null; name: string | null }
 }
 
-const { apiFetch } = useApiClient()
-
 const filterQuery = ref('')
-const loading = ref(false)
-const loadingMore = ref(false)
-const searchedOnce = ref(false)
-const error = ref<string | null>(null)
-const items = ref<AdminSearchItem[]>([])
-const nextCursor = ref<string | null>(null)
+const { items, nextCursor, loading, loadingMore, hasLoaded: searchedOnce, error, refresh, loadMore } = useCursorFeed<AdminSearchItem>({
+  stateKey: 'admin-searches',
+  stateMode: 'local',
+  clearOnError: true,
+  buildRequest: (cursor) => {
+    const query: Record<string, string> = { limit: '50' }
+    if (filterQuery.value.trim()) query.q = filterQuery.value.trim()
+    if (cursor) query.cursor = cursor
+    return { path: '/admin/searches', query }
+  },
+  defaultErrorMessage: 'Failed to load searches.',
+})
 
 function formatSearchDate(iso: string) {
   return formatDateTime(iso, { dateStyle: 'short', timeStyle: 'short', fallback: iso })
 }
 
-async function fetchPage(params: { cursor: string | null; append: boolean }) {
-  if (params.append) {
-    loadingMore.value = true
-  } else {
-    loading.value = true
-  }
-  error.value = null
-  if (!params.append) searchedOnce.value = true
-
-  try {
-    const query: Record<string, string> = {
-      limit: '50',
-    }
-    if (filterQuery.value.trim()) query.q = filterQuery.value.trim()
-    if (params.cursor) query.cursor = params.cursor
-
-    const res = await apiFetch<AdminSearchItem[]>('/admin/searches', {
-      method: 'GET',
-      query,
-    })
-
-    const data = (res.data ?? []) as AdminSearchItem[]
-    if (params.append) {
-      items.value = [...items.value, ...data]
-    } else {
-      items.value = data
-    }
-    nextCursor.value = (res.pagination as { nextCursor?: string | null })?.nextCursor ?? null
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load searches.'
-    if (!params.append) items.value = []
-    nextCursor.value = null
-  } finally {
-    loading.value = false
-    loadingMore.value = false
-  }
-}
-
 function runFilter() {
-  nextCursor.value = null
-  void fetchPage({ cursor: null, append: false })
-}
-
-function loadMore() {
-  if (!nextCursor.value || loadingMore.value) return
-  void fetchPage({ cursor: nextCursor.value, append: true })
+  void refresh()
 }
 
 onMounted(() => {
-  void fetchPage({ cursor: null, append: false })
+  void refresh()
 })
 </script>

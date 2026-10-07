@@ -48,7 +48,9 @@ function computeOffenders(): Record<string, string[]> {
     }
     if (/toLocale(Date|Time)?String\(\s*undefined/.test(src)) undefinedLocale.push(file)
     if (/transition-all|transition:\s*all\b/.test(src)) transitionAll.push(file)
-    if (file.startsWith('pages/') && /\bnextCursor\b/.test(src) && !/useCursorFeed|usePostsFeed/.test(src)) {
+    // Hand-rolled paging = a page or component reading `pagination.nextCursor` off a response itself.
+    // Reading a feed composable's `nextCursor` is fine; that composable owns the envelope.
+    if ((file.startsWith('pages/') || file.startsWith('components/')) && /pagination\b[^\n;]{0,40}\bnextCursor\b/.test(src)) {
       pageHandRolledCursor.push(file)
     }
     const group = file.split('/')[0] as keyof typeof MAX_LINES
@@ -69,7 +71,7 @@ const MESSAGES: Record<string, string> = {
   localFormatters: 'Use formatShortCount (utils/text) and utils/time-format instead of local formatters.',
   undefinedLocaleDates: 'Use utils/time-format (fixed en-US) to avoid SSR hydration mismatch.',
   transitionAll: 'Transition explicit properties with --moh-duration/--moh-ease tokens, not `all`.',
-  pageHandRolledCursor: 'Use useCursorFeed (or a feature composable) instead of paging inside a page.',
+  pageHandRolledCursor: 'Use useCursorFeed (or a feature composable) instead of paging inside a page or component.',
   oversizedFiles: 'Keep pages <= 500, components <= 600, composables <= 600 lines; extract composables/sections.',
 }
 

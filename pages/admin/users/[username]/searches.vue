@@ -38,7 +38,6 @@
 <script setup lang="ts">
 import type { AdminUserRecentSearch } from '~/types/api'
 import { formatDateTime } from '~/utils/time-format'
-import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
   layout: 'app',
@@ -47,51 +46,16 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { apiFetch } = useApiClient()
 const username = computed(() => String(route.params.username ?? '').trim())
-const items = ref<AdminUserRecentSearch[]>([])
-const nextCursor = ref<string | null>(null)
-const loading = ref(false)
-const loadingMore = ref(false)
-const error = ref<string | null>(null)
+const { items, nextCursor, loadingMore, error, initialLoading, refresh, loadMore } = useCursorFeed<AdminUserRecentSearch>({
+  stateKey: 'admin-user-searches',
+  stateMode: 'local',
+  buildRequest: (cursor) => username.value
+    ? { path: `/admin/users/by-username/${encodeURIComponent(username.value)}/recent/searches`, query: { limit: 25, cursor: cursor ?? undefined } }
+    : null,
+  defaultErrorMessage: 'Failed to load searches.',
+  loadMoreErrorMessage: 'Failed to load more searches.',
+})
 
-async function fetchPage(cursor?: string) {
-  const res = await apiFetch<AdminUserRecentSearch[]>(
-    `/admin/users/by-username/${encodeURIComponent(username.value)}/recent/searches`,
-    { query: { limit: 25, cursor } },
-  )
-  return { data: res.data ?? [], next: res.pagination?.nextCursor ?? null }
-}
-
-async function loadInitial() {
-  if (!username.value) return
-  loading.value = true
-  error.value = null
-  try {
-    const page = await fetchPage()
-    items.value = page.data
-    nextCursor.value = page.next
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load searches.'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loadMore() {
-  if (!nextCursor.value || loadingMore.value) return
-  loadingMore.value = true
-  try {
-    const page = await fetchPage(nextCursor.value)
-    items.value = [...items.value, ...page.data]
-    nextCursor.value = page.next
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Failed to load more searches.'
-  } finally {
-    loadingMore.value = false
-  }
-}
-
-watch(() => username.value, () => void loadInitial(), { immediate: true })
-const initialLoading = useInitialLoading(loading, () => items.value.length > 0, error)
+watch(() => username.value, () => void refresh(), { immediate: true })
 </script>

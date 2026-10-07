@@ -1,39 +1,31 @@
 import type { ArticleComment } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
 
 export function useArticleComments(articleId: Ref<string>) {
   const { apiFetch, apiFetchData } = useApiClient()
 
-  const comments = ref<ArticleComment[]>([])
-  const nextCursor = ref<string | null>(null)
-  const loading = ref(false)
+  const feed = useCursorFeed<ArticleComment>({
+    stateKey: 'article-comments',
+    stateMode: 'local',
+    // Reply threads are patched in place (parent.replies / replyCount).
+    deep: true,
+    buildRequest: (cursor) => ({ path: `/articles/${articleId.value}/comments`, query: cursor ? { limit: 20, cursor } : { limit: 20 } }),
+    defaultErrorMessage: 'Could not load replies.',
+  })
+  const { items: comments, nextCursor, loading } = feed
+  // Load-more failures are silent; only the first page reports an error.
   const loadError = ref<string | null>(null)
   const submitting = ref(false)
   const loadingRepliesByParent = ref<Record<string, boolean>>({})
 
   async function load() {
-    loading.value = true
     loadError.value = null
-    try {
-      const res = await apiFetch<ArticleComment[]>(`/articles/${articleId.value}/comments?limit=20`)
-      comments.value = res.data ?? []
-      nextCursor.value = res.pagination?.nextCursor ?? null
-    } catch (error) {
-      loadError.value = getApiErrorMessage(error) || "Could not load replies."
-    } finally {
-      loading.value = false
-    }
+    await feed.refresh()
+    loadError.value = feed.error.value
   }
 
   async function loadMore() {
-    if (!nextCursor.value) return
-    try {
-      const res = await apiFetch<ArticleComment[]>(`/articles/${articleId.value}/comments?limit=20&cursor=${nextCursor.value}`)
-      comments.value.push(...(res.data ?? []))
-      nextCursor.value = res.pagination?.nextCursor ?? null
-    } catch {
-      // silent
-    }
+    await feed.loadMore()
+    feed.error.value = null
   }
 
   async function loadMoreReplies(parentId: string) {

@@ -1,9 +1,9 @@
 import { useApiClient } from '~/composables/useApiClient'
+import { useCursorFeed } from '~/composables/useCursorFeed'
 import { useAuth } from '~/composables/useAuth'
 import { usePresence } from '~/composables/usePresence'
 import { useDocumentVisibility } from '@vueuse/core'
-import type { GetNotificationsResponse, NotificationFeedItem } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
+import type { NotificationFeedItem } from '~/types/api'
 
 export function articleActivityHref(item: NotificationFeedItem): string | null {
   if (item.type !== 'single' || !item.notification.subjectArticleId) return null
@@ -31,45 +31,43 @@ export function useArticleActivity() {
   const { apiFetch } = useApiClient()
   const { user } = useAuth()
   const presence = usePresence()
-  const items = ref<NotificationFeedItem[]>([])
-  const nextCursor = ref<string | null>(null)
-  const loading = ref(false)
+  const feed = useCursorFeed<NotificationFeedItem>({
+    stateKey: 'article-activity',
+    stateMode: 'local',
+    buildRequest: (cursor) => ({
+      path: '/notifications',
+      query: { kind: 'articles', unreadOnly: true, limit: 30, cursor: cursor ?? undefined },
+      mohDedupe: false,
+    }),
+    // Already presented previews stay through refreshes until the visit ends.
+    mergeOnRefresh: (incoming, existing) => unreadArticleActivity([...existing, ...incoming]),
+    mergeOnLoadMore: (incoming, existing) => unreadArticleActivity([...existing, ...incoming]).slice(existing.length),
+    defaultErrorMessage: 'Couldn’t load article activity.',
+    loadMoreErrorMessage: 'Couldn’t load article activity.',
+  })
+  const { items, nextCursor, error } = feed
+  const loading = computed(() => feed.loading.value || feed.loadingMore.value)
   const failedIds = ref<string[]>([])
   const acknowledged = new Set<string>()
   const pending = new Set<string>()
   let lifetime = 0
   let countGeneration = 0
-  const error = ref<string | null>(null)
-  let generation = 0
+  // Bumped whenever server state may have moved, so a badge count read before the bump is not applied.
+  let revision = 0
   let active = false
   let timer: ReturnType<typeof setTimeout> | undefined
 
   async function load(reset = true) {
-    const account = user.value?.id
-    if (!account || !active || (!reset && (loading.value || !nextCursor.value))) return
-    const ticket = ++generation
-    loading.value = true
-    error.value = null
-    const current = () => active && ticket === generation && account === user.value?.id
-    try {
-      const response = await apiFetch<NotificationFeedItem[]>('/notifications', {
-        query: { kind: 'articles', unreadOnly: true, limit: 30, cursor: reset ? undefined : nextCursor.value },
-        mohDedupe: false,
-      }) as unknown as GetNotificationsResponse
-      if (!current()) return
-      items.value = unreadArticleActivity([...items.value, ...response.data])
-      nextCursor.value = response.pagination.nextCursor
-    } catch (cause) {
-      if (current()) error.value = getApiErrorMessage(cause) || 'Couldn’t load article activity.'
-    } finally {
-      if (current()) loading.value = false
-    }
+    if (!user.value?.id || !active) return
+    if (reset) await feed.refresh()
+    else await feed.loadMore()
   }
 
   function scheduleRefresh() {
     if (!active) return
     // Invalidate pending snapshots immediately, then coalesce event bursts.
-    generation += 1
+    revision += 1
+    feed.invalidate()
     clearTimeout(timer)
     timer = setTimeout(() => { void load() }, 120)
   }
@@ -96,9 +94,9 @@ export function useArticleActivity() {
   async function refreshCounts() {
     const account = user.value?.id
     const visit = lifetime
-    const revision = generation
+    const startRevision = revision
     const countTicket = ++countGeneration
-    const current = () => active && visit === lifetime && account === user.value?.id && revision === generation && countTicket === countGeneration
+    const current = () => active && visit === lifetime && account === user.value?.id && startRevision === revision && countTicket === countGeneration
     try {
       const counts = await apiFetch<{ boardUnreadCount?: number; boardMentionCount?: number; articlesUnreadCount?: number }>('/notifications/unread-count', { mohDedupe: false })
       if (current()) presence.setNotificationNavUnread(counts.data)
@@ -115,11 +113,10 @@ export function useArticleActivity() {
 
   function resetVisit() {
     lifetime += 1
-    items.value = []
+    feed.reset()
     acknowledged.clear()
     pending.clear()
     failedIds.value = []
-    nextCursor.value = null
   }
 
   const callback = { onNew: scheduleRefresh, onUpdated: scheduleRefresh, onDeleted: scheduleRefresh }
@@ -132,8 +129,7 @@ export function useArticleActivity() {
   function deactivate() {
     active = false
     resetVisit()
-    generation += 1
-    loading.value = false
+    revision += 1
     clearTimeout(timer)
     presence.removeNotificationsCallback(callback)
   }
@@ -142,10 +138,8 @@ export function useArticleActivity() {
   onDeactivated(deactivate)
   onBeforeUnmount(deactivate)
   watch(() => user.value?.id, () => {
-    generation += 1
+    revision += 1
     resetVisit()
-    error.value = null
-    loading.value = false
     if (active) void load()
   })
   watch(() => presence.notificationNavUnread.value.articles, scheduleRefresh)
