@@ -1,14 +1,10 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readNotificationsSource } from './helpers/notifications-source'
 
-function readFile(relativePath: string): string {
-  return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
-}
 
 describe('marv_not_in_group notification wiring', () => {
   it('rowHref routes marv_not_in_group to /p/:actorPostId', () => {
-    const source = readFile('composables/useNotifications.ts')
+    const source = readNotificationsSource()
     const rowHrefStart = source.indexOf('function rowHref')
     expect(rowHrefStart).toBeGreaterThan(0)
     const rowHref = source.slice(rowHrefStart)
@@ -24,7 +20,7 @@ describe('marv_not_in_group notification wiring', () => {
   })
 
   it('notificationIconName has an icon entry for marv_not_in_group', () => {
-    const source = readFile('composables/useNotifications.ts')
+    const source = readNotificationsSource()
     // marv_not_in_group must appear at least twice: once for titleSuffix and once for icon
     const occurrences = (source.match(/case 'marv_not_in_group':/g) ?? []).length
     expect(occurrences).toBeGreaterThanOrEqual(2)
@@ -33,7 +29,7 @@ describe('marv_not_in_group notification wiring', () => {
   })
 
   it('titleSuffix has a non-empty fallback for marv_not_in_group', () => {
-    const source = readFile('composables/useNotifications.ts')
+    const source = readNotificationsSource()
     // title or switch case with @marv copy
     expect(source).toMatch(/marv_not_in_group.*marv|marv.*marv_not_in_group/s)
   })

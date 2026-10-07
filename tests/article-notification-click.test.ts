@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readNotificationsSource } from './helpers/notifications-source'
 
 function readFile(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -8,7 +9,7 @@ function readFile(relativePath: string): string {
 
 describe('article notification click-through', () => {
   it('routes article replies and new articles to /a/:id with a comment hash', () => {
-    const source = readFile('composables/useNotifications.ts')
+    const source = readNotificationsSource()
     const rowHrefStart = source.indexOf('function rowHref')
     expect(rowHrefStart).toBeGreaterThan(0)
     const rowHref = source.slice(rowHrefStart)

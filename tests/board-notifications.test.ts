@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readNotificationsSource } from './helpers/notifications-source'
 
 function readFromRepo(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -72,7 +73,7 @@ describe('opening a Board thread reads its notifications', () => {
   })
 
   it('clears matching inbox rows when another tab reads the thread', () => {
-    const source = readFromRepo('composables/useNotifications.ts')
+    const source = readNotificationsSource()
     expect(source).toContain('n.boardThreadId && clearedThreads.has(n.boardThreadId)')
     expect(source).toContain('payload.clearedBoardThreadIds')
   })
