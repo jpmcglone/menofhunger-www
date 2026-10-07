@@ -129,7 +129,7 @@
                       <Icon name="tabler:coin" class="text-[13px] text-amber-500" aria-hidden="true" />
                       Coins
                     </div>
-                    <div class="font-semibold tabular-nums moh-text">{{ formatCount(authUser?.coins ?? 0) }}</div>
+                    <div class="font-semibold tabular-nums moh-text">{{ formatFullCount(authUser?.coins ?? 0) }}</div>
                   </NuxtLink>
                 </div>
               </div>
@@ -491,6 +491,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatFullCount } from '~/utils/text'
 import type { PublicProfile } from '~/composables/usePublicProfile'
 
 import type { FollowRelationship } from '~/types/api'
@@ -681,12 +682,6 @@ if (!notFound.value && profile.value) {
     premiumPlus: profile.value.premiumPlus ?? null,
     postCount: null,
   }
-}
-
-const countFmt = new Intl.NumberFormat('en-US')
-function formatCount(n: unknown): string {
-  const v = typeof n === 'number' ? n : Number(n)
-  return countFmt.format(Math.max(0, Math.floor(Number.isFinite(v) ? v : 0)))
 }
 
 const streaksOpen = ref(false)

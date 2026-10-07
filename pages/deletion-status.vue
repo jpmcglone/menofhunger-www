@@ -33,7 +33,7 @@ const loading = ref(false)
 const error = ref('')
 const title = computed(() => ({ scheduled: 'Deletion scheduled', processing: 'Deletion in progress', completed: 'Your account has been deleted', cancelled: 'Deletion cancelled' })[receipt.value?.status ?? 'scheduled'])
 const explanation = computed(() => ({ scheduled: 'Your profile is hidden and you have been signed out. Your personal content and fitness data are scheduled for permanent deletion.', processing: 'We are removing your account and associated data. Check back here for confirmation when cleanup is complete.', completed: 'Your account and associated personal content and fitness data have been deleted.', cancelled: 'Signing back in cancelled this deletion request. Your account remains available.' })[receipt.value?.status ?? 'scheduled'])
-const scheduledDate = computed(() => receipt.value ? new Date(receipt.value.scheduledAt).toLocaleDateString(undefined, { dateStyle: 'long' }) : '')
+const scheduledDate = computed(() => receipt.value ? new Date(receipt.value.scheduledAt).toLocaleDateString('en-US', { dateStyle: 'long' }) : '')
 async function load() {
   const token = route.hash.slice(1)
   if (!/^[0-9a-f-]{36}$/i.test(token)) { error.value = 'Open the private status link provided when you requested deletion.'; return }

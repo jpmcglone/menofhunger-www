@@ -49,7 +49,7 @@ async function render(composerOpen = ref(false)) {
 }
 it('opens verification and people in place without a route link', async () => {
   const view = await render()
-  await view.findAll('button').find(b => b.text() === 'View request')!.trigger('click')
+  await view.findAll('button').find(b => b.text().includes('Verification requested'))!.trigger('click')
   expect(view.get('[role="dialog"]').text()).toContain('Verification form')
   expect(view.find('a[href="/verification"]').exists()).toBe(false)
   await view.findAll('button').find(b => b.text() === 'Close')!.trigger('click')
@@ -60,7 +60,7 @@ it('waits for confirmed completion and an open action to close, then celebrates 
   phase.value = 'approved'
   progress.value = { ...pending, phase: 'approved', contributed: true, replied: true }
   const view = await render()
-  await view.findAll('button').find(b => b.text() === 'Find a conversation')!.trigger('click')
+  await view.findAll('button').find(b => b.text().includes('Find a conversation'))!.trigger('click')
   progress.value = { ...pending, phase: 'approved', contributed: true, replied: true, returned: true }
   await nextTick()
   expect(view.get('[role="dialog"]').text()).toContain('Conversation list')
@@ -79,7 +79,7 @@ it('keeps return-on-another-day server owned and opens replies in place', async 
   const view = await render()
   expect(view.text()).toContain('2 of 3 complete')
   expect(view.find('[role="dialog"]').exists()).toBe(false)
-  await view.findAll('button').find(b => b.text() === 'Find a conversation')!.trigger('click')
+  await view.findAll('button').find(b => b.text().includes('Find a conversation'))!.trigger('click')
   expect(view.get('[role="dialog"]').text()).toContain('Conversation list')
 })
 
@@ -108,6 +108,32 @@ it.each(['Back to feed', 'Close'])('dismisses the completed guide when celebrati
   expect((state.guide as { dismiss: ReturnType<typeof vi.fn> }).dismiss).toHaveBeenCalledTimes(1)
 })
 
+
+it('hides the checklist when progress is already complete on entry', async () => {
+  phase.value = 'approved'
+  const loose = progress as Ref<typeof pending | null>
+  loose.value = null
+  const view = await render()
+  loose.value = { ...pending, phase: 'approved', contributed: true, replied: true, returned: true, completionSeen: true }
+  await nextTick()
+  await flushPromises()
+  expect(view.find('[aria-label="Getting started"]').exists()).toBe(false)
+  expect(view.find('[role="dialog"]').exists()).toBe(false)
+  expect((state.guide as { dismiss: ReturnType<typeof vi.fn> }).dismiss).toHaveBeenCalledTimes(1)
+})
+
+it('celebrates without the checklist when entry is already complete', async () => {
+  phase.value = 'approved'
+  const loose = progress as Ref<typeof pending | null>
+  loose.value = null
+  const view = await render()
+  loose.value = { ...pending, phase: 'approved', contributed: true, replied: true, returned: true, completionSeen: false }
+  await nextTick()
+  await flushPromises()
+  expect(view.find('[aria-label="Getting started"]').exists()).toBe(false)
+  expect(view.get('[role="dialog"]').text()).toContain('Good work. You’re all set.')
+  expect((state.guide as { dismiss: ReturnType<typeof vi.fn> }).dismiss).not.toHaveBeenCalled()
+})
 
 it('does not celebrate the before-approval checklist', async () => {
   const view = await render()

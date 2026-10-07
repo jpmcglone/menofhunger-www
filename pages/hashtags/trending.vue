@@ -34,7 +34,7 @@
           <div class="flex items-center gap-3">
             <div class="min-w-0 flex-1">
               <div class="font-semibold truncate">#{{ t.label }}</div>
-              <div class="text-xs moh-text-muted">{{ formatCount(t.usageCount) }} posts lately</div>
+              <div class="text-xs moh-text-muted">{{ formatShortCount(t.usageCount) }} posts lately</div>
             </div>
             <Icon name="tabler:chevron-right" class="text-gray-400" aria-hidden="true" />
           </div>
@@ -56,6 +56,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortCount } from '~/utils/text'
 import type { HashtagResult } from '~/types/api'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 
@@ -82,14 +83,6 @@ const { items: tags, nextCursor, loading, loadingMore, initialLoading, error, re
   defaultErrorMessage: 'Failed to load trending hashtags.',
   loadMoreErrorMessage: 'Failed to load more.',
 })
-
-function formatCount(n: number): string {
-  const num = Math.max(0, Math.floor(Number(n) || 0))
-  const trim = (s: string) => (s.endsWith('.0') ? s.slice(0, -2) : s)
-  if (num >= 1_000_000) return `${trim((num / 1_000_000).toFixed(num >= 10_000_000 ? 0 : 1))}m`
-  if (num >= 1_000) return `${trim((num / 1_000).toFixed(num >= 10_000 ? 0 : 1))}k`
-  return String(num)
-}
 
 onMounted(() => {
   if (tags.value.length === 0 && !loading.value) void refresh()

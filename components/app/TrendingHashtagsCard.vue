@@ -43,7 +43,7 @@
               {{ formatHashtagLabel(t.label) }}
             </div>
             <div class="moh-meta">
-              {{ formatCount(t.usageCount) }} posts lately
+              {{ formatShortCount(t.usageCount) }} posts lately
             </div>
           </div>
           <Icon name="tabler:chevron-right" class="shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true" />
@@ -64,6 +64,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortCount } from '~/utils/text'
 import type { GetTrendingHashtagsData, HashtagResult } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { formatHashtagLabel } from '~/utils/taxonomy-format'
@@ -73,14 +74,6 @@ const { apiFetch } = useApiClient()
 const tags = ref<HashtagResult[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
-
-function formatCount(n: number): string {
-  const num = Math.max(0, Math.floor(Number(n) || 0))
-  const trim = (s: string) => (s.endsWith('.0') ? s.slice(0, -2) : s)
-  if (num >= 1_000_000) return `${trim((num / 1_000_000).toFixed(num >= 10_000_000 ? 0 : 1))}m`
-  if (num >= 1_000) return `${trim((num / 1_000).toFixed(num >= 10_000 ? 0 : 1))}k`
-  return String(num)
-}
 
 async function refresh() {
   loading.value = true

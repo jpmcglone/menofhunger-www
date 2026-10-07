@@ -137,7 +137,7 @@
                   “{{ inv.message }}”
                 </p>
                 <div class="mt-1 text-[11px] moh-text-muted">
-                  Expires {{ formatRelative(inv.expiresAt) }}
+                  Expires {{ formatFutureRelative(inv.expiresAt) }}
                 </div>
               </div>
               <div class="flex flex-col gap-1 shrink-0">
@@ -176,7 +176,7 @@
                 <AppUserIdentityLine :user="inv.invitee" />
                 <div class="mt-0.5 text-xs moh-text-muted">Pending invite</div>
                 <div class="mt-1 text-[11px] moh-text-muted">
-                  Expires {{ formatRelative(inv.expiresAt) }}
+                  Expires {{ formatFutureRelative(inv.expiresAt) }}
                 </div>
               </div>
               <Button
@@ -261,6 +261,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatFutureRelative } from '~/utils/time-format'
 import type { CrewInvite, CrewUserSummary, FollowListUser, OpenCrewMember } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
@@ -420,15 +421,6 @@ function crewLabel(inv: CrewInvite): string {
   if (!inv.crew) return 'a new Crew'
   const n = (inv.crew.name ?? '').trim()
   return n.length > 0 ? n : 'Untitled Crew'
-}
-
-function formatRelative(iso: string): string {
-  const ms = new Date(iso).getTime() - Date.now()
-  if (!Number.isFinite(ms)) return ''
-  const days = Math.round(ms / 86_400_000)
-  if (days <= 0) return 'soon'
-  if (days === 1) return 'in 1 day'
-  return `in ${days} days`
 }
 
 async function submitInvite() {

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { crosspostOptions, xWeightedLength, xContainsLink } from '~/utils/crosspost'
+import { crosspostOptions, xAdvancedPublishingSupported, xWeightedLength, xContainsLink } from '~/utils/crosspost'
 import type { CrosspostDraft } from '~/utils/crosspost'
 
 function draft(overrides: Partial<CrosspostDraft> = {}): CrosspostDraft {
@@ -76,4 +76,12 @@ it.each([false, true])('applies native-only X rules with scheduled=%s', schedule
   expect(crosspostOptions(draft({ scheduled, hasPoll: true }), 'pickax').modes).toEqual(['link'])
   expect(crosspostOptions(draft({ scheduled, mediaCount: 1, mediaAllUploadedImages: false }), 'x').blockedReason).toContain('videos and GIFs')
   expect(crosspostOptions(draft({ scheduled, mediaCount: 5 }), 'x').blockedReason).toContain('4 photos')
+})
+
+describe('advanced X publishing', () => {
+  it('stays hidden until thread publishing is supported for this account', () => {
+    expect(xAdvancedPublishingSupported(undefined)).toBe(false)
+    expect(xAdvancedPublishingSupported([{ provider: 'x', action: 'thread', state: 'awaiting_permission', requiredScopes: [], unitCostMicros: null, billingUnit: 'unknown', priceVersion: null, reason: null }])).toBe(false)
+    expect(xAdvancedPublishingSupported([{ provider: 'x', action: 'thread', state: 'supported', requiredScopes: [], unitCostMicros: 1, billingUnit: 'request', priceVersion: 'v1', reason: null }])).toBe(true)
+  })
 })

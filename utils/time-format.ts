@@ -156,3 +156,82 @@ export function formatDayDividerLabel(iso: string) {
   if (isYesterday) return 'Yesterday'
   return date.toLocaleDateString(SSR_LOCALE, { weekday: 'short', month: 'short', day: 'numeric' })
 }
+
+/** "Mar 4" or, with `year`, "Mar 4, 2026". Fixed locale so SSR and client agree. */
+export function formatShortDate(
+  iso: string | null | undefined,
+  options?: { year?: boolean; fallback?: string; timeZone?: string },
+): string {
+  const d = toDate(iso)
+  if (!d) return options?.fallback ?? ''
+  return new Intl.DateTimeFormat(SSR_LOCALE, {
+    month: 'short',
+    day: 'numeric',
+    year: options?.year ? 'numeric' : undefined,
+    timeZone: options?.timeZone,
+  }).format(d)
+}
+
+/** "March 2026". */
+export function formatMonthYear(iso: string | null | undefined, fallback = ''): string {
+  const d = toDate(iso)
+  if (!d) return fallback
+  return new Intl.DateTimeFormat(SSR_LOCALE, { month: 'long', year: 'numeric' }).format(d)
+}
+
+/** Numeric date, e.g. "3/4/2026". */
+export function formatNumericDate(iso: string | null | undefined, fallback = ''): string {
+  const d = toDate(iso)
+  if (!d) return fallback
+  return new Intl.DateTimeFormat(SSR_LOCALE).format(d)
+}
+
+/** "Mar 4 · 5:30 PM" (or with year). */
+export function formatShortDateTime(
+  iso: string | null | undefined,
+  options?: { year?: boolean; fallback?: string },
+): string {
+  const d = toDate(iso)
+  if (!d) return options?.fallback ?? ''
+  const date = formatShortDate(iso, { year: options?.year })
+  const time = new Intl.DateTimeFormat(SSR_LOCALE, { hour: 'numeric', minute: '2-digit' }).format(d)
+  return `${date} · ${time}`
+}
+
+/** Compact age for comments: "12s", "5m", "3h", "2d", then a numeric date after a week. */
+export function formatCompactAge(iso: string | null | undefined, nowMs?: number): string {
+  const d = toDate(iso)
+  if (!d) return ''
+  const seconds = Math.max(0, Math.floor(((nowMs ?? Date.now()) - d.getTime()) / 1000))
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d`
+  return formatNumericDate(iso)
+}
+
+/** "just now", "5m ago", "3h ago", "2d ago". */
+export function formatAgoShort(iso: string | null | undefined, nowMs?: number): string {
+  const d = toDate(iso)
+  if (!d) return ''
+  const sec = Math.max(0, Math.round(((nowMs ?? Date.now()) - d.getTime()) / 1000))
+  if (sec < 60) return 'just now'
+  const min = Math.round(sec / 60)
+  if (min < 60) return `${min}m ago`
+  const hr = Math.round(min / 60)
+  if (hr < 24) return `${hr}h ago`
+  return `${Math.round(hr / 24)}d ago`
+}
+
+/** Future-facing day count: "soon", "in 1 day", "in 5 days". */
+export function formatFutureRelative(iso: string | null | undefined, nowMs?: number): string {
+  const d = toDate(iso)
+  if (!d) return ''
+  const days = Math.round((d.getTime() - (nowMs ?? Date.now())) / 86_400_000)
+  if (days <= 0) return 'soon'
+  if (days === 1) return 'in 1 day'
+  return `in ${days} days`
+}

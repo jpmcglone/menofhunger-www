@@ -164,7 +164,7 @@
               >{{ i + 1 }}</div>
               <div class="flex-1 min-w-0">
                 <div class="font-semibold text-sm moh-text truncate">{{ formatHashtagLabel(t.label) }}</div>
-                <div class="moh-meta">{{ formatCount(t.usageCount) }} posts lately</div>
+                <div class="moh-meta">{{ formatShortCount(t.usageCount) }} posts lately</div>
               </div>
               <Icon name="tabler:chevron-right" class="shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true" />
             </NuxtLink>
@@ -185,6 +185,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortCount } from '~/utils/text'
 import type { Article, GetTrendingHashtagsData, HashtagResult } from '~/types/api'
 import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/article-visibility'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -338,13 +339,6 @@ function rankPillClass(i: number): string {
     : 'bg-gray-100 text-gray-400 dark:bg-zinc-800 dark:text-zinc-500'
 }
 
-function formatCount(n: number): string {
-  const num = Math.max(0, Math.floor(Number(n) || 0))
-  const trim = (s: string) => (s.endsWith('.0') ? s.slice(0, -2) : s)
-  if (num >= 1_000_000) return `${trim((num / 1_000_000).toFixed(num >= 10_000_000 ? 0 : 1))}m`
-  if (num >= 1_000) return `${trim((num / 1_000).toFixed(num >= 10_000 ? 0 : 1))}k`
-  return String(num)
-}
 </script>
 
 <style scoped>

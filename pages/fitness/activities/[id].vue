@@ -40,7 +40,7 @@
         <div>
           <h1 class="text-xl font-bold">{{ title }}</h1>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {{ providerLabel }} · {{ formatActivityDate(activity.startedAt) }}
+            {{ providerLabel }} · {{ formatFitnessActivityDateTime(activity.startedAt, { year: true }) }}
           </p>
         </div>
 
@@ -95,6 +95,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatFitnessActivityDateTime, formatFitnessDistance, formatFitnessDuration, formatFitnessElevation, formatFitnessTimestamp } from '~/utils/fitness-format'
 import type { FitnessActivityDetail, FitnessActivityType, FitnessUnits } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
@@ -154,11 +155,11 @@ const fieldRows = computed(() => {
     { label: 'Type', value: activityLabel(a.activityType) },
     { label: 'Provider', value: providerLabel.value },
     { label: 'External ID', value: a.externalId || '—' },
-    { label: 'Started', value: formatDateTime(a.startedAt) },
-    { label: 'Ended', value: a.endedAt ? formatDateTime(a.endedAt) : '—' },
-    { label: 'Duration', value: formatDuration(a.durationSec) },
-    { label: 'Distance', value: a.distanceM != null ? `${formatDistance(a.distanceM, units)} ${units === 'us' ? 'mi' : 'km'}` : '—' },
-    { label: 'Elevation', value: a.totalElevationM != null ? formatElevation(a.totalElevationM, units) : '—' },
+    { label: 'Started', value: formatFitnessTimestamp(a.startedAt) },
+    { label: 'Ended', value: a.endedAt ? formatFitnessTimestamp(a.endedAt) : '—' },
+    { label: 'Duration', value: formatFitnessDuration(a.durationSec, { seconds: true }) },
+    { label: 'Distance', value: a.distanceM != null ? `${formatFitnessDistance(a.distanceM, units, 2)} ${units === 'us' ? 'mi' : 'km'}` : '—' },
+    { label: 'Elevation', value: a.totalElevationM != null ? formatFitnessElevation(a.totalElevationM, units) : '—' },
     { label: 'Steps', value: a.stepsCount != null ? String(a.stepsCount) : '—' },
     { label: 'Calories', value: a.calories != null ? `${Math.round(a.calories)} kcal` : '—' },
     { label: 'Avg HR', value: a.avgHeartrate != null ? `${Math.round(a.avgHeartrate)} bpm` : '—' },
@@ -245,40 +246,4 @@ function activityLabel(type: FitnessActivityType): string {
   return map[type] ?? type
 }
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = seconds % 60
-  if (h > 0) return `${h}h ${m}m ${s}s`
-  if (m > 0) return `${m}m ${s}s`
-  return `${s}s`
-}
-
-function formatDistance(meters: number, units: FitnessUnits): string {
-  if (units === 'us') return (meters / 1609.34).toFixed(2)
-  return (meters / 1000).toFixed(2)
-}
-
-function formatElevation(meters: number, units: FitnessUnits): string {
-  if (units === 'us') return `${Math.round(meters * 3.28084)} ft`
-  return `${Math.round(meters)} m`
-}
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-  })
-}
-
-function formatActivityDate(iso: string): string {
-  const d = new Date(iso)
-  const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-  return `${dateStr} · ${timeStr}`
-}
 </script>

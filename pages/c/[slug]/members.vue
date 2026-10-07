@@ -71,7 +71,7 @@
                 </span>
               </template>
             </AppUserIdentityLine>
-            <div class="text-[11px] moh-text-muted">Joined {{ formatDate(m.joinedAt) }}</div>
+            <div class="text-[11px] moh-text-muted">Joined {{ formatNumericDate(m.joinedAt) }}</div>
           </div>
           <!-- Row actions: open the shared popover (View profile / Remove from crew). -->
           <button
@@ -100,7 +100,7 @@
             </div>
             <div class="text-[11px] moh-text-muted inline-flex items-center gap-1">
               <Icon name="tabler:clock" class="text-[10px]" aria-hidden="true" />
-              Invite pending · sent {{ formatDate(inv.createdAt) }}
+              Invite pending · sent {{ formatNumericDate(inv.createdAt) }}
             </div>
           </div>
           <button
@@ -139,6 +139,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatNumericDate } from '~/utils/time-format'
 import type { CrewBySlugViewerMembership, CrewInvite, CrewMemberListItem, CrewPublic } from '~/types/api'
 import type { CrewMemberActionTarget } from '~/components/app/crew/CrewMemberActionMenu.vue'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -179,14 +180,6 @@ usePageSeo({
   title: computed(() => `${crewName.value} — members`),
   noindex: true,
 })
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString()
-  } catch {
-    return ''
-  }
-}
 
 // View profile always works. Remove-from-crew is owner-only and excludes the
 // owner row + yourself — so hide the whole menu button when there's nothing to

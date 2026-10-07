@@ -7,7 +7,7 @@
         <div class="flex-1 min-w-0">
           <div class="text-sm font-semibold capitalize">{{ share.snapshot.data.activityType }}</div>
           <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-2 flex-wrap">
-            <span>{{ formatDuration(share.snapshot.data.durationSec) }}</span>
+            <span>{{ formatFitnessDuration(share.snapshot.data.durationSec) }}</span>
             <template v-if="share.snapshot.data.distanceM">
               <span>·</span>
               <span>{{ formatDistance(share.snapshot.data.distanceM) }}</span>
@@ -18,7 +18,7 @@
             </template>
           </div>
           <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-            {{ formatDate(share.snapshot.data.startedAt) }}
+            {{ formatFitnessDate(share.snapshot.data.startedAt, { year: true }) }}
           </div>
         </div>
         <span class="text-[10px] font-bold uppercase tracking-wide flex-shrink-0" style="color: #FC4C02;">Strava</span>
@@ -35,7 +35,7 @@
             {{ formatDelta(share.snapshot.data.deltaKg) }} from last entry
           </div>
           <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-            {{ formatDate(share.snapshot.data.measuredAt) }}
+            {{ formatFitnessDate(share.snapshot.data.measuredAt, { year: true }) }}
           </div>
         </div>
         <Icon name="tabler:chart-line" class="text-gray-500 dark:text-gray-400 text-base flex-shrink-0" />
@@ -53,10 +53,10 @@
           </div>
           <div v-if="share.snapshot.data.deltaMlKgMin !== null" class="text-xs mt-0.5" :class="vo2DeltaClass(share.snapshot.data.deltaMlKgMin)">
             {{ formatVo2Delta(share.snapshot.data.deltaMlKgMin) }}
-            <template v-if="share.snapshot.data.startedAt"> since {{ formatDate(share.snapshot.data.startedAt) }}</template>
+            <template v-if="share.snapshot.data.startedAt"> since {{ formatFitnessDate(share.snapshot.data.startedAt, { year: true }) }}</template>
           </div>
           <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-            {{ formatDate(share.snapshot.data.measuredAt) }}
+            {{ formatFitnessDate(share.snapshot.data.measuredAt, { year: true }) }}
           </div>
         </div>
         <span class="text-[10px] font-semibold uppercase tracking-wide text-indigo-500 flex-shrink-0">VO2 Max</span>
@@ -89,22 +89,16 @@
 </template>
 
 <script setup lang="ts">
+import { formatFitnessDate, formatFitnessDuration, formatFitnessDistance } from '~/utils/fitness-format'
 import type { FitnessSharePreview, FitnessActivityType } from '~/types/api'
 
 const props = defineProps<{
   share: FitnessSharePreview
 }>()
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0) return `${h}h ${m}m`
-  return `${m}m`
-}
-
 function formatDistance(meters: number): string {
   // Default to miles (US); a future enhancement could read user preference.
-  return `${(meters / 1609.34).toFixed(1)} mi`
+  return `${formatFitnessDistance(meters, 'us')} mi`
 }
 
 function formatWeight(kg: number | null | undefined): string {
@@ -133,10 +127,6 @@ function vo2DeltaClass(delta: number): string {
   if (delta > 0) return 'text-green-600 dark:text-green-400'
   if (delta < 0) return 'text-red-500 dark:text-red-400'
   return 'text-gray-500 dark:text-gray-400'
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function activityIcon(type: FitnessActivityType): string {

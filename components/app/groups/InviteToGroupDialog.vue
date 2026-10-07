@@ -206,7 +206,7 @@ function rowClass(row: CommunityGroupInvitableUser): string {
 function formatCooldown(iso: string): string {
   try {
     const d = new Date(iso)
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   } catch {
     return 'soon'
   }

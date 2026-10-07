@@ -104,3 +104,8 @@ export function crosspostSkipMessage(destination: 'Pickax' | 'X', reason: string
 
 /** Match the API's conservative accounting of URLs that X may linkify. */
 export function xContainsLink(text: string): boolean { return xText.containsLink(text) }
+
+/** Advanced X publishing (threads, replies, quotes) is a separate grant from a basic connection. */
+export function xAdvancedPublishingSupported(capabilities?: IntegrationCapabilityDto[] | null): boolean {
+  return capabilities?.some(capability => capability.action === 'thread' && capability.state === 'supported') === true
+}

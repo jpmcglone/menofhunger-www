@@ -111,8 +111,8 @@
               <span class="truncate text-xs text-gray-500 dark:text-zinc-500">
                 {{ post.quote.author.handle }}
               </span>
-              <span v-if="formatDate(post.quote.createdAt)" class="shrink-0 text-xs text-gray-500 dark:text-zinc-500">
-                · {{ formatDate(post.quote.createdAt) }}
+              <span v-if="formatXDate(post.quote.createdAt)" class="shrink-0 text-xs text-gray-500 dark:text-zinc-500">
+                · {{ formatXDate(post.quote.createdAt) }}
               </span>
             </div>
             <div class="mt-1.5 whitespace-pre-wrap break-words text-pretty text-sm leading-snug line-clamp-10">
@@ -136,6 +136,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortDate } from '~/utils/time-format'
 import type { SocialPostMetadata } from '~/utils/link-metadata'
 
 const props = withDefaults(
@@ -149,16 +150,9 @@ const props = withDefaults(
   },
 )
 
-function formatDate(value: string | null): string | null {
-  if (!value) return null
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(date)
+function formatXDate(value: string | null): string | null {
+  return formatShortDate(value, { timeZone: 'UTC' }) || null
 }
 
-const formattedDate = computed(() => formatDate(props.post.createdAt))
+const formattedDate = computed(() => formatXDate(props.post.createdAt))
 </script>

@@ -907,7 +907,7 @@ const scheduleMaxDate = computed(() => {
 
 function formatScheduledAt(d: Date | null): string {
   if (!d) return ''
-  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
 }
 
 const scheduledAtDisplay = computed(() => formatScheduledAt(scheduledAt.value))

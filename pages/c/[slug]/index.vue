@@ -124,7 +124,7 @@
             {{ crew.memberCount }} {{ crew.memberCount === 1 ? 'member' : 'members' }}
           </NuxtLink>
           <span>·</span>
-          <span>Formed {{ formatDate(crew.createdAt) }}</span>
+          <span>Formed {{ formatMonthYear(crew.createdAt) }}</span>
         </div>
 
         <!-- Bio: shown to everyone who can see the page -->
@@ -244,6 +244,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatMonthYear } from '~/utils/time-format'
 import type { CrewBySlugViewerMembership, CrewInvite, CrewMemberListItem, CrewPrivate, CrewPublic, FeedPost } from '~/types/api'
 import type { CrewMemberActionTarget } from '~/components/app/crew/CrewMemberActionMenu.vue'
 import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
@@ -511,14 +512,6 @@ usePageSeo({
   description: seoDescription,
   canonicalPath: seoCanonical,
 })
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-  } catch {
-    return ''
-  }
-}
 
 function onEdited(payload: { id: string; post: FeedPost }) {
   replacePost(payload.post)

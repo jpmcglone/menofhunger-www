@@ -181,10 +181,10 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-2">
                 <span class="text-sm font-semibold capitalize">{{ activity.name || activityLabel(activity.activityType) }}</span>
-                <span class="text-xs text-gray-400 flex-shrink-0">{{ formatActivityDate(activity.startedAt) }}</span>
+                <span class="text-xs text-gray-400 flex-shrink-0">{{ formatFitnessActivityDateTime(activity.startedAt) }}</span>
               </div>
               <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
-                <span class="font-medium text-gray-700 dark:text-gray-300">{{ formatDuration(activity.durationSec) }}</span>
+                <span class="font-medium text-gray-700 dark:text-gray-300">{{ formatFitnessDuration(activity.durationSec) }}</span>
                 <template v-if="activity.distanceM">
                   <span class="text-gray-300 dark:text-gray-600">·</span>
                   <span>{{ formatDistance(activity.distanceM) }} {{ fitnessPage.units === 'us' ? 'mi' : 'km' }}</span>
@@ -240,7 +240,7 @@
               {{ weightDelta > 0 ? '+' : '' }}{{ formatWeight(weightDelta / (fitnessPage.units === 'us' ? 1 / 2.20462 : 1)) }}
               {{ fitnessPage.units === 'us' ? 'lbs' : 'kg' }}
             </div>
-            <div class="text-xs text-gray-400">{{ formatDate(displayedWeight.measuredAt) }}</div>
+            <div class="text-xs text-gray-400">{{ formatFitnessDate(displayedWeight.measuredAt) }}</div>
           </div>
         </div>
         <div v-else class="text-sm text-gray-500 dark:text-gray-400">
@@ -259,9 +259,9 @@
             @hover="hoverWeightIndex = $event"
           />
           <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
-            <span>{{ formatDate(fitnessPage.weightHistory.at(-1)!.measuredAt) }}</span>
+            <span>{{ formatFitnessDate(fitnessPage.weightHistory.at(-1)!.measuredAt) }}</span>
             <span>{{ fitnessPage.weightHistory.length }} entries</span>
-            <span>{{ formatDate(fitnessPage.weightHistory.at(0)!.measuredAt) }}</span>
+            <span>{{ formatFitnessDate(fitnessPage.weightHistory.at(0)!.measuredAt) }}</span>
           </div>
         </div>
 
@@ -276,7 +276,7 @@
           >
             <div>
               <div class="text-sm font-medium tabular-nums">{{ formatWeight(metric.weightKg) }} {{ fitnessPage.units === 'us' ? 'lbs' : 'kg' }}</div>
-              <div class="text-[10px] text-gray-400">{{ formatDate(metric.measuredAt) }}</div>
+              <div class="text-[10px] text-gray-400">{{ formatFitnessDate(metric.measuredAt) }}</div>
             </div>
             <div
               v-if="fitnessPage.weightHistory[idx + 1]"
@@ -418,7 +418,7 @@
                 v-if="stepsAvgPerDay != null && hoverStepsIndex == null"
                 class="text-sm tabular-nums text-gray-400"
               >{{ formatSteps(stepsAvgPerDay) }} / day</div>
-              <div class="text-xs text-gray-400">{{ formatDayKey(displayedSteps.dayKey) }}</div>
+              <div class="text-xs text-gray-400">{{ formatFitnessDayKey(displayedSteps.dayKey) }}</div>
             </div>
           </div>
 
@@ -433,9 +433,9 @@
               @hover="hoverStepsIndex = $event"
             />
             <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
-              <span>{{ formatDayKey(fitnessPage.stepsHistory.at(-1)!.dayKey) }}</span>
+              <span>{{ formatFitnessDayKey(fitnessPage.stepsHistory.at(-1)!.dayKey) }}</span>
               <span>{{ fitnessPage.stepsHistory.length }} days</span>
-              <span>{{ formatDayKey(fitnessPage.stepsHistory.at(0)!.dayKey) }}</span>
+              <span>{{ formatFitnessDayKey(fitnessPage.stepsHistory.at(0)!.dayKey) }}</span>
             </div>
           </div>
 
@@ -450,7 +450,7 @@
             >
               <div>
                 <div class="text-sm font-medium tabular-nums">{{ formatSteps(day.stepsCount) }} steps</div>
-                <div class="text-[10px] text-gray-400">{{ formatDayKey(day.dayKey) }}</div>
+                <div class="text-[10px] text-gray-400">{{ formatFitnessDayKey(day.dayKey) }}</div>
               </div>
               <div
                 v-if="fitnessPage.stepsHistory[idx + 1]"
@@ -487,7 +487,7 @@
             <div class="text-xs font-medium" :class="vo2maxCategory(displayedVo2Max.weightKg).color">
               {{ vo2maxCategory(displayedVo2Max.weightKg).label }}
             </div>
-            <div class="text-xs text-gray-400">{{ formatDate(displayedVo2Max.measuredAt) }}</div>
+            <div class="text-xs text-gray-400">{{ formatFitnessDate(displayedVo2Max.measuredAt) }}</div>
           </div>
         </div>
         <div v-else class="text-sm text-gray-500 dark:text-gray-400">
@@ -506,9 +506,9 @@
             @hover="hoverVo2Index = $event"
           />
           <div class="flex justify-between text-[10px] text-gray-400 mt-0.5">
-            <span>{{ formatDate(fitnessPage.vo2maxHistory.at(-1)!.measuredAt) }}</span>
+            <span>{{ formatFitnessDate(fitnessPage.vo2maxHistory.at(-1)!.measuredAt) }}</span>
             <span>{{ fitnessPage.vo2maxHistory.length }} readings</span>
-            <span>{{ formatDate(fitnessPage.vo2maxHistory.at(0)!.measuredAt) }}</span>
+            <span>{{ formatFitnessDate(fitnessPage.vo2maxHistory.at(0)!.measuredAt) }}</span>
           </div>
         </div>
         </div>
@@ -572,6 +572,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatFitnessActivityDateTime, formatFitnessDate, formatFitnessDayKey, formatFitnessDistance, formatFitnessDuration } from '~/utils/fitness-format'
 import type { FitnessPage, FitnessActivityType, FitnessDailySummary, FitnessSharePreview, FitnessStepsDay, PostVisibility } from '~/types/api'
 import { easternDateKey } from '~/utils/eastern-time'
 import { indexAlongWidth, layoutSparkline } from '~/utils/fitness-chart'
@@ -1252,31 +1253,7 @@ function formatSteps(n: number): string {
 
 function formatDistance(meters: number | null): string {
   if (!meters) return '0'
-  const page = fitnessPage.value
-  if (page?.units === 'us') return (meters / 1609.34).toFixed(1)
-  return (meters / 1000).toFixed(1)
-}
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0) return `${h}h ${m}m`
-  return `${m}m`
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-function formatDayKey(dayKey: string): string {
-  return formatDate(`${dayKey}T12:00:00Z`)
-}
-
-function formatActivityDate(iso: string): string {
-  const d = new Date(iso)
-  const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-  return `${dateStr} · ${timeStr}`
+  return formatFitnessDistance(meters, fitnessPage.value?.units)
 }
 
 const maxSteps = computed(() => {

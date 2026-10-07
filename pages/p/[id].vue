@@ -101,7 +101,7 @@
         />
       </div>
 
-      <AppXPublishing v-if="post.author.id === user?.id && !post.deletedAt && post.visibility === 'public'" :key="`publish-x-${post.id}`" :post-id="post.id" />
+      <AppXPublishing v-if="canReviewXPublication" :key="`publish-x-${post.id}`" :post-id="post.id" />
       <AppXAuthorMetrics v-if="post.author.id === user?.id && post.xUrl && !post.deletedAt" :key="`x-${post.id}`" :post-id="post.id" />
       <AppConversationInsights v-if="post.author.id === user?.id && !post.parentId && !isOnlyMe && !post.deletedAt && post.kind !== 'repost'" :key="post.id" :post-id="post.id" />
       <AppPostContribution :key="`contribution-${post.id}`" :post="post" />
@@ -341,6 +341,7 @@ import { usePostDiscoverMore } from '~/composables/usePostDiscoverMore'
 import { useThreadParticipants } from '~/composables/useThreadParticipants'
 import { usePostPermalinkSeo } from '~/composables/usePostPermalinkSeo'
 import { boardPostHref } from '~/utils/board-links'
+import { xAdvancedPublishingSupported } from '~/utils/crosspost'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
@@ -416,6 +417,15 @@ const {
   apiErrorStatus,
   refreshPost,
 } = await usePostPermalink(postId)
+
+const xIntegration = useXIntegration()
+function ownPublicPostKey(): string | null {
+  const current = post.value
+  if (!current || current.author.id !== user.value?.id || current.deletedAt || current.visibility !== 'public') return null
+  return `${user.value?.id}:${current.id}`
+}
+const canReviewXPublication = computed(() => ownPublicPostKey() !== null && xAdvancedPublishingSupported(xIntegration.status.value?.capabilities))
+watch(ownPublicPostKey, (key) => { if (key && import.meta.client) void xIntegration.refresh() }, { immediate: true })
 
 useJourneyReady('post_detail_ready', () => Boolean(post.value || accessHint.value), {
   context: () => postId.value,

@@ -38,7 +38,7 @@
                 </div>
               </div>
               <div class="shrink-0 text-[11px] font-semibold tabular-nums text-gray-500 dark:text-gray-400">
-                {{ formatCount(t.usageCount) }}
+                {{ formatShortCount(t.usageCount) }}
               </div>
             </button>
           </template>
@@ -62,6 +62,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortCount } from '~/utils/text'
 import type { HashtagResult } from '~/types/api'
 
 type HashtagSection = { key: string; label?: string | null; items: HashtagResult[] }
@@ -91,14 +92,6 @@ const panelPlacement = ref<'top' | 'bottom'>('bottom')
 function optionId(i: number): string | undefined {
   if (!props.listboxId) return undefined
   return `${props.listboxId}-opt-${i}`
-}
-
-function formatCount(n: number): string {
-  const num = Math.max(0, Math.floor(Number(n) || 0))
-  const trim = (s: string) => (s.endsWith('.0') ? s.slice(0, -2) : s)
-  if (num >= 1_000_000) return `${trim((num / 1_000_000).toFixed(num >= 10_000_000 ? 0 : 1))}m`
-  if (num >= 1_000) return `${trim((num / 1_000).toFixed(num >= 10_000 ? 0 : 1))}k`
-  return String(num)
 }
 
 const renderSections = computed<HashtagSection[]>(() => {

@@ -47,7 +47,7 @@
           class="text-[11px] moh-text-soft hover:underline hover:text-[var(--moh-text-muted)]"
           :title="fullTimestamp"
           @click.prevent="onTimestampClick"
-        >{{ timeAgo }}</a>
+        >{{ commentAge }}</a>
       </div>
 
       <!-- Body -->
@@ -287,6 +287,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCompactAge } from '~/utils/time-format'
 import type { MenuItem } from 'primevue/menuitem'
 import type { ArticleComment } from '~/types/api'
 import { ARTICLE_REACTIONS as REACTIONS } from '~/utils/article-reactions'
@@ -527,20 +528,7 @@ function pickReaction(reactionId: string, emoji: string) {
   reactPickerOpen.value = false
 }
 
-const timeAgo = computed(() => {
-  const date = new Date(props.comment.createdAt)
-  const now = Date.now()
-  const diff = now - date.getTime()
-  const seconds = Math.floor(diff / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d`
-  return date.toLocaleDateString()
-})
+const commentAge = computed(() => formatCompactAge(props.comment.createdAt))
 </script>
 
 <style scoped>

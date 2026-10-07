@@ -2040,8 +2040,8 @@ export type WsPostsCommentDeletedPayload = {
  * Live "someone is replying to this post" indicator.
  * Emitted to `post:{postId}` room subscribers (excluding the sender) while a user is composing a reply.
  *
- * `status` is only set by server-side emitters (e.g. Marvin). Marv always
- * emits `'replying'` while queued, thinking, or composing — clients show the
+ * `status` is only set by server-side emitters (e.g. Marvin). Marv emits
+ * `'replying'` only after he has committed to a reply, while composing — clients show the
  * same "is replying" copy. `'thinking'` is legacy and should render the same.
  */
 export type WsPostsTypingPayload = {

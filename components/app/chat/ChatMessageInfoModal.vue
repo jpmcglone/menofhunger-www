@@ -117,7 +117,7 @@ const senderForAvatar = computed(() => {
 const formattedSentAt = computed(() => {
   if (!props.message?.createdAt) return ''
   const d = new Date(props.message.createdAt)
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -149,7 +149,7 @@ const readReceipts = computed<ReadReceipt[]>(() => {
         isOrganization: p.user.isOrganization,
         verifiedStatus: p.user.verifiedStatus,
       },
-      readAt: new Date(p.lastReadAt!).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit' }),
+      readAt: new Date(p.lastReadAt!).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' }),
     }))
 })
 </script>

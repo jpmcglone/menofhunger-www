@@ -85,11 +85,11 @@ describe('architecture guardrails (ratchet)', () => {
   for (const rule of Object.keys(MESSAGES)) {
     it(`${rule}: no new offenders`, () => {
       const allowed = new Set(baseline[rule] ?? [])
-      const added = current[rule].filter((f) => !allowed.has(f))
+      const added = (current[rule] ?? []).filter((f) => !allowed.has(f))
       expect(added, `${MESSAGES[rule]}\n${added.join('\n')}`).toEqual([])
     })
     it(`${rule}: baseline has no stale entries`, () => {
-      const now = new Set(current[rule])
+      const now = new Set(current[rule] ?? [])
       const stale = (baseline[rule] ?? []).filter((f) => !now.has(f))
       expect(stale, `Remove fixed files from the baseline:\n${stale.join('\n')}`).toEqual([])
     })

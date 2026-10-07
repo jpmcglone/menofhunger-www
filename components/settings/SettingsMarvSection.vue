@@ -99,7 +99,7 @@
         >
           {{ contextCard.cardText }}
           <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Updated {{ formatRelative(contextCard.updatedAt) }}
+            Updated {{ formatAgoShort(contextCard.updatedAt) }}
           </div>
         </div>
         <div
@@ -155,7 +155,7 @@
                 </span>
               </div>
               <div class="text-xs text-gray-500 dark:text-gray-400">
-                Mode {{ marvinModeLabel(event.effectiveMode) }} · {{ event.creditsSpent }} credits · {{ formatRelative(event.createdAt) }}
+                Mode {{ marvinModeLabel(event.effectiveMode) }} · {{ event.creditsSpent }} credits · {{ formatAgoShort(event.createdAt) }}
               </div>
             </div>
           </li>
@@ -173,6 +173,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAgoShort } from '~/utils/time-format'
 import type { MarvinContextCardDto, MarvinSourceDto, MarvinUsageEventDto } from '~/types/api'
 import { onActivated, onMounted } from 'vue'
 import { marvinModeLabel } from '~/utils/marvin-mode'
@@ -219,19 +220,6 @@ function sourceLabel(s: MarvinSourceDto): string {
   if (s === 'private_session') return 'Direct chat'
   if (s === 'catch_up') return 'Catch me up'
   return 'Public thread'
-}
-
-function formatRelative(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime()
-  if (Number.isNaN(ms)) return ''
-  const sec = Math.max(0, Math.round(ms / 1000))
-  if (sec < 60) return 'just now'
-  const min = Math.round(sec / 60)
-  if (min < 60) return `${min}m ago`
-  const hr = Math.round(min / 60)
-  if (hr < 24) return `${hr}h ago`
-  const d = Math.round(hr / 24)
-  return `${d}d ago`
 }
 
 const creditsLabel = computed(() => {

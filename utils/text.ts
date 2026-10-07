@@ -33,3 +33,11 @@ export function formatShortCount(n: number): string {
   }
   return '0'
 }
+
+const FULL_COUNT_FORMAT = new Intl.NumberFormat('en-US')
+
+/** Full grouped count (1,234) for profile stats; non-numbers and negatives become 0. */
+export function formatFullCount(n: unknown): string {
+  const v = typeof n === 'number' ? n : Number(n)
+  return FULL_COUNT_FORMAT.format(Math.max(0, Math.floor(Number.isFinite(v) ? v : 0)))
+}

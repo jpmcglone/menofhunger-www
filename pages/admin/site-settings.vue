@@ -374,7 +374,7 @@ function applyCfg(cfg: SiteConfigDto) {
 
 function formatJoined(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
   } catch {
     return iso
   }

@@ -28,7 +28,7 @@
         class="h-4 w-4 shrink-0"
         aria-hidden="true"
       />
-      <AppAnimatedCount :value="likeCount" :format="formatCount" class="tabular-nums" />
+      <AppAnimatedCount :value="likeCount" :format="formatShortCount" class="tabular-nums" />
     </button>
 
     <!-- Breakdown popover -->
@@ -122,10 +122,6 @@ const {
   reset: resetBreakdown,
   remeasure: remeasureBreakdown,
 } = useMenuPosition()
-
-function formatCount(n: number) {
-  return n === 0 ? '0' : formatShortCount(n)
-}
 
 async function onLikeClick() {
   if (!isLoggedIn.value) return

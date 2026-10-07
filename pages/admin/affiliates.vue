@@ -55,7 +55,7 @@
                 {{ aff.name || aff.username || aff.userId }}
               </NuxtLink>
               <div class="text-xs moh-text-muted">
-                @{{ aff.username ?? '—' }} · {{ aff.recruitCount }} recruit{{ aff.recruitCount === 1 ? '' : 's' }} · since {{ formatDate(aff.affiliateAt) }}
+                @{{ aff.username ?? '—' }} · {{ aff.recruitCount }} recruit{{ aff.recruitCount === 1 ? '' : 's' }} · since {{ formatShortDate(aff.affiliateAt, { year: true }) }}
               </div>
               <div v-if="aff.capReached" class="text-xs font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
                 Cap reached (${{ aff.capCents / 100 }})
@@ -93,6 +93,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortDate } from '~/utils/time-format'
 import type { AdminAffiliateUser, AdminAffiliateSettle } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 
@@ -144,10 +145,6 @@ async function settle(userId: string) {
   } finally {
     settlingId.value = null
   }
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function formatCents(cents: number): string {

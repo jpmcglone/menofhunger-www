@@ -31,7 +31,7 @@
             v-for="post in data.unansweredPosts" :key="post.id" :to="`/p/${post.id}`"
             class="moh-gutter-x block space-y-3 py-5 hover:bg-black/5 dark:hover:bg-white/5"
           >
-            <p class="text-sm font-semibold">@{{ post.username || 'member' }} · <time :datetime="post.createdAt">{{ formatDate(post.createdAt) }}</time></p>
+            <p class="text-sm font-semibold">@{{ post.username || 'member' }} · <time :datetime="post.createdAt">{{ formatShortDate(post.createdAt) }}</time></p>
             <p class="line-clamp-3 break-words text-sm">{{ post.body || 'Open this post to view its content.' }}</p>
             <span class="inline-flex items-center gap-1 text-sm font-semibold">Open post <Icon name="tabler:arrow-right" aria-hidden="true" /></span>
           </NuxtLink>
@@ -42,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortDate } from '~/utils/time-format'
 import { usePrivateApiData } from '~/composables/usePrivateApiData'
 import type { AdminAttentionDto } from '~/types/api'
 
@@ -50,5 +51,4 @@ definePageMeta({ layout: 'app', middleware: ['admin'] })
 useHead({ title: 'Conversations needing a reply' })
 const { data, loading, error, refresh } = usePrivateApiData<AdminAttentionDto>('/admin/operations/attention')
 const unansweredCount = computed(() => data.value?.items.find(item => item.id === 'unanswered')?.count ?? 0)
-const formatDate = (value: string) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 </script>

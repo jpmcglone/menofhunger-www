@@ -144,7 +144,7 @@ const visClass = computed(() => visibilityTagClasses(props.item.scheduledVisibil
 
 const formattedScheduledAt = computed(() => {
   if (!props.item.scheduledAt) return ''
-  return new Date(props.item.scheduledAt).toLocaleString(undefined, {
+  return new Date(props.item.scheduledAt).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

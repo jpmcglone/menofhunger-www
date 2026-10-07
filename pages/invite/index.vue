@@ -316,7 +316,7 @@
                   :key="recruit.id"
                   :user="toUserRowUser(recruit)"
                   :show-follow-button="false"
-                  :name-meta="formatDate(recruit.recruitedAt)"
+                  :name-meta="formatShortDate(recruit.recruitedAt, { year: true })"
                 />
               </div>
             </template>
@@ -328,6 +328,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatShortDate } from '~/utils/time-format'
 import type { AffiliateSummary, Recruit, ReferralMe, FollowListUser } from '~/types/api'
 import type { ReferralCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -515,10 +516,6 @@ function setCopied() {
 }
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`

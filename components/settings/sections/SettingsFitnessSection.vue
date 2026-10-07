@@ -51,7 +51,7 @@
       </p>
       <div v-else class="text-xs text-gray-500 dark:text-gray-400">
         <div v-if="appleHealthConnection.lastSyncAt">
-          Last synced: {{ formatRelative(appleHealthConnection.lastSyncAt) }}
+          Last synced: {{ formatAgoShort(appleHealthConnection.lastSyncAt) }}
         </div>
       </div>
     </div>
@@ -126,7 +126,7 @@
       <template v-else-if="stravaConnection">
         <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
           <div v-if="stravaConnection.lastSyncAt">
-            Last synced: {{ formatRelative(stravaConnection.lastSyncAt) }}
+            Last synced: {{ formatAgoShort(stravaConnection.lastSyncAt) }}
           </div>
           <div v-else>Never synced</div>
         </div>
@@ -147,6 +147,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatAgoShort } from '~/utils/time-format'
 import type { FitnessConnection } from '~/types/api'
 
 // Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=608-192
@@ -195,16 +196,6 @@ async function loadPage() {
 
 onMounted(loadPage)
 watch(canAccessFitness, loadPage)
-
-function formatRelative(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
-}
 
 async function setUnits(u: 'us' | 'metric') {
   units.value = u

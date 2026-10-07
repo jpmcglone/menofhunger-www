@@ -1,34 +1,47 @@
 <template>
   <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 881:524. -->
-  <section v-if="!dismissed" class="activation-guide moh-text" aria-label="Getting started">
-    <p class="text-[13px] uppercase moh-text-muted">{{ approved ? 'Your first days here' : 'Getting started' }}</p>
-    <h2 class="text-[28px] leading-9 font-semibold">{{ heading }}</h2>
-    <p class="text-[15px] leading-[22px] moh-text-muted">{{ summary }}</p>
-    <p v-if="progress" class="text-[13px] moh-text-muted" aria-live="polite">{{ completedCount }} of {{ approved ? 3 : 2 }} complete</p>
-    <p v-else-if="!syncError" class="text-sm moh-text-muted" role="status">Loading your progress…</p>
+  <section v-if="showCard" class="activation-guide moh-text" aria-label="Getting started">
+    <div class="flex items-baseline justify-between gap-3">
+      <p class="moh-meta uppercase">{{ approved ? 'Your first days here' : 'Getting started' }}</p>
+      <p v-if="progress" class="moh-meta shrink-0 tabular-nums" aria-live="polite">{{ completedCount }} of {{ approved ? 3 : 2 }} complete</p>
+    </div>
+    <div class="space-y-1">
+      <h2 class="moh-h1">{{ heading }}</h2>
+      <p class="text-[15px] leading-5 moh-text-muted text-pretty">{{ summary }}</p>
+    </div>
     <div v-if="syncError" class="text-sm moh-text-muted" role="status">
       Couldn’t refresh progress. <button type="button" class="min-h-11 underline" @click="sync">Try again</button>
     </div>
-    <template v-if="progress">
-      <section v-for="(step, index) in steps" :key="step.title" class="space-y-2">
-        <h3 class="text-[15px] leading-[22px] font-semibold">{{ step.done ? '✓' : `0${index + 1}` }} · {{ step.title }}</h3>
-        <p class="text-[15px] leading-[22px] moh-text-muted">{{ step.body }}</p>
-        <button v-if="step.action" type="button" class="guide-button" :class="{ 'guide-primary': !step.done }" @click="act(step.action)">{{ step.label }}</button>
-      </section>
-      <button v-if="approved && showCheckinCta && checkinPrompt && !progress.contributed" type="button" class="text-left min-h-11" @click="track('onboarding_action_clicked', 'checkin'); $emit('check-in')">
-        <AppCheckinPromptContext :prompt="checkinPrompt" compact />
-        <span class="font-semibold">Answer →</span>
-      </button>
-    </template>
-    <button v-if="!approved" type="button" class="guide-button" @click="addPhoto">Add a photo or profile details</button>
-    <button type="button" class="guide-button" @click="dismiss">{{ complete ? 'Back to feed' : 'I’ll explore first' }}</button>
-    <AppModal v-model="modalOpen" :title="modalTitle" title-wrap body-class="p-6">
-      <SettingsSectionsSettingsVerificationSection v-if="active === 'verification'" embedded @changed="sync" @done="active = null" />
-      <AppFeedActivationPeople v-else-if="active === 'people'" @followed="sync" />
-      <AppFeedActivationConversations v-else-if="active === 'conversations'" @reply="reply" />
-      <AppFeedActivationCompletion v-else-if="active === 'complete'" @done="finishGuide" />
-    </AppModal>
+    <ol v-if="progress" class="flex flex-col">
+      <li v-for="(step, index) in steps" :key="step.title">
+        <button v-if="step.done && step.action" type="button" class="step-row" @click="act(step.action)">
+          <span class="step-mark" aria-hidden="true">✓</span>
+          <span class="min-w-0 flex-1 truncate text-left">{{ step.title }}</span>
+          <span class="shrink-0 font-semibold">{{ step.label }}</span>
+        </button>
+        <div v-else class="step-row" :class="index === currentIndex ? '' : 'moh-text-muted'">
+          <span class="step-mark" aria-hidden="true">{{ step.done ? '✓' : index + 1 }}</span>
+          <span :class="index === currentIndex ? 'font-semibold moh-text' : ''">{{ step.title }}</span>
+        </div>
+        <div v-if="index === currentIndex" class="step-detail">
+          <p class="text-[15px] leading-5 moh-text-muted text-pretty">{{ step.body }}</p>
+          <button v-if="step.action" type="button" class="guide-button guide-primary" @click="act(step.action)">{{ step.label }}</button>
+          <button v-if="step.action === 'compose' && showCheckinCta && checkinPrompt" type="button" class="text-left min-h-11" @click="track('onboarding_action_clicked', 'checkin'); $emit('check-in')">
+            <AppCheckinPromptContext :prompt="checkinPrompt" compact />
+            <span class="font-semibold">Answer →</span>
+          </button>
+        </div>
+      </li>
+    </ol>
+    <button v-if="!approved" type="button" class="explore" @click="addPhoto">Add a photo or profile details</button>
+    <button type="button" class="explore" @click="dismiss">{{ complete ? 'Back to feed' : 'I’ll explore first' }}</button>
   </section>
+  <AppModal v-if="!dismissed" v-model="modalOpen" :title="modalTitle" title-wrap body-class="p-6">
+    <SettingsSectionsSettingsVerificationSection v-if="active === 'verification'" embedded @changed="sync" @done="active = null" />
+    <AppFeedActivationPeople v-else-if="active === 'people'" @followed="sync" />
+    <AppFeedActivationConversations v-else-if="active === 'conversations'" @reply="reply" />
+    <AppFeedActivationCompletion v-else-if="active === 'complete'" @done="finishGuide" />
+  </AppModal>
 </template>
 
 <script setup lang="ts">
@@ -62,6 +75,27 @@ const { user } = useAuth()
 const replyModal = useReplyModal()
 const active = ref<string | null>(null)
 const complete = computed(() => Boolean(progress.value) && completedCount.value === (approved.value ? 3 : 2))
+const currentIndex = computed(() => steps.value.findIndex(step => !step.done))
+const arrivedComplete = ref(false)
+const settled = ref(false)
+const showCard = computed(() => !dismissed.value && !arrivedComplete.value && Boolean(progress.value || syncError.value))
+function snapshotComplete(value: NonNullable<typeof progress.value>) {
+  return approved.value
+    ? Boolean(value.contributed && value.replied && value.returned)
+    : Boolean(value.verificationRequested && value.followed)
+}
+watch(progress, (value) => {
+  if (!value) {
+    settled.value = false
+    arrivedComplete.value = false
+    return
+  }
+  if (settled.value) return
+  settled.value = true
+  if (!snapshotComplete(value)) return
+  arrivedComplete.value = true
+  if (!(approved.value && value.completionSeen === false)) dismiss()
+}, { immediate: true })
 const celebrationOwner = computed(() => `${user.value?.id}.${phase.value}`)
 let claimingCompletion = false
 let alive = true
@@ -105,8 +139,13 @@ onBeforeUnmount(() => { alive = false; unregisterReply() })
 </script>
 
 <style scoped>
-.activation-guide { display: flex; flex-direction: column; gap: 16px; padding: 24px; background: var(--moh-bg); border-bottom: 1px solid var(--moh-border); }
-.guide-button { display: flex; width: 100%; justify-content: center; align-items: center; min-height: 46px; padding: 12px 20px; border-radius: 999px; font-size: 15px; font-weight: 600; }
+.activation-guide { display: flex; flex-direction: column; gap: 8px; padding: 14px 20px 4px; background: var(--moh-bg); border-bottom: 1px solid var(--moh-border); }
+.step-row { display: flex; width: 100%; align-items: center; gap: 10px; min-height: 32px; text-align: left; font-size: 15px; line-height: 20px; }
+button.step-row { min-height: 44px; }
+.step-mark { width: 16px; flex: none; text-align: center; font-size: 13px; font-weight: 650; }
+.step-detail { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 0 0 4px 26px; }
+.guide-button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; font-size: 15px; font-weight: 600; }
 .guide-primary { background: var(--moh-text); color: var(--moh-bg); }
+.explore { align-self: flex-start; min-height: 44px; font-size: 15px; font-weight: 600; color: var(--moh-text-muted); }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--moh-brass); outline-offset: 3px; }
 </style>
