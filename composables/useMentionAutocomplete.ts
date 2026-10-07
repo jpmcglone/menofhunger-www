@@ -1,10 +1,17 @@
 import type { Ref } from 'vue'
-import type { FollowListUser } from '~/types/api'
 import { extractMentionedUsernames, parseActiveMention, type ActiveMention } from '~/utils/mention-autocomplete'
 import { getCaretPoint, type CaretPoint } from '~/utils/textarea-caret'
-import { userColorTier } from '~/utils/user-tier'
+import {
+  clampMention,
+  normalizeMentionQuery,
+  rerankMentions,
+  tierFromMentionUser,
+  type MentionTier,
+  type MentionUser,
+} from '~/composables/mention/mentionScore'
 
-type MentionUser = FollowListUser
+export type { MentionTier } from '~/composables/mention/mentionScore'
+export { tierFromMentionUser } from '~/composables/mention/mentionScore'
 
 type SearchCacheEntry = { expiresAt: number; items: MentionUser[] }
 
@@ -14,71 +21,19 @@ const MAX_CACHE_ENTRIES = 200
 
 let mentionAutocompleteIdSeq = 0
 
-// Shared caches across mounts (so new composers can show cached results immediately).
 const globalMentionCache = new Map<string, SearchCacheEntry>()
 let globalMentionRecent: MentionUser[] = []
-
-function normalize(s: string): string {
-  return (s ?? '').toString().trim().toLowerCase().replace(/\s+/g, ' ')
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n))
-}
-
-function relationshipRank(u: MentionUser): number {
-  const rel = u.relationship
-  const vf = Boolean(rel?.viewerFollowsUser)
-  const fv = Boolean(rel?.userFollowsViewer)
-  if (vf && fv) return 0
-  if (vf) return 1
-  if (fv) return 2
-  return 3
-}
-
-export type MentionTier = 'organization' | 'premium' | 'verified' | 'normal'
-
-export function tierFromMentionUser(u: { isOrganization?: boolean; premium?: boolean; premiumPlus?: boolean; verifiedStatus?: string } | null): MentionTier {
-  return userColorTier(u)
-}
-
-function scoreUsernameMode(u: MentionUser, q: string): number {
-  const qLower = normalize(q)
-  const un = normalize(u.username ?? '')
-  const nm = normalize(u.name ?? '')
-  if (!qLower) return 0
-  // Username always takes precedence over display-name matches.
-  if (un && un === qLower) return 120
-  if (un && un.startsWith(qLower)) return 110
-  if (nm && nm === qLower) return 80
-  if (nm && nm.startsWith(qLower)) return 70
-  if (un && un.includes(qLower)) return 60
-  if (nm && nm.includes(qLower)) return 50
-  return 0
-}
 
 export type MentionSection = { title: string; startIndex: number; count: number }
 
 export function useMentionAutocomplete(opts: {
-  /** Ref to the actual textarea/input element when available. */
   el: Ref<HTMLTextAreaElement | HTMLInputElement | null>
-  /** Get current text value. */
   getText: () => string
-  /** Set current text value. */
   setText: (next: string) => void
-  /** Optional context usernames to boost (e.g. reply thread participants). */
   contextUsernames?: Ref<string[]>
-  /** Debounce ms for search requests. */
   debounceMs?: number
-  /** Search limit. */
   limit?: number
-  /**
-   * When provided, these users appear in a pinned top section (e.g. lobby members).
-   * The API is still queried for the remaining "Everyone" section below.
-   * When null/undefined, no sections are used (flat list, API-only).
-   */
   priorityUsers?: Ref<MentionUser[] | null>
-  /** Label for the priority section header (default: "Here"). */
   prioritySectionTitle?: string
 }) {
   const { apiFetchData } = useApiClient()
@@ -91,14 +46,11 @@ export function useMentionAutocomplete(opts: {
   const highlightedIndex = ref(0)
   const anchor = ref<CaretPoint | null>(null)
   const active = ref<ActiveMention | null>(null)
-  // True while a search request is in-flight or pending (debounced) for the active query.
-  // Used by the popover to show a spinner instead of "No matches" before the API has resolved.
   const loading = ref(false)
-  // Number of items at the start of `items` that belong to the priority section.
   const prioritySectionCount = ref(0)
 
   const limit = typeof opts.limit === 'number' ? Math.max(3, Math.min(20, Math.floor(opts.limit))) : DEFAULT_LIMIT
-  const debounceMs = typeof opts.debounceMs === 'number' ? clamp(Math.floor(opts.debounceMs), 0, 600) : 120
+  const debounceMs = typeof opts.debounceMs === 'number' ? clampMention(Math.floor(opts.debounceMs), 0, 600) : 120
 
   // SSR-safe: never share mutable caches across SSR requests.
   const cache = import.meta.client ? globalMentionCache : new Map<string, SearchCacheEntry>()
@@ -185,30 +137,7 @@ export function useMentionAutocomplete(opts: {
   }
 
   function rerank(list: MentionUser[], q: string): MentionUser[] {
-    const qLower = normalize(q)
-    const context = new Set<string>()
-
-    // Already-mentioned usernames in the draft (in-context boost).
-    for (const un of extractMentionedUsernames(opts.getText())) context.add(un)
-    for (const un of (opts.contextUsernames?.value ?? []).map((s) => normalize(s)).filter(Boolean)) context.add(un)
-
-    const scored = list.map((u, idx) => {
-      const base = scoreUsernameMode(u, qLower)
-      const rel = relationshipRank(u)
-      const relBonus = rel === 0 ? 3 : rel === 1 ? 2 : rel === 2 ? 1 : 0
-      const ctxBonus = u.username && context.has(normalize(u.username)) ? 2 : 0
-      // Preserve stable order as the last tiebreak.
-      return { u, idx, score: base * 10 + relBonus + ctxBonus, rel }
-    })
-
-    const filtered = scored.filter((s) => (qLower ? scoreUsernameMode(s.u, qLower) > 0 : true))
-
-    filtered.sort((a, b) => {
-      if (a.score !== b.score) return b.score - a.score
-      if (a.rel !== b.rel) return a.rel - b.rel
-      return a.idx - b.idx
-    })
-    return filtered.map((s) => s.u)
+    return rerankMentions(list, q, opts.getText(), opts.contextUsernames?.value ?? [])
   }
 
   function setItems(next: MentionUser[]) {
@@ -258,7 +187,7 @@ export function useMentionAutocomplete(opts: {
   }
 
   async function fetchUsers(q: string, requestId: number) {
-    const qNorm = normalize(q)
+    const qNorm = normalizeMentionQuery(q)
     const now = Date.now()
 
     if (inflight) {
@@ -323,7 +252,7 @@ export function useMentionAutocomplete(opts: {
     const a = active.value
     if (!a) return
     const q = (a.query ?? '').toString()
-    const qNorm = normalize(q)
+    const qNorm = normalizeMentionQuery(q)
 
     if (debounceTimer) clearTimeout(debounceTimer)
 

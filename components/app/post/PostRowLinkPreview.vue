@@ -1,10 +1,7 @@
 <template>
   <div v-if="showAny" class="mt-3" :inert="previewInteractionLocked || undefined">
     <AppSpotifyEmbed v-if="showLinkPreview && spotifyPreview" :content="spotifyPreview" />
-    <!-- Video embeds (special cases) -->
-    <!-- Portrait frames get an explicit px width (left-aligned); landscape fills the row.
-         The frame width lives here, not on the inner box, so no percentage is resolved
-         against a shrink-to-fit parent — that made portrait Rumble start tiny and grow. -->
+    <!-- Portrait frames get an explicit px width so they do not shrink-to-fit. -->
     <div
       v-else-if="youtubeEmbedUrl || isPreviewLinkRumble"
       :style="videoFrameStyle"
@@ -529,8 +526,6 @@ const embeddedPreviewEnabled = computed(() => {
 
 const isMohInternalLink = computed(() => Boolean(previewLink.value && isMohUrl(previewLink.value)))
 const mohInternalPath = computed(() => (previewLink.value ? mohUrlPath(previewLink.value) : null))
-
-
 
 const spotifyPreview = computed(() => spotifyContent(previewLink.value)
   ?? (isSpotifyShareUrl(previewLink.value) ? spotifyContent(linkMeta.value?.url) : null))

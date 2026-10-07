@@ -36,11 +36,7 @@ const pendingInterestIds = new Set<string>()
 const socketStatusFallbackAtById = new Map<string, number>()
 const statusFetchInFlightIds = new Set<string>()
 
-/**
- * Who-is-online state: online/idle/known user ids, per-user statuses, current
- * space tracking, interest refcounting, and the online-feed subscription.
- * Owns the `presence:*` socket handlers.
- */
+/** Who-is-online state and `presence:*` socket handlers. */
 export function usePresenceOnline(socketRef: Ref<Socket | null>) {
   const onlineUserIds = useState<Set<string>>(PRESENCE_STATE_KEY, () => new Set())
   const idleUserIds = useState<Set<string>>(PRESENCE_IDLE_IDS_KEY, () => new Set())

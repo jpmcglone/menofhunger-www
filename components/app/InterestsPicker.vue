@@ -215,8 +215,16 @@
 <script setup lang="ts">
 import type { GetTopicCategoriesData, GetCategoryTopicsData, Topic, TopicCategory } from '~/types/api'
 import { LIFE_ARENAS, arenaSelectionState, toggleArena } from '~/config/arenas'
+import {
+  INTEREST_CATEGORY_ORDER,
+  interestDisplayLabel,
+  interestMatchesFuzzy,
+  interestNormKey,
+  interestStoredValue,
+  type InterestPickerOption,
+} from '~/composables/interests/interestPickerUtils'
 
-type Option = { value: string; label: string; group?: string; keywords?: string[] }
+type Option = InterestPickerOption
 
 const props = withDefaults(defineProps<{
   modelValue: string[]
@@ -259,21 +267,11 @@ const draft = ref<string[]>([])
 const query = ref('')
 const queryEl = ref<HTMLInputElement | null>(null)
 
-function normKey(s: string): string {
-  return String(s ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/[_\s]+/g, ' ')
-    .replace(/[^a-z0-9 ]/g, '')
-    .replace(/\s+/g, ' ')
-}
-
 const presetOptions = computed<Option[]>(() =>
   (topicOptions.value ?? []).map((o) => ({
     value: o.value,
     label: o.label,
     group: o.group,
-    // Treat aliases as searchable keywords.
     keywords: Array.isArray(o.aliases) ? o.aliases : [],
   })),
 )
@@ -281,66 +279,25 @@ const presetOptions = computed<Option[]>(() =>
 const presetValueByNorm = computed(() => {
   const map = new Map<string, string>()
   for (const o of presetOptions.value) {
-    map.set(normKey(o.value), o.value)
-    map.set(normKey(o.label), o.value)
+    map.set(interestNormKey(o.value), o.value)
+    map.set(interestNormKey(o.label), o.value)
   }
   return map
 })
 
 function toStoredValue(raw: string): string {
-  const trimmed = String(raw ?? '').trim()
-  if (!trimmed) return ''
-  const key = normKey(trimmed)
-  const mapped = presetValueByNorm.value.get(key)
-  if (mapped) return mapped
-  // Custom: keep as lowercase words (spaces), bounded to API max(40) and safe-ish chars.
-  const cleaned = trimmed
-    .toLowerCase()
-    .replace(/[_\s]+/g, ' ')
-    .replace(/[^a-z0-9 '\-]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 40)
-  return cleaned
+  return interestStoredValue(raw, presetValueByNorm.value)
 }
 
 function labelFor(value: string): string {
   const preset = (topicOptions.value ?? []).find((o) => o.value === value)
-  if (preset) {
-    // Normalize any legacy snake_case labels to a stable display form.
-    // (This prevents SSR/client hydration mismatches when one side has topic options cached.)
-    return String(preset.label ?? '')
-      .trim()
-      .replace(/[_\s]+/g, ' ')
-      .replace(/\s+/g, ' ')
-  }
-  // SSR/hydration-safe fallback:
-  // - Presets are often snake_case (e.g. "tech_news") but labels are spaced (e.g. "Tech news")
-  // - On SSR, global topic-options cache may be warm; on client it starts cold
-  //   → ensure fallback matches the label style to avoid hydration mismatches.
-  const s = String(value ?? '')
-    .trim()
-    .replace(/[_\s]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .toLowerCase()
-  if (!s) return value
-  const out = s.charAt(0).toUpperCase() + s.slice(1)
-  return out.slice(0, 64)
+  return interestDisplayLabel(value, preset?.label)
 }
 
 const categoryRows = ref<TopicCategory[]>([])
 const suggestedByGroup = ref<Record<string, Option[]>>({})
 
-const CATEGORY_ORDER = ['Religion', 'Politics', 'Business', 'Technology', 'Health', 'Relationships', 'Philosophy'] as const
-const interestGroupKeywords: Record<string, string[]> = {
-  Religion: ['faith', 'church', 'bible', 'prayer', 'theology'],
-  Politics: ['news', 'elections', 'policy', 'government', 'law'],
-  Business: ['money', 'finance', 'career', 'investing', 'leadership'],
-  Technology: ['tech', 'software', 'coding', 'ai', 'security'],
-  Health: ['fitness', 'gym', 'nutrition', 'sleep', 'mental health'],
-  Relationships: ['dating', 'marriage', 'family', 'friendship', 'communication'],
-  Philosophy: ['meaning', 'purpose', 'ethics', 'stoicism', 'habits'],
-}
+const CATEGORY_ORDER = INTEREST_CATEGORY_ORDER
 
 async function fetchCategoryRows(): Promise<TopicCategory[]> {
   try {
@@ -413,32 +370,8 @@ const suggestedValueSet = computed(() => {
 
 const queryTrimmed = computed(() => query.value.trim())
 
-function normalizeSearchText(s: string): string {
-  return String(s ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/[_\s]+/g, ' ')
-    .replace(/[^a-z0-9 ]/g, ' ')
-    .replace(/\s+/g, ' ')
-}
-
 function matchesFuzzy(opt: Option, q: string): boolean {
-  const query = normalizeSearchText(q)
-  if (!query) return true
-  const tokens = query.split(' ').filter(Boolean)
-  if (!tokens.length) return true
-
-  const group = opt.group || ''
-  const groupExtra = interestGroupKeywords[group] ?? []
-  const parts = [
-    opt.label,
-    opt.value,
-    group,
-    ...(opt.keywords ?? []),
-    ...groupExtra,
-  ]
-  const hay = normalizeSearchText(parts.join(' '))
-  return tokens.every((t) => hay.includes(t))
+  return interestMatchesFuzzy(opt, q)
 }
 
 const filteredAllOptions = computed(() => {

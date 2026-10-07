@@ -69,6 +69,7 @@
 
 <script setup lang="ts">
 import { getSpaceAudioAnalyser, resumeSpaceAudioContext, debugSpaceAudio } from '~/composables/useSpaceAudio'
+import { SPACE_VISUALIZER_PALETTES, spaceVisualizerRgb } from '~/composables/spaces/spaceVisualizerPalette'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 
 const props = withDefaults(
@@ -81,55 +82,12 @@ const { user } = useAuth()
 
 const tier = computed<UserColorTier>(() => userColorTier(user.value as any))
 
-// ─── Per-tier colour palettes ───────────────────────────────────────────────
-type Rgb = [number, number, number]
-type TierPalette = { top: Rgb; mid: Rgb; base: Rgb; peak: Rgb; idle: Rgb }
-
-const PALETTES: Record<UserColorTier, TierPalette> = {
-  // amber / gold (default)
-  normal: {
-    top:  [251, 191,  36],
-    mid:  [217, 119,   6],
-    base: [120,  53,  15],
-    peak: [253, 224,  71],
-    idle: [163, 116,  34],
-  },
-  // orange  (--moh-premium)
-  premium: {
-    top:  [251, 146,  60],
-    mid:  [199, 125,  26],
-    base: [124,  45,  18],
-    peak: [253, 186, 116],
-    idle: [199, 125,  26],
-  },
-  // blue  (--moh-verified)
-  verified: {
-    top:  [ 96, 165, 250],
-    mid:  [ 43, 123, 185],
-    base: [ 30,  58, 138],
-    peak: [147, 197, 253],
-    idle: [ 43, 123, 185],
-  },
-  // silver  (--moh-org)
-  organization: {
-    top:  [203, 213, 225],
-    mid:  [138, 147, 163],
-    base: [ 71,  85, 105],
-    peak: [226, 232, 240],
-    idle: [138, 147, 163],
-  },
-}
-
-function rgb(c: Rgb, a = 1) {
-  return `rgba(${c[0]},${c[1]},${c[2]},${a})`
-}
-
 const palette = computed(() => {
-  const p = PALETTES[tier.value]
+  const p = SPACE_VISUALIZER_PALETTES[tier.value]
   return {
     ...p,
-    cssTop: rgb(p.top),
-    cssMid: rgb(p.mid),
+    cssTop: spaceVisualizerRgb(p.top),
+    cssMid: spaceVisualizerRgb(p.mid),
   }
 })
 
@@ -228,18 +186,18 @@ function drawBackground(
 
   // Point source at bottom centre — gradient fans upward into the canvas.
   const glowGrad = ctx.createRadialGradient(cx, H, 0, cx, H, glowRadius)
-  glowGrad.addColorStop(0.00, rgb(p.mid,  coreAlpha))
-  glowGrad.addColorStop(0.20, rgb(p.mid,  midAlpha))
-  glowGrad.addColorStop(0.45, rgb(p.base, rimAlpha))
-  glowGrad.addColorStop(0.70, rgb(p.base, rimAlpha * 0.4))
-  glowGrad.addColorStop(1.00, rgb(p.base, 0))
+  glowGrad.addColorStop(0.00, spaceVisualizerRgb(p.mid,  coreAlpha))
+  glowGrad.addColorStop(0.20, spaceVisualizerRgb(p.mid,  midAlpha))
+  glowGrad.addColorStop(0.45, spaceVisualizerRgb(p.base, rimAlpha))
+  glowGrad.addColorStop(0.70, spaceVisualizerRgb(p.base, rimAlpha * 0.4))
+  glowGrad.addColorStop(1.00, spaceVisualizerRgb(p.base, 0))
   ctx.fillStyle = glowGrad
   ctx.fillRect(0, 0, W, H)
 
   // Dot grid — readable but not distracting.
   const GRID = Math.round(28 * dpr)
   const DOT_R = Math.max(1, dpr)
-  ctx.fillStyle = rgb(p.idle, 0.11)
+  ctx.fillStyle = spaceVisualizerRgb(p.idle, 0.11)
   for (let gx = GRID / 2; gx < W; gx += GRID) {
     for (let gy = GRID / 2; gy < H; gy += GRID) {
       ctx.beginPath()
@@ -253,7 +211,7 @@ function drawBackground(
     const phase = (t / RING_CYCLE_S + i / RING_COUNT) % 1
     const radius = phase * minDim * 0.46
     const alpha  = Math.sin(phase * Math.PI) * 0.14
-    ctx.strokeStyle = rgb(p.top, alpha)
+    ctx.strokeStyle = spaceVisualizerRgb(p.top, alpha)
     ctx.lineWidth = Math.max(1.5, 1.5 * dpr)
     ctx.beginPath()
     ctx.arc(cx, H * 0.5, radius, 0, Math.PI * 2)
@@ -312,7 +270,7 @@ function drawParticles(
     // Energy lifts brightness but particles are visible even with no music.
     const alpha = part.alpha * twinkle * (0.75 + energy * 0.50)
     const color = part.usePeak ? p.peak : p.top
-    ctx.fillStyle = rgb(color, alpha)
+    ctx.fillStyle = spaceVisualizerRgb(color, alpha)
     ctx.beginPath()
     ctx.arc(
       Math.max(0, Math.min(W, xNorm * W)),
@@ -436,7 +394,7 @@ function draw() {
     const radius = Math.sqrt(progress) * minDimBeat * 0.62
     // Fade: bright at birth, gone by end.
     const alpha = (1 - progress) * (1 - progress) * 0.55
-    ctx.strokeStyle = rgb(p.peak, alpha)
+    ctx.strokeStyle = spaceVisualizerRgb(p.peak, alpha)
     ctx.lineWidth = Math.max(1, 2 * dprBeat * (1 - progress * 0.5))
     ctx.beginPath()
     ctx.arc(W / 2, H * 0.5, radius, 0, Math.PI * 2)  // centred in component
@@ -475,9 +433,9 @@ function draw() {
 
     // Vertical gradient: bright at top, dim at base (use smoothed for display)
     const grad = ctx.createLinearGradient(0, y, 0, H)
-    grad.addColorStop(0,   rgb(p.top,  0.70 + smooth * 0.30))
-    grad.addColorStop(0.5, rgb(p.mid,  0.50 + smooth * 0.30))
-    grad.addColorStop(1,   rgb(p.base, 0.25))
+    grad.addColorStop(0,   spaceVisualizerRgb(p.top,  0.70 + smooth * 0.30))
+    grad.addColorStop(0.5, spaceVisualizerRgb(p.mid,  0.50 + smooth * 0.30))
+    grad.addColorStop(1,   spaceVisualizerRgb(p.base, 0.25))
 
     ctx.fillStyle = grad
     ctx.beginPath()
@@ -494,8 +452,8 @@ function draw() {
     const depthGrad = ctx.createLinearGradient(x, 0, x + barW, 0)
     depthGrad.addColorStop(0,    'rgba(0,0,0,0.28)')      // shadow
     depthGrad.addColorStop(0.18, 'rgba(0,0,0,0)')
-    depthGrad.addColorStop(0.82, rgb(p.peak, 0))
-    depthGrad.addColorStop(1,    rgb(p.peak, 0.22))       // highlight
+    depthGrad.addColorStop(0.82, spaceVisualizerRgb(p.peak, 0))
+    depthGrad.addColorStop(1,    spaceVisualizerRgb(p.peak, 0.22))       // highlight
     ctx.fillStyle = depthGrad
     ctx.beginPath()
     if (ctx.roundRect) {
@@ -508,8 +466,8 @@ function draw() {
     // Subtle reflection
     const reflH = barH * 0.3
     const reflGrad = ctx.createLinearGradient(0, H, 0, H + reflH)
-    reflGrad.addColorStop(0, rgb(p.top, 0.10 + smooth * 0.06))
-    reflGrad.addColorStop(1, rgb(p.top, 0))
+    reflGrad.addColorStop(0, spaceVisualizerRgb(p.top, 0.10 + smooth * 0.06))
+    reflGrad.addColorStop(1, spaceVisualizerRgb(p.top, 0))
     ctx.fillStyle = reflGrad
     ctx.beginPath()
     ctx.rect(x, H, barW, reflH)
@@ -528,7 +486,7 @@ function draw() {
     if (peakVal > 0.02) {
       const py = H - peakVal * H * 0.85 - 4
       const alpha = Math.min(1, peakVal * 2)
-      ctx.fillStyle = rgb(p.peak, alpha * 0.9)
+      ctx.fillStyle = spaceVisualizerRgb(p.peak, alpha * 0.9)
       ctx.beginPath()
       if (ctx.roundRect) {
         ctx.roundRect(x, py, barW, 3, 2)
@@ -547,10 +505,10 @@ function drawIdleLine(ctx: CanvasRenderingContext2D, W: number, H: number, p: Ti
   const y = H - 2
   const alpha = dark ? 0.22 : 0.15
   const grad = ctx.createLinearGradient(0, 0, W, 0)
-  grad.addColorStop(0,   rgb(p.idle, 0))
-  grad.addColorStop(0.2, rgb(p.idle, alpha))
-  grad.addColorStop(0.8, rgb(p.idle, alpha))
-  grad.addColorStop(1,   rgb(p.idle, 0))
+  grad.addColorStop(0,   spaceVisualizerRgb(p.idle, 0))
+  grad.addColorStop(0.2, spaceVisualizerRgb(p.idle, alpha))
+  grad.addColorStop(0.8, spaceVisualizerRgb(p.idle, alpha))
+  grad.addColorStop(1,   spaceVisualizerRgb(p.idle, 0))
   ctx.fillStyle = grad
   ctx.fillRect(0, y, W, 2)
 }
