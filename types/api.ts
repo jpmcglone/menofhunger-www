@@ -1364,6 +1364,14 @@ export type FollowListUser = {
   inCrew?: boolean
 }
 
+/** Suggested groups and people from `POST /me/onboarding/matches`. */
+export type OnboardingMatches = {
+  groups: CommunityGroupShell[]
+  people: FollowListUser[]
+  /** False when the lists are popular picks rather than matches to the member's answers. */
+  personalized: boolean
+}
+
 /** Search user result (FollowListUser + createdAt for interleaving). */
 export type SearchUserResult = FollowListUser & { createdAt?: string }
 
