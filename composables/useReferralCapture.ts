@@ -1,5 +1,7 @@
 const REFERRAL_STORAGE_KEY = 'moh.referralCode.v1'
 const REFERRAL_APPLIED_STORAGE_KEY = 'moh.appliedReferralCode.v1'
+const REFERRAL_CAPTURED_AT_KEY = 'moh.referralCode.capturedAt.v1'
+const REFERRAL_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 function normalizeReferralCode(value: unknown): string {
   const raw = Array.isArray(value) ? value[0] : value
@@ -22,6 +24,21 @@ export function useReferralCapture() {
   function persistCaptured(code: string) {
     capturedReferralCode.value = code
     persistValue(REFERRAL_STORAGE_KEY, code)
+    persistValue(REFERRAL_CAPTURED_AT_KEY, code ? String(Date.now()) : '')
+  }
+
+  function expireStoredReferralCode() {
+    const stored = window.localStorage.getItem(REFERRAL_STORAGE_KEY)
+    if (!stored) return
+    const capturedAt = Number(window.localStorage.getItem(REFERRAL_CAPTURED_AT_KEY))
+    if (!Number.isFinite(capturedAt) || capturedAt <= 0) {
+      window.localStorage.setItem(REFERRAL_CAPTURED_AT_KEY, String(Date.now()))
+      return
+    }
+    if (Date.now() - capturedAt >= REFERRAL_TTL_MS) {
+      window.localStorage.removeItem(REFERRAL_STORAGE_KEY)
+      window.localStorage.removeItem(REFERRAL_CAPTURED_AT_KEY)
+    }
   }
 
   function persistApplied(code: string) {
@@ -31,6 +48,7 @@ export function useReferralCapture() {
 
   function loadStoredReferralCode() {
     if (!import.meta.client) return
+    expireStoredReferralCode()
     if (!capturedReferralCode.value) {
       const stored = normalizeReferralCode(window.localStorage.getItem(REFERRAL_STORAGE_KEY))
       if (stored) capturedReferralCode.value = stored

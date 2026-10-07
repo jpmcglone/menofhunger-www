@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { CommunityGroupPreview, FeedPost } from '~/types/api'
+import { siteConfig } from '~/config/site'
 import {
   computePostPermalinkSeo,
-  POST_PERMALINK_LOGO_OG,
   type PostPermalinkSeoInput,
 } from '~/utils/post-permalink-seo-meta'
 
@@ -243,16 +243,13 @@ describe('computePostPermalinkSeo — public posts', () => {
     expect(r.image).toBe(photoUrl)
   })
 
-  it('text-only uses avatar then logo', () => {
-    const post = basePost({
-      body: 'short',
-      author: author({ avatarUrl: '' }),
-    })
+  it('public text-only posts get the generated share card', () => {
+    const post = basePost({ body: 'short', author: author({ avatarUrl: 'https://a/av.png' }) })
     const r = computePostPermalinkSeo(input({ post, bodyTextSansLinks: 'short' }))
-    expect(r.image).toBe(POST_PERMALINK_LOGO_OG)
-    const post2 = basePost({ body: 'short', author: author({ avatarUrl: 'https://a/av.png' }) })
-    const r2 = computePostPermalinkSeo(input({ post: post2, bodyTextSansLinks: 'short' }))
-    expect(r2.image).toBe('https://a/av.png')
+    expect(r.image).toBe(`${siteConfig.url}/og/post/${post.id}.png`)
+    expect(r.imageWidth).toBe(1200)
+    expect(r.imageHeight).toBe(630)
+    expect(r.twitterCard).toBe('summary_large_image')
   })
 
   it('emits secondary og images only for public', () => {
@@ -417,7 +414,7 @@ describe('computePostPermalinkSeo — group affiliation', () => {
     expect(r.title).toBe('Photo · @alice · in Cool Group')
   })
 
-  it('public text post in a group with no group avatar and no user avatar: falls back to logo', () => {
+  it('public text post in a group with no group avatar and no user avatar: falls back to the generated card', () => {
     const g = group({ avatarImageUrl: null })
     const post = basePost({
       body: 'short',
@@ -425,7 +422,7 @@ describe('computePostPermalinkSeo — group affiliation', () => {
       groupPreview: g,
     })
     const r = computePostPermalinkSeo(input({ post, bodyTextSansLinks: 'short' }))
-    expect(r.image).toBe(POST_PERMALINK_LOGO_OG)
+    expect(r.image).toBe(`${siteConfig.url}/og/post/${post.id}.png`)
   })
 
   it('verified-only post in a group: still mentions group + uses group avatar before user avatar', () => {

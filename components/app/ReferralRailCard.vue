@@ -167,6 +167,7 @@ import type { ReferralMe, AffiliateSummary } from '~/types/api'
 import type { ReferralCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useInviteReward } from '~/composables/useInviteReward'
+import { inviteShareUrl } from '~/utils/acquisition-share'
 
 const NuxtLink = resolveComponent('NuxtLink')
 const route = useRoute()
@@ -241,7 +242,7 @@ const shareUrl = computed(() => {
   const code = referralCode.value
   if (!code) return ''
   const origin = import.meta.client ? window.location.origin : ''
-  return `${origin}/?ref=${encodeURIComponent(code)}`
+  return inviteShareUrl(code, origin)
 })
 
 const shareMessage = computed(() => {

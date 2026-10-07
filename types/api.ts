@@ -159,8 +159,8 @@ export type BillingMe = {
   /** Whether the one-time referral bonus has been granted to this user. */
   referralBonusGranted: boolean
   /**
-   * True when the viewer was recruited by a paying subscriber and has not yet triggered
-   * the bonus — meaning their first Premium payment will also earn them a free month.
+   * True when the viewer was recruited and has not yet triggered the bonus —
+   * meaning verifying their account will earn them a free month.
    */
   recruitBonusEligible: boolean
 }
@@ -192,6 +192,20 @@ export type AdminReferralInfo = {
   bonusGrantedAt: string | null
   recruiter: { id: string; username: string | null; name: string | null } | null
   recruits: Recruit[]
+}
+
+export type AdminAcquisitionRow = { key: string; signups: number; verified: number }
+
+export type AdminAcquisition = {
+  days: number
+  since: string
+  asOf: string
+  totalSignups: number
+  totalVerified: number
+  /** Distinct members who recruited at least one signup in the window. */
+  distinctRecruiters: number
+  bySource: AdminAcquisitionRow[]
+  byCampaign: AdminAcquisitionRow[]
 }
 
 export type AdminReferralAnalytics = {
@@ -299,6 +313,7 @@ export type NotificationPreferences = {
   emailInstantHighSignal: boolean
   emailStreakReminder: boolean
   emailFollowedArticle: boolean
+  emailOnboarding: boolean
   emailNewsletter: boolean
 }
 
@@ -584,6 +599,8 @@ export type PostAuthor = {
   avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   orgAffiliations?: OrgAffiliation[]
   isBot?: boolean
+  /** Joined within the last 7 days. */
+  isNewMember?: boolean
   /** When true, author is banned; id/username/name/avatar are redacted. */
   authorBanned?: boolean
 }

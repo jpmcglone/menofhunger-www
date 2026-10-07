@@ -7,7 +7,7 @@ import { usStateShapes } from '~/utils/us-state-shapes'
 export const OG_WIDTH = 1200
 export const OG_HEIGHT = 630
 
-const C = {
+export const C = {
   bg: '#0F1113',
   surface: '#1B2127',
   text: '#F4F4F5',
@@ -40,7 +40,7 @@ export type OgMapCardInput = {
 type FontEntry = { name: string; data: ArrayBuffer; weight: 400 | 600 | 800; style: 'normal' }
 let fontsPromise: Promise<FontEntry[]> | null = null
 
-function loadFonts(): Promise<FontEntry[]> {
+export function loadFonts(): Promise<FontEntry[]> {
   fontsPromise ??= (async () => {
     const storage = useStorage('assets:server')
     const weights = [400, 600, 800] as const
@@ -96,8 +96,8 @@ export function buildMapSvg(states: OgMapState[], focusState?: string | null): {
   return { svg, aspect: crop.width / crop.height }
 }
 
-type Node = { type: string; props: Record<string, unknown> & { style?: Record<string, unknown>; children?: unknown } }
-const el = (type: string, style: Record<string, unknown>, children?: unknown, extra: Record<string, unknown> = {}): Node => ({
+export type Node = { type: string; props: Record<string, unknown> & { style?: Record<string, unknown>; children?: unknown } }
+export const el = (type: string, style: Record<string, unknown>, children?: unknown, extra: Record<string, unknown> = {}): Node => ({
   type,
   props: { style: { display: 'flex', ...style }, ...(children === undefined ? {} : { children }), ...extra },
 })

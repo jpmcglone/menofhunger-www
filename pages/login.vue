@@ -75,6 +75,7 @@ import { countDigitsBeforeIndex, formatPhoneAsYouType, indexFromDigitCount, norm
 import { isSafeRedirect } from '~/utils/url'
 const route = useRoute()
 const { capturedReferralCode, captureReferralFromRoute, markReferralApplied } = useReferralCapture()
+const signupAttribution = useSignupAttribution()
 
 const showBannedNotice = computed(() => String(route.query.banned ?? '') === '1')
 const showDeletedNotice = computed(() => String(route.query.deleted ?? '') === '1')
@@ -296,11 +297,13 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
     if (!phone || code.length !== 6) return
 
     const referralCode = capturedReferralCode.value.trim()
+    const attribution = signupAttribution.read()
     const result = await apiFetchData<{ isNewUser: boolean; referralApplied?: boolean; user: any; sessionId: string }>('/auth/phone/verify', {
       method: 'POST',
-      body: referralCode ? { phone, code, referralCode } : { phone, code }
+      body: { phone, code, ...(referralCode ? { referralCode } : {}), ...(attribution ? { attribution } : {}) }
     })
     if (result.referralApplied) markReferralApplied(referralCode)
+    if (result.isNewUser) signupAttribution.clear()
 
     // Immediately hydrate auth state from the response so we don't look logged out
     // until a full refresh (client-side navigation won't rerun SSR init).

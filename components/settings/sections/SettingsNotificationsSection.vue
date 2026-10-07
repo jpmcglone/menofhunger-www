@@ -205,6 +205,13 @@
                 </span>
                 <Checkbox v-model="notifPrefs.emailFollowedArticle" binary :disabled="notifPrefsSaving || !emailIsVerified" />
               </label>
+              <label class="flex min-h-11 items-center justify-between gap-4 py-2">
+                <span class="flex min-w-0 items-center gap-3">
+                  <AppIconGlyph name="verified" :size="20" class="text-[var(--moh-text-muted)]" />
+                  <span class="font-medium">Getting started emails</span>
+                </span>
+                <Checkbox v-model="notifPrefs.emailOnboarding" binary :disabled="notifPrefsSaving || !emailIsVerified" />
+              </label>
             </div>
           </div>
         </div>

@@ -365,6 +365,7 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
 
   const author = atAuthor(post) || siteConfig.name
 
+  const usesGeneratedCard = Boolean(post && isPublicPost && (post.body ?? '').trim() && !post.deletedAt)
   let image: string
   if (!post) {
     image = POST_PERMALINK_LOGO_OG
@@ -390,7 +391,10 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
         if (linkImage) image = linkImage
         else {
           const pollImage = (pollMetaPublic?.firstOptionImage ?? '').trim()
-          image = pollImage || groupAvatar || avatar || POST_PERMALINK_LOGO_OG
+          if (pollImage) image = pollImage
+          else if (groupAvatar) image = groupAvatar
+          else if (usesGeneratedCard) image = toAbs(`/og/post/${encodeURIComponent(post.id)}.png`)
+          else image = avatar || POST_PERMALINK_LOGO_OG
         }
       }
     } else image = groupAvatar || avatar || POST_PERMALINK_LOGO_OG
@@ -443,8 +447,9 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
   const useArticleOg = isPublicPost || isTierGated
   const ogType: 'article' | 'website' = useArticleOg ? 'article' : 'website'
 
-  const imageWidth = isPublicPost ? primaryMedia?.width ?? undefined : undefined
-  const imageHeight = isPublicPost ? primaryMedia?.height ?? undefined : undefined
+  const imageIsGeneratedCard = Boolean(post && image === toAbs(`/og/post/${encodeURIComponent(post.id)}.png`))
+  const imageWidth = imageIsGeneratedCard ? 1200 : isPublicPost ? primaryMedia?.width ?? undefined : undefined
+  const imageHeight = imageIsGeneratedCard ? 630 : isPublicPost ? primaryMedia?.height ?? undefined : undefined
 
   // Use summary_large_image only when we have real landscape (or unknown-ratio) post
   // media, or a link-preview image. For everything else — avatars, group avatars, the
@@ -462,7 +467,7 @@ export function computePostPermalinkSeo(input: PostPermalinkSeoInput): PostPerma
     primaryMedia?.height != null && primaryMedia.height > 0 &&
     primaryMedia.height > primaryMedia.width
   const twitterCard: 'summary' | 'summary_large_image' =
-    hasRealMedia && !isPortraitMedia ? 'summary_large_image' : 'summary'
+    (hasRealMedia && !isPortraitMedia) || imageIsGeneratedCard ? 'summary_large_image' : 'summary'
 
   const ogImageSecondaryAbsoluteUrls = isPublicPost ? extraOgMediaUrls.map(toAbs) : []
   let ogVideoAbsoluteUrl: string | null = null

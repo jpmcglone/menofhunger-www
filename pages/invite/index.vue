@@ -332,6 +332,7 @@ import type { AffiliateSummary, Recruit, ReferralMe, FollowListUser } from '~/ty
 import type { ReferralCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useInviteReward } from '~/composables/useInviteReward'
+import { inviteShareUrl } from '~/utils/acquisition-share'
 
 definePageMeta({ layout: 'app', alias: ['/referrals'] })
 
@@ -389,7 +390,7 @@ const codeFontSize = computed(() => {
 const shareUrl = computed(() => {
   const code = referralCode.value
   if (!code || !import.meta.client) return ''
-  return `${window.location.origin}/?ref=${encodeURIComponent(code)}`
+  return inviteShareUrl(code, window.location.origin)
 })
 
 const shareMessage = computed(() => {

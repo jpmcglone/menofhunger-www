@@ -5,7 +5,10 @@ export type ShareParams = {
   from?: string | null
 }
 
-/** Append `ref` / `from` query params to a path or absolute URL. Omits empty values. */
+/** Member invite links are tagged so signups attribute to `invite` even when no UTM is present. */
+export const INVITE_SOURCE = 'invite'
+
+/** Append `ref` / `from` query params to a path or absolute URL. Omits empty values; `ref` also adds `src=invite`. */
 export function appendShareParams(urlOrPath: string, params: ShareParams = {}): string {
   const ref = normalizeParam(params.ref)
   const from = normalizeParam(params.from)
@@ -14,7 +17,10 @@ export function appendShareParams(urlOrPath: string, params: ShareParams = {}): 
   const isAbsolute = /^https?:\/\//i.test(urlOrPath)
   const base = isAbsolute ? undefined : 'https://example.invalid'
   const u = new URL(urlOrPath, base)
-  if (ref) u.searchParams.set('ref', ref)
+  if (ref) {
+    u.searchParams.set('ref', ref)
+    u.searchParams.set('src', INVITE_SOURCE)
+  }
   if (from) u.searchParams.set('from', from)
   if (isAbsolute) return u.toString()
   return `${u.pathname}${u.search}${u.hash}`
@@ -37,6 +43,21 @@ export function groupSharePath(slug: string, params: ShareParams = {}): string {
 
 export function groupShareUrl(slug: string, params: ShareParams = {}, origin = siteConfig.url): string {
   return `${origin.replace(/\/$/, '')}${groupSharePath(slug, params)}`
+}
+
+export function articleShareUrl(articleId: string, ref?: string | null, origin = siteConfig.url): string {
+  const id = String(articleId ?? '').trim()
+  return `${origin.replace(/\/$/, '')}${appendShareParams(`/a/${encodeURIComponent(id)}`, { ref })}`
+}
+
+export function profileShareUrl(username: string, ref?: string | null, origin = siteConfig.url): string {
+  const name = String(username ?? '').trim().replace(/^@/, '')
+  return `${origin.replace(/\/$/, '')}${appendShareParams(`/u/${encodeURIComponent(name)}`, { ref })}`
+}
+
+/** Site-root invite link, the canonical member link: `/?ref=CODE&src=invite`. */
+export function inviteShareUrl(ref: string, origin = siteConfig.url): string {
+  return `${origin.replace(/\/$/, '')}${appendShareParams('/', { ref })}`
 }
 
 export type PostShareTextInput = {

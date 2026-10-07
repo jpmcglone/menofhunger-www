@@ -47,6 +47,12 @@
         :is-bot="isBot"
       />
 
+      <span
+        v-if="isNewMember"
+        class="inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide moh-text-muted border moh-border"
+        title="Joined this week"
+      >New</span>
+
       <AppOrgAffiliationAvatars
         v-if="orgAffiliations && orgAffiliations.length > 0"
         :orgs="orgAffiliations"
@@ -151,6 +157,7 @@ const props = defineProps<{
   isOrganization?: boolean
   orgAffiliations?: OrgAffiliation[] | null
   isBot?: boolean
+  isNewMember?: boolean
   editedAt?: string | null
   /** Public Pickax permalink; renders a small logo link out to the cross-posted copy. */
   pickaxUrl?: string | null

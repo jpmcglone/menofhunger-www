@@ -417,6 +417,28 @@
             </div>
           </template>
         </div>
+
+        <!-- ─── Signup sources ──────────────────────────────────────────────── -->
+        <div v-if="acquisition" class="rounded-xl border moh-border p-4 space-y-3">
+          <div class="font-semibold text-sm">
+            Signups by source <span class="text-gray-400 font-normal">(last {{ acquisition.days }} days)</span>
+          </div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            {{ acquisition.totalSignups.toLocaleString() }} signups, {{ acquisition.totalVerified.toLocaleString() }} verified,
+            {{ acquisition.distinctRecruiters.toLocaleString() }} members recruited someone
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div v-for="group in [{ title: 'Source', rows: acquisition.bySource }, { title: 'Campaign', rows: acquisition.byCampaign }]" :key="group.title">
+              <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">{{ group.title }}</div>
+              <div class="moh-divide">
+                <div v-for="row in group.rows" :key="row.key" class="flex items-center justify-between gap-3 py-1.5 text-sm">
+                  <span class="truncate">{{ row.key }}</span>
+                  <span class="shrink-0 tabular-nums">{{ row.signups }} / {{ row.verified }} verified</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         </section>
 
         <section class="space-y-4">
@@ -1170,7 +1192,7 @@
 
 <script setup lang="ts">
 import { Chart, registerables } from 'chart.js'
-import type { AdminAnalytics, AdminAnalyticsBrief, AdminReferralAnalytics, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
+import type { AdminAcquisition, AdminAnalytics, AdminAnalyticsBrief, AdminReferralAnalytics, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 definePageMeta({ middleware: 'admin', layout: 'app' })
@@ -1198,6 +1220,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const referralAnalytics = ref<AdminReferralAnalytics | null>(null)
 const referralAnalyticsLoading = ref(false)
+const acquisition = ref<AdminAcquisition | null>(null)
 const brief = ref<string | null>(null)
 const briefLoading = ref(false)
 const briefError = ref<string | null>(null)
@@ -1286,6 +1309,11 @@ async function load() {
     // non-critical
   } finally {
     referralAnalyticsLoading.value = false
+  }
+  try {
+    acquisition.value = await apiFetchData<AdminAcquisition>('/admin/analytics/acquisition', { query: { days: 7 } })
+  } catch {
+    // non-critical
   }
 }
 

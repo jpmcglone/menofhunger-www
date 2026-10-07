@@ -126,6 +126,7 @@
             :is-organization="author.isOrganization"
             :org-affiliations="(author as any).orgAffiliations ?? postView.author?.orgAffiliations"
             :is-bot="postView.author?.isBot ?? false"
+            :is-new-member="postView.author?.isNewMember ?? false"
             :edited-at="postView.editedAt ?? null"
             :pickax-url="postView.pickaxUrl ?? null"
             :x-url="postView.xUrl ?? null"

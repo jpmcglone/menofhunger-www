@@ -38,8 +38,8 @@
         </article>
       </div>
       <p v-if="recruitBonusEligible && !isPremium" class="moh-body moh-text-muted">
-        <template v-if="recruiterName">Your first month unlocks a free second month, thanks to @{{ recruiterName }}.</template>
-        <template v-else>Your first month unlocks a free second month through your invite.</template>
+        <template v-if="recruiterName">Verify your account and you both get a free month of Premium, thanks to @{{ recruiterName }}.</template>
+        <template v-else>Verify your account and you both get a free month of Premium through your invite.</template>
         <NuxtLink to="/settings/billing" class="underline underline-offset-4">View reward details</NuxtLink>
       </p>
       <section aria-labelledby="membership-details">

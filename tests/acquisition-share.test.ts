@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   appendShareParams,
+  articleShareUrl,
+  inviteShareUrl,
+  profileShareUrl,
   groupSharePath,
   groupShareText,
   groupShareUrl,
@@ -17,13 +20,13 @@ describe('appendShareParams', () => {
 
   it('appends ref and from on a path', () => {
     expect(appendShareParams('/g/dads', { ref: 'JOHN', from: 'john' })).toBe(
-      '/g/dads?ref=JOHN&from=john',
+      '/g/dads?ref=JOHN&src=invite&from=john',
     )
   })
 
   it('appends onto an absolute URL', () => {
     expect(appendShareParams('https://menofhunger.com/p/1', { ref: 'ABC' })).toBe(
-      'https://menofhunger.com/p/1?ref=ABC',
+      'https://menofhunger.com/p/1?ref=ABC&src=invite',
     )
   })
 
@@ -35,19 +38,19 @@ describe('appendShareParams', () => {
 describe('postSharePath / postShareUrl', () => {
   it('builds a path with optional ref', () => {
     expect(postSharePath('post-1')).toBe('/p/post-1')
-    expect(postSharePath('post-1', 'CODE')).toBe('/p/post-1?ref=CODE')
+    expect(postSharePath('post-1', 'CODE')).toBe('/p/post-1?ref=CODE&src=invite')
   })
 
   it('builds an absolute URL', () => {
     expect(postShareUrl('post-1', 'CODE', 'https://example.com')).toBe(
-      'https://example.com/p/post-1?ref=CODE',
+      'https://example.com/p/post-1?ref=CODE&src=invite',
     )
   })
 })
 
 describe('groupSharePath / groupShareUrl', () => {
   it('builds personalized group links', () => {
-    expect(groupSharePath('dads', { ref: 'J', from: 'jp' })).toBe('/g/dads?ref=J&from=jp')
+    expect(groupSharePath('dads', { ref: 'J', from: 'jp' })).toBe('/g/dads?ref=J&src=invite&from=jp')
     expect(groupShareUrl('dads', { from: 'jp' }, 'https://example.com')).toBe(
       'https://example.com/g/dads?from=jp',
     )
@@ -90,5 +93,17 @@ describe('groupShareText / weeklyMissionShareText', () => {
     expect(weeklyMissionShareText(3)).toBe(
       "I'm on day 3 of this week's mission on Men of Hunger — join me.",
     )
+  })
+})
+
+describe('invite-tagged share URLs', () => {
+  it('builds article, profile and site-root links with ref and src=invite', () => {
+    expect(articleShareUrl('a1', 'CODE', 'https://x.test')).toBe('https://x.test/a/a1?ref=CODE&src=invite')
+    expect(profileShareUrl('@john', 'CODE', 'https://x.test')).toBe('https://x.test/u/john?ref=CODE&src=invite')
+    expect(inviteShareUrl('CODE', 'https://x.test/')).toBe('https://x.test/?ref=CODE&src=invite')
+  })
+
+  it('leaves links untouched without a ref', () => {
+    expect(articleShareUrl('a1', null, 'https://x.test')).toBe('https://x.test/a/a1')
   })
 })

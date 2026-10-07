@@ -537,6 +537,7 @@ import { surfaceMenuItems } from '~/utils/surface-actions'
 import type { Article, ArticleSharePreview } from '~/types/api'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
 import { siteConfig } from '~/config/site'
+import { articleShareUrl } from '~/utils/acquisition-share'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({ layout: 'app', hideTopBar: true })
@@ -1074,9 +1075,13 @@ const shareMenuItems = computed(() => surfaceMenuItems([
   { id: 'report', label: 'Report article', icon: 'tabler:flag', section: 'moderation', available: isAuthed.value && article.value?.viewerCanAccess !== false, run: () => { showArticleReport.value = true } },
 ]))
 
+const { ensureReferralCode } = useEnsureReferralCode()
+
 async function onCopyLink() {
   try {
-    await navigator.clipboard.writeText(window.location.href)
+    const articleId = article.value?.id
+    const ref = await ensureReferralCode()
+    await navigator.clipboard.writeText(articleId ? articleShareUrl(articleId, ref) : window.location.href)
     toast.push({ title: 'Link copied!', tone: 'success' })
   } catch {
     toast.push({ title: 'Could not copy link', tone: 'error' })

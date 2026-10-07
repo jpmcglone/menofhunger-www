@@ -123,6 +123,24 @@
                 <span>{{ seeOthersLabel }}</span>
                 <Icon name="tabler:arrow-right" size="14" class="shrink-0" aria-hidden="true" />
               </NuxtLink>
+
+              <!-- Once-a-day, check-in only: the moment a member is most likely to bring one man. -->
+              <div
+                v-if="showInviteCard"
+                class="flex items-center gap-3 border-t moh-border pt-3 sm:col-span-2"
+              >
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold moh-text">Bring one man</p>
+                  <p class="text-xs moh-text-muted text-pretty">{{ inviteReward }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border moh-border px-4 text-sm font-semibold moh-text transition-opacity active:opacity-75 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                  @click="onInviteCopy"
+                >
+                  Copy invite link
+                </button>
+              </div>
             </section>
           </Transition>
         </div>
@@ -134,9 +152,11 @@
 <script setup lang="ts">
 import type { FeedPost } from '~/types/api'
 import { siteConfig } from '~/config/site'
-import { postShareText, postShareUrl } from '~/utils/acquisition-share'
+import { inviteShareUrl, postShareText, postShareUrl } from '~/utils/acquisition-share'
 
-const { user } = useAuth()
+const { user, isVerified } = useAuth()
+const { capture } = usePostHog()
+const inviteReward = useInviteReward().valueProp
 
 const props = defineProps<{
   open: boolean
@@ -250,6 +270,43 @@ async function onCopy() {
 
 const open = toRef(props, 'open')
 
+const INVITE_CARD_KEY = 'moh.inviteCard.lastShown'
+const showInviteCard = ref(false)
+
+function todayKey() {
+  const d = new Date()
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+
+async function maybeShowInviteCard() {
+  if (!isCheckin.value || !isVerified.value || !import.meta.client) return
+  try {
+    if (localStorage.getItem(INVITE_CARD_KEY) === todayKey()) return
+  } catch {
+    return
+  }
+  await ensureReferralCode()
+  if (!referralCode.value || !open.value) return
+  try {
+    localStorage.setItem(INVITE_CARD_KEY, todayKey())
+  } catch {
+    // Storage blocked: still show once for this dialog instance.
+  }
+  showInviteCard.value = true
+  capture('invite_card_impression', { surface: 'checkin' })
+}
+
+async function onInviteCopy() {
+  if (!referralCode.value) return
+  try {
+    await copyText(inviteShareUrl(referralCode.value, siteConfig.url))
+    capture('invite_link_copied', { surface: 'checkin' })
+    toast.push({ title: 'Link copied', tone: 'success', durationMs: 1600 })
+  } catch {
+    toast.push({ title: 'Could not copy link', tone: 'error', durationMs: 1800 })
+  }
+}
+
 function close() {
   emit('update:open', false)
 }
@@ -265,5 +322,7 @@ watch(open, (isOpen) => {
   // Prime the social-proof count from cache (near-free TTL hit right after posting).
   if (isOpen && isCheckin.value) void refreshCheckin()
   if (isOpen) void ensureReferralCode()
+  if (isOpen) void maybeShowInviteCard()
+  else showInviteCard.value = false
 })
 </script>

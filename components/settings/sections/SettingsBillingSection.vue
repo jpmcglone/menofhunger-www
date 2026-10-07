@@ -212,7 +212,7 @@
             <Icon name="tabler:user-check" class="h-4 w-4 text-green-600 shrink-0" aria-hidden="true" />
             <span>{{ billingMe.recruiter.name ?? 'Unknown' }}</span>
           </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400">Your recruiter is locked in. When you pay for your first month of Premium, you may earn a free month.</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Your recruiter is locked in. When you verify, you both get a free month of Premium.</p>
         </template>
         <template v-else>
           <p class="text-xs text-gray-500 dark:text-gray-400">Enter a referral code to link a recruiter. You'll automatically follow him. Once set, it cannot be changed.</p>
