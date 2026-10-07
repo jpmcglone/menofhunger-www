@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it, beforeEach } from 'vitest'
+import { readSurfaceSource } from './helpers/surface-source'
 
 function readFromRepo(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -146,7 +147,7 @@ describe('usePublicProfile store-overlay guardrail (structural)', () => {
   })
 
   it('patchPublicProfile in the profile page upserts into the store so banner/avatar updates are immediate', () => {
-    const src = readFromRepo('pages/u/[username].vue')
+    const src = readSurfaceSource('pages/u/[username].vue')
     // The page owns the optimistic write; the composable just overlays.
     expect(src).toMatch(/usersStore\.upsert\(/)
   })

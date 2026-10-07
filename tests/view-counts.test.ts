@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readSurfaceSource } from './helpers/surface-source'
 
 function readFromRepo(rel: string): string {
   return readFileSync(resolve(process.cwd(), rel), 'utf8')
@@ -9,7 +10,7 @@ function readFromRepo(rel: string): string {
 describe('unique people + total views', () => {
   it('measures feed visibility against the middle scroller, not the window', () => {
     const tracker = readFromRepo('composables/usePostViewTracker.ts')
-    const postRow = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
+    const postRow = readSurfaceSource('components/app/content/PostRow.vue')
     const feedRow = readFromRepo('components/app/content/FeedPostRow.vue')
     const checkinDay = readFromRepo('pages/check-ins/day/[dayKey].vue')
     const checkinSort = readFromRepo('pages/check-ins/[sort].vue')
@@ -53,18 +54,18 @@ describe('unique people + total views', () => {
       'pages/notifications.vue',
     ]
     for (const rel of pages) {
-      const src = readFromRepo(rel)
+      const src = readSurfaceSource(rel)
       const tracks = src.includes('AppFeedPostRow') || src.includes('AppPostRow')
       expect(tracks, rel).toBe(true)
     }
-    const postRow = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
+    const postRow = readSurfaceSource('components/app/content/PostRow.vue')
     expect(postRow).toContain('trackViews: true')
     const feedRow = readFromRepo('components/app/content/FeedPostRow.vue')
     expect(feedRow).toContain('observe(postIds, wrapperEl.value')
   })
 
   it('keeps the view chip under the body with person/eye icons', () => {
-    const postRow = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
+    const postRow = readSurfaceSource('components/app/content/PostRow.vue')
     const actionBar = readFromRepo('components/app/post/PostRowActionBar.vue')
     const chip = readFromRepo('components/app/post/PostRowViewerBreakdown.vue')
 
@@ -146,7 +147,7 @@ describe('unique people + total views', () => {
     const anon = readFromRepo('composables/useAnonViewId.ts')
     const util = readFromRepo('utils/anon-view-id.ts')
     const landing = readFromRepo('pages/index.vue') + readFromRepo('composables/pages/useIndexPage.ts')
-    const postRow = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
+    const postRow = readSurfaceSource('components/app/content/PostRow.vue')
     const feedRow = readFromRepo('components/app/content/FeedPostRow.vue')
 
     expect(util).toContain("ANON_VIEW_ID_RE = /^[A-Za-z0-9_-]+$/")

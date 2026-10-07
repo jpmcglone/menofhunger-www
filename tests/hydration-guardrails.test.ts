@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readSurfaceSource } from './helpers/surface-source'
 
 function readFromRepo(relativePath: string): string {
   // In the Nuxt Vitest environment, `import.meta.url` can be a virtual URL.
@@ -526,7 +527,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('gates the PostRow Catch-me-up trigger on auth (every real post row, not pending/deleted)', () => {
-    const row = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
+    const row = readSurfaceSource('components/app/content/PostRow.vue')
     // Signed-in viewers see it on every real row — catch-up summarizes the post itself
     // plus broader context, so it's useful even without a surrounding thread.
     expect(row).toMatch(/isAuthed\.value && !props\.preview && !isPendingRow\.value && !isDeletedPost\.value/)
@@ -538,7 +539,7 @@ describe('hydration guardrails (structural)', () => {
     // icon class than the server emitted — a hydration mismatch on every public feed page.
     // The initial read must happen in onMounted; the watcher exists only to re-read when a
     // row is recycled for a different post while scrolling.
-    const row = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
+    const row = readSurfaceSource('components/app/content/PostRow.vue')
     expect(row).toMatch(/const catchUpPersistedReady = ref\(false\)/)
     expect(row).toMatch(/onMounted\(\(\) => \{\s*catchUpPersistedReady\.value = isPostCaughtUp\(/)
     // Match the watcher's full shape: it must close right after the callback, with no options
@@ -764,7 +765,7 @@ describe('hydration guardrails (structural)', () => {
     // class before app:mounted makes SSR (muted) and the first client paint
     // (moh-text) disagree on every permalink. The icon stays gated; the
     // permalink view POST itself fires as soon as the client has a post id.
-    const row = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
+    const row = readSurfaceSource('components/app/content/PostRow.vue')
     expect(row).toMatch(/useState<boolean>\('moh-hydrated'/)
     expect(row).toMatch(/hydrated\.value && hasViewedLocally/)
     const permalink = readFromRepo('pages/p/[id].vue')

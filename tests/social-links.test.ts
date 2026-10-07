@@ -1,12 +1,9 @@
 /**
  * Guardrail tests for social link utilities and profile header rendering rules.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { buildSocialLinks, socialProfileUrl, SOCIAL_NETWORK_DESCRIPTORS } from '../utils/social-links'
-
-const ROOT = join(__dirname, '..')
+import { readSurfaceSource } from './helpers/surface-source'
 
 describe('socialProfileUrl', () => {
   it('builds the correct X URL', () => {
@@ -76,7 +73,7 @@ describe('SOCIAL_NETWORK_DESCRIPTORS order', () => {
 })
 
 describe('Header.vue social link markup guardrails', () => {
-  const headerSrc = readFileSync(join(ROOT, 'components/app/profile/Header.vue'), 'utf8')
+  const headerSrc = readSurfaceSource('components/app/profile/Header.vue')
 
   it('renders social links with target="_blank"', () => {
     // The v-for social link block must have target="_blank"

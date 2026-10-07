@@ -1,10 +1,9 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { defineComponent, nextTick, ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMuteUser } from '../composables/useMuteUser'
+import { readSurfaceSource } from './helpers/surface-source'
 
 const muteSpies = vi.hoisted(() => ({ fetch: vi.fn(), push: vi.fn(), pushError: vi.fn() }))
 mockNuxtImport('useApiClient', () => () => ({
@@ -90,7 +89,7 @@ describe('useMuteUser', () => {
   })
 
   it('is wired into the profile menu next to Block', () => {
-    const header = readFileSync(resolve(process.cwd(), 'components/app/profile/Header.vue'), 'utf8')
+    const header = readSurfaceSource('components/app/profile/Header.vue')
     expect(header).toMatch(/useMuteUser\(/)
     expect(header).toMatch(/initialMuted: computed\(\(\) => profile\.value\?\.viewerHasMutedUser\)/)
     const muteItem = header.indexOf('command: () => void toggleMuteProfile()')

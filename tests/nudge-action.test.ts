@@ -7,6 +7,7 @@ import {
   NUDGE_REASON_VERIFY,
   resolveNudgeAction,
 } from '../utils/nudge-action'
+import { readSurfaceSource } from './helpers/surface-source'
 
 function readFromRepo(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -87,7 +88,7 @@ describe('resolveNudgeAction', () => {
   })
 
   it('wires the disabled reason onto profile and preview', () => {
-    const header = readFromRepo('components/app/profile/Header.vue')
+    const header = readSurfaceSource('components/app/profile/Header.vue')
     const preview = readFromRepo('components/app/people/UserPreviewCard.vue')
     expect(header).toMatch(/resolveNudgeAction/)
     expect(header).toMatch(/viewerIsPage: isPageAccount\.value/)

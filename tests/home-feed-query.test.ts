@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { postsFeedListQuery } from '~/composables/usePostsFeed'
+import { readSurfaceSource } from './helpers/surface-source'
 
 function readFromRepo(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -129,7 +130,7 @@ describe('home feed refresh guardrails', () => {
 
   it('re-reports already-viewed feed posts so For You lastSeenAt can move', () => {
     const feedRow = readFromRepo('components/app/content/FeedPostRow.vue')
-    const postRow = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
+    const postRow = readSurfaceSource('components/app/content/PostRow.vue')
     const tracker = readFromRepo('composables/usePostViewTracker.ts')
 
     expect(feedRow).not.toContain('.filter((p) => p.viewerHasViewed !== true)')
@@ -147,7 +148,7 @@ describe('home feed refresh guardrails', () => {
   })
 
   it('keeps feed post rows clickable before child stop handlers can swallow clicks', () => {
-    const postRow = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
+    const postRow = readSurfaceSource('components/app/content/PostRow.vue')
     const linkPreview = readFromRepo('components/app/post/PostRowLinkPreview.vue')
 
     expect(postRow).toContain('withDefaults(defineProps<')

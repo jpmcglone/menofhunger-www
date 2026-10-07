@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readSurfaceSource } from './helpers/surface-source'
 
 function source(path: string): string {
   return readFileSync(resolve(process.cwd(), path), 'utf8')
@@ -21,7 +22,7 @@ describe('repost feed inclusion', () => {
   })
 
   it('places top-level repost rows in both profile sections', () => {
-    const profile = source('pages/u/[username].vue')
+    const profile = readSurfaceSource('pages/u/[username].vue')
     expect(profile).toContain('postsOnlyPrependPost(post)')
     expect(profile).toContain('profilePrependPost(post)')
   })
