@@ -93,7 +93,7 @@
                 @blur="clearInspectedDay"
               >
                 <div
-                  class="w-full rounded-sm transition-all"
+                  class="w-full rounded-sm transition-[height,opacity,background-color] duration-[var(--moh-duration-base)]"
                   :class="dayBarClass(day)"
                   :style="{ height: dayBarHeight(day), opacity: dayBarOpacity(day) }"
                 />
@@ -354,7 +354,7 @@
           </div>
           <div class="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
             <div
-              class="h-2 rounded-full transition-all"
+              class="h-2 rounded-full transition-[width] duration-[var(--moh-duration-slow)]"
               :class="accentBg"
               :style="{ width: `${goalProgressPercent}%` }"
             />
@@ -557,7 +557,7 @@
               Cancel
             </button>
             <button
-              class="px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-all"
+              class="px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-colors"
               :class="sharePostBtnClass"
               :disabled="sharingPost"
               @click="submitShare"

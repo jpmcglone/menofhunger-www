@@ -37,13 +37,7 @@
     "pages/fitness/activities/[id].vue",
     "pages/invite/index.vue"
   ],
-  "transitionAll": [
-    "components/app/AppFitnessShareCard.vue",
-    "components/app/AppLocationPromptModal.vue",
-    "components/app/SearchTypeahead.vue",
-    "pages/admin/media-review/index.vue",
-    "pages/fitness.vue"
-  ],
+  "transitionAll": [],
   "pageHandRolledCursor": [
     "pages/admin/marv.vue",
     "pages/admin/media-review/index.vue",

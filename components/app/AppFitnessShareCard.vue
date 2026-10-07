@@ -76,7 +76,7 @@
         </div>
         <div class="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
           <div
-            class="bg-green-500 h-2 rounded-full transition-all"
+            class="bg-green-500 h-2 rounded-full transition-[width] duration-[var(--moh-duration-slow)]"
             :style="{ width: `${progressPercent}%` }"
           />
         </div>

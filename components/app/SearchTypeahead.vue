@@ -355,10 +355,10 @@ defineExpose({
 
     <Teleport to="body">
     <Transition
-      enter-active-class="transition-all duration-150 ease-out origin-top"
+      enter-active-class="transition-[opacity,transform] duration-150 ease-out origin-top"
       enter-from-class="opacity-0 scale-y-95"
       enter-to-class="opacity-100 scale-y-100"
-      leave-active-class="transition-all duration-100 ease-in origin-top"
+      leave-active-class="transition-[opacity,transform] duration-100 ease-in origin-top"
       leave-from-class="opacity-100 scale-y-100"
       leave-to-class="opacity-0 scale-y-95"
     >

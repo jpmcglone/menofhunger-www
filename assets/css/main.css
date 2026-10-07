@@ -842,8 +842,8 @@ input[type="reset"] {
      intentionally taps, not on every clickable element. */
   .moh-pressable {
     transition-property: transform;
-    transition-duration: 120ms;
-    transition-timing-function: ease-out;
+    transition-duration: var(--moh-duration-press);
+    transition-timing-function: var(--moh-ease-standard);
   }
   .moh-pressable:active {
     transform: scale(0.96);
@@ -906,6 +906,18 @@ input[type="reset"] {
   display: none; /* Chrome/Safari */
   width: 0;
   height: 0;
+}
+
+/* Motion tokens. Motion communicates a change, stays interruptible, never bounces,
+   and is disabled under prefers-reduced-motion. Use these instead of literal timings. */
+:root {
+  --moh-duration-press: 120ms;
+  --moh-duration-fast: 150ms;
+  --moh-duration-base: 200ms;
+  --moh-duration-slow: 320ms;
+  --moh-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --moh-ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+  --moh-ease-exit: cubic-bezier(0.4, 0, 1, 1);
 }
 
 /* Simple fade transition (Vue <Transition name="moh-fade">) */
@@ -1457,4 +1469,101 @@ html.dark .moh-avatar-initial {
   --moh-button-brand-label: #000;
   --moh-button-danger-fill: #f26464; --moh-button-danger-label: #000;
   --moh-button-disabled-fill: #30363d; --moh-button-disabled-label: #fff;
+}
+
+/* Pop-in for popovers and menus (<Transition name="moh-pop">). */
+.moh-pop-enter-active {
+  transition: opacity var(--moh-duration-fast) var(--moh-ease-standard),
+    transform var(--moh-duration-fast) var(--moh-ease-standard);
+  transform-origin: top;
+}
+.moh-pop-leave-active {
+  transition: opacity var(--moh-duration-press) var(--moh-ease-exit),
+    transform var(--moh-duration-press) var(--moh-ease-exit);
+  transform-origin: top;
+}
+.moh-pop-enter-from,
+.moh-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+/* Slide-up for sheets and toasts (<Transition name="moh-slide-up">). */
+.moh-slide-up-enter-active {
+  transition: opacity var(--moh-duration-base) var(--moh-ease-emphasized),
+    transform var(--moh-duration-base) var(--moh-ease-emphasized);
+}
+.moh-slide-up-leave-active {
+  transition: opacity var(--moh-duration-fast) var(--moh-ease-exit),
+    transform var(--moh-duration-fast) var(--moh-ease-exit);
+}
+.moh-slide-up-enter-from,
+.moh-slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* Crossfade between mutually exclusive states: loading, content, empty, error
+   (<Transition name="moh-swap" mode="out-in">). */
+.moh-swap-enter-active,
+.moh-swap-leave-active {
+  transition: opacity var(--moh-duration-fast) var(--moh-ease-standard);
+}
+.moh-swap-enter-from,
+.moh-swap-leave-to {
+  opacity: 0;
+}
+
+/* Height collapse for small disclosures; wrap content in a single grid child. */
+.moh-collapse-enter-active,
+.moh-collapse-leave-active {
+  display: grid;
+  transition: grid-template-rows var(--moh-duration-base) var(--moh-ease-standard),
+    opacity var(--moh-duration-base) var(--moh-ease-standard);
+}
+.moh-collapse-enter-from,
+.moh-collapse-leave-to {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.moh-collapse-enter-to,
+.moh-collapse-leave-from {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* Skeleton shimmer for first-load placeholders. */
+.moh-skeleton {
+  background-color: var(--moh-surface-2);
+  border-radius: 0.375rem;
+  animation: moh-skeleton-pulse 1.2s ease-in-out infinite;
+}
+@keyframes moh-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* Stable digits so counters do not jitter while changing. */
+.moh-count {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moh-pop-enter-active,
+  .moh-pop-leave-active,
+  .moh-slide-up-enter-active,
+  .moh-slide-up-leave-active,
+  .moh-collapse-enter-active,
+  .moh-collapse-leave-active {
+    transition: none;
+  }
+  .moh-pop-enter-from,
+  .moh-pop-leave-to,
+  .moh-slide-up-enter-from,
+  .moh-slide-up-leave-to {
+    transform: none;
+  }
+  .moh-skeleton {
+    animation: none;
+  }
 }
