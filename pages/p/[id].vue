@@ -183,9 +183,7 @@
             />
           </button>
           <div v-if="quotesOpen">
-            <div v-if="quotesLoading && !quotePosts.length" class="flex items-center justify-center py-6">
-              <AppLoadingSpinner />
-            </div>
+            <AppScreenState v-if="quotesLoading && !quotePosts.length" status="loading" skeleton="post" :skeleton-count="3" />
             <template v-else>
               <AppFeedPostRow
                 v-for="q in quotePosts"
@@ -289,9 +287,7 @@
               <div class="text-xl font-semibold moh-text">Discover more</div>
               <div class="mt-0.5 text-sm moh-text-muted">From across Men of Hunger</div>
             </div>
-            <div v-if="discoverLoading && !discoverPosts.length" class="flex items-center justify-center py-8">
-              <AppLoadingSpinner />
-            </div>
+            <AppScreenState v-if="discoverLoading && !discoverPosts.length" status="loading" skeleton="post" :skeleton-count="4" />
             <template v-else-if="discoverPosts.length">
               <AppFeedPostRow
                 v-for="d in discoverPosts"
@@ -304,7 +300,7 @@
                 class="flex items-center justify-center py-4"
                 aria-hidden="true"
               >
-                <AppLoadingSpinner v-if="discoverLoading" />
+                <AppLoadMoreFooter :state="discoverLoading ? 'loading' : 'idle'" />
               </div>
             </template>
           </div>

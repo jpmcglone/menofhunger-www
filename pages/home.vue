@@ -218,16 +218,19 @@
           <AppUserErrorMessage :error="error" fallback="Failed to load feed." />
         </AppInlineAlert>
 
-        <AppSubtleSectionLoader :loading="showMainLoader" :refreshing="loading && !showMainLoader" min-height-class="min-h-[240px]">
-            <AppFeedFollowingEmptyState
+        <AppScreenState v-if="showMainLoader" status="loading" skeleton="post" />
+        <AppSubtleSectionLoader v-else :loading="false" :refreshing="loading && !showMainLoader" min-height-class="min-h-[240px]">
+            <AppScreenState
               v-if="initialFeedResolved && showFollowingEmptyState"
+              empty-variant="following"
               :following-count="followingCount"
               :show-checkin-cta="showCheckinPromptBar"
               @post="homeComposerRef?.focus()"
               @check-in="openCheckinComposer"
             />
-            <AppFeedAllEmptyState
+            <AppScreenState
               v-else-if="initialFeedResolved && (showAllEmptyState || showForYouEmptyState)"
+              empty-variant="all"
             />
 
             <div ref="feedVirtualListContainerEl" class="relative">
@@ -285,20 +288,13 @@
                 title="No posts in this filter" icon="filter" description="Try another filter to see more conversations." />
             </div>
 
-            <!-- Lazy-load sentinel + loader -->
-            <div v-if="nextCursor" class="relative flex justify-center items-center px-4 py-6 min-h-12">
+            <div v-if="nextCursor" class="relative">
               <div
                 ref="loadMoreSentinelEl"
                 class="absolute bottom-0 left-0 right-0 h-px"
                 aria-hidden="true"
               />
-              <div
-                class="transition-opacity duration-150"
-                :class="loadingMore ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-                :aria-hidden="!loadingMore"
-              >
-                <AppLogoLoader compact />
-              </div>
+              <AppLoadMoreFooter :state="loadingMore ? 'loading' : 'idle'" />
             </div>
         </AppSubtleSectionLoader>
       </template>

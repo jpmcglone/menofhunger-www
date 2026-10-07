@@ -125,20 +125,11 @@
           </div>
         </TransitionGroup>
 
-        <div v-if="nextCursor && !loading" class="px-3 pt-2.5 pb-0 sm:px-4 sm:pt-3 sm:pb-3 text-center">
-          <Button
-            label="Load more"
-            text
-            severity="secondary"
-            :loading="loadingMore"
-            @click="loadMore"
-          />
-        </div>
-        <div v-else-if="loadingMore" class="px-3 pt-2.5 pb-0 sm:px-4 sm:pt-3 sm:pb-3 text-center">
-          <div class="inline-flex transition-opacity duration-150">
-            <AppLogoLoader compact />
-          </div>
-        </div>
+        <AppLoadMoreFooter
+          :state="loadingMore ? 'loading' : nextCursor && !loading ? 'idle' : 'end'"
+          manual
+          @load="loadMore"
+        />
       </div>
     </AppSubtleSectionLoader>
   </div>

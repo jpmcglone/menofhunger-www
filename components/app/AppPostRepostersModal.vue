@@ -7,9 +7,7 @@
     @update:model-value="(v) => { if (!v) $emit('close') }"
   >
     <div>
-      <div v-if="loading && !authors.length" class="flex items-center justify-center py-10">
-        <AppLoadingSpinner />
-      </div>
+      <AppScreenState v-if="loading && !authors.length" status="loading" skeleton="user" :skeleton-count="5" />
       <div
         v-else-if="!loading && !authors.length"
         class="flex flex-col items-center justify-center py-10 moh-text-muted text-sm"
@@ -32,9 +30,8 @@
         <div
           v-if="hasMore"
           ref="loadMoreTrigger"
-          class="h-10 flex items-center justify-center"
         >
-          <AppLoadingSpinner v-if="loadingMore" />
+          <AppLoadMoreFooter :state="loadingMore ? 'loading' : 'idle'" />
         </div>
       </template>
     </div>

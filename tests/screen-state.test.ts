@@ -55,4 +55,21 @@ describe('screen states', () => {
     expect(wrapper.get('a').attributes('href')).toBe('/explore')
     wrapper.unmount()
   })
+
+  it('renders skeleton rows while loading', async () => {
+    const wrapper = await mountSuspended(ScreenState, { props: { status: 'loading', skeleton: 'user', skeletonCount: 3 } })
+    expect(wrapper.attributes('role')).toBe('status')
+    expect(wrapper.attributes('aria-busy')).toBe('true')
+    expect(wrapper.findAll('.moh-skeleton-row').length).toBe(3)
+    expect(wrapper.find('.moh-skeleton-row--user').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('uses the all-feed empty variant copy and actions', async () => {
+    const wrapper = await mountSuspended(ScreenState, { props: { emptyVariant: 'all' } })
+    expect(wrapper.get('h2').text()).toBe('Your feed is waiting.')
+    expect(wrapper.get('a[href="/explore"]').text()).toBe('Explore')
+    expect(wrapper.get('a[href="/who-to-follow"]').text()).toContain('Who to follow')
+    wrapper.unmount()
+  })
 })
