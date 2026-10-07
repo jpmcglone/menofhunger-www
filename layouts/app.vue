@@ -127,7 +127,9 @@
               <template v-else>
                 <AppChannelsGroupNavigation v-if="groupTabsView" :group="groupTabsView.group" :selected="groupTabsView.selected" />
                 <div :class="groupTabsView ? 'min-h-0 flex-1' : 'contents'"><slot /></div>
-                <AppGroupsGroupDialogs v-if="groupDialogGroup" :group="groupDialogGroup" />
+                <ClientOnly>
+                  <AppGroupsGroupDialogs v-if="groupDialogGroup" :group="groupDialogGroup" />
+                </ClientOnly>
               </template>
             </div>
             </div>

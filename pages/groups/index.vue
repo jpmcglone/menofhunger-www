@@ -51,7 +51,7 @@
           </button>
           <ul v-show="invitesExpanded || !mine.length" class="moh-divide">
             <li v-for="inv in inboxInvites" :key="inv.id">
-              <AppGroupInviteInboxRow :invite="inv" @accepted="removeInboxInvite(inv.id)" @declined="removeInboxInvite(inv.id)" />
+              <AppGroupsInviteInboxRow :invite="inv" @accepted="removeInboxInvite(inv.id)" @declined="removeInboxInvite(inv.id)" />
             </li>
           </ul>
         </section>
