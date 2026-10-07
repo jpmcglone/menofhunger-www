@@ -137,10 +137,10 @@ describe('overlay dismissal', () => {
 
   it('wires every shared overlay primitive into the stack', () => {
     for (const path of [
-      'components/app/AppModal.vue',
-      'components/app/BottomSheet.vue',
-      'components/app/ConfirmDialog.vue',
-      'components/app/ReplyModal.vue',
+      'components/app/dialogs/AppModal.vue',
+      'components/app/dialogs/BottomSheet.vue',
+      'components/app/dialogs/ConfirmDialog.vue',
+      'components/app/content/ReplyModal.vue',
     ]) {
       expect(read(path), path).toContain('useOverlayDismiss(')
     }
@@ -148,9 +148,9 @@ describe('overlay dismissal', () => {
 
   it('leaves no overlay running its own ad-hoc Escape listener', () => {
     for (const path of [
-      'components/app/MarvCatchUpModal.vue',
-      'components/app/StatusViewDialog.vue',
-      'components/app/SharePostDialog.vue',
+      'components/app/dialogs/MarvCatchUpModal.vue',
+      'components/app/dialogs/StatusViewDialog.vue',
+      'components/app/content/SharePostDialog.vue',
     ]) {
       const source = read(path)
       expect(source, path).toContain('useOverlayDismiss(')
@@ -160,7 +160,7 @@ describe('overlay dismissal', () => {
 
   it('leaves no overlay hand-rolling its own history integration', () => {
     // SharePostDialog used to own a private pushState/popstate implementation.
-    const share = read('components/app/SharePostDialog.vue')
+    const share = read('components/app/content/SharePostDialog.vue')
     expect(share).not.toContain('pushState')
     expect(share).not.toContain('popstate')
   })

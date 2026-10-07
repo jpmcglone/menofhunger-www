@@ -20,7 +20,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('keeps AppAdSlot free of ClientOnly/Suspense and guards provider DOM behind onMounted', () => {
-    const adSlot = readFromRepo('components/app/AdSlot.vue')
+    const adSlot = readFromRepo('components/app/chrome/AdSlot.vue')
     expect(adSlot).not.toMatch(/<ClientOnly>/)
     expect(adSlot).toMatch(/v-if="mounted\s*&&\s*shouldShowAd\s*&&\s*adsenseEnabled"/)
     expect(adSlot).toMatch(/onMounted\(\(\)\s*=>\s*{\s*[\s\S]*mounted\.value\s*=\s*true/)
@@ -40,7 +40,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('uses deterministic ids for avatar SVG masks', () => {
-    const avatarCircle = readFromRepo('components/app/AvatarCircle.vue')
+    const avatarCircle = readFromRepo('components/app/people/AvatarCircle.vue')
     expect(avatarCircle).toMatch(/idleClockMaskId = `idle-clock-mask-\$\{useId\(\)\}`/)
     expect(avatarCircle).not.toMatch(/idle-clock-mask-\$\{Math\.random\(/)
   })
@@ -73,8 +73,8 @@ describe('hydration guardrails (structural)', () => {
 
   it('replaces the invite rail card with a one-click operator switch for page accounts', () => {
     const rail = readFromRepo('components/app/layout/RightRail.vue')
-    const invite = readFromRepo('components/app/ReferralRailCard.vue')
-    const switchCard = readFromRepo('components/app/OperatorSwitchRailCard.vue')
+    const invite = readFromRepo('components/app/chrome/ReferralRailCard.vue')
+    const switchCard = readFromRepo('components/app/people/OperatorSwitchRailCard.vue')
     const gate = readFromRepo('composables/usePersonAccountGate.ts')
     expect(rail).toMatch(/<AppOperatorSwitchRailCard v-if="isPageAccount" class="mt-4 mb-4"/)
     expect(rail).toMatch(/<AppReferralRailCard v-if="!isPageAccount"/)
@@ -127,13 +127,13 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('gates mobile bottom-sheet mounting with hydrated media query helper', () => {
-    const tabBar = readFromRepo('components/app/TabBar.vue')
+    const tabBar = readFromRepo('components/app/chrome/TabBar.vue')
     expect(tabBar).toMatch(/v-if="isMobileHydrated"/)
     expect(tabBar).toMatch(/const isMobileHydrated = useHydratedMediaQuery\('\(max-width: 767px\)'\)/)
   })
 
   it('keeps scripture overlay primitives behind hydrated breakpoint checks', () => {
-    const scripture = readFromRepo('components/app/ScriptureVersePopover.vue')
+    const scripture = readFromRepo('components/app/media/ScriptureVersePopover.vue')
     expect(scripture).toMatch(/<ClientOnly>/)
     expect(scripture).toMatch(/<Popover v-if="isDesktopHydrated"/)
     expect(scripture).toMatch(/<AppBottomSheet[\s\S]*v-if="isMobileHydrated"/)
@@ -161,8 +161,8 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('uses stable non-index keys for notification media previews', () => {
-    const row = readFromRepo('components/app/NotificationRow.vue')
-    const group = readFromRepo('components/app/NotificationGroupRow.vue')
+    const row = readFromRepo('components/app/chrome/NotificationRow.vue')
+    const group = readFromRepo('components/app/chrome/NotificationGroupRow.vue')
     expect(row).toMatch(/:key="notificationMediaPreviewKey\(m, idx\)"/)
     expect(group).toMatch(/:key="groupMediaPreviewKey\(m, idx\)"/)
     expect(group).toMatch(/group\.kind === 'nudge' && group\.count > 1/)
@@ -187,7 +187,7 @@ describe('hydration guardrails (structural)', () => {
     const leaderboard = readFromRepo('pages/leaderboard.vue')
     expect(leaderboard).toMatch(/Share this week's mission/)
     expect(leaderboard).toMatch(/weeklyMissionShareText/)
-    const composerSource = readFromRepo('components/app/PostComposer.vue')
+    const composerSource = readFromRepo('components/app/content/PostComposer.vue')
     expect(composerSource).not.toMatch(/collapseUntilFocus/)
     expect(composerSource).not.toMatch(/showCollapsedComposer/)
     // heroResolved itself must require both `hydrated` AND a known checkin state (or unauth viewer).
@@ -200,7 +200,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('JoinBanner gates visibility on a hydrated ref so SSR never renders the logged-out banner', () => {
-    const banner = readFromRepo('components/app/JoinBanner.vue')
+    const banner = readFromRepo('components/app/chrome/JoinBanner.vue')
     // Must use a local `hydrated` ref set in onMounted so SSR emits nothing
     // and the client shows the banner only after confirming !isAuthed.
     expect(banner).toMatch(/hydrated\s*=\s*ref\(false\)/)
@@ -391,7 +391,7 @@ describe('hydration guardrails (structural)', () => {
   it('renders the AI badge via AppVerifiedBadge when user.isBot is true (no Bot pill in UserRow)', () => {
     // The "Bot" pill was replaced with an AI badge rendered inside AppVerifiedBadge / AppAiBadge.
     // UserRow passes isBot through AppUserIdentityLine → AppVerifiedBadge → AppAiBadge.
-    const userRow = readFromRepo('components/app/UserRow.vue')
+    const userRow = readFromRepo('components/app/people/UserRow.vue')
     // UserRow must NOT have a standalone bot pill — the badge lives in the identity line.
     expect(userRow).not.toMatch(/tabler:robot/)
     expect(userRow).not.toMatch(/>Bot</)
@@ -399,12 +399,12 @@ describe('hydration guardrails (structural)', () => {
     expect(userRow).toMatch(/AppUserIdentityLine/)
 
     // AppVerifiedBadge must have an isBot prop and delegate to AppAiBadge.
-    const verifiedBadge = readFromRepo('components/app/VerifiedBadge.vue')
+    const verifiedBadge = readFromRepo('components/app/chrome/VerifiedBadge.vue')
     expect(verifiedBadge).toMatch(/isBot/)
     expect(verifiedBadge).toMatch(/AppAiBadge/)
 
     // AiBadge uses the shared Marv mark and retains its accessible identity.
-    const aiBadge = readFromRepo('components/app/AiBadge.vue')
+    const aiBadge = readFromRepo('components/app/chrome/AiBadge.vue')
     expect(aiBadge).toMatch(/AppMarvMark/)
     expect(aiBadge).toContain('aria-label="AI assistant"')
   })
@@ -432,7 +432,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('keeps X post previews metadata-driven and backed by a real external anchor', () => {
-    const card = readFromRepo('components/app/XPostPreviewCard.vue')
+    const card = readFromRepo('components/app/content/XPostPreviewCard.vue')
     const postPreview = readFromRepo('components/app/post/PostRowLinkPreview.vue')
     const chatPreview = readFromRepo('components/app/chat/ChatMessageRichBody.vue')
     expect(card).toMatch(/<a[\s\S]*?:href="href"/)
@@ -485,8 +485,8 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('fetches announcements after mount and renders them through AppModal', () => {
-    const host = readFromRepo('components/app/AnnouncementHost.vue')
-    const modal = readFromRepo('components/app/AnnouncementModal.vue')
+    const host = readFromRepo('components/app/dialogs/AnnouncementHost.vue')
+    const modal = readFromRepo('components/app/dialogs/AnnouncementModal.vue')
     const overlays = readFromRepo('components/app/layout/GlobalOverlays.vue')
     expect(overlays).toMatch(/<AppAnnouncementHost\s*\/>/)
     expect(host).toMatch(/onMounted\(\(\)\s*=>\s*{/)
@@ -506,7 +506,7 @@ describe('hydration guardrails (structural)', () => {
     // Rendering it during SSR would produce a hydration mismatch when the client
     // replaces the (empty) server output. ClientOnly + Teleport-to-body keeps it
     // off the SSR tree entirely.
-    const modal = readFromRepo('components/app/MarvCatchUpModal.vue')
+    const modal = readFromRepo('components/app/dialogs/MarvCatchUpModal.vue')
     expect(modal).toMatch(/<ClientOnly>[\s\S]*<Teleport to="body">/)
     // The open flag lives in useState (shared with the row trigger) so there's a
     // single source of truth — not a local ref that drifts between instances.
@@ -526,7 +526,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('gates the PostRow Catch-me-up trigger on auth (every real post row, not pending/deleted)', () => {
-    const row = readFromRepo('components/app/PostRow.vue')
+    const row = readFromRepo('components/app/content/PostRow.vue')
     // Signed-in viewers see it on every real row — catch-up summarizes the post itself
     // plus broader context, so it's useful even without a surrounding thread.
     expect(row).toMatch(/isAuthed\.value && !props\.preview && !isPendingRow\.value && !isDeletedPost\.value/)
@@ -538,7 +538,7 @@ describe('hydration guardrails (structural)', () => {
     // icon class than the server emitted — a hydration mismatch on every public feed page.
     // The initial read must happen in onMounted; the watcher exists only to re-read when a
     // row is recycled for a different post while scrolling.
-    const row = readFromRepo('components/app/PostRow.vue')
+    const row = readFromRepo('components/app/content/PostRow.vue')
     expect(row).toMatch(/const catchUpPersistedReady = ref\(false\)/)
     expect(row).toMatch(/onMounted\(\(\) => \{\s*catchUpPersistedReady\.value = isPostCaughtUp\(/)
     // Match the watcher's full shape: it must close right after the callback, with no options
@@ -568,7 +568,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('keeps the ZIP location modal hidden until /auth/me has settled', () => {
-    const modal = readFromRepo('components/app/AppLocationPromptModal.vue')
+    const modal = readFromRepo('components/app/dialogs/AppLocationPromptModal.vue')
     expect(modal).toContain('if (!didAttempt.value) return false')
     expect(modal).toContain('if (firstRunBlocked.value) return false')
     const announcements = readFromRepo('composables/useAnnouncements.ts')
@@ -584,7 +584,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('keeps the radio bar hidden without a joined space object', () => {
-    const bar = readFromRepo('components/app/RadioBar.vue')
+    const bar = readFromRepo('components/app/media/RadioBar.vue')
     expect(bar).toMatch(/v-if="selectedSpaceId && displaySpace"/)
     expect(bar).toMatch(/if \(!id\) lastSpace\.value = null/)
     expect(bar).toMatch(/selectedSpaceId\.value \? \(currentSpace\.value \?\? lastSpace\.value\) : null/)
@@ -609,7 +609,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('keeps a quiet regenerate on an up-to-date Catch me up summary', () => {
-    const modal = readFromRepo('components/app/MarvCatchUpModal.vue')
+    const modal = readFromRepo('components/app/dialogs/MarvCatchUpModal.vue')
     expect(modal).toMatch(/label="Regenerate"/)
     expect(modal).toMatch(/kind="ghost"/)
     expect(modal).toMatch(/function regenerate\(\) \{\s*void run\(\{ refresh: true \}\)/)
@@ -620,7 +620,7 @@ describe('hydration guardrails (structural)', () => {
   it('keeps the modal panel at a fixed height (not content-sized) so it never resizes between states', () => {
     // A resizing modal feels janky. The panel must declare an explicit viewport-bounded height
     // as well as the viewport-constrained max-h cap.
-    const modal = readFromRepo('components/app/MarvCatchUpModal.vue')
+    const modal = readFromRepo('components/app/dialogs/MarvCatchUpModal.vue')
     // The design's rem height may change; keep the fixed, viewport-bounded sizing invariant.
     expect(modal).toMatch(/\bh-\[min\(\d+(?:\.\d+)?rem,90dvh\)\]/)
     expect(modal).toContain("max-h-[90dvh]")
@@ -629,7 +629,7 @@ describe('hydration guardrails (structural)', () => {
   it('does NOT inject an x-marv-mode header from the post composer (Marv always uses auto mode for replies)', () => {
     // Post-reply mode selection was removed: Marv always auto-routes for thread replies.
     // The composer must not set x-marv-mode so the server handles routing exclusively.
-    const composer = readFromRepo('components/app/PostComposer.vue')
+    const composer = readFromRepo('components/app/content/PostComposer.vue')
     // No assignment of the header — only a comment mentioning it is acceptable.
     expect(composer).not.toMatch(/\['x-marv-mode'\]\s*=/)
     expect(composer).not.toMatch(/showMarvModePill/)
@@ -649,14 +649,14 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('NotificationGroupRow avatar cluster is content-sized (no fixed-width rail that causes overflow)', () => {
-    const row = readFromRepo('components/app/NotificationGroupRow.vue')
+    const row = readFromRepo('components/app/chrome/NotificationGroupRow.vue')
     // Must NOT have the old fixed w-[5.25rem] rail that was too narrow
     expect(row).not.toMatch(/w-\[5\.25rem\]/)
     // Must NOT have overflow-visible on the avatar container (avatars should stay inside their column)
     expect(row).not.toMatch(/overflow-visible/)
     // Actor strips live in the content column and share the same bounded renderer.
     expect(row).toContain('AppNotificationActors')
-    const actors = readFromRepo('components/app/NotificationActors.vue')
+    const actors = readFromRepo('components/app/chrome/NotificationActors.vue')
     expect(actors).toMatch(/actors\.slice\(0,\s*4\)/)
   })
 
@@ -704,7 +704,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('reply and composer overlays use the same keyboard pin as the app shell', () => {
-    const reply = readFromRepo('components/app/ReplyModal.vue')
+    const reply = readFromRepo('components/app/content/ReplyModal.vue')
     const composer = readFromRepo('components/app/layout/ComposerModalOverlay.vue')
     for (const src of [reply, composer]) {
       expect(src).toMatch(/useKeyboardPinnedFixedStyle/)
@@ -764,7 +764,7 @@ describe('hydration guardrails (structural)', () => {
     // class before app:mounted makes SSR (muted) and the first client paint
     // (moh-text) disagree on every permalink. The icon stays gated; the
     // permalink view POST itself fires as soon as the client has a post id.
-    const row = readFromRepo('components/app/PostRow.vue')
+    const row = readFromRepo('components/app/content/PostRow.vue')
     expect(row).toMatch(/useState<boolean>\('moh-hydrated'/)
     expect(row).toMatch(/hydrated\.value && hasViewedLocally/)
     const permalink = readFromRepo('pages/p/[id].vue')

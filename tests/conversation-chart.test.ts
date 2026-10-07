@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-import ConversationChart from '~/components/app/ConversationChart.vue'
+import ConversationChart from '~/components/app/kit/ConversationChart.vue'
 
 describe('Conversation chart', () => {
   it('selects a day without combining coin amounts with conversation counts', async () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { defineComponent, KeepAlive, ref, nextTick } from 'vue'
-import SpotifyEmbed from '~/components/app/SpotifyEmbed.vue'
+import SpotifyEmbed from '~/components/app/media/SpotifyEmbed.vue'
 import { spotifyContent, isSpotifyShareUrl } from '~/utils/spotify-embed'
 import { mediaFocus } from '~/utils/mediaFocus'
 const fake = vi.hoisted(() => ({ listeners: {} as Record<string, (event: any) => void>, play: vi.fn(), pause: vi.fn(), destroy: vi.fn() }))

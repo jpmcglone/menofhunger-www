@@ -43,7 +43,7 @@ describe('web share target', () => {
     const layout = readFromRepo('composables/layout/useAppLayoutComposer.ts')
     const overlay = readFromRepo('components/app/layout/ComposerModalOverlay.vue')
     const composer = [
-      readFromRepo('components/app/PostComposer.vue'),
+      readFromRepo('components/app/content/PostComposer.vue'),
       readFromRepo('composables/composer/usePostComposer.ts'),
     ].join('\n')
     expect(keys).toContain('initialFiles?: File[]')

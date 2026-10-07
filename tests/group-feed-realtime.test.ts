@@ -16,7 +16,7 @@ describe('group feed realtime dedupe', () => {
 
   it('PostComposer sends community_group_id when communityGroupId prop is set', () => {
     const source = [
-      readFile('components/app/PostComposer.vue'),
+      readFile('components/app/content/PostComposer.vue'),
       readFile('composables/composer/useComposerDestination.ts'),
       readFile('composables/composer/useComposerSubmit.ts'),
     ].join('\n')

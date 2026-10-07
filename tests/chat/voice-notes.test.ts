@@ -31,7 +31,7 @@ describe('voice recorder', () => {
 
 describe('voice note chrome', () => {
   it('shows a mic when the composer is empty and verified', () => {
-    const composer = read('components/app/DmComposer.vue')
+    const composer = read('components/app/content/DmComposer.vue')
     expect(composer).toContain('chat-voice-mic')
     expect(composer).toContain('showMic')
     expect(composer).toContain('enqueueAudio')

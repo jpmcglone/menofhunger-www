@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ViewerBreakdown from '../components/app/post/PostRowViewerBreakdown.vue'
-import WotdLikeButton from '../components/app/WotdLikeButton.vue'
+import WotdLikeButton from '../components/app/media/WotdLikeButton.vue'
 
 const { apiFetchData } = vi.hoisted(() => ({ apiFetchData: vi.fn() }))
 mockNuxtImport('useApiClient', () => () => ({ apiFetchData }))

@@ -16,11 +16,11 @@ describe('Board and Articles notification dots', () => {
   })
 
   it('shows a dot, not a number, on Board and Articles in every nav surface', () => {
-    for (const path of ['components/app/layout/LeftRail.vue', 'components/app/TabBar.vue']) {
+    for (const path of ['components/app/layout/LeftRail.vue', 'components/app/chrome/TabBar.vue']) {
       const source = readFromRepo(path)
       expect(source.match(/<AppNavUnreadDot /g)?.length).toBeGreaterThanOrEqual(2)
     }
-    expect(readFromRepo('components/app/TabBar.vue')).toContain('moreHasDot')
+    expect(readFromRepo('components/app/chrome/TabBar.vue')).toContain('moreHasDot')
   })
 })
 
@@ -58,8 +58,8 @@ describe('Board list rows', () => {
 
 describe('Premium+ glow', () => {
   it('never lights avatars or profile previews', () => {
-    expect(readFromRepo('components/app/UserAvatar.vue')).toContain(':premium-plus-glow="false"')
-    expect(readFromRepo('components/app/UserPreviewPopover.vue')).not.toContain('glowStyle')
+    expect(readFromRepo('components/app/people/UserAvatar.vue')).toContain(':premium-plus-glow="false"')
+    expect(readFromRepo('components/app/people/UserPreviewPopover.vue')).not.toContain('glowStyle')
   })
 })
 

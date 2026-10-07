@@ -143,7 +143,7 @@ When a row may or may not have a destination (e.g. some notifications have no li
 
 ## Reference Implementations
 
-- **Feed post rows**: `components/app/PostRow.vue` (lines 30–38, `onRowClick`, `onRowAuxClick`)
+- **Feed post rows**: `components/app/content/PostRow.vue` (lines 30–38, `onRowClick`, `onRowAuxClick`)
 - **Notification rows**: `pages/notifications.vue` (`onNotificationClick`, `onNotificationAuxClick`)
 - **Admin analytics tables**: `pages/admin/analytics.vue`
 

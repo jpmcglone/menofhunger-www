@@ -105,7 +105,7 @@
 <script setup lang="ts">
 import { useBottomAnchoredList } from '~/composables/useBottomAnchoredList'
 import RadioLiveChatMessageList from '~/components/app/radio/RadioLiveChatMessageList.vue'
-import AppDmComposer from '~/components/app/DmComposer.vue'
+import AppDmComposer from '~/components/app/content/DmComposer.vue'
 import ChatReactionPicker from '~/components/app/chat/ChatReactionPicker.vue'
 import { userColorTier } from '~/utils/user-tier'
 import { spaceChatReplySnippetFromParent } from '~/utils/space-chat-social'

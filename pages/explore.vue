@@ -639,7 +639,7 @@ v-else-if="searchActive && !activeTopic && !activeCategory"
 </template>
 
 <script setup lang="ts">
-import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
+import AppCheckinPromptContext from '~/components/app/dialogs/CheckinPromptContext.vue'
 import AppGroupPreviewCard from '~/components/app/groups/AppGroupPreviewCard.vue'
 import type {
   CashtagResult,

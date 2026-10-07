@@ -101,7 +101,7 @@ describe('home feed refresh guardrails', () => {
   })
   it('keeps the home composer expanded with no compact chrome', () => {
     const home = readFromRepo('pages/home.vue')
-    const composer = readFromRepo('components/app/PostComposer.vue')
+    const composer = readFromRepo('components/app/content/PostComposer.vue')
     expect(home).not.toMatch(/collapse-until-focus/)
     expect(composer).not.toContain('collapseUntilFocus')
     expect(composer).not.toContain('showCollapsedComposer')
@@ -128,8 +128,8 @@ describe('home feed refresh guardrails', () => {
   })
 
   it('re-reports already-viewed feed posts so For You lastSeenAt can move', () => {
-    const feedRow = readFromRepo('components/app/FeedPostRow.vue')
-    const postRow = readFromRepo('components/app/PostRow.vue')
+    const feedRow = readFromRepo('components/app/content/FeedPostRow.vue')
+    const postRow = readFromRepo('components/app/content/PostRow.vue')
     const tracker = readFromRepo('composables/usePostViewTracker.ts')
 
     expect(feedRow).not.toContain('.filter((p) => p.viewerHasViewed !== true)')
@@ -138,7 +138,7 @@ describe('home feed refresh guardrails', () => {
   })
 
   it('clamps the collapsed reply footer count and only shows it when positive', () => {
-    const src = readFromRepo('components/app/FeedPostRow.vue')
+    const src = readFromRepo('components/app/content/FeedPostRow.vue')
     // Count now comes from `threadCollapsedCount` (stamped by feed dedupe) via the
     // `collapsedSiblingRepliesCount` prop, not derived inside the row. It must be
     // clamped non-negative and the footer only renders when the count is > 0.
@@ -147,7 +147,7 @@ describe('home feed refresh guardrails', () => {
   })
 
   it('keeps feed post rows clickable before child stop handlers can swallow clicks', () => {
-    const postRow = readFromRepo('components/app/PostRow.vue')
+    const postRow = readFromRepo('components/app/content/PostRow.vue')
     const linkPreview = readFromRepo('components/app/post/PostRowLinkPreview.vue')
 
     expect(postRow).toContain('withDefaults(defineProps<')

@@ -11,13 +11,13 @@ function src(relativePath: string): string {
 }
 
 const menus = [
-  'components/app/SearchTypeahead.vue',
-  'components/app/BookmarkFolderSelect.vue',
+  'components/app/kit/SearchTypeahead.vue',
+  'components/app/content/BookmarkFolderSelect.vue',
   'components/app/layout/LeftRail.vue',
-  'components/app/UserPickerInput.vue',
+  'components/app/people/UserPickerInput.vue',
   'components/app/article/TagInput.vue',
   'components/app/article/ReactionBar.vue',
-  'components/app/MarvModeDropdown.vue',
+  'components/app/kit/MarvModeDropdown.vue',
 ]
 
 describe('anchored menus – viewport positioning', () => {
@@ -30,9 +30,9 @@ describe('anchored menus – viewport positioning', () => {
   })
 
   it('keeps search, bookmarks, and user pickers width-matched or scroll-clamped', () => {
-    const search = src('components/app/SearchTypeahead.vue')
-    const bookmarks = src('components/app/BookmarkFolderSelect.vue')
-    const users = src('components/app/UserPickerInput.vue')
+    const search = src('components/app/kit/SearchTypeahead.vue')
+    const bookmarks = src('components/app/content/BookmarkFolderSelect.vue')
+    const users = src('components/app/people/UserPickerInput.vue')
     expect(search).toContain('matchAnchorWidth: true')
     expect(search).toContain('maxHeight: 320')
     expect(bookmarks).toContain('align: \'end\'')

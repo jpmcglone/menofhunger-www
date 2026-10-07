@@ -51,7 +51,7 @@ describe('crosspost options', () => {
 
   it('sends a crosspost object from the composer', () => {
     const src = [
-      readFileSync(resolve(process.cwd(), 'components/app/PostComposer.vue'), 'utf8'),
+      readFileSync(resolve(process.cwd(), 'components/app/content/PostComposer.vue'), 'utf8'),
       readFileSync(resolve(process.cwd(), 'composables/composer/useComposerSubmit.ts'), 'utf8'),
     ].join('\n')
     expect(src).toContain('snapshot.crosspost')

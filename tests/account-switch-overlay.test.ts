@@ -3,11 +3,11 @@ import { resolve } from 'node:path'
 import { defineComponent, h, nextTick } from 'vue'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import AccountSwitchOverlay from '~/components/app/AccountSwitchOverlay.vue'
+import AccountSwitchOverlay from '~/components/app/people/AccountSwitchOverlay.vue'
 import { useAccountSwitchState } from '~/composables/useAccountSwitchState'
 
 const overlaySource = readFileSync(
-  resolve(__dirname, '../components/app/AccountSwitchOverlay.vue'),
+  resolve(__dirname, '../components/app/people/AccountSwitchOverlay.vue'),
   'utf8',
 )
 

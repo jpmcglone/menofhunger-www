@@ -96,7 +96,7 @@ describe('call chrome wiring', () => {
     const overlay = read('components/app/calls/CallOverlay.vue')
     expect(overlay).toContain('cameraError')
     expect(overlay).toContain('z-[var(--moh-z-call)]')
-    const toast = read('components/app/ToastStack.vue')
+    const toast = read('components/app/chrome/ToastStack.vue')
     expect(toast).toContain('z-[var(--moh-z-toast)]')
     expect(OVERLAY_LAYERS.toast).toBeGreaterThan(OVERLAY_LAYERS.call)
   })

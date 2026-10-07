@@ -22,7 +22,7 @@ describe('space layout', () => {
     expect(shouldInterceptSameNavClick({ currentPath: '/spaces', to: '/spaces', event: plain })).toBe(true)
     expect(shouldInterceptSameNavClick({ currentPath: '/spaces', to: '/spaces', event: shift })).toBe(false)
     const rail = readFromRepo('components/app/layout/LeftRail.vue')
-    const tabs = readFromRepo('components/app/TabBar.vue')
+    const tabs = readFromRepo('components/app/chrome/TabBar.vue')
     expect(rail).toMatch(/shouldInterceptSameNavClick/)
     expect(tabs).toMatch(/shouldInterceptSameNavClick/)
   })
@@ -72,7 +72,7 @@ describe('space layout', () => {
 
   it('shows Live spaces in the right rail only when a space is live', () => {
     const rail = readFromRepo('components/app/layout/RightRail.vue')
-    const card = readFromRepo('components/app/AppLiveSpacesRailCard.vue')
+    const card = readFromRepo('components/app/media/AppLiveSpacesRailCard.vue')
     expect(rail).toMatch(/<AppLiveSpacesRailCard/)
     expect(card).toMatch(/Live spaces/)
     expect(card).toMatch(/v-if="displayRows\.length"/)
@@ -85,7 +85,7 @@ describe('space layout', () => {
   })
 
   it('makes the whole lobby space row a real link, with share staying a button', () => {
-    const row = readFromRepo('components/app/AppSpaceRow.vue')
+    const row = readFromRepo('components/app/media/AppSpaceRow.vue')
     expect(row).toMatch(/absolute inset-0 z-\[1\]/)
     expect(row).toMatch(/isInteractiveTarget/)
     expect(row).toMatch(/onRowClick/)
@@ -116,7 +116,7 @@ describe('space layout', () => {
   })
 
   it('does not clip avatar glow with the radio bar container', () => {
-    const bar = readFromRepo('components/app/RadioBar.vue')
+    const bar = readFromRepo('components/app/media/RadioBar.vue')
     const layout = readFromRepo('layouts/app.vue')
     expect(bar).toMatch(/class="absolute inset-0 pointer-events-none overflow-hidden rounded-lg"/)
     expect(bar).not.toMatch(/sm:px-4 sm:py-2 relative overflow-hidden/)
@@ -157,7 +157,7 @@ describe('space layout', () => {
 
   it('keeps the watch-party player visible while mobile chat is open', () => {
     const page = readFromRepo('pages/s/[username].vue') + readFromRepo('composables/pages/spaces/useSpaceUsernamePage.ts')
-    const overlay = readFromRepo('components/app/SpaceLiveChatOverlay.vue')
+    const overlay = readFromRepo('components/app/media/SpaceLiveChatOverlay.vue')
     const overlays = readFromRepo('components/app/layout/GlobalOverlays.vue')
     const player = readFromRepo('components/SpaceYouTubePlayer.vue')
     expect(page).toMatch(/pinWatchPlayerForChat/)
@@ -170,7 +170,7 @@ describe('space layout', () => {
   })
 
   it('shows the avatar spaces ring only when that space is live', () => {
-    const avatar = readFromRepo('components/app/UserAvatar.vue')
+    const avatar = readFromRepo('components/app/people/UserAvatar.vue')
     expect(avatar).toMatch(/getById\(spaceId\)\?\.isActive/)
     expect(avatar).not.toMatch(/return Boolean\(selectedSpaceId\.value\) \|\| Boolean\(getCurrentSpaceForUser\(uid\)\)/)
   })

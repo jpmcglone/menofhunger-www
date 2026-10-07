@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
-import ActivityBadge from '~/components/app/ActivityBadge.vue'
+import ActivityBadge from '~/components/app/chrome/ActivityBadge.vue'
 
 const tone = ref('moh-notif-badge-verified')
 mockNuxtImport('useActivityBadgeTone', () => () => tone)

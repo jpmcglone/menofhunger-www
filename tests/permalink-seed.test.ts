@@ -78,7 +78,7 @@ describe('permalink seed', () => {
       'utf8',
     )
     const composer = [
-      readFileSync(resolve('components/app/PostComposer.vue'), 'utf8'),
+      readFileSync(resolve('components/app/content/PostComposer.vue'), 'utf8'),
       readFileSync(resolve('composables/composer/useComposerSubmit.ts'), 'utf8'),
     ].join('\n')
 

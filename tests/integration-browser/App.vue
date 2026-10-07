@@ -15,7 +15,7 @@
 </template>
 <script setup lang="ts">
 import MetadataPreview from '../../components/app/profile/MetadataPreview.vue'
-import XPublishing from '../../components/app/XPublishing.vue'
+import XPublishing from '../../components/app/kit/XPublishing.vue'
 import IntegrationAdmin from '../../pages/admin/integrations.vue'
 function toggle() { document.documentElement.classList.toggle('dark') }
 </script>

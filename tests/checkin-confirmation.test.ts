@@ -2,7 +2,7 @@ import { defineComponent, h, ref, toValue } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import SharePostDialog from '../components/app/SharePostDialog.vue'
+import SharePostDialog from '../components/app/content/SharePostDialog.vue'
 import type { FeedPost } from '../types/api'
 
 const spies = vi.hoisted(() => ({ overlay: vi.fn(), lock: vi.fn(), share: vi.fn(), copy: vi.fn(), ensure: vi.fn(), refresh: vi.fn(), toast: vi.fn() }))

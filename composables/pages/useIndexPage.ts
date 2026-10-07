@@ -2,7 +2,7 @@ import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
 import { avatarRoundClass } from '~/utils/avatar-rounding'
-import type { BreakdownRow, BreakdownSection } from '~/components/app/LandingStatBreakdown.vue'
+import type { BreakdownRow, BreakdownSection } from '~/components/app/kit/LandingStatBreakdown.vue'
 import type { LandingSnapshot, LandingTopPost } from '~/types/api'
 
 export async function useIndexPage() {

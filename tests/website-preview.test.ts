@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(resolve(root, path), 'utf8')
 
 describe('generic website preview cards', () => {
   it('posts and the composer use the fixed-shape link card; chat keeps the Open Graph card', () => {
-    const linkCard = read('components/app/LinkCard.vue')
+    const linkCard = read('components/app/content/LinkCard.vue')
     const post = read('components/app/post/PostRowLinkPreview.vue')
     const chat = read('components/app/chat/ChatMessageRichBody.vue')
     const composer = read('components/app/composer/LinkPreview.vue')

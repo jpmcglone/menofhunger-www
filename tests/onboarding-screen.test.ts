@@ -2,7 +2,7 @@ import { defineComponent, ref } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Gate from '~/components/app/OnboardingGate.vue'
+import Gate from '~/components/app/dialogs/OnboardingGate.vue'
 const state = vi.hoisted(() => ({ user: null as any, fetch: vi.fn(), finish: vi.fn(), referral: null as any }))
 mockNuxtImport('useAuth', () => () => ({ user: state.user, ensureLoaded: async () => {} }))
 mockNuxtImport('useApiClient', () => () => ({ apiFetchData: state.fetch }))

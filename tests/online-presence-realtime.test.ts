@@ -29,13 +29,13 @@ describe('online presence realtime wiring', () => {
     expect(page).toContain(':in-call="u.inCall === true"')
     expect(page).toContain('user.id === payload.userId ? { ...user, inCall: payload.inCall } : user')
 
-    const row = readFileSync(resolve(root, 'components/app/UserRow.vue'), 'utf8')
+    const row = readFileSync(resolve(root, 'components/app/people/UserRow.vue'), 'utf8')
     // Directory rows show call state in the presence line; other rows use the trailing icon.
     expect(row).toContain(':in-call="inCall"')
     expect(row).toContain('v-if="inCall && !showPresence"')
     expect(row).toContain('name="tabler:headset"')
 
-    const platforms = readFileSync(resolve(root, 'components/app/PresencePlatforms.vue'), 'utf8')
+    const platforms = readFileSync(resolve(root, 'components/app/people/PresencePlatforms.vue'), 'utf8')
     expect(platforms).toContain('v-if="inCall && !recentLabel"')
     expect(platforms).toContain('name="tabler:headset"')
   })

@@ -94,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
+import AppCheckinPromptContext from '~/components/app/dialogs/CheckinPromptContext.vue'
 import type { FeedPost, GetPostData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useUserOverlay } from '~/composables/useUserOverlay'

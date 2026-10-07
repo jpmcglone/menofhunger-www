@@ -75,6 +75,12 @@ const MESSAGES: Record<string, string> = {
   oversizedFiles: 'Keep pages <= 500, components <= 600, composables <= 600 lines; extract composables/sections.',
 }
 
+/**
+ * Remaining oversizedFiles are documented exceptions: their templates alone
+ * exceed the page cap, or the SFC is a dense row/player whose next split is a
+ * behavior-risk rewrite (PostRow, Header, YouTube player, admin dashboards).
+ */
+
 describe('architecture guardrails (ratchet)', () => {
   const current = computeOffenders()
   if (process.env.UPDATE_GUARDRAIL_BASELINE === '1') {

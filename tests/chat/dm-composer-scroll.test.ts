@@ -3,11 +3,11 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const dm = readFileSync(
-  resolve(process.cwd(), 'components/app/DmComposer.vue'),
+  resolve(process.cwd(), 'components/app/content/DmComposer.vue'),
   'utf8',
 )
 const styled = readFileSync(
-  resolve(process.cwd(), 'components/app/StyledTextarea.vue'),
+  resolve(process.cwd(), 'components/app/content/StyledTextarea.vue'),
   'utf8',
 )
 
@@ -38,7 +38,7 @@ describe('DM composer field scroll', () => {
 describe('TipTap commandManager null (MENOFHUNGER-WWW-1R)', () => {
   it('guards setContent in every editor that can unmount mid-update', () => {
     for (const file of [
-      'components/app/StyledTextarea.vue',
+      'components/app/content/StyledTextarea.vue',
       'components/app/article/TiptapEditor.vue',
       'components/admin/NewsletterEditor.vue',
     ]) {

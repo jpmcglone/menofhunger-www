@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { writeFileSync } from 'node:fs'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-import FeatureLinkPreview from '~/components/app/FeatureLinkPreview.vue'
+import FeatureLinkPreview from '~/components/app/content/FeatureLinkPreview.vue'
 import { featurePageForPath, featurePages } from '~/utils/feature-pages'
 
 describe('feature link previews', () => {

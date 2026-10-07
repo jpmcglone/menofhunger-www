@@ -74,8 +74,8 @@ export type ScreenStateEmptyVariant = 'default' | 'all' | 'following'
 import { NuxtLink } from '#components'
 import type catalog from '~/design/icon-catalog.json'
 import { VOICE } from '~/config/voice'
-import type { LoadMoreFooterState } from '~/components/app/LoadMoreFooter.vue'
-import type { SkeletonRowVariant } from '~/components/app/SkeletonRow.vue'
+import type { LoadMoreFooterState } from '~/components/app/chrome/LoadMoreFooter.vue'
+import type { SkeletonRowVariant } from '~/components/app/chrome/SkeletonRow.vue'
 
 // Figma brief 1 (list kit): loading (skeleton), empty, error-with-retry, content.
 // Empty variants fold AllEmptyState / FollowingEmptyState. Node 980:85.

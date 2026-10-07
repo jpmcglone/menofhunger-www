@@ -1,6 +1,6 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
-import PostMediaGrid from '~/components/app/PostMediaGrid.vue'
+import PostMediaGrid from '~/components/app/content/PostMediaGrid.vue'
 import type { PostMedia } from '~/types/api'
 
 const video: PostMedia = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import AnimatedCount from '~/components/app/AnimatedCount.vue'
+import AnimatedCount from '~/components/app/chrome/AnimatedCount.vue'
 
 describe('AppAnimatedCount', () => {
   it('holds its space as a blank at 0, then rolls in the number', async () => {

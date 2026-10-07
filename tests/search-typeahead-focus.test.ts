@@ -7,7 +7,7 @@ function readFromRepo(relativePath: string): string {
 }
 
 describe('SearchTypeahead focus / dropdown sync', () => {
-  const source = readFromRepo('components/app/SearchTypeahead.vue')
+  const source = readFromRepo('components/app/kit/SearchTypeahead.vue')
 
   it('blurs the input when closing the panel after a selection', () => {
     // Selecting a row uses @mousedown.prevent; without an explicit blur the

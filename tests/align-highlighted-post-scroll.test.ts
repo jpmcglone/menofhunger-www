@@ -84,7 +84,7 @@ describe('permalink highlight align triggers (structural)', () => {
     expect(page).not.toMatch(/watch\(\s*\(\)\s*=>\s*\[\s*postId\.value/)
     expect(page).toMatch(/highlightAlignFinishedForId/)
     expect(page).toContain('isUsableHighlightTarget')
-    expect(readFromRepo('components/app/FeedPostRow.vue')).toContain('data-thread-chain')
+    expect(readFromRepo('components/app/content/FeedPostRow.vue')).toContain('data-thread-chain')
     expect(page).toContain('neededStableFrames')
     expect(page).not.toContain('const maxFrames = 45')
     expect(page).toMatch(/watch\(\s*\[postId,[\s\S]*\{ immediate: true \}/)

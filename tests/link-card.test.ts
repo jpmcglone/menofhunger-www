@@ -1,6 +1,6 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { describe, expect, it } from 'vitest'
-import LinkCard from '~/components/app/LinkCard.vue'
+import LinkCard from '~/components/app/content/LinkCard.vue'
 
 const global = { stubs: { Icon: true } }
 const base = { href: 'https://bitrig.com/', siteLabel: 'bitrig.com' }

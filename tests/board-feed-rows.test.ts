@@ -1,7 +1,7 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { VueWrapper } from '@vue/test-utils'
-import PostRow from '~/components/app/PostRow.vue'
+import PostRow from '~/components/app/content/PostRow.vue'
 import type { FeedPost } from '~/types/api'
 
 const global = {

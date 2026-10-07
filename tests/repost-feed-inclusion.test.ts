@@ -8,7 +8,7 @@ function source(path: string): string {
 
 describe('repost feed inclusion', () => {
   it('renders the reposter indicator around the original post', () => {
-    const row = source('components/app/FeedPostRow.vue')
+    const row = source('components/app/content/FeedPostRow.vue')
     expect(row).toContain("props.post.kind === 'repost'")
     expect(row).toContain('reposted')
     expect(row).toContain('props.post.repostedPost')

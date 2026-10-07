@@ -37,22 +37,22 @@ Single source of truth for stacking order. All values are for `position: fixed` 
 | `pages/index.vue` | 100, 101 | Roanoke sheet backdrop, panel. |
 | `pages/home.vue` | 0, 10 | Loader below feed, feed above loader. |
 | **Components (overlays / modals)** | | |
-| `components/app/BottomSheet.vue` | 10000, 10001 | Backdrop, panel. |
-| `components/app/SpaceLiveChatOverlay.vue` | 9999 | Full-screen chat overlay. |
-| `components/app/ImageLightbox.vue` | 9999 | Full-screen lightbox. |
-| `components/app/ReplyModal.vue` | 1000 | Reply modal overlay. |
-| `components/app/AppModal.vue` | 1200 | Generic app modal. |
-| `components/app/OnboardingGate.vue` | 70 | Gate above FAB (was 60). |
+| `components/app/dialogs/BottomSheet.vue` | 10000, 10001 | Backdrop, panel. |
+| `components/app/media/SpaceLiveChatOverlay.vue` | 9999 | Full-screen chat overlay. |
+| `components/app/dialogs/ImageLightbox.vue` | 9999 | Full-screen lightbox. |
+| `components/app/content/ReplyModal.vue` | 1000 | Reply modal overlay. |
+| `components/app/dialogs/AppModal.vue` | 1200 | Generic app modal. |
+| `components/app/dialogs/OnboardingGate.vue` | 70 | Gate above FAB (was 60). |
 | **Components (popovers)** | | |
-| `components/app/ToastStack.vue` | 1500 | Toast container (teleported to body, pointer-events-none). |
-| `components/app/UserPreviewPopover.vue` | 1300 | User preview card. |
-| `components/app/MetricsPopover.vue` | 1100 | Metrics popover. |
-| `components/app/OnlineCountPopover.vue` | 1100 | Online count popover. |
-| `components/app/EmojiPickerButton.vue` | 1100 | Emoji picker. |
-| `components/app/MentionAutocompletePopover.vue` | 1200 | Mention autocomplete. |
-| `components/app/HashtagAutocompletePopover.vue` | 1200 | Hashtag autocomplete. |
+| `components/app/chrome/ToastStack.vue` | 1500 | Toast container (teleported to body, pointer-events-none). |
+| `components/app/people/UserPreviewPopover.vue` | 1300 | User preview card. |
+| `components/app/kit/MetricsPopover.vue` | 1100 | Metrics popover. |
+| `components/app/kit/OnlineCountPopover.vue` | 1100 | Online count popover. |
+| `components/app/content/EmojiPickerButton.vue` | 1100 | Emoji picker. |
+| `components/app/content/MentionAutocompletePopover.vue` | 1200 | Mention autocomplete. |
+| `components/app/content/HashtagAutocompletePopover.vue` | 1200 | Hashtag autocomplete. |
 | **Components (other)** | | |
-| `components/app/PostComposer.vue` | 2000 | .moh-drag-ghost (CSS). |
+| `components/app/content/PostComposer.vue` | 2000 | .moh-drag-ghost (CSS). |
 
 ## Issues found and fixes
 

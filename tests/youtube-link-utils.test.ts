@@ -292,7 +292,7 @@ describe('sameNormalizedUrl', () => {
 describe('PostRowLinkPreview portrait video chrome', () => {
   it('sizes portrait Rumble and Shorts from the post payload at their final width', () => {
     const src = readFileSync(resolve(process.cwd(), 'components/app/post/PostRowLinkPreview.vue'), 'utf8')
-    const postRow = readFileSync(resolve(process.cwd(), 'components/app/PostRow.vue'), 'utf8')
+    const postRow = readFileSync(resolve(process.cwd(), 'components/app/content/PostRow.vue'), 'utf8')
     expect(src).toContain('isRumblePortrait')
     expect(src).toContain(':style="videoFrameStyle"')
     expect(src).toContain('portraitEmbedFrameStyle')

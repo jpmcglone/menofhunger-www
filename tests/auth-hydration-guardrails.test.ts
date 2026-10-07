@@ -45,7 +45,7 @@ describe('useAuth hydration guardrails (structural)', () => {
   })
 
   it('never renders a badge or indicator on the Home navigation item', () => {
-    const tabBar = readFromRepo('components/app/TabBar.vue')
+    const tabBar = readFromRepo('components/app/chrome/TabBar.vue')
     const leftRail = readFromRepo('components/app/layout/LeftRail.vue')
 
     expect(tabBar).not.toMatch(/item\.key === ['"]home['"]/)

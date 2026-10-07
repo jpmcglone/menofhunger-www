@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { describe, expect, it, vi } from 'vitest'
 import PrimeVue from 'primevue/config'
-import ConversationInsights from '~/components/app/ConversationInsights.vue'
+import ConversationInsights from '~/components/app/kit/ConversationInsights.vue'
 
 const recapSpies = vi.hoisted(() => ({
   fetch: vi.fn(),

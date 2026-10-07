@@ -1,5 +1,5 @@
 // url=https://www.figma.com/file/YnuRSJB7p90n9jEY4mb4RN/Men-of-Hunger?node-id=980-85
-// source=components/app/BannerAvatarEditor.vue
+// source=components/app/people/BannerAvatarEditor.vue
 // component=AppBannerAvatarEditor
 import figma from 'figma'
 

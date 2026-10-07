@@ -47,7 +47,7 @@
 <script setup lang="ts">
 import { MOH_COMPOSER_OPEN_KEY } from '~/utils/injection-keys'
 import type { FeedPost } from '~/types/api'
-import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
+import AppCheckinPromptContext from '~/components/app/dialogs/CheckinPromptContext.vue'
 const { addPhoto, step: profileStep } = useFirstRunFlow()
 const composerOpen = inject(MOH_COMPOSER_OPEN_KEY, ref(false))
 const props = defineProps<{ showCheckinCta?: boolean; checkinPrompt?: string; hasPosted?: boolean }>()

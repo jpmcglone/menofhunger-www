@@ -1,5 +1,5 @@
 @import '../../assets/css/main.css';
 @source '../../components/app/profile/MetadataPreview.vue';
-@source '../../components/app/XPublishing.vue';
+@source '../../components/app/kit/XPublishing.vue';
 @source '../../pages/admin/integrations.vue';
 @source './';

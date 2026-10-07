@@ -8,7 +8,7 @@ function readFromRepo(relativePath: string): string {
 
 describe('scripture verse presentation', () => {
   it('uses the anchored popover on desktop and the shared bottom sheet on mobile', () => {
-    const source = readFromRepo('components/app/ScriptureVersePopover.vue')
+    const source = readFromRepo('components/app/media/ScriptureVersePopover.vue')
 
     expect(source).toMatch(/<Popover v-if="isDesktopHydrated"/)
     expect(source).toMatch(/<AppBottomSheet[\s\S]*v-if="isMobileHydrated"/)
@@ -17,7 +17,7 @@ describe('scripture verse presentation', () => {
   })
 
   it('re-anchors and reloads when either the target or reference changes', () => {
-    const source = readFromRepo('components/app/ScriptureVersePopover.vue')
+    const source = readFromRepo('components/app/media/ScriptureVersePopover.vue')
 
     expect(source).toMatch(/\[\(\) => props\.target, \(\) => props\.reference, isMobileHydrated, isDesktopHydrated\]/)
     expect(source).toMatch(/popoverRef\.value\.hide\(\)[\s\S]*popoverRef\.value\.show\(/)
@@ -26,9 +26,9 @@ describe('scripture verse presentation', () => {
   })
 
   it('matches the compact iOS header, divider, and numbered verse layout', () => {
-    const popover = readFromRepo('components/app/ScriptureVersePopover.vue')
-    const card = readFromRepo('components/app/ScriptureVerseCard.vue')
-    const list = readFromRepo('components/app/ScriptureVerseList.vue')
+    const popover = readFromRepo('components/app/media/ScriptureVersePopover.vue')
+    const card = readFromRepo('components/app/media/ScriptureVerseCard.vue')
+    const list = readFromRepo('components/app/media/ScriptureVerseList.vue')
 
     for (const source of [popover, card]) {
       expect(source).toMatch(/items-baseline justify-between/)
@@ -40,7 +40,7 @@ describe('scripture verse presentation', () => {
   })
 
   it('caps the feed card at three verses and opens the reader on tap', () => {
-    const card = readFromRepo('components/app/ScriptureVerseCard.vue')
+    const card = readFromRepo('components/app/media/ScriptureVerseCard.vue')
     const preview = readFromRepo('utils/scripture-preview.ts')
 
     expect(preview).toMatch(/SCRIPTURE_PEEK_VERSE_LIMIT = 3/)
@@ -50,7 +50,7 @@ describe('scripture verse presentation', () => {
   })
 
   it('bounds the overlay and scrolls long passages instead of growing without limit', () => {
-    const popover = readFromRepo('components/app/ScriptureVersePopover.vue')
+    const popover = readFromRepo('components/app/media/ScriptureVersePopover.vue')
 
     expect(popover).toMatch(/max-h-\[min\(22rem,55vh\)\]/)
     expect(popover).toMatch(/overflow-y-auto/)
@@ -59,7 +59,7 @@ describe('scripture verse presentation', () => {
   })
 
   it('keeps the shared bottom-sheet header customizable without changing existing callers', () => {
-    const source = readFromRepo('components/app/BottomSheet.vue')
+    const source = readFromRepo('components/app/dialogs/BottomSheet.vue')
 
     expect(source).toMatch(/<slot name="header" :close="close" :title-id="titleId">/)
     expect(source).toMatch(/<\/header>\s*<\/slot>/)

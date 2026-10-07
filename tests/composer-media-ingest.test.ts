@@ -32,7 +32,7 @@ describe('composer media type helpers', () => {
 
 describe('paste and drop reach the TipTap editor', () => {
   it('StyledTextarea claims file paste/drop so media is not swallowed by the editor', () => {
-    const source = readFromRepo('components/app/StyledTextarea.vue')
+    const source = readFromRepo('components/app/content/StyledTextarea.vue')
     expect(source).toMatch(/handlePaste\(_view, event\)/)
     expect(source).toMatch(/handleDrop\(_view, event\)/)
     expect(source).toMatch(/emit\('media-files', files\)/)
@@ -41,8 +41,8 @@ describe('paste and drop reach the TipTap editor', () => {
   })
 
   it('chat and post composers ingest editor media-files', () => {
-    const chat = readFromRepo('components/app/DmComposer.vue')
-    const post = readFromRepo('components/app/PostComposer.vue')
+    const chat = readFromRepo('components/app/content/DmComposer.vue')
+    const post = readFromRepo('components/app/content/PostComposer.vue')
     expect(chat).toMatch(/@media-files="\(files\) => ingestMediaFiles\(files, 'paste'\)"/)
     expect(post).toMatch(/@media-files="\(files\) => ingestMediaFiles\(files, 'paste'\)"/)
     expect(chat).toMatch(/@paste\.capture="onComposerPaste"/)

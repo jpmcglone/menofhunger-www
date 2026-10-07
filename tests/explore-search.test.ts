@@ -1,7 +1,7 @@
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
-import Results from '~/components/app/ExploreSearchResults.vue'
+import Results from '~/components/app/kit/ExploreSearchResults.vue'
 import GroupCard from '~/components/app/groups/AppGroupPreviewCard.vue'
 import { applyCommunityGroupJoin } from '~/utils/community-group-preview'
 import type { CommunityGroupPreview, SearchUserResult } from '~/types/api'

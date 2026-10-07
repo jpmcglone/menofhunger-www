@@ -54,7 +54,7 @@ describe('spaces updated realtime wiring (structural)', () => {
   })
 
   it('binds live listener badges and keeps Notify me on feed embeds', async () => {
-    const row = await read('components/app/AppSpaceRow.vue')
+    const row = await read('components/app/media/AppSpaceRow.vue')
     expect(row).toMatch(/lobbyCountForSpace/)
     expect(row).toMatch(/clickable = computed\(\(\) => Boolean\(spaceHref\.value\)\)/)
     expect(row).toMatch(/showActionChrome/)
@@ -63,12 +63,12 @@ describe('spaces updated realtime wiring (structural)', () => {
   })
 
   it('renders lobby and preview spaces as cards with implied titles', async () => {
-    const row = await read('components/app/AppSpaceRow.vue')
+    const row = await read('components/app/media/AppSpaceRow.vue')
     const index = await read('pages/spaces/index.vue')
     const preview = await read('components/app/post/PostRowLinkPreview.vue')
-    const badge = await read('components/app/AppSpaceStatusBadge.vue')
+    const badge = await read('components/app/media/AppSpaceStatusBadge.vue')
     const spacePage = (await read('pages/s/[username].vue')) + (await read('composables/pages/spaces/useSpaceUsernamePage.ts'))
-    const radioBar = await read('components/app/RadioBar.vue')
+    const radioBar = await read('components/app/media/RadioBar.vue')
     expect(row).toMatch(/useSpaceDisplayTitle/)
     expect(row).toMatch(/spaceLobbyRowKind/)
     expect(row).toMatch(/showRadioVisualizer/)

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
-import Switcher from '~/components/app/AccountSwitcher.vue'
+import Switcher from '~/components/app/people/AccountSwitcher.vue'
 
 const spies = vi.hoisted(() => ({ switchTo: vi.fn(), refresh: vi.fn() }))
 mockNuxtImport('useAccountSwitcher', () => () => ({
@@ -22,8 +22,8 @@ function src(relativePath: string): string {
 
 describe('account switcher menu', () => {
   it('dismisses the desktop popover and mobile more sheet from the switcher', () => {
-    expect(src('components/app/UserCard.vue')).toContain('@close="closeMenu"')
-    expect(src('components/app/TabBar.vue')).toContain('@close="moreOpen = false"')
+    expect(src('components/app/people/UserCard.vue')).toContain('@close="closeMenu"')
+    expect(src('components/app/chrome/TabBar.vue')).toContain('@close="moreOpen = false"')
   })
 })
 

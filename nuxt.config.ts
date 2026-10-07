@@ -16,6 +16,29 @@ function hostFromUrl(raw: string | undefined | null): string | null {
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
 
+  // Loose `components/app/*.vue` files live in domain folders. Keep their
+  // historical App* names (`AppPostRow`, not `AppContentPostRow`).
+  components: [
+    {
+      path: '~/components',
+      pathPrefix: true,
+      ignore: [
+        'app/kit/**',
+        'app/people/**',
+        'app/content/**',
+        'app/chrome/**',
+        'app/dialogs/**',
+        'app/media/**',
+      ],
+    },
+    { path: '~/components/app/kit', prefix: 'App', pathPrefix: false },
+    { path: '~/components/app/people', prefix: 'App', pathPrefix: false },
+    { path: '~/components/app/content', prefix: 'App', pathPrefix: false },
+    { path: '~/components/app/chrome', prefix: 'App', pathPrefix: false },
+    { path: '~/components/app/dialogs', prefix: 'App', pathPrefix: false },
+    { path: '~/components/app/media', prefix: 'App', pathPrefix: false },
+  ],
+
   // Disable Nuxt DevTools runtime injection in this project.
   // The inspector overlay can emit noisy Vue warnings (`<Suspense>` + `<VueElement style>`),
   // which obscures real hydration issues during debugging.
@@ -129,7 +152,7 @@ export default defineNuxtConfig({
       ],
       // NOTE: Do NOT inject the AdSense loader into the initial HTML.
       // It can mutate the server-rendered DOM before Vue hydrates, causing hydration mismatches.
-      // `components/app/AdSlot.vue` loads the script client-side only, after mount.
+      // `components/app/chrome/AdSlot.vue` loads the script client-side only, after mount.
       link: [
         { rel: 'manifest', href: '/site.webmanifest' },
         { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },

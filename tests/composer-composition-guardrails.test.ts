@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest'
  * and flush afterwards, so mention colors still resolve once the composition ends.
  */
 
-const SOURCE = resolve(process.cwd(), 'components/app/StyledTextarea.vue')
+const SOURCE = resolve(process.cwd(), 'components/app/content/StyledTextarea.vue')
 
 describe('StyledTextarea composition safety', () => {
   const source = readFileSync(SOURCE, 'utf8')

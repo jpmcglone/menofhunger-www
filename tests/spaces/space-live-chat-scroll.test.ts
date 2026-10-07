@@ -32,7 +32,7 @@ describe('space live chat scroll (structural)', () => {
   })
 
   it('explains live-only chat from an info button, not a clock-off icon', async () => {
-    const header = await Promise.resolve(read('components/app/LiveChatHeader.vue'))
+    const header = await Promise.resolve(read('components/app/media/LiveChatHeader.vue'))
     expect(header).toMatch(/tabler:info-circle/)
     expect(header).toMatch(/How live chat works/)
     expect(header).toMatch(/We don’t save the chat/)

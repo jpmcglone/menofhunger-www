@@ -267,7 +267,7 @@
 </template>
 
 <script setup lang="ts">
-import AppImg from '~/components/app/AppImg.vue'
+import AppImg from '~/components/app/media/AppImg.vue'
 import { mediaFocus } from '~/utils/mediaFocus'
 import type { PostMedia } from '~/types/api'
 import type { LightboxMediaItem } from '~/composables/useImageLightbox'

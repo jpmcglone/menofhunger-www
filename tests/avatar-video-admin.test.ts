@@ -4,7 +4,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { computed, ref } from 'vue'
 import EditProfileDialog from '../components/app/profile/EditProfileDialog.vue'
 import AvatarVideoDialog from '../components/app/profile/edit/AvatarVideoDialog.vue'
-import AvatarVideo from '../components/app/AvatarVideo.vue'
+import AvatarVideo from '../components/app/people/AvatarVideo.vue'
 import AvatarVideoDraftPreview from '../components/app/profile/edit/AvatarVideoDraftPreview.vue'
 
 const { api, patchUser, syncCaches } = vi.hoisted(() => ({ api: vi.fn(), patchUser: vi.fn(), syncCaches: vi.fn() }))

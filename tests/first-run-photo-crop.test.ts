@@ -2,7 +2,7 @@ import { defineComponent, ref } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import FirstRunProfileSheet from '~/components/app/FirstRunProfileSheet.vue'
+import FirstRunProfileSheet from '~/components/app/people/FirstRunProfileSheet.vue'
 
 const photoSpies = vi.hoisted(() => ({ fetch: vi.fn(), put: vi.fn(), finish: vi.fn(), patch: vi.fn() }))
 mockNuxtImport('useApiClient', () => () => ({ apiFetchData: photoSpies.fetch }))

@@ -496,7 +496,7 @@
 </template>
 
 <script setup lang="ts">
-import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
+import AppCheckinPromptContext from '~/components/app/dialogs/CheckinPromptContext.vue'
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
 import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'

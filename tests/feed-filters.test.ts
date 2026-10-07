@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { describe, expect, it } from 'vitest'
-import FeedFilters from '~/components/app/FeedFiltersBar.vue'
+import FeedFilters from '~/components/app/content/FeedFiltersBar.vue'
 import { feedScopeTint } from '~/utils/post-visibility'
 
 const props = { sort: 'new' as const, filter: 'all' as const, viewerIsVerified: false, viewerIsPremium: false }

@@ -2,7 +2,7 @@ import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import LandingStatBreakdown from '../components/app/LandingStatBreakdown.vue'
+import LandingStatBreakdown from '../components/app/kit/LandingStatBreakdown.vue'
 
 const { overlay } = vi.hoisted(() => ({ overlay: vi.fn() }))
 mockNuxtImport('useOverlayDismiss', () => overlay)

@@ -16,7 +16,7 @@ Audio releasing focus now schedules viewport selection immediately, so a visible
 
 ## Integration points
 
-Web: `utils/mediaFocus.ts`, `utils/media/video-autoplay.ts`, `composables/useEmbeddedVideoManager.ts`, and `components/app/VoicePlaybackHost.vue`. Uploaded video, embedded video, lightboxes, voice messages, Spotify, radio, Space audio, watch parties, and interactive native previews use the same ownership policy. Scroll/resize/layout and ownership changes trigger selection. Multi-attachment grids remain tap-to-play.
+Web: `utils/mediaFocus.ts`, `utils/media/video-autoplay.ts`, `composables/useEmbeddedVideoManager.ts`, and `components/app/media/VoicePlaybackHost.vue`. Uploaded video, embedded video, lightboxes, voice messages, Spotify, radio, Space audio, watch parties, and interactive native previews use the same ownership policy. Scroll/resize/layout and ownership changes trigger selection. Multi-attachment grids remain tap-to-play.
 
 Native: `MediaPlaybackFocus`, `VideoPlaybackCoordinator` and its viewport extension, `ChatAudioPlayer`, `InlineEmbedPlayer`, `SpotifyWebPlayer`, and `FocusedVideoViewController`. AVPlayer/AVKit remain responsible for native playback and system controls. The app supplies the ownership and selection policy.
 

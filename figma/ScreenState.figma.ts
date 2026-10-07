@@ -1,5 +1,5 @@
 // url=https://www.figma.com/file/YnuRSJB7p90n9jEY4mb4RN/Men-of-Hunger?node-id=980-85
-// source=components/app/ScreenState.vue
+// source=components/app/chrome/ScreenState.vue
 // component=AppScreenState
 import figma from 'figma'
 

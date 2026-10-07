@@ -88,7 +88,7 @@ describe('resolveNudgeAction', () => {
 
   it('wires the disabled reason onto profile and preview', () => {
     const header = readFromRepo('components/app/profile/Header.vue')
-    const preview = readFromRepo('components/app/UserPreviewCard.vue')
+    const preview = readFromRepo('components/app/people/UserPreviewCard.vue')
     expect(header).toMatch(/resolveNudgeAction/)
     expect(header).toMatch(/viewerIsPage: isPageAccount\.value/)
     expect(header).toMatch(/targetIsPage: profile\.value\?\.accountKind === 'page'/)

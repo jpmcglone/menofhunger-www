@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CashtagChartRange } from '~/components/app/CashtagStockWidget.vue'
+import type { CashtagChartRange } from '~/components/app/content/CashtagStockWidget.vue'
 
 const props = defineProps<{
   symbol: string

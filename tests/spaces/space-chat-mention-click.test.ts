@@ -17,7 +17,7 @@ describe('space live chat username click mentions', () => {
 
   it('keeps the hover preview as the path to the full profile', () => {
     const row = read('components/app/radio/RadioLiveChatMessageRow.vue')
-    const preview = read('components/app/UserPreviewCard.vue')
+    const preview = read('components/app/people/UserPreviewCard.vue')
     expect(row).toContain('useUserPreviewTrigger')
     expect(preview).toContain(':to="profilePath"')
     expect(preview).toContain('View @${user.username} profile')

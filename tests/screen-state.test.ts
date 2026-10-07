@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { writeFileSync } from 'node:fs'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-import ScreenState from '~/components/app/ScreenState.vue'
+import ScreenState from '~/components/app/chrome/ScreenState.vue'
 
 describe('screen states', () => {
   it('keeps contextual copy and announces errors with a labelled heading', async () => {

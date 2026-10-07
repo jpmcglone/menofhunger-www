@@ -76,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import AppCheckinPromptContext from '~/components/app/CheckinPromptContext.vue'
+import AppCheckinPromptContext from '~/components/app/dialogs/CheckinPromptContext.vue'
 import type { FeedPost } from '~/types/api'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 
