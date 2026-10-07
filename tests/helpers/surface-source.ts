@@ -6,6 +6,19 @@ import { resolve } from 'node:path'
  * section components and composables. Source-level assertions read the whole surface.
  */
 const SURFACE_PARTS: Record<string, string[]> = {
+  'pages/g/[slug]/index.vue': [
+    'composables/pages/group',
+  ],
+  'pages/explore.vue': [
+    'components/app/explore/page',
+    'composables/pages/explore',
+  ],
+  'pages/home.vue': [
+    'composables/pages/home',
+  ],
+  'pages/chat.vue': [
+    'composables/pages/chat',
+  ],
   'pages/admin/analytics.vue': [
     'components/app/admin/analytics',
     'composables/pages/admin/useAdminAnalyticsPage.ts',

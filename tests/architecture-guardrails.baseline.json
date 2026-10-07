@@ -7,11 +7,6 @@
     "components/SpaceYouTubePlayer.vue",
     "components/app/content/StyledTextarea.vue",
     "components/app/people/UserPreviewCard.vue",
-    "components/app/map/MembersUsMap.vue",
-    "pages/chat.vue",
-    "pages/explore.vue",
-    "pages/fitness.vue",
-    "pages/g/[slug]/index.vue",
-    "pages/home.vue"
+    "components/app/map/MembersUsMap.vue"
   ]
 }

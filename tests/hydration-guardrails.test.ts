@@ -57,7 +57,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('defers home right-rail secondary loads until the first feed resolves', () => {
-    const home = readFromRepo('pages/home.vue')
+    const home = readSurfaceSource('pages/home.vue')
     const rail = readFromRepo('components/app/layout/RightRail.vue')
     expect(home).toMatch(/useHomeLoadState\(\)/)
     expect(home).toMatch(/markInitialFeedResolved\(\)/)
@@ -102,7 +102,7 @@ describe('hydration guardrails (structural)', () => {
       'components/app/groups/AppGroupsRailCard.vue',
       'pages/groups/index.vue',
     ]) {
-      const src = readFromRepo(path)
+      const src = readSurfaceSource(path)
       expect(src).toMatch(/useMyGroups\(\)/)
       expect(src).not.toMatch(/apiFetchData<[^>]+>\('\/groups\/me'\)/)
     }
@@ -171,7 +171,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('gates the daily check-in hero on `heroResolved` so SSR never renders the wrong variant', () => {
-    const home = readFromRepo('pages/home.vue')
+    const home = readSurfaceSource('pages/home.vue')
     // Unanswered row and answered compact line are both gated on heroResolved +
     // the auth-derived hasCheckedInToday. Without this gate we'd flash the
     // unanswered row on first paint, then collapse it once /checkins/today resolves.
@@ -210,7 +210,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('wraps the check-in hero loading skeleton in ClientOnly so SSR emits nothing', () => {
-    const home = readFromRepo('pages/home.vue')
+    const home = readSurfaceSource('pages/home.vue')
     // The skeleton must be inside <ClientOnly> to prevent SSR from rendering it
     // (which would cause a hydration mismatch when the client replaces it with the real hero).
     // It is also gated on `canAccessCheckins` so unverified users (who never fetch
@@ -219,17 +219,17 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('shows the verify-to-check-in CTA only client-side for unverified users', () => {
-    const home = readFromRepo('pages/home.vue')
+    const home = readSurfaceSource('pages/home.vue')
     // Check-ins are verified-only; unverified authed users get a verify CTA instead of
     // the live hero. It must be inside <ClientOnly> so SSR emits nothing (no hydration
     // mismatch on the auth-derived `canAccessCheckins`).
     expect(home).toMatch(/<ClientOnly>[\s\S]*?<AppFeedDailyCheckinHero[\s\S]*?v-if="didAttempt && isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
-    const explore = readFromRepo('pages/explore.vue')
+    const explore = readSurfaceSource('pages/explore.vue')
     expect(explore).toMatch(/<ClientOnly>[\s\S]*?v-if="didAttempt && isAuthed && !isPageAccount && !canAccessCheckins"[\s\S]*?verify-cta[\s\S]*?<\/ClientOnly>/)
   })
 
   it('keeps quote and word off the home feed', () => {
-    const home = readFromRepo('pages/home.vue')
+    const home = readSurfaceSource('pages/home.vue')
     expect(home).not.toContain('AppFeedDailyQuoteCard')
     expect(home).not.toContain('DailyQuoteCard')
     expect(home).not.toContain('/daily/quote')
@@ -237,14 +237,14 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('hides home get-started and join-group cards for operated pages', () => {
-    const home = readFromRepo('pages/home.vue')
+    const home = readSurfaceSource('pages/home.vue')
     expect(home).toMatch(/<AppFeedHomeWelcomeCard[\s\S]*?v-if="isAuthed && !isPageAccount"/)
     expect(home).toContain('if (!isAuthed.value || isPageAccount.value) return false')
     expect(home).toMatch(/class="mx-3 my-3 sm:mx-4 sm:my-4 rounded-2xl border moh-border moh-surface/)
   })
 
   it('keeps the groups onboarding nudge hidden until membership is known', () => {
-    const home = readFromRepo('pages/home.vue')
+    const home = readSurfaceSource('pages/home.vue')
     expect(home).toContain('if (myGroupsCount.value === null) return false')
     expect(home).toContain('return myGroupsCount.value === 0')
     expect(home).not.toMatch(/watch\(myGroups/)
@@ -338,7 +338,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('does not eagerly subscribe presence interest for the entire conversation list', () => {
-    const chat = readFromRepo('pages/chat.vue')
+    const chat = readSurfaceSource('pages/chat.vue')
     // The old eager-subscribe machinery is gone:
     expect(chat).not.toMatch(/const presenceInterestIds = computed/)
     expect(chat).not.toMatch(/syncPresenceInterests\(/)
@@ -496,7 +496,7 @@ describe('hydration guardrails (structural)', () => {
     expect(modal).toMatch(/<AppModal/)
     expect(modal).toMatch(/max-w-2xl/)
     expect(modal).toMatch(/hide-header/)
-    expect(readFromRepo('pages/home.vue')).toMatch(/AppAnnouncementInlineCard/)
+    expect(readSurfaceSource('pages/home.vue')).toMatch(/AppAnnouncementInlineCard/)
     expect(readFromRepo('composables/useAnnouncements.ts')).toMatch(/placement === 'inline'/)
     expect(modal).toMatch(/openFromEvent/)
     expect(modal).toMatch(/cursor-zoom-in/)
@@ -562,7 +562,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('keeps the only-me drafts card hidden until /auth/me has settled', () => {
-    const home = readFromRepo('pages/home.vue')
+    const home = readSurfaceSource('pages/home.vue')
     expect(home).toMatch(/didAttempt\.value && isAuthed\.value && !viewerIsVerified\.value/)
     expect(home).toMatch(/v-if="didAttempt && isAuthed && !showOnlyMeHomeComposerCard"/)
     expect(home).toMatch(/v-else-if="didAttempt && isAuthed"/)

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { Message, MessageParticipant } from '~/types/api'
 import type { ChatListItem } from '~/composables/chat/useChatTimeFormatting'
 import { assignGroupReadIndicators } from '../../utils/chat-read-indicators'
+import { readSurfaceSource } from '../helpers/surface-source'
 
 const root = resolve(__dirname, '../..')
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8')
@@ -117,7 +118,7 @@ describe('assignGroupReadIndicators', () => {
 describe('group read-receipt wiring', () => {
   it('uses the shared assigner and treats type=group as a group chat', () => {
     const list = read('components/app/chat/ChatMessageList.vue')
-    const page = read('pages/chat.vue')
+    const page = readSurfaceSource('pages/chat.vue')
     expect(list).toMatch(/assignGroupReadIndicators/)
     expect(page).toMatch(/type === 'group' \|\| type === 'crew_wall'/)
     expect(page).not.toMatch(/participants\?\.length \?\? 0\) >= 3/)

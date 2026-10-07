@@ -95,13 +95,13 @@ describe('home feed query shape', () => {
 
 describe('home feed refresh guardrails', () => {
   it('lets the regular home composer offer every audience allowed by the account', () => {
-    const home = readFromRepo('pages/home.vue')
+    const home = readSurfaceSource('pages/home.vue')
     const composer = home.match(/<LazyAppPostComposer\b[\s\S]*?\/>/)?.[0]
     expect(composer).toBeDefined()
     expect(composer).not.toContain(':allowed-visibilities=')
   })
   it('keeps the home composer expanded with no compact chrome', () => {
-    const home = readFromRepo('pages/home.vue')
+    const home = readSurfaceSource('pages/home.vue')
     const composer = readFromRepo('components/app/content/PostComposer.vue')
     expect(home).not.toMatch(/collapse-until-focus/)
     expect(composer).not.toContain('collapseUntilFocus')
@@ -115,7 +115,7 @@ describe('home feed refresh guardrails', () => {
   })
 
   it('waits for the initial feed before fetching the groups onboarding count', () => {
-    const src = readFromRepo('pages/home.vue')
+    const src = readSurfaceSource('pages/home.vue')
     expect(src).toContain('[isAuthed, isPageAccount, initialFeedResolved, groupsNudgeDismissed]')
     expect(src).toContain('if (feedResolved && !dismissed && myGroupsCount.value === null)')
     expect(src).not.toMatch(/watch\(isAuthed,[\s\S]*refreshMyGroupsCount/)
@@ -193,7 +193,7 @@ describe('home feed refresh guardrails', () => {
   })
 
   it('queues activation arrivals and preserves explicit home pull-to-refresh', () => {
-    const src = readFromRepo('pages/home.vue')
+    const src = readSurfaceSource('pages/home.vue')
     expect(src).toContain(':seen-aware-collapse="forYou"')
     expect(src).toContain('arrivalPolling.check()')
     expect(src).not.toContain('void refresh({ forYouRefresh: true })')

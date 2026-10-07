@@ -114,7 +114,7 @@ describe('auth user patch-vs-replace guardrail', () => {
       'composables/settings/useSettingsAccount.ts',
       'pages/explore.vue',
     ]) {
-      const src = readFromRepo(file)
+      const src = readSurfaceSource(file)
       expect(src, `${file} must not replace authUser with an endpoint payload`).not.toMatch(
         /authUser\.value = (result|committed|u)\b/,
       )

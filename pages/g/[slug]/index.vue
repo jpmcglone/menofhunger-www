@@ -346,44 +346,9 @@
 
 <script setup lang="ts">
 import AppGroupProfileHeader from '~/components/app/groups/AppGroupProfileHeader.vue'
-import type {
-  CommunityGroupShell,
-  FeedPost,
-} from '~/types/api'
-import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
-import { useMiddleScroller } from '~/composables/useMiddleScroller'
-import { useGroupMedia } from '~/composables/useGroupMedia'
-import type { GroupFeedCallback } from '~/composables/usePresence'
-import { applyCommunityGroupJoin, communityGroupJoinToast } from '~/utils/community-group-preview'
-import { getApiErrorMessage } from '~/utils/api-error'
-import { MOH_GROUP_COMPOSER_KEY, MOH_OPEN_COMPOSER_KEY } from '~/utils/injection-keys'
-import { siteConfig } from '~/config/site'
+import type { CommunityGroupShell } from '~/types/api'
+import { useGroupPageRoute, useGroupPage } from '~/composables/pages/group/useGroupPage'
 
-const route = useRoute()
-const { apiFetchData } = useApiClient()
-const { invalidate: invalidateMyGroups } = useMyGroups()
-const { isAuthed, isVerified, user: authUser } = useAuth()
-const { markReadBySubject } = useNotifications()
-const { setPendingGroupJoin, pendingSlug: pendingGroupSlug } = usePendingGroupJoin()
-const { push: pushToast } = useAppToast()
-
-const slug = computed(() => String(route.params.slug ?? '').trim())
-const invitedByUsername = computed(() => {
-  const raw = Array.isArray(route.query.from) ? route.query.from[0] : route.query.from
-  return String(raw ?? '').trim().replace(/^@/, '') || null
-})
-const hasInviteAttribution = computed(() => {
-  const ref = String(Array.isArray(route.query.ref) ? route.query.ref[0] : route.query.ref ?? '').trim()
-  return Boolean(invitedByUsername.value || ref)
-})
-const verificationJoinTo = computed(() => {
-  const redirect = encodeURIComponent(route.fullPath)
-  return `/settings/verification?redirect=${redirect}`
-})
-
-function rememberJoinIntent() {
-  if (slug.value) setPendingGroupJoin(slug.value)
-}
 definePageMeta({
   layout: 'app',
   title: 'Group',
@@ -391,748 +356,94 @@ definePageMeta({
   alias: ['/g/:slug/posts', '/g/:slug/replies', '/g/:slug/media'],
 })
 
-// ── currentPathname tracks the real browser URL (for tab routing via pushState) ──
-const currentPathname = ref(import.meta.client ? location.pathname : route.path)
-watch(() => route.path, (path) => { currentPathname.value = path })
-if (import.meta.client) {
-  const onPopState = () => { currentPathname.value = location.pathname }
-  onMounted(() => window.addEventListener('popstate', onPopState))
-  onBeforeUnmount(() => window.removeEventListener('popstate', onPopState))
-}
-
-// SSR-friendly shell fetch
-const {
-  data: shell,
-  error: shellFetchError,
-  status: shellFetchStatus,
-  refresh: refreshShell,
-} = await useAsyncData<CommunityGroupShell | null>(
-  () => `group-shell-${slug.value}`,
+const routeState = useGroupPageRoute()
+const shellData = await useAsyncData<CommunityGroupShell | null>(
+  () => `group-shell-${routeState.slug.value}`,
   async () => {
-    if (!slug.value) return null
-    return await apiFetchData<CommunityGroupShell>(`/groups/by-slug/${encodeURIComponent(slug.value)}`)
+    if (!routeState.slug.value) return null
+    return await routeState.apiFetchData<CommunityGroupShell>(`/groups/by-slug/${encodeURIComponent(routeState.slug.value)}`)
   },
 )
-
-const layoutTabs = useGroupTabs()
-watch(shell, next => { if (next) layoutTabs.value = { group: next } }, { immediate: true })
-const shellLoading = computed(() => shellFetchStatus.value === 'pending')
-const shellError = computed(() =>
-  shellFetchError.value ? getApiErrorMessage(shellFetchError.value) || 'Group not found.' : null,
-)
-
-async function loadShell() {
-  await refreshShell()
-}
-
-const { header: appHeader } = useAppHeader()
-
-const openComposer = inject(MOH_OPEN_COMPOSER_KEY, undefined)
-function openGroupComposer() { if (isMember.value) openComposer?.({ communityGroupId: shell.value!.id }) }
-const joinBusy = ref(false)
-const leaveBusy = ref(false)
-const cancelBusy = ref(false)
-
-const isMember = computed(() => shell.value?.viewerMembership?.status === 'active')
-const isPendingApproval = computed(() => Boolean(shell.value?.viewerPendingApproval))
-const isOpenGroup = computed(() => shell.value?.joinPolicy === 'open')
-const canReadFeed = computed(() =>
-  Boolean(shell.value?.id && (isMember.value || (isOpenGroup.value && isAuthed.value && isVerified.value))),
-)
-const groupFeedEnabled = computed(() => Boolean(shell.value?.id && canReadFeed.value))
-
-const isMod = computed(() => {
-  const m = shell.value?.viewerMembership
-  if (!m || m.status !== 'active') return false
-  return m.role === 'owner' || m.role === 'moderator'
-})
-const isOwner = computed(() => shell.value?.viewerMembership?.role === 'owner')
-// Site admins can edit any group (mirrors the same affordance on profiles).
-// `isAdminOverride` only flips true when the viewer is admin AND not the owner —
-// the dialog and Edit button switch to an admin-styled affordance in that case.
-const isViewerAdmin = computed(() => Boolean(authUser.value?.siteAdmin))
-const canEditGroup = computed(() => isOwner.value || isViewerAdmin.value)
-const isAdminOverride = computed(() => isViewerAdmin.value && !isOwner.value)
-
-const canLeave = computed(() => {
-  const m = shell.value?.viewerMembership
-  if (!m || m.status !== 'active') return false
-  return m.role !== 'owner'
-})
-
-// ─── URL-backed sort ───────────────────────────────────────────────────────────
-const { sort: groupSort } = useUrlFeedFilters({ historyBacked: true })
-
-function onGroupSortChange(next: 'new' | 'trending') {
-  groupSort.value = next
-  scrollFeedToTop()
-}
-
-function onGroupSortReset() {
-  groupSort.value = 'new'
-  scrollFeedToTop()
-}
-
-// ─── Tab state ─────────────────────────────────────────────────────────────────
-type GroupTabKey = 'posts' | 'replies' | 'media'
-
-const baseGroupPath = computed(() => `/g/${encodeURIComponent(slug.value)}`)
-
-function tabFromRoute(path: string): GroupTabKey {
-  if (/\/replies\/?$/.test(path)) return 'replies'
-  if (/\/media\/?$/.test(path)) return 'media'
-  return 'posts'
-}
-
-const activeGroupTab = computed<GroupTabKey>(() => tabFromRoute(currentPathname.value))
-
-const tabActivated = reactive<Record<GroupTabKey, boolean>>({
-  posts: true,
-  replies: tabFromRoute(route.path) === 'replies',
-  media: tabFromRoute(route.path) === 'media',
-})
-
-watch(activeGroupTab, (tab) => {
-  if (!tabActivated[tab]) tabActivated[tab] = true
-  nextTick(updateGroupUnderline)
-}, { immediate: true })
-
-const groupTabs = computed<Array<{ key: GroupTabKey; label: string }>>(() => [
-  { key: 'posts', label: 'Posts' },
-  { key: 'replies', label: 'Replies' },
-  { key: 'media', label: 'Media' },
-])
-
-// ─── Animated tab underline ────────────────────────────────────────────────────
-const groupTabBarEl = ref<HTMLElement | null>(null)
-const groupFeedContentEl = ref<HTMLElement | null>(null)
-const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(groupFeedContentEl, groupTabBarEl)
-const groupTabButtonEls = new Map<GroupTabKey, HTMLElement>()
-const groupUnderlineLeft = ref(0)
-const groupUnderlineWidth = ref(0)
-const groupUnderlineReady = ref(false)
-
-function setGroupTabButtonRef(key: GroupTabKey, el: HTMLElement | null) {
-  if (el) groupTabButtonEls.set(key, el)
-  else groupTabButtonEls.delete(key)
-}
-
-function updateGroupUnderline() {
-  if (!import.meta.client) return
-  const bar = groupTabBarEl.value
-  const btn = groupTabButtonEls.get(activeGroupTab.value)
-  if (!bar || !btn) return
-  const barRect = bar.getBoundingClientRect()
-  const btnRect = btn.getBoundingClientRect()
-  groupUnderlineLeft.value = Math.round(btnRect.left - barRect.left)
-  groupUnderlineWidth.value = Math.round(btnRect.width)
-}
-
-function pushGroupPath(path: string) {
-  const qs: Record<string, string> = {}
-  if (import.meta.client) {
-    new URLSearchParams(location.search).forEach((value, key) => { qs[key] = value })
-  }
-  currentPathname.value = path
-  if (!import.meta.client) return
-  const search = new URLSearchParams(qs)
-  const newUrl = search.toString() ? `${path}?${search}` : path
-  const state = {
-    ...history.state,
-    back: history.state?.current ?? null,
-    current: newUrl,
-    forward: null,
-  }
-  history.pushState(state, '', newUrl)
-}
-
-function setGroupTab(key: GroupTabKey) {
-  if (activeGroupTab.value === key) return
-  const path = key === 'posts' ? baseGroupPath.value : `${baseGroupPath.value}/${key}`
-  pushGroupPath(path)
-  scrollFeedToTop()
-}
-
-onMounted(() => nextTick(() => {
-  updateGroupUnderline()
-  requestAnimationFrame(() => { groupUnderlineReady.value = true })
-}))
-
-// ─── Posts feed (top-level only) ──────────────────────────────────────────────
 const {
-  posts: postsFeedPosts,
-  displayItems: postsFeedDisplayItems,
-  collapsedSiblingReplyCountFor: postsFeedCollapsedSiblingReplyCountFor,
-  nextCursor: postsFeedNextCursor,
-  loading: postsFeedLoading,
-  initialLoading: postsFeedInitialLoading,
-  loadingMore: postsFeedLoadingMore,
-  error: postsFeedError,
-  refresh: postsFeedRefresh,
-  softRefreshNewer: postsFeedSoftRefreshNewer,
-  startAutoSoftRefresh: postsFeedStartAutoSoftRefresh,
-  loadMore: postsFeedLoadMore,
-  removePost: postsFeedRemovePost,
-  replacePost: postsFeedReplacePost,
-  addReply: postsFeedAddReply,
-  prependOptimisticPost: postsFeedPrependOptimistic,
-  replaceOptimistic: postsFeedReplaceOptimistic,
-  markOptimisticFailed: postsFeedMarkOptimisticFailed,
-  markOptimisticPosting: postsFeedMarkOptimisticPosting,
-  removeOptimistic: postsFeedRemoveOptimistic,
-} = usePostsFeed({
-  feedStateKey: 'group-wall-feed-top-level',
-  cursorFeedStateMode: 'local',
-  localInsertsStateKey: 'group-wall-feed-top-level-inserts',
-  communityGroupId: computed(() => shell.value?.id ?? null),
-  enabled: computed(() => groupFeedEnabled.value && tabActivated.posts),
-  sort: groupSort,
-  visibility: ref('all'),
-  followingOnly: ref(false),
-  showAds: ref(false),
-  topLevelOnly: ref(true),
-})
-
-// ─── Replies feed (all posts including replies) ────────────────────────────────
-const {
-  posts: repliesFeedPosts,
-  displayItems: repliesFeedDisplayItems,
-  collapsedSiblingReplyCountFor: repliesFeedCollapsedSiblingReplyCountFor,
-  nextCursor: repliesFeedNextCursor,
-  loading: repliesFeedLoading,
-  initialLoading: repliesFeedInitialLoading,
-  loadingMore: repliesFeedLoadingMore,
-  error: repliesFeedError,
-  refresh: repliesFeedRefresh,
-  softRefreshNewer: repliesFeedSoftRefreshNewer,
-  startAutoSoftRefresh: repliesFeedStartAutoSoftRefresh,
-  loadMore: repliesFeedLoadMore,
-  removePost: repliesFeedRemovePost,
-  replacePost: repliesFeedReplacePost,
-  addReply: repliesFeedAddReply,
-  prependOptimisticPost: repliesFeedPrependOptimistic,
-  replaceOptimistic: repliesFeedReplaceOptimistic,
-  markOptimisticFailed: repliesFeedMarkOptimisticFailed,
-  markOptimisticPosting: repliesFeedMarkOptimisticPosting,
-  removeOptimistic: repliesFeedRemoveOptimistic,
-} = usePostsFeed({
-  feedStateKey: 'group-wall-feed-with-replies',
-  cursorFeedStateMode: 'local',
-  localInsertsStateKey: 'group-wall-feed-replies-inserts',
-  communityGroupId: computed(() => shell.value?.id ?? null),
-  enabled: computed(() => groupFeedEnabled.value && tabActivated.replies),
-  sort: groupSort,
-  visibility: ref('all'),
-  followingOnly: ref(false),
-  showAds: ref(false),
-})
-
-// ─── Media feed ───────────────────────────────────────────────────────────────
-const mediaFeed = useGroupMedia(slug, {
-  enabled: computed(() => groupFeedEnabled.value && tabActivated.media),
-  sort: groupSort,
-})
-
-// ─── Lightbox ─────────────────────────────────────────────────────────────────
-const viewer = useImageLightbox()
-const { openFromEvent } = viewer
-const hideBannerThumb = computed(() => viewer.visible.value && viewer.kind.value === 'banner')
-const hideAvatarThumb = computed(() => viewer.visible.value && viewer.kind.value === 'avatar')
-const hideAvatarDuringBanner = computed(() => viewer.visible.value && viewer.kind.value === 'banner')
-
-const editOpen = ref(false)
-const inviteOpen = ref(false)
-
-function onOpenGroupImage(payload: {
-  event: MouseEvent
-  url: string
-  title: string
-  kind: 'avatar' | 'banner'
-  originRect?: { left: number; top: number; width: number; height: number }
-}) {
-  if (payload.kind === 'avatar') {
-    void openFromEvent(payload.event, payload.url, payload.title, payload.kind, {
-      avatarBorderRadius: '8%',
-      originRect: payload.originRect,
-    })
-    return
-  }
-  void openFromEvent(payload.event, payload.url, payload.title, payload.kind, {
-    originRect: payload.originRect,
-  })
-}
-
-async function onGroupShellUpdated(_next: CommunityGroupShell) {
-  await loadShell()
-}
-
-// ─── SEO ──────────────────────────────────────────────────────────────────────
-const seo = computed(() => groupSeo(shell.value))
-
-usePageSeo({
-  title: computed(() => seo.value?.title ?? 'Group'),
-  description: computed(() => seo.value?.description ?? siteConfig.meta.description),
-  image: computed(() => seo.value?.image),
-  imageAlt: computed(() => seo.value?.imageAlt),
-  imageWidth: computed(() => seo.value?.imageWidth),
-  imageHeight: computed(() => seo.value?.imageHeight),
-  twitterCard: computed(() => seo.value?.twitterCard),
-  canonicalPath: computed(() => seo.value?.canonicalPath ?? `/g/${slug.value}`),
-  ogType: 'website',
-  noindex: computed(() => !shell.value),
-  jsonLdGraph: computed(() => seo.value?.jsonLdGraph),
-})
-
-watch(
-  [shell, shellError],
-  ([s, err]) => {
-    if (s) {
-      appHeader.value = groupHeader(s)
-      return
-    }
-    if (err) {
-      appHeader.value = { title: 'Group', icon: 'tabler:users' }
-      return
-    }
-    appHeader.value = { title: 'Group', icon: 'tabler:users' }
-  },
-  { immediate: true },
-)
-
-// ─── Join / leave / cancel ────────────────────────────────────────────────────
-async function doJoin() {
-  const s = shell.value
-  if (!s || joinBusy.value) return
-  joinBusy.value = true
-  try {
-    const result = await apiFetchData<{ ok: boolean; status: 'active' | 'pending' }>(
-      `/groups/${encodeURIComponent(s.id)}/join`,
-      { method: 'POST', body: {} },
-    )
-    const status = result?.status === 'pending' ? 'pending' : 'active'
-    invalidateMyGroups()
-    try {
-      await loadShell()
-    } catch { /* join already committed; keep the local patch */ }
-    const next = shell.value ?? s
-    shell.value = applyCommunityGroupJoin(next, status)
-    if (status === 'active') {
-      try { await postsFeedRefresh() } catch { /* composer/header already flipped */ }
-    }
-    pushToast(communityGroupJoinToast(status, s.name))
-  } catch (e: unknown) {
-    pushToast({
-      title: 'Could not join',
-      message: getApiErrorMessage(e) || 'Try again.',
-      tone: 'error',
-      durationMs: 4500,
-    })
-  } finally {
-    joinBusy.value = false
-  }
-}
-
-// Emailed invite links carry `?invite=<id>`. The link itself changes nothing; once the right,
-// verified member is signed in, the page accepts the invite (a POST from the signed-in session).
-const inviteId = computed(() => {
-  const raw = Array.isArray(route.query.invite) ? route.query.invite[0] : route.query.invite
-  return String(raw ?? '').trim() || null
-})
-const inviteAttempted = ref(false)
-const { acceptInvite } = useGroupInvites()
-async function maybeAcceptEmailedInvite() {
-  const id = inviteId.value
-  if (!import.meta.client || !id || inviteAttempted.value) return
-  if (!shell.value || !isAuthed.value || !isVerified.value) return
-  inviteAttempted.value = true
-  autoJoinAttempted.value = true
-  setPendingGroupJoin(null)
-  const { invite: _drop, ...rest } = route.query
-  try {
-    if (!isMember.value) {
-      await acceptInvite(id)
-      pushToast({ title: `Welcome to ${shell.value.name}`, message: 'You joined the group.', tone: 'success', durationMs: 3500 })
-    }
-  } catch (e: unknown) {
-    pushToast({
-      title: 'Invite unavailable',
-      message: getApiErrorMessage(e) || 'This invite is no longer valid.',
-      tone: 'error',
-      durationMs: 4500,
-    })
-  }
-  await navigateTo({ path: route.path, query: rest }, { replace: true })
-  await loadShell()
-}
-
-const autoJoinAttempted = ref(false)
-async function maybeAutoJoinFromInvite() {
-  if (!import.meta.client || autoJoinAttempted.value) return
-  if (!shell.value || !isAuthed.value || !isVerified.value || isMember.value) return
-  if (isPendingApproval.value) return
-  const pendingMatches = pendingGroupSlug.value && pendingGroupSlug.value === slug.value
-  if (!pendingMatches && !hasInviteAttribution.value) return
-  autoJoinAttempted.value = true
-  setPendingGroupJoin(null)
-  // Same POST /join as the button: open groups become members, approval groups stay pending.
-  await doJoin()
-}
-
-watch(
-  () => [shell.value?.id, isAuthed.value, isVerified.value, isMember.value] as const,
-  () => { void maybeAcceptEmailedInvite().then(() => maybeAutoJoinFromInvite()) },
-  { immediate: true },
-)
-
-async function doLeave() {
-  const s = shell.value
-  if (!s || leaveBusy.value) return
-  leaveBusy.value = true
-  try {
-    await apiFetchData(`/groups/${encodeURIComponent(s.id)}/leave`, { method: 'POST', body: {} })
-    invalidateMyGroups()
-    postsFeedPosts.value = []
-    postsFeedNextCursor.value = null
-    repliesFeedPosts.value = []
-    repliesFeedNextCursor.value = null
-    await loadShell()
-  } catch (e: unknown) {
-    console.error(getApiErrorMessage(e) || 'Could not leave.')
-  } finally {
-    leaveBusy.value = false
-  }
-}
-
-async function doCancelRequest() {
-  const s = shell.value
-  if (!s || cancelBusy.value) return
-  cancelBusy.value = true
-  try {
-    await apiFetchData(`/groups/${encodeURIComponent(s.id)}/cancel-request`, { method: 'POST', body: {} })
-    await loadShell()
-  } catch (e: unknown) {
-    console.error(getApiErrorMessage(e) || 'Could not cancel request.')
-  } finally {
-    cancelBusy.value = false
-  }
-}
-
-// ─── Composer pending (optimistic) ────────────────────────────────────────────
-const pendingPosts = usePendingPostsManager()
-
-function onGroupComposerPending(payload: {
-  localId: string
-  optimisticPost: FeedPost
-  perform: () => Promise<FeedPost | { id: string } | null | undefined>
-}) {
-  pendingPosts.submit({
-    localId: payload.localId,
-    optimisticPost: payload.optimisticPost,
-    perform: payload.perform,
-    callbacks: {
-      insert: (p) => {
-        postsFeedPrependOptimistic(p)
-        repliesFeedPrependOptimistic(p)
-      },
-      replace: (lid, real) => {
-        postsFeedReplaceOptimistic(lid, real)
-        repliesFeedReplaceOptimistic(lid, real)
-      },
-      markFailed: (lid, msg) => {
-        postsFeedMarkOptimisticFailed(lid, msg)
-        repliesFeedMarkOptimisticFailed(lid, msg)
-      },
-      markPosting: (lid) => {
-        postsFeedMarkOptimisticPosting(lid)
-        repliesFeedMarkOptimisticPosting(lid)
-      },
-      remove: (lid) => {
-        postsFeedRemoveOptimistic(lid)
-        repliesFeedRemoveOptimistic(lid)
-      },
-    },
-  })
-}
-
-// ─── Composer injection for global layout ─────────────────────────────────────
-const groupComposerRef = inject(MOH_GROUP_COMPOSER_KEY, ref(null))
-watch(
-  [shell, isMember],
-  () => {
-    const s = shell.value
-    if (!s || !isMember.value) {
-      groupComposerRef.value = null
-      return
-    }
-    groupComposerRef.value = {
-      groupId: s.id,
-      groupName: s.name,
-      onComposerPending: onGroupComposerPending,
-    }
-  },
-  { immediate: true },
-)
-onDeactivated(() => { groupComposerRef.value = null })
-onBeforeUnmount(() => { groupComposerRef.value = null })
-
-// ─── Edit handlers ────────────────────────────────────────────────────────────
-function onPostsTabEdited(payload: { id: string; post: FeedPost }) {
-  postsFeedReplacePost(payload.post)
-}
-
-function onRepliesTabEdited(payload: { id: string; post: FeedPost }) {
-  repliesFeedReplacePost(payload.post)
-}
-
-async function onGroupPinChanged() {
-  await postsFeedRefresh()
-  await repliesFeedRefresh()
-}
-
-// ─── Load-more sentinels ──────────────────────────────────────────────────────
-const postsLoadMoreSentinelEl = ref<HTMLElement | null>(null)
-const repliesLoadMoreSentinelEl = ref<HTMLElement | null>(null)
-const mediaLoadMoreSentinelEl = ref<HTMLElement | null>(null)
-const middleScrollerRef = useMiddleScroller()
-
-useLoadMoreObserver(
+  route,
+  isAuthed,
+  isVerified,
+  invitedByUsername,
+  verificationJoinTo,
+  rememberJoinIntent,
+  shell,
+  shellLoading,
+  shellError,
+  openGroupComposer,
+  joinBusy,
+  leaveBusy,
+  cancelBusy,
+  isMember,
+  isPendingApproval,
+  isOpenGroup,
+  canReadFeed,
+  isMod,
+  isOwner,
+  canEditGroup,
+  isAdminOverride,
+  canLeave,
+  groupSort,
+  onGroupSortChange,
+  activeGroupTab,
+  tabActivated,
+  groupTabs,
+  groupTabBarEl,
+  groupFeedContentEl,
+  groupUnderlineLeft,
+  groupUnderlineWidth,
+  groupUnderlineReady,
+  setGroupTabButtonRef,
+  setGroupTab,
+  postsFeedPosts,
+  postsFeedDisplayItems,
+  postsFeedCollapsedSiblingReplyCountFor,
+  postsFeedNextCursor,
+  postsFeedLoading,
+  postsFeedInitialLoading,
+  postsFeedLoadingMore,
+  postsFeedError,
+  postsFeedRemovePost,
+  repliesFeedPosts,
+  repliesFeedDisplayItems,
+  repliesFeedCollapsedSiblingReplyCountFor,
+  repliesFeedNextCursor,
+  repliesFeedLoading,
+  repliesFeedInitialLoading,
+  repliesFeedLoadingMore,
+  repliesFeedError,
+  repliesFeedRemovePost,
+  mediaFeed,
+  hideBannerThumb,
+  hideAvatarThumb,
+  hideAvatarDuringBanner,
+  editOpen,
+  inviteOpen,
+  onOpenGroupImage,
+  onGroupShellUpdated,
+  doJoin,
+  doLeave,
+  doCancelRequest,
+  onPostsTabEdited,
+  onRepliesTabEdited,
+  onGroupPinChanged,
   postsLoadMoreSentinelEl,
-  middleScrollerRef,
-  computed(() => Boolean(canReadFeed.value && postsFeedNextCursor.value)),
-  () => void postsFeedLoadMore(),
-)
-useLoadMoreObserver(
   repliesLoadMoreSentinelEl,
-  middleScrollerRef,
-  computed(() => Boolean(canReadFeed.value && repliesFeedNextCursor.value)),
-  () => void repliesFeedLoadMore(),
-)
-useLoadMoreObserver(
   mediaLoadMoreSentinelEl,
-  middleScrollerRef,
-  computed(() => Boolean(canReadFeed.value && mediaFeed.nextCursor.value)),
-  () => void mediaFeed.loadMore(),
-)
-
-// ─── Reply pending handler ────────────────────────────────────────────────────
-const replyModal = useReplyModal()
-let unregisterReplyPending: null | (() => void) = null
-
-function registerReplyPostedHandler() {
-  if (!import.meta.client || unregisterReplyPending) return
-  const pendingCb = (payload: import('~/composables/useReplyModal').ReplyPendingPayload) => {
-    // Replies go into both feeds
-    postsFeedAddReply(payload.parentPost.id, payload.optimisticPost, payload.parentPost)
-    repliesFeedAddReply(payload.parentPost.id, payload.optimisticPost, payload.parentPost)
-    pendingPosts.submit({
-      localId: payload.localId,
-      optimisticPost: payload.optimisticPost,
-      perform: payload.perform,
-      callbacks: {
-        insert: () => {},
-        replace: (lid, real) => {
-          postsFeedReplaceOptimistic(lid, real)
-          repliesFeedReplaceOptimistic(lid, real)
-        },
-        markFailed: (lid, msg) => {
-          postsFeedMarkOptimisticFailed(lid, msg)
-          repliesFeedMarkOptimisticFailed(lid, msg)
-        },
-        markPosting: (lid) => {
-          postsFeedMarkOptimisticPosting(lid)
-          repliesFeedMarkOptimisticPosting(lid)
-        },
-        remove: (lid) => {
-          postsFeedRemoveOptimistic(lid)
-          repliesFeedRemoveOptimistic(lid)
-        },
-      },
-    })
-  }
-  unregisterReplyPending = replyModal.registerOnReplyPending(pendingCb)
-}
-
-function unregisterReplyPostedHandler() {
-  unregisterReplyPending?.()
-  unregisterReplyPending = null
-}
-
-// ─── Auto soft-refresh ────────────────────────────────────────────────────────
-let stopAutoSoftRefreshPosts: null | (() => void) = null
-let stopAutoSoftRefreshReplies: null | (() => void) = null
-
-function startGroupFeedAutoRefresh() {
-  if (!stopAutoSoftRefreshPosts) {
-    stopAutoSoftRefreshPosts = postsFeedStartAutoSoftRefresh({ everyMs: 12_000 }) ?? null
-  }
-  if (!stopAutoSoftRefreshReplies) {
-    stopAutoSoftRefreshReplies = repliesFeedStartAutoSoftRefresh({ everyMs: 12_000 }) ?? null
-  }
-}
-
-function stopGroupFeedAutoRefresh() {
-  stopAutoSoftRefreshPosts?.()
-  stopAutoSoftRefreshPosts = null
-  stopAutoSoftRefreshReplies?.()
-  stopAutoSoftRefreshReplies = null
-}
-
-// ─── Realtime: live group posts over websocket ────────────────────────────────
-// The 12s soft-refresh above is the backstop; sockets make new posts/reposts appear
-// instantly. HTTP fetch on mount/activate is the on-load sync (per realtime-first).
-const { addGroupFeedCallback, removeGroupFeedCallback, subscribeGroups, unsubscribeGroups } = usePresence()
-
-function prependLiveGroupPost(post: FeedPost) {
-  if (!post?.id) return
-  // group:newPost only carries top-level posts and reposts — both belong in the
-  // Posts feed and the Replies feed. Dedupe by id so soft-refresh overlap doesn't double up.
-  if (!postsFeedPosts.value.some((p) => p.id === post.id)) {
-    postsFeedPosts.value = [post, ...postsFeedPosts.value]
-  }
-  if (!repliesFeedPosts.value.some((p) => p.id === post.id)) {
-    repliesFeedPosts.value = [post, ...repliesFeedPosts.value]
-  }
-}
-
-const groupFeedCb: GroupFeedCallback = {
-  onNewPost: (payload) => {
-    if (!payload?.post) return
-    if (payload.groupId !== shell.value?.id) return
-    // Skip the actor's own posts — they're already in the feed via optimistic pending
-    // (mirrors home feed, where emitFeedNewPost excludes the author).
-    const authorId = payload.post.author?.id ?? null
-    const viewerId = authUser.value?.id ?? null
-    if (authorId && viewerId && authorId === viewerId) return
-    prependLiveGroupPost(payload.post)
-    focusedNewActivity.value = false
-    void loadGroupActivity()
-  },
-}
-
-let groupRealtimeActive = false
-let subscribedGroupId: string | null = null
-
-function syncGroupRealtimeSubscription() {
-  if (!import.meta.client || !groupRealtimeActive) return
-  const gid = groupFeedEnabled.value ? (shell.value?.id ?? null) : null
-  if (subscribedGroupId === gid) return
-  if (subscribedGroupId) unsubscribeGroups([subscribedGroupId])
-  subscribedGroupId = gid
-  if (gid) subscribeGroups([gid])
-}
-
-function startGroupRealtime() {
-  if (!import.meta.client) return
-  groupRealtimeActive = true
-  addGroupFeedCallback(groupFeedCb)
-  syncGroupRealtimeSubscription()
-}
-
-function stopGroupRealtime() {
-  if (!import.meta.client) return
-  groupRealtimeActive = false
-  removeGroupFeedCallback(groupFeedCb)
-  if (subscribedGroupId) {
-    unsubscribeGroups([subscribedGroupId])
-    subscribedGroupId = null
-  }
-}
-
-// Re-target the room when the group id resolves or the viewer's read access changes.
-watch([groupFeedEnabled, () => shell.value?.id], () => syncGroupRealtimeSubscription())
-
-// Snapshot before acknowledging the visit; arrivals after this timestamp stay new.
-const groupActivity = ref<import('~/types/api').GroupActivity | null>(null)
-const activityError = ref<string | null>(null)
-const focusedNewActivity = ref(false)
-const newActivityAnchor = ref<HTMLElement | null>(null)
-const firstNewPostAnchor = ref<HTMLElement[]>([])
-const pinnedGroupPost = computed(() => postsFeedPosts.value.find(post => post.pinnedInGroupAt))
-const firstNewPostId = computed(() => postsFeedPosts.value.find(post => groupActivity.value?.newPostIds.includes(post.id))?.id)
-const acknowledgedActivity = new Set<string>()
-async function loadGroupActivity() {
-  const groupId = shell.value?.id
-  if (!groupId || !isMember.value) return
-  activityError.value = null
-  try {
-    const snapshot = await apiFetchData<import('~/types/api').GroupActivity>(`/groups/${encodeURIComponent(groupId)}/activity`)
-    if (shell.value?.id !== groupId) return
-    groupActivity.value = snapshot
-    if (!postsFeedLoading.value && !postsFeedError.value && postsFeedPosts.value.length) await acknowledgeGroupActivity(snapshot)
-  } catch { activityError.value = 'Couldn’t check new activity.' }
-}
-async function viewNewActivity() {
-  if (!groupActivity.value || focusedNewActivity.value) return
-  const snapshot = groupActivity.value
-  groupSort.value = 'new'
-  setGroupTab('posts')
-  await postsFeedRefresh()
-  if (postsFeedError.value || shell.value?.id !== snapshot.groupId) return
-  focusedNewActivity.value = true
-  await nextTick()
-  const anchor = firstNewPostAnchor.value[0] ?? newActivityAnchor.value
-  anchor?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  await acknowledgeGroupActivity(snapshot)
-}
-async function acknowledgeGroupActivity(snapshot: import('~/types/api').GroupActivity) {
-  if (acknowledgedActivity.has(snapshot.through)) return
-  acknowledgedActivity.add(snapshot.through)
-  try {
-    await apiFetchData(`/notifications/groups/${encodeURIComponent(snapshot.groupId)}/mark-delivered`, { method: 'POST', body: { through: snapshot.through } })
-  } catch { acknowledgedActivity.delete(snapshot.through); activityError.value = 'Couldn’t update your activity status. Try again.' }
-}
-watch([postsFeedLoading, () => postsFeedPosts.value.length], () => {
-  if (!postsFeedLoading.value && !postsFeedError.value && postsFeedPosts.value.length && groupActivity.value) void acknowledgeGroupActivity(groupActivity.value)
-})
-watch(() => shell.value?.id, () => {
-  groupActivity.value = null; focusedNewActivity.value = false
-  if (import.meta.client && isMember.value) {
-    void loadGroupActivity()
-    void markReadBySubject({ group_id: shell.value!.id })
-  }
-}, { immediate: true })
-
-// ─── Lifecycle ────────────────────────────────────────────────────────────────
-onMounted(() => {
-  if (!import.meta.client) return
-  if (hasInviteAttribution.value && slug.value) {
-    setPendingGroupJoin(slug.value)
-  }
-  if (groupFeedEnabled.value && !postsFeedPosts.value.length) {
-    void postsFeedRefresh()
-  }
-  registerReplyPostedHandler()
-  startGroupFeedAutoRefresh()
-  startGroupRealtime()
-})
-
-onActivated(() => {
-  if (!import.meta.client) return
-  registerReplyPostedHandler()
-  startGroupFeedAutoRefresh()
-  startGroupRealtime()
-  if (postsFeedPosts.value.length > 0) {
-    setTimeout(() => void postsFeedSoftRefreshNewer(), 300)
-  } else if (groupFeedEnabled.value) {
-    void postsFeedRefresh()
-  }
-  if (repliesFeedPosts.value.length > 0) {
-    setTimeout(() => void repliesFeedSoftRefreshNewer(), 300)
-  }
-})
-
-onDeactivated(() => {
-  unregisterReplyPostedHandler()
-  stopGroupFeedAutoRefresh()
-  stopGroupRealtime()
-})
-
-onBeforeUnmount(() => {
-  unregisterReplyPostedHandler()
-  stopGroupFeedAutoRefresh()
-  stopGroupRealtime()
-  if (!isGroupRoute(route.path) && appHeader.value?.title === (shell.value?.name || 'Group')) appHeader.value = null
-})
+  groupActivity,
+  activityError,
+  focusedNewActivity,
+  newActivityAnchor,
+  firstNewPostAnchor,
+  pinnedGroupPost,
+  firstNewPostId,
+  loadGroupActivity,
+  viewNewActivity,
+} = useGroupPage(routeState, shellData)
 </script>
 
 <style scoped>

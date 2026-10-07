@@ -9,7 +9,7 @@ function readFile(relativePath: string): string {
 
 describe('group feed realtime dedupe', () => {
   it('skips the actor own posts in groupFeedCb (optimistic pending owns the insert)', () => {
-    const source = readFile('pages/g/[slug]/index.vue')
+    const source = readSurfaceSource('pages/g/[slug]/index.vue')
     expect(source).toContain('onComposerPending')
     expect(source).toContain('authorId === viewerId')
     expect(source).not.toContain('createGroupPost')
@@ -78,13 +78,13 @@ describe('groups:marv-changed realtime', () => {
 
 describe('group join feedback', () => {
   it('group page patches membership from the join response, not only a shell refetch', () => {
-    const source = readFile('pages/g/[slug]/index.vue')
+    const source = readSurfaceSource('pages/g/[slug]/index.vue')
     expect(source).toContain('applyCommunityGroupJoin')
     expect(source).toContain('communityGroupJoinToast')
   })
 
   it('explore join patches local cards and toasts success', () => {
-    const source = readFile('pages/explore.vue')
+    const source = readSurfaceSource('pages/explore.vue')
     expect(source).toContain('applyCommunityGroupJoin')
     expect(source).toContain('communityGroupJoinToast')
   })
@@ -97,7 +97,7 @@ describe('group join feedback', () => {
   })
 
   it('approval-group invite auto-join shows a waiting-for-approval state, not the feed', () => {
-    const source = readFile('pages/g/[slug]/index.vue')
+    const source = readSurfaceSource('pages/g/[slug]/index.vue')
     expect(source).toContain('isPendingApproval')
     expect(source).toContain('once a moderator approves')
     expect(source).toContain('approval groups stay pending')

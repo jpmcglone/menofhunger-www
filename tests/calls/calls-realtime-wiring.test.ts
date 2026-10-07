@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { readCallSessionSource } from '../helpers/call-session-source'
+import { readSurfaceSource } from '../helpers/surface-source'
 
 const root = resolve(import.meta.dirname, '../..')
 const read = (p: string) => readFileSync(resolve(root, p), 'utf8')
@@ -64,7 +65,7 @@ describe('DM calling realtime wiring', () => {
   })
 
   it('keeps the chat page in sync: activeCall patched from calls:updated, call rows patched from messages:edited', () => {
-    const chat = read('pages/chat.vue')
+    const chat = readSurfaceSource('pages/chat.vue')
     expect(chat).toContain('onCallUpdated(convoId, call)')
     expect(chat).toContain('patchConversation(convoId, (c) => ({ ...c, activeCall: call }))')
     expect(chat).toContain("kind: msg.kind ?? 'text', call: msg.call ?? null")

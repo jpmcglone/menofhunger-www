@@ -303,16 +303,7 @@
 </template>
 
 <script setup lang="ts">
-import { useDocumentVisibility, useEventListener } from '@vueuse/core'
-import type { PostVisibility, CheckinAllowedVisibility } from '~/types/api'
-import type { ComponentPublicInstance } from 'vue'
-import type { PostsFeedDisplayItem } from '~/composables/usePostsFeed'
-import type { FeedThreadDisplayPost } from '~/utils/merge-feed-threads-for-display'
-import { useVirtualizer } from '@tanstack/vue-virtual'
-import { postBodyHasVideoEmbed } from '~/utils/link-utils'
-import { pickCheckinPrompt } from '~/utils/checkin-prompts'
-import { MOH_HOME_COMPOSER_IN_VIEW_KEY, MOH_OPEN_COMPOSER_KEY, MOH_FOCUS_HOME_COMPOSER_KEY } from '~/utils/injection-keys'
-import { useMiddleScroller } from '~/composables/useMiddleScroller'
+import { useHomePage } from '~/composables/pages/home/useHomePage'
 
 definePageMeta({
   layout: 'app',
@@ -321,197 +312,28 @@ definePageMeta({
   keepalive: true,
 })
 
-usePageSeo({
-  title: 'Home',
-  description: 'Your Men of Hunger feed — posts are shown in simple chronological order.',
-  canonicalPath: '/home',
-  noindex: true,
-  ogType: 'website',
-  // When sharing /home, always use the Men of Hunger logo (avoid scrapers picking a random in-feed image).
-  image: '/images/logo-black-bg-small.png',
-})
-
-const homeComposerEl = ref<HTMLElement | null>(null)
-const homeComposerRef = ref<{ focus: () => void } | null>(null)
-const loadMoreSentinelEl = ref<HTMLElement | null>(null)
-const homeComposerInViewRef = inject(MOH_HOME_COMPOSER_IN_VIEW_KEY)
-const openComposer = inject(MOH_OPEN_COMPOSER_KEY, null)
-
-provide(MOH_FOCUS_HOME_COMPOSER_KEY, () => {
-  homeComposerRef.value?.focus()
-})
-const { isAuthed, user: authUser, isPageAccount, canAccessCheckins, didAttempt } = useAuth()
 const {
+  homeComposerEl,
+  homeComposerRef,
+  loadMoreSentinelEl,
+  openComposer,
+  isAuthed,
+  authUser,
+  isPageAccount,
+  canAccessCheckins,
+  didAttempt,
   inlineAnnouncement,
-  presentInline,
-  onDismiss: onAnnouncementDismiss,
-  onCta: onAnnouncementCta,
-} = useAnnouncements()
-watch(inlineAnnouncement, (item) => {
-  if (item) presentInline()
-}, { immediate: true })
-const { load: loadMyGroups } = useMyGroups()
-const groupsNudgeDismissed = useCookie('moh.groups-nudge.dismissed', {
-  default: () => '',
-  path: '/',
-  sameSite: 'lax',
-  maxAge: 60 * 60 * 24 * 365,
-})
-/** null = membership unknown. Never treat the default empty list as “0 groups”. */
-const myGroupsCount = ref<number | null>(null)
-
-async function refreshMyGroupsCount() {
-  if (!isAuthed.value || isPageAccount.value || groupsNudgeDismissed.value) {
-    myGroupsCount.value = null
-    return
-  }
-  try {
-    const groups = await loadMyGroups()
-    if (!isAuthed.value || isPageAccount.value || groupsNudgeDismissed.value) {
-      myGroupsCount.value = null
-      return
-    }
-    myGroupsCount.value = groups.length
-  } catch {
-    myGroupsCount.value = null
-  }
-}
-
-const showGroupsOnboardingNudge = computed(() => {
-  if (!isAuthed.value || isPageAccount.value) return false
-  if (groupsNudgeDismissed.value) return false
-  if (myGroupsCount.value === null) return false
-  return myGroupsCount.value === 0
-})
-
-function dismissGroupsNudge() {
-  groupsNudgeDismissed.value = '1'
-}
-
-const { dayKey: etDayKey } = useEasternMidnightRollover()
-
-const { state: checkinState, loading: checkinLoading, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
-const { isOpen: checkinWindowOpen } = useCheckinWindow()
-
-const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
-  const allowed = checkinState.value?.allowedVisibilities ?? []
-  return Array.isArray(allowed) ? allowed : []
-})
-
-const fallbackCheckinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
-  // Product rule: ONLY verified (and above) can check in. Answer always posts as
-  // verifiedOnly (locked in the modal); premiumOnly is not offered for check-ins.
-  if (!viewerIsVerified.value) return []
-  return ['verifiedOnly']
-})
-
-const effectiveCheckinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
-  const fromApi = checkinAllowedVisibilities.value.filter((v) => v === 'verifiedOnly')
-  return fromApi.length ? fromApi : fallbackCheckinAllowedVisibilities.value
-})
-
-// True only when the user has completed today's check-in.
-// This intentionally ignores "any post today" so the check-in prompt remains visible
-// until a real check-in is submitted.
-const hasCheckedInToday = computed(() => {
-  if (!hydrated.value) return false
-  return Boolean(checkinState.value?.hasCheckedInToday)
-})
-
-// Gates whether either daily-check-in row (unanswered or answered) is allowed to render.
-// Goal: avoid a SSR/CSR flash where the unanswered row shows for a moment, then
-// collapses into the quiet line once the auth + check-in state finally resolves.
-//
-// Truthy when:
-//   - SSR has finished and the client has mounted (hydrated), AND
-//   - Either the user is unauthenticated (full hero is the obvious answer), OR
-//     the check-in state has loaded (success), OR
-//     the initial fetch has settled (even on error) — so the page is never
-//     left blank when the API is slow or fails. In the error case we show the
-//     unanswered row in a degraded "no crew / no streak" mode; that's always better
-//     than showing nothing.
-//
-// While false (still fetching), both <AppFeedDailyCheckinHero> instances are
-// v-if'd off so SSR produces nothing and there is no wrong-variant flash.
-const heroResolved = computed(() => {
-  if (!hydrated.value) return false
-  if (isPageAccount.value) return false
-  if (!isAuthed.value) return true
-  // Stay hidden while the initial fetch is in-flight to avoid flashing the wrong variant.
-  if (checkinLoading.value) return false
-  return checkinState.value !== null
-})
-
-// Show the check-in prompt when user is eligible and hasn't posted today.
-const showCheckinPromptBar = computed(() => {
-  if (!isAuthed.value || isPageAccount.value || !canAccessCheckins.value) return false
-  if (feedCtaKind.value || !checkinWindowOpen.value) return false
-  if (!checkinState.value) return false
-  if (checkinState.value.hasCheckedInToday) return false
-  if (!effectiveCheckinAllowedVisibilities.value.length) return false
-  return true
-})
-
-
-const checkinPromptText = computed(() => {
-  const p = (checkinState.value?.prompt ?? '').trim()
-  if (p) return p
-  // API unavailable — derive today's question deterministically client-side
-  // so the hero always shows the real prompt rather than generic placeholder text.
-  return pickCheckinPrompt().prompt
-})
-
-// Use fallback text until after hydration so server and client match (checkinState can differ on SSR vs client).
-const hydrated = ref(false)
-const displayCheckinPromptText = computed(() => (hydrated.value ? checkinPromptText.value : 'Write a check-in…'))
-const displayCheckinStreak = computed(() => (hydrated.value ? (checkinState.value?.checkinStreakDays ?? 0) : 0))
-
-
-const middleScrollerRef = useMiddleScroller()
-
-onMounted(() => {
-  if (!import.meta.client) return
-  hydrated.value = true
-
-  // Deep-link from the check-in reminder push notification: open the composer immediately,
-  // then strip the param so back-navigation / refresh doesn't re-open it.
-  const route = useRoute()
-  if (route.query.checkin === '1') {
-    history.replaceState(null, '', location.pathname)
-    // Wait a tick for openComposer injection and checkinState to settle.
-    if (canAccessCheckins.value) nextTick(() => { openCheckinComposer() })
-  }
-
-  // Initial scroll margin + ResizeObserver to update it when header height changes
-  computeFeedScrollMargin()
-  scrollMarginObserver = new ResizeObserver(computeFeedScrollMargin)
-  if (homeComposerEl.value) scrollMarginObserver.observe(homeComposerEl.value)
-
-  const el = homeComposerEl.value
-  const root = middleScrollerRef.value
-  if (!el || !root || !homeComposerInViewRef) return
-  const obs = new IntersectionObserver(
-    (entries) => {
-      const e = entries[0]
-      if (e) homeComposerInViewRef.value = e.isIntersecting
-    },
-    { root, rootMargin: '0px', threshold: 0 },
-  )
-  obs.observe(el)
-  onBeforeUnmount(() => {
-    obs.disconnect()
-    homeComposerInViewRef.value = false
-    scrollMarginObserver?.disconnect()
-    scrollMarginObserver = null
-  })
-})
-
-const newlyPostedVideoPostId = ref<string | null>(null)
-let newlyPostedVideoPostTimer: ReturnType<typeof setTimeout> | null = null
-
-const mediaOnlyFeed = computed(() => false)
-const topLevelOnlyFeed = computed(() => false)
-const {
+  onAnnouncementDismiss,
+  onAnnouncementCta,
+  showGroupsOnboardingNudge,
+  dismissGroupsNudge,
+  checkinState,
+  hasCheckedInToday,
+  heroResolved,
+  showCheckinPromptBar,
+  displayCheckinPromptText,
+  displayCheckinStreak,
+  newlyPostedVideoPostId,
   feedScope,
   feedFilter,
   feedSort,
@@ -523,16 +345,7 @@ const {
   loadingMore,
   error,
   refresh,
-  notifyVisibleRowIds,
-  loadMore,
-  addReply,
   removePost,
-  replacePost,
-  prependOptimisticPost,
-  replaceOptimistic,
-  markOptimisticFailed,
-  markOptimisticPosting,
-  removeOptimistic,
   followingCount,
   showFollowingEmptyState,
   showForYouEmptyState,
@@ -540,445 +353,34 @@ const {
   viewerIsVerified,
   viewerIsPremium,
   feedCtaKind,
-  displayItems,
-  setFeedFilter,
-  setFeedSort,
-  resetFilters,
-  onFeedScopeChange,
-  hasLoaded,
-} = useHomeFeed({ mediaOnly: mediaOnlyFeed, topLevelOnly: topLevelOnlyFeed })
-
-const homeOpenedFromCache = posts.value.length > 0
-useJourneyReady('home_ready', () => didAttempt.value && !loading.value && (posts.value.length > 0 || hasLoaded.value), {
-  failed: () => Boolean(error.value), source: () => homeOpenedFromCache ? 'cache' : (posts.value.length ? 'network' : 'empty'),
-})
-
-const homeTabReturnGate = useTabReturnRefreshGate('home')
-
-const homeFeedContentEl = ref<HTMLElement | null>(null)
-const feedArrivalRowEl = ref<HTMLElement | null>(null)
-const homeFeedHeaderEl = computed(() => feedArrivalRowEl.value?.previousElementSibling as HTMLElement | null)
-const isReadingFeed = ref(false)
-function updateFeedReadingPosition() {
-  const root = middleScrollerRef.value
-  const row = feedArrivalRowEl.value
-  isReadingFeed.value = Boolean(root && row && row.getBoundingClientRect().bottom <= root.getBoundingClientRect().top + (homeFeedHeaderEl.value?.offsetHeight ?? 0))
-}
-useEventListener(middleScrollerRef, 'scroll', updateFeedReadingPosition, { passive: true })
-const { scrollToTop: scrollFeedToTop } = useFeedScrollToTop(homeFeedContentEl, homeFeedHeaderEl)
-
-function handleFeedScopeChange(scope: Parameters<typeof onFeedScopeChange>[0]) {
-  onFeedScopeChange(scope)
-  scrollFeedToTop()
-}
-// Re-tapping the already-active scope tab is the "give me something new" gesture.
-function handleFeedScopeReselect() {
-  scrollFeedToTop()
-  void refresh({ forYouRefresh: Boolean(forYou.value) })
-}
-
-const HOME_PULL_REFRESH_PX = 72
-let homePullStartY = 0
-let homePullArmed = false
-
-function onHomePullStart(event: TouchEvent) {
-  const scroller = middleScrollerRef.value
-  if (!scroller || scroller.scrollTop > 2 || loading.value) return
-  homePullStartY = event.touches[0]?.clientY ?? 0
-  homePullArmed = true
-}
-
-function onHomePullEnd(event: TouchEvent) {
-  if (!homePullArmed) return
-  homePullArmed = false
-  const y = event.changedTouches[0]?.clientY ?? homePullStartY
-  if (y - homePullStartY < HOME_PULL_REFRESH_PX) return
-  void refresh({ forYouRefresh: Boolean(forYou.value) })
-}
-
-watch(middleScrollerRef, (el, prev) => {
-  if (!import.meta.client) return
-  prev?.removeEventListener('touchstart', onHomePullStart)
-  prev?.removeEventListener('touchend', onHomePullEnd)
-  el?.addEventListener('touchstart', onHomePullStart, { passive: true })
-  el?.addEventListener('touchend', onHomePullEnd, { passive: true })
-}, { immediate: true })
-
-onBeforeUnmount(() => {
-  const el = middleScrollerRef.value
-  el?.removeEventListener('touchstart', onHomePullStart)
-  el?.removeEventListener('touchend', onHomePullEnd)
-})
-function handleFeedSortChange(sort: Parameters<typeof setFeedSort>[0]) {
-  setFeedSort(sort)
-  scrollFeedToTop()
-}
-function handleFeedFilterChange(filter: Parameters<typeof setFeedFilter>[0]) {
-  setFeedFilter(filter)
-  scrollFeedToTop()
-}
-function handleFeedReset() {
-  resetFilters()
-  scrollFeedToTop()
-}
-
-const activeHomeFeedDisplayItems = computed(() => {
-  return displayItems.value
-})
-
-/** Type-safe accessor: returns the post from a feed display item when kind === 'post'. */
-function feedItemPost(item: PostsFeedDisplayItem | undefined): FeedThreadDisplayPost | undefined {
-  return item?.kind === 'post' ? item.post : undefined
-}
-
-// ── Feed virtualizer ───────────────────────────────────────────────────────────
-// Mirrors the chat list pattern (ChatMessageList.vue). Only ~OVERSCAN+visible
-// rows are mounted at any time; off-screen rows are unmounted. The outer div
-// is height-stable (feedTotalSize px); each row is absolutely positioned.
-//
-// scrollMargin = distance from the middle scroller's top to the feed list
-// container's top. This accounts for the variable-height header stack above
-// the feed (composer, check-in hero, welcome card, etc.). It's recomputed
-// via ResizeObserver whenever the header resizes and via watchEffect whenever
-// reactive state that drives header height changes.
-
-const FEED_ESTIMATED_ROW_PX = 280
-const FEED_OVERSCAN = 3
-
-const feedVirtualListContainerEl = ref<HTMLElement | null>(null)
-const feedListScrollMargin = ref(0)
-
-function computeFeedScrollMargin() {
-  const container = feedVirtualListContainerEl.value
-  const scroller = middleScrollerRef.value
-  if (!container || !scroller) {
-    feedListScrollMargin.value = 0
-    return
-  }
-  const scrollerRect = scroller.getBoundingClientRect()
-  const containerRect = container.getBoundingClientRect()
-  // Distance from scroll-container's content start to the list container top.
-  const offset = containerRect.top - scrollerRect.top + scroller.scrollTop
-  feedListScrollMargin.value = Math.max(0, Math.floor(offset))
-}
-
-let scrollMarginObserver: ResizeObserver | null = null
-
-const initialFeedLoadStarted = ref(false)
-const {
+  homeFeedContentEl,
+  feedArrivalRowEl,
+  isReadingFeed,
+  handleFeedScopeChange,
+  handleFeedScopeReselect,
+  handleFeedSortChange,
+  handleFeedFilterChange,
+  activeHomeFeedDisplayItems,
+  feedItemPost,
+  feedVirtualListContainerEl,
+  feedListScrollMargin,
   initialFeedResolved,
-  markInitialFeedResolved,
-} = useHomeLoadState()
-
-// Recompute when anything that changes header height changes reactively
-// (check-in hero visible/collapsed, composer mounted/unmounted, etc.).
-watchEffect(async () => {
-  const _deps = [
-    hasCheckedInToday.value,
-    heroResolved.value,
-    isAuthed.value,
-    feedCtaKind.value,
-    initialFeedResolved.value,
-  ]
-  if (!import.meta.client) return
-  await nextTick()
-  computeFeedScrollMargin()
-})
-
-const feedVirtualizer = useVirtualizer({
-  get count() { return activeHomeFeedDisplayItems.value.length },
-  getScrollElement: () => middleScrollerRef.value ?? null,
-  estimateSize: () => FEED_ESTIMATED_ROW_PX,
-  overscan: FEED_OVERSCAN,
-  get scrollMargin() { return feedListScrollMargin.value },
-  getItemKey: (index) => {
-    const item = activeHomeFeedDisplayItems.value[index]
-    if (!item) return index
-    return item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)
-  },
-})
-
-const feedVirtualItems = computed(() => feedVirtualizer.value.getVirtualItems())
-const feedTotalSize = computed(() => feedVirtualizer.value.getTotalSize())
-
-function measureFeedRow(el: Element | ComponentPublicInstance | null) {
-  if (!el || !(el instanceof Element)) return
-  // TanStack Virtual reads `data-index` off the measured node. A ref can fire
-  // on a detached/replaced node during a mid-setup crash; skip those.
-  if (!el.hasAttribute('data-index')) return
-  feedVirtualizer.value.measureElement(el)
-}
-
-// Drive realtime subscriptions from visible virtualizer rows instead of DOM scan.
-watch(feedVirtualItems, (items) => {
-  const visibleIds = items
-    .map(row => {
-      const item = activeHomeFeedDisplayItems.value[row.index]
-      return item?.kind === 'post' ? item.post.id : null
-    })
-    .filter((id): id is string => Boolean(id))
-  notifyVisibleRowIds(visibleIds)
-})
-
-watch(
-  [isAuthed, canAccessCheckins, etDayKey],
-  ([authed, canAccess]) => {
-    // Unverified users never hit /checkins/today (it 403s); they see the
-    // verify-CTA hero instead.
-    if (!authed || !canAccess) {
-      checkinState.value = null
-      return
-    }
-    void refreshCheckin()
-  },
-  { immediate: true },
-)
-
-// When the ET day rolls over, refresh check-in state so the hero shows today's prompt.
-watch(etDayKey, () => {
-  if (canAccessCheckins.value) void refreshCheckin()
-})
-
-/**
- * Last submitted check-in body for the hero's "you answered today" echo. Cleared on
- * day rollover so it doesn't bleed into tomorrow's prompt state.
- */
-const lastCheckinBody = ref<string | null>(null)
-watch(etDayKey, () => { lastCheckinBody.value = null })
-
-async function createCheckinViaComposer(
-  snapshot: { prompt: string; dayKey: string },
-  body: string,
-  _visibility: PostVisibility,
-  _media?: unknown[] | null,
-  _poll?: unknown,
-): Promise<{ id: string } | import('~/types/api').FeedPost | null> {
-  const trimmed = body.trim()
-  if (!trimmed) return null
-  // Answer always posts verifiedOnly; modal locks that and leaves the session
-  // composer preference untouched.
-  const res = await createCheckin({ body: trimmed, visibility: 'verifiedOnly', ...snapshot })
-  lastCheckinBody.value = trimmed
-  posts.value = [res.post, ...posts.value.filter((p) => p.id !== res.post.id)]
-  return res.post
-}
-
-/** Eligibility gate for the hero's primary action — verified users only (or premium). */
-const canAnswerCheckin = computed(() => checkinWindowOpen.value && effectiveCheckinAllowedVisibilities.value.length > 0)
-
-/** Hero prompt — falls back to a generic phrasing during SSR / initial load. */
-const checkinHeroPrompt = computed(() => displayCheckinPromptText.value)
-
-function goToLoginForCheckin() {
-  void navigateTo('/login')
-}
-
-function openCheckinComposer() {
-  const current = checkinState.value
-  if (!current?.prompt) return
-  const snapshot = { prompt: current.prompt, dayKey: current.dayKey }
-  if (!checkinWindowOpen.value) return
-  if (!canAccessCheckins.value) return
-  if (!openComposer) return
-  if (!effectiveCheckinAllowedVisibilities.value.length) return
-  openComposer({
-    checkinPrompt: snapshot.prompt,
-    allowedVisibilities: ['verifiedOnly'],
-    disableMedia: true,
-    createPost: (body, visibility) => createCheckinViaComposer(snapshot, body, visibility),
-  })
-}
-
-function onFeedPostEdited(payload: { id: string; post: import('~/types/api').FeedPost }) {
-  replacePost(payload.post)
-}
-
-// Lazy-load more posts when sentinel nears bottom of scroll area
-useLoadMoreObserver(loadMoreSentinelEl, middleScrollerRef, computed(() => Boolean(nextCursor.value)), loadMore)
-onBeforeUnmount(() => {
-  if (newlyPostedVideoPostTimer) {
-    clearTimeout(newlyPostedVideoPostTimer)
-    newlyPostedVideoPostTimer = null
-  }
-})
-
-const showOnlyMeHomeComposerCard = computed(
-  () => didAttempt.value && isAuthed.value && !viewerIsVerified.value,
-)
-
-watchEffect(() => {
-  if (initialFeedResolved.value) return
-  if (posts.value.length > 0 || Boolean(error.value)) {
-    markInitialFeedResolved()
-    return
-  }
-  if (loading.value) {
-    initialFeedLoadStarted.value = true
-    return
-  }
-  if (initialFeedLoadStarted.value && !loading.value) {
-    // First request completed with an empty feed (no error).
-    markInitialFeedResolved()
-  }
-})
-
-watch(
-  [isAuthed, isPageAccount, initialFeedResolved, groupsNudgeDismissed],
-  ([authed, pageAccount, feedResolved, dismissed]) => {
-    if (!authed || pageAccount) {
-      myGroupsCount.value = null
-      return
-    }
-    if (feedResolved && !dismissed && myGroupsCount.value === null) {
-      void refreshMyGroupsCount()
-    }
-  },
-  { immediate: true },
-)
-
-const showMainLoader = computed(() => !initialFeedResolved.value && !error.value && posts.value.length === 0)
-
-function openOnlyMeComposer() {
-  openComposer?.('onlyMe')
-}
-
-const replyModal = useReplyModal()
-const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
-const { prependToHomeFeed } = useHomeFeedPrepend()
-
-const feedArrivals = useFeedArrivals({
-  posts,
-  viewerId: computed(() => authUser.value?.id),
-  filter: feedFilter,
-  context: computed(() => `${feedScope.value}:${feedSort.value}:${feedFilter.value}`),
-  prepend: prependToHomeFeed,
-})
-let pendingPostSubscriptions = new Set<string>()
-const arrivalsActive = ref(false)
-watch([() => feedArrivals.pending.value.map(post => post.id), arrivalsActive], ([ids, active]) => {
-  const next = new Set(active ? ids : [])
-  subscribePosts([...next].filter(id => !pendingPostSubscriptions.has(id)))
-  unsubscribePosts([...pendingPostSubscriptions].filter(id => !next.has(id)))
-  pendingPostSubscriptions = next
-})
-onBeforeUnmount(() => unsubscribePosts([...pendingPostSubscriptions]))
-const actionSounds = useActionSounds()
-function revealFeedArrivals() {
-  if (!feedArrivals.pending.value.length) return
-  void actionSounds.play('feed-reveal')
-  feedArrivals.reveal()
-  scrollFeedToTop()
-}
-const feedNewPostCb = {
-  onFeedNewPost: (payload: import('~/types/api').WsFeedNewPostPayload) => {
-    if (payload?.post) feedArrivals.receive(payload.post)
-  },
-  onLiveUpdated: feedArrivals.applyUpdate,
-}
-// A completed refresh supersedes only the arrivals that existed when it began.
-let arrivalsBeforeRefresh = new Set<string>()
-let arrivalRefreshStartedAt = Date.now()
-watch(loading, (active) => {
-  if (active) {
-    arrivalRefreshStartedAt = Date.now()
-    arrivalsBeforeRefresh = new Set(feedArrivals.pending.value.map(post => post.id))
-  }
-  else if (!error.value) {
-    feedArrivals.advanceBoundary(arrivalRefreshStartedAt)
-    feedArrivals.pending.value = feedArrivals.pending.value.filter(post => !arrivalsBeforeRefresh.has(post.id))
-  }
-})
-
-let unregisterReplyPending: null | (() => void) = null
-const { apiFetchData: fetchArrivalPosts } = useApiClient()
-const pageVisibility = useDocumentVisibility()
-const arrivalPolling = useFeedArrivalPolling({
-  active: computed(() => arrivalsActive.value && pageVisibility.value === 'visible' && isAuthed.value && feedArrivals.pending.value.length < 60 && !loading.value),
-  periodic: computed(() => forYou.value && feedArrivals.pending.value.length < 60),
-  context: computed(() => `${authUser.value?.id}:${feedScope.value}:${feedSort.value}:${feedFilter.value}`),
-  fetch: signal => fetchArrivalPosts<import('~/types/api').FeedPost[]>('/posts', {
-    query: { limit: 20, sort: forYou.value ? 'forYou' : feedSort.value, visibility: feedFilter.value,
-      followingOnly: feedScope.value === 'following', topLevelOnly: true },
-    signal, mohRetry: false,
-  }),
-  receive: posts => { feedArrivals.receiveBatch(posts); homeTabReturnGate.markSuccess() },
-})
-function catchUpHomeFeed() {
-  if (!posts.value.length) { void refresh().then(() => homeTabReturnGate.markSuccess()); return }
-  if (homeTabReturnGate.shouldRefresh()) void arrivalPolling.check()
-}
-watch(pageVisibility, value => { if (value === 'visible' && arrivalsActive.value) catchUpHomeFeed() })
-onActivated(() => {
-  if (!import.meta.client) return
-  arrivalsActive.value = true
-  catchUpHomeFeed()
-  void nextTick(updateFeedReadingPosition)
-  // Realtime and HTTP arrivals share the same explicit-reveal queue.
-  addPostsCallback(feedNewPostCb)
-  // Optimistic replies: when the reply modal forwards a pending submit, slot
-  // the optimistic row into the parent's position via `addReply` and let
-  // pendingPosts handle the network call + retry/discard surface.
-  const pendingCb = (payload: import('~/composables/useReplyModal').ReplyPendingPayload) => {
-    addReply(payload.parentPost.id, payload.optimisticPost, payload.parentPost)
-    pendingPosts.submit({
-      localId: payload.localId,
-      optimisticPost: payload.optimisticPost,
-      perform: payload.perform,
-      callbacks: {
-        insert: () => {},
-        replace: (lid, real) => replaceOptimistic(lid, real),
-        markFailed: (lid, msg) => markOptimisticFailed(lid, msg),
-        markPosting: (lid) => markOptimisticPosting(lid),
-        remove: (lid) => removeOptimistic(lid),
-      },
-    })
-  }
-  unregisterReplyPending = replyModal.registerOnReplyPending(pendingCb)
-})
-onDeactivated(() => {
-  arrivalsActive.value = false
-  removePostsCallback(feedNewPostCb)
-  unregisterReplyPending?.()
-  unregisterReplyPending = null
-})
-
-const pendingPosts = usePendingPostsManager()
-
-function flashNewlyPostedVideo(post: import('~/types/api').FeedPost) {
-  if (!postBodyHasVideoEmbed(post.body ?? '', Boolean(post.media?.length))) return
-  newlyPostedVideoPostId.value = post.id
-  if (!import.meta.client) return
-  if (newlyPostedVideoPostTimer) clearTimeout(newlyPostedVideoPostTimer)
-  newlyPostedVideoPostTimer = setTimeout(() => {
-    newlyPostedVideoPostId.value = null
-    newlyPostedVideoPostTimer = null
-  }, 800)
-}
-
-function onComposerPending(payload: {
-  localId: string
-  optimisticPost: import('~/types/api').FeedPost
-  perform: () => Promise<import('~/types/api').FeedPost | { id: string } | null | undefined>
-}) {
-  pendingPosts.submit({
-    localId: payload.localId,
-    optimisticPost: payload.optimisticPost,
-    perform: payload.perform,
-    callbacks: {
-      insert: (p) => prependOptimisticPost(p),
-      replace: (lid, real) => {
-        replaceOptimistic(lid, real)
-        flashNewlyPostedVideo(real)
-      },
-      markFailed: (lid, msg) => markOptimisticFailed(lid, msg),
-      markPosting: (lid) => markOptimisticPosting(lid),
-      remove: (lid) => removeOptimistic(lid),
-    },
-  })
-}
-
-// onFeedScopeChange is provided by useHomeFeed — remembers the selected scope and refreshes feed
-
+  feedVirtualItems,
+  feedTotalSize,
+  measureFeedRow,
+  lastCheckinBody,
+  canAnswerCheckin,
+  checkinHeroPrompt,
+  goToLoginForCheckin,
+  openCheckinComposer,
+  onFeedPostEdited,
+  showOnlyMeHomeComposerCard,
+  showMainLoader,
+  openOnlyMeComposer,
+  feedArrivals,
+  revealFeedArrivals,
+  onComposerPending,
+} = useHomePage()
 </script>
 
 <style scoped>

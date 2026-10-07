@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { ownMessageTintStyle } from '../../utils/user-tier'
+import { readSurfaceSource } from '../helpers/surface-source'
 
 const root = resolve(__dirname, '../..')
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8')
@@ -36,7 +37,7 @@ describe('own-message background is shared across chat surfaces', () => {
   })
 
   it('outgoing DM bubbles no longer paint a solid tier fill', () => {
-    const chatPage = read('pages/chat.vue')
+    const chatPage = readSurfaceSource('pages/chat.vue')
 
     // A solid fill forced white body text, which the low-opacity wash cannot support.
     expect(chatPage).not.toContain('backdrop-blur-sm text-white')

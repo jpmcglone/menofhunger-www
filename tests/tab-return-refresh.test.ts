@@ -5,6 +5,7 @@ import {
   TAB_RETURN_REFRESH_MIN_MS,
   shouldRefreshTabReturn,
 } from '~/composables/useTabReturnRefreshGate'
+import { readSurfaceSource } from './helpers/surface-source'
 
 describe('shouldRefreshTabReturn', () => {
   it('refreshes on the first visit', () => {
@@ -42,7 +43,7 @@ describe('shouldRefreshTabReturn', () => {
 
 describe('tab-return refresh wiring', () => {
   it('gates home and notifications keepalive catch-up', () => {
-    const home = readFileSync(resolve(process.cwd(), 'pages/home.vue'), 'utf8')
+    const home = readSurfaceSource('pages/home.vue')
     const notifications = [
       readFileSync(resolve(process.cwd(), 'pages/notifications.vue'), 'utf8'),
       readFileSync(resolve(process.cwd(), 'composables/notifications/useNotificationsPage.ts'), 'utf8'),
