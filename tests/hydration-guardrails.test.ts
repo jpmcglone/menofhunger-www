@@ -382,7 +382,7 @@ describe('hydration guardrails (structural)', () => {
     // is on. Whenever Marv is present in the list, the frontend's sort comparator
     // must put him before any real user, even if a real user just connected at the
     // same instant. If this guardrail breaks, Marv silently sinks down the list.
-    const online = readFromRepo('pages/online.vue')
+    const online = readFromRepo('pages/online.vue') + readFromRepo('composables/pages/useOnlinePage.ts')
     // The sort must check `isBot` BEFORE the lastConnectAt comparison.
     expect(online).toMatch(/if \(a\.isBot && !b\.isBot\) return -1/)
     expect(online).toMatch(/if \(!a\.isBot && b\.isBot\) return 1/)

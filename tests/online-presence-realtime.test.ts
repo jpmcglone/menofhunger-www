@@ -22,7 +22,10 @@ describe('online presence realtime wiring', () => {
     expect(presence).toContain("socket.on('presence:call-changed'")
     expect(presence).toContain('cb.onCallChanged?.(data)')
 
-    const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
+    const page = [
+      readFileSync(resolve(root, 'pages/online.vue'), 'utf8'),
+      readFileSync(resolve(root, 'composables/pages/useOnlinePage.ts'), 'utf8'),
+    ].join('\n')
     expect(page).toContain(':in-call="u.inCall === true"')
     expect(page).toContain('user.id === payload.userId ? { ...user, inCall: payload.inCall } : user')
 
@@ -70,7 +73,10 @@ describe('online presence realtime wiring', () => {
   })
 
   it('shows a muted guest count next to the online-now subtitle', () => {
-    const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
+    const page = [
+      readFileSync(resolve(root, 'pages/online.vue'), 'utf8'),
+      readFileSync(resolve(root, 'composables/pages/useOnlinePage.ts'), 'utf8'),
+    ].join('\n')
 
     expect(page).toContain("anonymousOnline === 1 ? 'guest' : 'guests'")
     expect(page).toContain('onAnonymousCount(payload)')
@@ -78,7 +84,10 @@ describe('online presence realtime wiring', () => {
   })
 
   it('patches existing online rows and preserves platform badges across snapshots', () => {
-    const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
+    const page = [
+      readFileSync(resolve(root, 'pages/online.vue'), 'utf8'),
+      readFileSync(resolve(root, 'composables/pages/useOnlinePage.ts'), 'utf8'),
+    ].join('\n')
 
     expect(page).toContain('onPlatformsChanged(payload)')
     expect(page).toContain('user.id === payload.userId ? { ...user, platforms: payload.platforms }')
@@ -88,7 +97,10 @@ describe('online presence realtime wiring', () => {
   })
 
   it('keeps an empty Recently section compact', () => {
-    const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
+    const page = [
+      readFileSync(resolve(root, 'pages/online.vue'), 'utf8'),
+      readFileSync(resolve(root, 'composables/pages/useOnlinePage.ts'), 'utf8'),
+    ].join('\n')
 
     expect(page).toContain("recentlyOnlineUsers.length ? 'pt-8 pb-2' : 'pt-5 pb-3'")
     expect(page).toContain("{{ recentUsers.length === 0 ? 'No one recently around.' : 'No one in the last hour.' }}")
@@ -97,7 +109,10 @@ describe('online presence realtime wiring', () => {
   })
 
   it('sorts most-recently-connected first, matching iOS', () => {
-    const page = readFileSync(resolve(root, 'pages/online.vue'), 'utf8')
+    const page = [
+      readFileSync(resolve(root, 'pages/online.vue'), 'utf8'),
+      readFileSync(resolve(root, 'composables/pages/useOnlinePage.ts'), 'utf8'),
+    ].join('\n')
 
     expect(page).toContain('const ta = a.lastConnectAt ?? 0')
     expect(page).toContain('if (ta !== tb) return tb - ta')
