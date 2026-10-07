@@ -97,7 +97,7 @@ describe('hydration guardrails (structural)', () => {
     expect(cache).toMatch(/MY_GROUPS_FRESH_MS/)
     for (const path of [
       'pages/home.vue',
-      'components/app/PostComposer.vue',
+      'composables/composer/useComposerDestination.ts',
       'components/app/groups/AppGroupsRailCard.vue',
       'pages/groups/index.vue',
     ]) {

@@ -77,10 +77,10 @@ describe('permalink seed', () => {
       resolve('composables/usePendingPostsManager.ts'),
       'utf8',
     )
-    const composer = readFileSync(
-      resolve('components/app/PostComposer.vue'),
-      'utf8',
-    )
+    const composer = [
+      readFileSync(resolve('components/app/PostComposer.vue'), 'utf8'),
+      readFileSync(resolve('composables/composer/useComposerSubmit.ts'), 'utf8'),
+    ].join('\n')
 
     expect(permalink).toContain('peekPermalinkSeed')
     expect(permalink).toContain('consumePermalinkSeed')

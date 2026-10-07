@@ -7,7 +7,6 @@
     "components/SpaceYouTubePlayer.vue",
     "components/app/InterestsPicker.vue",
     "components/app/NotificationRow.vue",
-    "components/app/PostComposer.vue",
     "components/app/PostRow.vue",
     "components/app/SpaceVisualizer.vue",
     "components/app/StyledTextarea.vue",

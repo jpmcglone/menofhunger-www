@@ -857,6 +857,13 @@
 </template>
 
 <script setup lang="ts">
+import type { OrgAffiliationDto, UserDto } from '~/types/api-contracts.gen'
+import type { AdminGrantSummary } from '~/types/api'
+import { APP_FEATURE_TOGGLE_OPTIONS, type AppFeatureToggle } from '~/config/app-feature-toggles'
+import { getApiErrorMessage } from '~/utils/api-error'
+import { formatDateTime } from '~/utils/time-format'
+import { useFormSubmit } from '~/composables/useFormSubmit'
+
 definePageMeta({
   layout: 'app',
   title: 'Users',
@@ -870,66 +877,12 @@ usePageSeo({
   noindex: true,
 })
 
-type AdminUser = {
-  id: string
-  createdAt: string
-  phone: string | null
-  accountKind?: 'person' | 'page'
-  email: string | null
-  emailVerifiedAt: string | null
-  emailVerificationRequestedAt: string | null
-  username: string | null
-  usernameIsSet: boolean
-  name: string | null
-  bio: string | null
-  avatarUrl?: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-  siteAdmin: boolean
-  featureToggles: string[]
-  bannedAt: string | null
-  bannedReason: string | null
-  bannedByAdminId: string | null
-  premium: boolean
-  premiumPlus: boolean
-  isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
-  verifiedAt: string | null
-  unverifiedAt: string | null
-  orgAffiliations?: OrgAffiliation[]
-}
-
-type OrgAffiliation = {
-  id: string
-  username: string | null
-  name: string | null
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-}
-
-type PageOperator = {
-  id: string
-  username: string | null
-  name: string | null
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-}
-
-type OperatedPage = {
-  id: string
-  username: string | null
-  name: string | null
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-  accountKind: 'person' | 'page'
-  isOrganization: boolean
-}
+type AdminUser = UserDto & { orgAffiliations?: OrgAffiliationDto[] }
+type OrgAffiliation = OrgAffiliationDto
+type PageOperator = OrgAffiliationDto
+type OperatedPage = Pick<UserDto, 'id' | 'username' | 'name' | 'avatarUrl' | 'avatarVideo' | 'accountKind' | 'isOrganization'>
 
 const { apiFetch, apiFetchData } = useApiClient()
-import type { AdminGrantSummary } from '~/types/api'
-import { APP_FEATURE_TOGGLE_OPTIONS, type AppFeatureToggle } from '~/config/app-feature-toggles'
-import { getApiErrorMessage } from '~/utils/api-error'
-import { formatDateTime } from '~/utils/time-format'
-import { useFormSubmit } from '~/composables/useFormSubmit'
 
 const route = useRoute()
 const router = useRouter()

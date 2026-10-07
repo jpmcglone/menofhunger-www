@@ -156,3 +156,70 @@ export function reorderInsertAt<T>(arr: T[], fromIndex: number, toIndex: number)
   return rest
 }
 
+export type PostComposerProps = {
+  inlineAudience?: boolean
+  autoFocus?: boolean
+  showDivider?: boolean
+  placeholder?: string
+  initialText?: string
+  initialMedia?: import('~/types/api').PostMedia[]
+  initialFiles?: File[]
+  initialGroupId?: string | null
+  showChatDestination?: boolean
+  allowedVisibilities?: import('~/types/api').PostVisibility[]
+  lockedVisibility?: import('~/types/api').PostVisibility
+  hideVisibilityPicker?: boolean
+  groupComposer?: boolean
+  groupName?: string
+  communityGroupId?: string | null
+  createPost?: (
+    body: string,
+    visibility: import('~/types/api').PostVisibility,
+    media: CreateMediaPayload[],
+    poll?: ComposerPollPayload | null,
+  ) => Promise<{ id: string } | import('~/types/api').FeedPost | null>
+  replyTo?: {
+    parentId: string
+    visibility: import('~/types/api').PostVisibility
+    mentionUsernames: string[]
+    groupDisplayName?: string | null
+  }
+  inReplyThread?: boolean
+  actionsTarget?: HTMLElement | null
+  submitTarget?: HTMLElement | null
+  omitAvatar?: boolean
+  mode?: 'create' | 'edit'
+  editPostId?: string
+  editPostIsDraft?: boolean
+  disableMedia?: boolean
+  disablePoll?: boolean
+  successToPermalink?: boolean
+  registerUnsavedGuard?: boolean
+  persistKey?: string
+  quotedPost?: import('~/types/api').FeedPost | null
+  syncSubmit?: boolean
+  enableAvatarStatusEditor?: boolean
+  editScheduledId?: string
+  initialPoll?: { options: Array<{ text: string }>; durationHours: number } | null
+  initialVisibility?: import('~/types/api').PostVisibility
+  initialScheduledAt?: string
+  initialCrosspost?: import('~/utils/crosspost').CrosspostPayload
+  checkinPrompt?: string
+}
+
+export type PostComposerEmit = {
+  (e: 'handoff-chat', payload: { body: string; files: File[] }): void
+  (e: 'posted', payload: { id: string; visibility: import('~/types/api').PostVisibility; post?: import('~/types/api').FeedPost }): void
+  (e: 'edited', payload: { id: string; post: import('~/types/api').FeedPost }): void
+  (e: 'scheduled', payload: { scheduledPost: import('~/types/api').ScheduledPost }): void
+  (e: 'scheduled-updated', updated: import('~/types/api').ScheduledPost): void
+  (
+    e: 'pending',
+    payload: {
+      localId: string
+      optimisticPost: import('~/types/api').FeedPost
+      perform: () => Promise<import('~/types/api').FeedPost | { id: string } | null | undefined>
+    },
+  ): void
+}
+

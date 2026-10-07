@@ -1,7 +1,6 @@
 <template>
   <!-- Single root so fallthrough attrs (e.g. class from parents) can merge; Giphy dialog is a sibling inside. -->
   <div>
-  <!-- Composer -->
   <div
     :class="[
       inlineAudience && !checkinPrompt ? 'moh-home-composer pb-3' : 'pb-4',
@@ -16,7 +15,6 @@
       <div
         :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-5 items-start'"
       >
-      <!-- Inline audience aligns with the text column; modal controls span the header. -->
       <div
         v-if="!inlineAudience && (!replyTo || $slots.close)"
         :class="[
@@ -26,48 +24,35 @@
       >
         <slot name="close" />
         <slot name="audience">
-        <div v-if="!replyTo" class="flex min-w-0 flex-wrap items-center gap-2" :class="(!inlineAudience || checkinPrompt) && 'ml-auto'">
-          <AppComposerDestinationPicker
-            v-if="canChooseGroup"
+          <AppComposerAudienceChrome
+            :reply-to="replyTo"
+            :inline-audience="inlineAudience"
+            :checkin-prompt="checkinPrompt"
+            :can-choose-group="canChooseGroup"
             :visibility="visibility"
             :allowed="allowedComposerVisibilities"
             :is-premium="isPremium"
             :groups="myGroups"
-            :model-value="selectedGroupId"
+            :selected-group-id="selectedGroupId"
             :loading="myGroupsLoading"
             :error="myGroupsError"
             :shows-chat="showChatDestination"
-            @select-chat="handoffToChat"
-            @select-visibility="selectDestinationVisibility"
-            @update:model-value="selectGroup"
-            @open="loadMyGroups"
-          />
-          <AppComposerVisibilityPicker
-            v-else-if="showVisibilityPicker"
-            v-model="visibility"
-            :allowed="allowedComposerVisibilities"
+            :show-visibility-picker="showVisibilityPicker"
             :viewer-is-verified="viewerIsVerified"
-            :is-premium="isPremium"
-            :shows-chat="showChatDestination"
-            @select-chat="handoffToChat"
+            :effective-group-id="effectiveGroupId"
+            :scope-tag-tooltip="scopeTagTooltip"
+            :scope-tag-label="scopeTagLabel"
+            :effective-visibility="effectiveVisibility"
+            :show-group-scope-icon="showGroupScopeIcon"
+            :mode="mode"
+            :selected-group-read-label="selectedGroupReadLabel"
+            :select-chat="handoffToChat"
+            :select-visibility="selectDestinationVisibility"
+            :select-group="selectGroup"
+            :on-open="loadMyGroups"
+            @update:visibility="visibility = $event"
           />
-          <span
-            v-else-if="!canChooseGroup || !effectiveGroupId"
-            v-tooltip.bottom="scopeTagTooltip"
-            class="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border moh-border px-3 cursor-default"
-            :aria-label="`Post audience: ${scopeTagLabel}`"
-          >
-            <AppComposerAudienceLabel
-              :visibility="effectiveVisibility"
-              :group-name="showGroupScopeIcon ? scopeTagLabel : undefined"
-            />
-          </span>
-          <span v-if="effectiveGroupId && mode !== 'edit'" class="text-xs moh-text-muted">{{ selectedGroupReadLabel }}</span>
-        </div>
-
         </slot>
-
-        <!-- Right: scheduled time — shown when a time is confirmed (not applicable for check-ins) -->
         <button
           v-if="!checkinPrompt && scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
           v-tooltip.bottom="`Click to change schedule`"
@@ -88,7 +73,6 @@
         class="row-start-2 col-span-2 mb-5"
       />
 
-      <!-- Row 2: avatar + textarea start aligned (avatar omitted when omitAvatar) -->
       <template v-if="!omitAvatar">
         <NuxtLink
           v-if="myProfilePath"
@@ -122,7 +106,6 @@
         :class="[omitAvatar ? 'min-w-0 moh-composer-tint' : 'col-start-2 min-w-0 moh-composer-tint', checkinPrompt ? 'row-start-3' : (inlineAudience ? 'row-start-1' : 'row-start-2')]"
       >
         <p v-if="checkinPrompt" class="mb-2 text-[13px] font-medium moh-text-muted">Your answer</p>
-        <!-- Optional content above textarea (e.g. "Replying to @username" in reply modal) -->
         <div v-if="$slots['above-textarea']" class="pb-2 text-sm moh-text-muted">
           <slot name="above-textarea" />
         </div>
@@ -138,7 +121,6 @@
           @change="onMediaFilesSelected"
         >
 
-        <!-- Drop zone: textarea + attachments -->
         <div
           class="relative"
           :style="composerTextareaVars"
@@ -147,17 +129,13 @@
           @dragleave="onComposerAreaDragLeave"
           @drop.prevent="onComposerDrop"
         >
-          <!-- Open writing surface; keep paste handling on the shared wrapper. -->
-          <div
-            class="relative"
-            @paste.capture="onComposerPaste"
-          >
+          <div class="relative" @paste.capture="onComposerPaste">
             <AppStyledTextarea
               ref="composerEditorEl"
               :disabled="destinationDrafts.loading.value || submitting"
               :model-value="draft"
               :placeholder="composerPlaceholder"
-              :auto-focus="props.autoFocus"
+              :auto-focus="autoFocus"
               :hashtag-color="composerHashtagColor"
               submit-trigger="cmd-enter"
               class="moh-composer-styled-textarea"
@@ -165,8 +143,6 @@
               @send="submit"
               @media-files="(files) => ingestMediaFiles(files, 'paste')"
             />
-
-            <!-- Drag overlay (no media): hug just the textarea, less bottom inset to avoid extra padding -->
             <AppComposerDropOverlay
               :visible="dropOverlayVisible && !composerMedia.length"
               :remaining-slots="remainingMediaSlots"
@@ -186,7 +162,6 @@
             {{ submitError }}
           </AppInlineAlert>
 
-          <!-- Media slots: always 4 once any media exists (avoid layout/animation weirdness) -->
           <div v-if="composerMedia.length" class="mt-3">
             <AppComposerMediaSlots
               :slots="displaySlots"
@@ -198,7 +173,7 @@
               @add="openMediaPicker"
               @remove="removeComposerMedia"
               @pointerdown="onMediaTilePointerDown"
-            @update-alt="onUpdateAltText"
+              @update-alt="onUpdateAltText"
             />
           </div>
 
@@ -211,7 +186,6 @@
             @status="onPollStatus"
           />
 
-          <!-- Drag overlay (with media): hug textarea + slots -->
           <AppComposerDropOverlay
             :visible="dropOverlayVisible && composerMedia.length > 0"
             :remaining-slots="remainingMediaSlots"
@@ -219,66 +193,53 @@
           />
         </div>
 
-        <!-- Locked quoted post preview (quote-repost mode) -->
         <div v-if="quotedPost" class="select-none pointer-events-none">
           <AppEmbeddedPostPreview :preloaded-post="quotedPost" />
         </div>
 
         <div v-if="inlineAudience" class="flex min-w-0 flex-wrap items-center gap-2">
-        <slot name="audience">
-        <div v-if="!replyTo" class="flex min-w-0 flex-wrap items-center gap-2" :class="(!inlineAudience || checkinPrompt) && 'ml-auto'">
-          <AppComposerDestinationPicker
-            v-if="canChooseGroup"
-            :visibility="visibility"
-            :allowed="allowedComposerVisibilities"
-            :is-premium="isPremium"
-            :groups="myGroups"
-            :model-value="selectedGroupId"
-            :loading="myGroupsLoading"
-            :error="myGroupsError"
-            :shows-chat="showChatDestination"
-            @select-chat="handoffToChat"
-            @select-visibility="selectDestinationVisibility"
-            @update:model-value="selectGroup"
-            @open="loadMyGroups"
-          />
-          <AppComposerVisibilityPicker
-            v-else-if="showVisibilityPicker"
-            v-model="visibility"
-            :allowed="allowedComposerVisibilities"
-            :viewer-is-verified="viewerIsVerified"
-            :is-premium="isPremium"
-            :shows-chat="showChatDestination"
-            @select-chat="handoffToChat"
-          />
-          <span
-            v-else-if="!canChooseGroup || !effectiveGroupId"
-            v-tooltip.bottom="scopeTagTooltip"
-            class="inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border moh-border px-3 cursor-default"
-            :aria-label="`Post audience: ${scopeTagLabel}`"
-          >
-            <AppComposerAudienceLabel
-              :visibility="effectiveVisibility"
-              :group-name="showGroupScopeIcon ? scopeTagLabel : undefined"
+          <slot name="audience">
+            <AppComposerAudienceChrome
+              :reply-to="replyTo"
+              :inline-audience="inlineAudience"
+              :checkin-prompt="checkinPrompt"
+              :can-choose-group="canChooseGroup"
+              :visibility="visibility"
+              :allowed="allowedComposerVisibilities"
+              :is-premium="isPremium"
+              :groups="myGroups"
+              :selected-group-id="selectedGroupId"
+              :loading="myGroupsLoading"
+              :error="myGroupsError"
+              :shows-chat="showChatDestination"
+              :show-visibility-picker="showVisibilityPicker"
+              :viewer-is-verified="viewerIsVerified"
+              :effective-group-id="effectiveGroupId"
+              :scope-tag-tooltip="scopeTagTooltip"
+              :scope-tag-label="scopeTagLabel"
+              :effective-visibility="effectiveVisibility"
+              :show-group-scope-icon="showGroupScopeIcon"
+              :mode="mode"
+              :selected-group-read-label="selectedGroupReadLabel"
+              :select-chat="handoffToChat"
+              :select-visibility="selectDestinationVisibility"
+              :select-group="selectGroup"
+              :on-open="loadMyGroups"
+              @update:visibility="visibility = $event"
             />
-          </span>
-          <span v-if="effectiveGroupId && mode !== 'edit'" class="text-xs moh-text-muted">{{ selectedGroupReadLabel }}</span>
-        </div>
-
-        </slot>
-        <!-- Right: scheduled time — shown when a time is confirmed (not applicable for check-ins) -->
-        <button
-          v-if="!checkinPrompt && scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
-          v-tooltip.bottom="`Click to change schedule`"
-          type="button"
-          class="inline-flex items-center gap-1 text-[11px] font-semibold moh-focus"
-          :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
-          :aria-label="`Scheduled for ${scheduledAtDisplay}. Click to change.`"
-          @click="openSchedulePicker"
-        >
-          <Icon name="tabler:calendar-time" class="text-[12px]" aria-hidden="true" />
-          <span>{{ scheduledAtDisplay }}</span>
-        </button>
+          </slot>
+          <button
+            v-if="!checkinPrompt && scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
+            v-tooltip.bottom="`Click to change schedule`"
+            type="button"
+            class="inline-flex items-center gap-1 text-[11px] font-semibold moh-focus"
+            :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
+            :aria-label="`Scheduled for ${scheduledAtDisplay}. Click to change.`"
+            @click="openSchedulePicker"
+          >
+            <Icon name="tabler:calendar-time" class="text-[12px]" aria-hidden="true" />
+            <span>{{ scheduledAtDisplay }}</span>
+          </button>
         </div>
 
         <ClientOnly>
@@ -300,223 +261,66 @@
         </ClientOnly>
 
         <Teleport :to="actionsTarget ?? 'body'" :disabled="!actionsTarget">
-        <div :class="[actionsTarget ? '' : checkinPrompt ? 'mt-5 border-t moh-border pt-4' : (composerMedia.length ? 'mt-5' : inlineAudience ? 'mt-0' : 'mt-3'), mode === 'edit' && !scheduledEditId && 'moh-edit-actions']" class="flex flex-col gap-1">
-          <AppComposerActionBar :submit-target="submitTarget">
-            <template #tools>
-              <template v-if="!disableMedia">
-                <Button
-                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Remove poll to add media' : (canAddMoreMedia ? 'Add image/GIF' : 'Max 4 attachments'))"
-                  text
-                  rounded
-                  severity="secondary"
-                  aria-label="Add media"
-                  :disabled="!canAddMoreMedia || hasPoll"
-                  class="moh-focus"
-                  @click="onClickAddMedia"
-                >
-                  <template #icon>
-                    <AppIconGlyph name="image" :size="22" />
-                  </template>
-                </Button>
-                <Button
-                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Remove poll to add media' : (canAddMoreMedia ? 'Add GIF (Giphy)' : 'Max 4 attachments'))"
-                  text
-                  rounded
-                  severity="secondary"
-                  class="moh-focus"
-                  aria-label="Add GIF"
-                  :disabled="!canAddMoreMedia || hasPoll"
-                  @click="onClickAddGiphy"
-                >
-                  <template #icon>
-                    <AppIconGlyph name="gif" :size="22" />
-                  </template>
-                </Button>
-                <Button
-                  v-if="!replyTo && !disablePoll"
-                  v-tooltip.bottom="tinyTooltip(hasPoll ? 'Poll added' : ((isPremium && composerMedia.length > 0) ? 'Remove media to add a poll' : 'Add poll'))"
-                  text
-                  rounded
-                  severity="secondary"
-                  class="moh-focus"
-                  aria-label="Add poll"
-                  :disabled="hasPoll || (isPremium && composerMedia.length > 0)"
-                  @click="onClickAddPoll"
-                >
-                  <template #icon>
-                    <Icon name="tabler:chart-bar" class="rotate-90 size-[22px]" aria-hidden="true" />
-                  </template>
-                </Button>
-              </template>
-              <AppEmojiPickerButton
-                ref="emojiPickerEl"
-                tooltip="Emoji"
-                aria-label="Insert emoji"
-                persistent
-                @select="insertEmoji"
-              />
-            <!-- Schedule button: visible to verified+, premium-gated via CTA -->
-            <div
-              v-if="(isPremium || viewerIsVerified) && mode === 'create' && !replyTo && !quotedPost"
-              class="relative inline-flex"
-            >
-              <Button
-                v-tooltip.bottom="scheduledAt ? 'Click to change schedule' : 'Schedule post'"
-                text
-                rounded
-                severity="secondary"
-                class="moh-focus"
-                :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
-                :aria-label="scheduledAt ? `Scheduled: ${scheduledAtDisplay}` : (scheduledCount > 0 ? `Schedule post. You have ${scheduledCount} scheduled.` : 'Schedule post')"
-                @click="openSchedulePicker"
-              >
-                <template #icon>
-                  <AppIconGlyph name="scheduled" :size="22" />
-                </template>
-              </Button>
-              <span
-                v-if="scheduledCount > 0"
-                class="pointer-events-none absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center tabular-nums bg-[var(--moh-premium)] text-black"
-                aria-hidden="true"
-              >
-                {{ scheduledCount > 99 ? '99+' : scheduledCount }}
-              </span>
-            </div>
-            </template>
-            <template #count>
-            <div
-              v-if="postCharCount > 0"
-              class="moh-meta tabular-nums"
-              :class="
-                postCharCount > postMaxLen
-                  ? 'text-red-600 dark:text-red-400 font-semibold'
-                  : ''
-              "
-            >
-              {{ postCharCount }}/{{ postMaxLen }}
-            </div>
-            </template>
-            <template #submit>
-            <Button
-              :label="mode === 'edit' && scheduledEditId ? 'Save' : (scheduledAt ? 'Schedule' : (mode === 'edit' ? 'Save' : (replyTo ? 'Reply' : (checkinPrompt ? 'Post answer' : 'Post'))))"
-              rounded
-              severity="secondary"
-              :class="[postButtonClass, inlineAudience && !checkinPrompt && 'disabled:!border-[var(--moh-button-disabled-fill)] disabled:!bg-[var(--moh-button-disabled-fill)] disabled:!text-[var(--moh-text-muted)]', 'moh-pressable !rounded-full !min-h-11 !py-1.5 !px-5 !text-sm !font-semibold']"
-              :disabled="
-                submitting ||
-                !canPost ||
-                (mode === 'edit' && !scheduledEditId
-                  ? (!draft.trim() || !hasEditChanges)
-                  : !(draft.trim() || composerMedia.length || hasPoll)) ||
-                postCharCount > postMaxLen ||
-                composerUploading ||
-                composerHasFailedMedia ||
-                pollUploading ||
-                pollHasFailed ||
-                pollIncomplete
-              "
-              :title="composerHasFailedMedia ? 'Remove failed items to post' : (pollHasFailed ? 'Remove failed poll images to post' : undefined)"
-              :loading="submitting"
-              @click="submit"
+          <div :class="[actionsTarget ? '' : checkinPrompt ? 'mt-5 border-t moh-border pt-4' : (composerMedia.length ? 'mt-5' : inlineAudience ? 'mt-0' : 'mt-3'), mode === 'edit' && !scheduledEditId && 'moh-edit-actions']" class="flex flex-col gap-1">
+            <AppComposerTools
+              :submit-target="submitTarget"
+              :disable-media="disableMedia"
+              :disable-poll="disablePoll"
+              :has-poll="hasPoll"
+              :can-add-more-media="canAddMoreMedia"
+              :reply-to="replyTo"
+              :quoted-post="quotedPost"
+              :is-premium="isPremium"
+              :viewer-is-verified="viewerIsVerified"
+              :media-count="composerMedia.length"
+              :mode="mode"
+              :scheduled-at="scheduledAt"
+              :scheduled-at-display="scheduledAtDisplay"
+              :scheduled-count="scheduledCount"
+              :schedule-accent-color="scheduleAccentColor"
+              :post-char-count="postCharCount"
+              :post-max-len="postMaxLen"
+              :submit-label="submitLabel"
+              :post-button-class="postButtonClass"
+              :inline-audience="inlineAudience"
+              :checkin-prompt="checkinPrompt"
+              :submit-disabled="submitDisabled"
+              :composer-has-failed-media="composerHasFailedMedia"
+              :poll-has-failed="pollHasFailed"
+              :submitting="submitting"
+              :on-click-add-media="onClickAddMedia"
+              :on-click-add-giphy="onClickAddGiphy"
+              :on-click-add-poll="onClickAddPoll"
+              :insert-emoji="insertEmoji"
+              :open-schedule-picker="openSchedulePicker"
+              :submit="submit"
+              :set-emoji-picker-el="setEmojiPickerEl"
             />
-            </template>
-          </AppComposerActionBar>
-          <p
-            v-if="pollIncomplete"
-            class="text-xs moh-text-muted"
-            role="status"
-          >
-            Add at least two poll options, or remove the poll.
-          </p>
-          <p
-            v-if="composerHasFailedMedia || pollHasFailed"
-            class="text-xs text-amber-600 dark:text-amber-400"
-            role="status"
-          >
-            Remove failed items to post.
-          </p>
-        </div>
+            <p v-if="pollIncomplete" class="text-xs moh-text-muted" role="status">
+              Add at least two poll options, or remove the poll.
+            </p>
+            <p
+              v-if="composerHasFailedMedia || pollHasFailed"
+              class="text-xs text-amber-600 dark:text-amber-400"
+              role="status"
+            >
+              Remove failed items to post.
+            </p>
+          </div>
         </Teleport>
       </div>
       </div>
     </div>
 
-    <!-- Logged-out: full disabled composer. Clicking it shows a login prompt; the Log in button navigates directly. -->
-    <div
+    <AppComposerGuest
       v-else
-      role="button"
-      tabindex="0"
-      aria-label="Log in to post"
-      class="cursor-pointer"
-      :class="omitAvatar ? 'flex flex-col gap-2' : 'grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-5 items-start'"
-      @click="showLoginPrompt"
-      @keydown.enter="showLoginPrompt"
-      @keydown.space.prevent="showLoginPrompt"
-    >
-      <!-- Same audience control placement as the signed-in composer. -->
-      <div class="row-start-1 flex" :class="inlineAudience ? 'col-start-2 mb-2' : 'col-span-2 justify-end mb-3'" aria-hidden="true">
-        <span class="inline-flex min-h-11 items-center justify-center rounded-full border moh-border px-3">
-          <AppComposerAudienceLabel visibility="public" />
-        </span>
-      </div>
-
-      <!-- Row 2: avatar placeholder -->
-      <template v-if="!omitAvatar">
-        <div
-          class="col-start-1 shrink-0 h-10 w-10 rounded-full ring-1 ring-gray-300 dark:ring-zinc-600 bg-gray-100 dark:bg-zinc-800 flex items-center justify-center"
-          :class="inlineAudience ? 'row-start-1 row-span-2' : 'row-start-2'"
-          aria-hidden="true"
-        >
-          <Icon name="tabler:user" class="text-gray-400 dark:text-zinc-500 text-[14px] sm:text-[16px]" />
-        </div>
-      </template>
-
-      <!-- Textarea + bottom bar -->
-      <div
-        :class="omitAvatar ? 'min-w-0 moh-composer-tint' : 'row-start-2 col-start-2 min-w-0 moh-composer-tint'"
-        class="pointer-events-none select-none"
-      >
-        <div class="relative">
-          <div class="py-1.5 text-xl leading-7 min-h-14 text-gray-400 dark:text-zinc-500 opacity-70">
-            {{ VOICE.feed.postHeading }}
-          </div>
-        </div>
-
-        <div class="mt-3 flex items-center justify-between" :class="mode === 'edit' && !scheduledEditId && 'moh-edit-actions'">
-          <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 opacity-40">
-            <Button text rounded severity="secondary" disabled aria-hidden="true">
-              <template #icon>
-                <AppIconGlyph name="image" :size="22" />
-              </template>
-            </Button>
-            <Button text rounded severity="secondary" disabled aria-hidden="true">
-              <template #icon>
-                <AppIconGlyph name="gif" :size="22" />
-              </template>
-            </Button>
-            <Button text rounded severity="secondary" disabled aria-hidden="true">
-              <template #icon>
-                <Icon name="tabler:chart-bar" class="rotate-90" aria-hidden="true" />
-              </template>
-            </Button>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="moh-meta tabular-nums opacity-40">0/200</div>
-            <NuxtLink
-              :to="loginTo"
-              class="pointer-events-auto cursor-pointer shrink-0 inline-flex items-center rounded-full px-4 py-1.5 text-sm font-semibold
-                     bg-gray-900 text-white hover:bg-gray-700
-                     dark:bg-white dark:text-black dark:hover:bg-gray-100
-                     transition-colors moh-focus"
-              aria-label="Log in to post"
-              @click.stop
-            >
-              Log in
-            </NuxtLink>
-          </div>
-        </div>
-      </div>
-    </div>
+      :omit-avatar="omitAvatar"
+      :inline-audience="inlineAudience"
+      :mode="mode"
+      :scheduled-edit-id="scheduledEditId"
+      :login-to="loginTo"
+      :show-login-prompt="showLoginPrompt"
+    />
   </div>
 
   <AppStatusEditorDialog
@@ -547,72 +351,20 @@
     @select="selectGiphyGif"
   />
 
-  <!-- Schedule picker dialog (premium only) -->
-  <Dialog
-    v-if="isPremium"
-    v-model:visible="schedulePickerOpen"
-    modal
-    header="Schedule post"
-    :style="{ width: '22rem' }"
-    :draggable="false"
-    @hide="schedulePickerOpen = false"
-  >
-    <div class="flex flex-col gap-4 py-2">
-      <label class="text-sm moh-text-muted">Choose when to publish this post:</label>
-      <DatePicker
-        v-model="scheduledAtDraft"
-        show-time
-        hour-format="12"
-        :min-date="scheduleMinDate"
-        :max-date="scheduleMaxDate"
-        date-format="M d, yy"
-        show-icon
-        fluid
-      />
-      <p v-if="scheduledAtDraft && !scheduledAtDraftIsPast" class="text-xs moh-text-muted">
-        Will publish {{ formatScheduledAt(scheduledAtDraft) }}
-      </p>
-      <p v-else-if="scheduledAtDraft && scheduledAtDraftIsPast" class="text-xs text-amber-600 dark:text-amber-400">
-        This time is in the past — post will go live immediately unless you update it.
-      </p>
-      <label class="flex items-center gap-2 cursor-pointer select-none text-sm moh-text-muted">
-        <input v-model="scheduleMore" type="checkbox" class="accent-current rounded" >
-        Schedule more after posting
-      </label>
-      <NuxtLink
-        to="/scheduled"
-        class="inline-flex items-center gap-1.5 self-start text-sm font-medium underline-offset-2 hover:underline moh-text-muted"
-        @click="schedulePickerOpen = false"
-      >
-        <Icon name="tabler:calendar-time" class="w-4 h-4" />
-        <template v-if="scheduledCount > 0">
-          View scheduled posts
-          <span
-            class="min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-[18px] text-center tabular-nums bg-[var(--moh-premium)] text-black"
-          >
-            {{ scheduledCount > 99 ? '99+' : scheduledCount }}
-          </span>
-        </template>
-        <template v-else>You have no scheduled posts</template>
-      </NuxtLink>
-    </div>
-    <template #footer>
-      <div class="flex justify-between gap-2">
-        <Button
-          v-if="scheduledAt"
-          text
-          severity="danger"
-          label="Remove schedule"
-          size="small"
-          @click="clearSchedule"
-        />
-        <div class="flex gap-2 ml-auto">
-          <Button text severity="secondary" label="Cancel" size="small" @click="schedulePickerOpen = false" />
-          <Button label="Confirm" size="small" :disabled="!scheduledAtDraft" @click="confirmSchedule" />
-        </div>
-      </div>
-    </template>
-  </Dialog>
+  <AppComposerScheduleDialog
+    v-model:schedule-picker-open="schedulePickerOpen"
+    v-model:scheduled-at-draft="scheduledAtDraft"
+    v-model:schedule-more="scheduleMore"
+    :is-premium="isPremium"
+    :scheduled-at="scheduledAt"
+    :schedule-min-date="scheduleMinDate"
+    :schedule-max-date="scheduleMaxDate"
+    :scheduled-at-draft-is-past="scheduledAtDraftIsPast"
+    :scheduled-count="scheduledCount"
+    :format-scheduled-at="formatScheduledAt"
+    :clear-schedule="clearSchedule"
+    :confirm-schedule="confirmSchedule"
+  />
 
   <AppPostPreviewDialog
     v-if="previewOpen"
@@ -630,59 +382,15 @@
 
 <script setup lang="ts">
 import AppComposerPromptContext from '~/components/app/composer/PromptContext.vue'
-import { recordWelcomeProgress } from '~/utils/welcome-progress'
-import AppComposerActionBar from '~/components/app/composer/ActionBar.vue'
-import { makeLocalId } from '~/composables/composer/types'
-import type { CreatePostData, PostStreakReward, PostVisibility, FeedPost, PostAuthor, ScheduledPost } from '~/types/api'
-import { seedPermalinkPost } from '~/utils/permalink-seed'
-import { buildPostedToastParams } from '~/utils/posted-toast'
-import { siteConfig } from '~/config/site'
-import { VOICE } from '~/config/voice'
-import { useDestinationComposerDraft } from '~/composables/composer/useDestinationComposerDraft'
-import { destinationDraftKey } from '~/utils/channels/drafts'
-import type { CreateMediaPayload } from '~/composables/useComposerMedia'
-import { buildOptimisticPost } from '~/utils/optimistic-post'
-import { buildPostPreview } from '~/utils/post-preview'
-import { crosspostOptions, crosspostSkipMessage, xContainsLink, type CrosspostDraft, type CrosspostPayload } from '~/utils/crosspost'
-import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
-import { makePendingLocalId } from '~/composables/usePendingPostsManager'
-import {
-  PRIMARY_GROUP_SKY,
-  PRIMARY_ONLYME_PURPLE,
-  PRIMARY_PREMIUM_ORANGE,
-  PRIMARY_TEXT_DARK,
-  PRIMARY_TEXT_LIGHT,
-  PRIMARY_VERIFIED_BLUE,
-  primaryPaletteToCssVars,
-} from '~/utils/theme-tint'
-import { tinyTooltip } from '~/utils/tiny-tooltip'
-import { pollIsIncomplete } from '~/utils/composer-poll'
-import { visibilityTagLabel } from '~/utils/post-visibility'
-import { getApiErrorMessage } from '~/utils/api-error'
-import { useFormSubmit } from '~/composables/useFormSubmit'
-
-// Both of these survive SPA navigation (module-scoped) but reset on hard refresh.
-// _lastPickedScheduleTime: pre-fills the picker when "Schedule more" reopens it.
-// _scheduleMore: remembers whether the user opted into the "schedule more" loop.
-// Must be a ref so Vue's computed getter can track it reactively.
-let _lastPickedScheduleTime: Date | null = null
-const _scheduleMore = ref(false)
-
+import { usePostComposer, type PostComposerProps } from '~/composables/composer/usePostComposer'
+import type { ScheduledPost } from '~/types/api'
 
 const emit = defineEmits<{
   (e: 'handoff-chat', payload: { body: string; files: File[] }): void
-  (e: 'posted', payload: { id: string; visibility: PostVisibility; post?: import('~/types/api').FeedPost }): void
+  (e: 'posted', payload: { id: string; visibility: import('~/types/api').PostVisibility; post?: import('~/types/api').FeedPost }): void
   (e: 'edited', payload: { id: string; post: import('~/types/api').FeedPost }): void
-  /** Fired after a scheduled post is created (new). */
   (e: 'scheduled', payload: { scheduledPost: ScheduledPost }): void
-  /** Fired after an existing scheduled post is saved (edit mode). */
   (e: 'scheduled-updated', updated: ScheduledPost): void
-  /**
-   * Optimistic submission. Fired immediately when the user clicks Post (before
-   * the network call). The parent renders `optimisticPost` in its feed and
-   * runs `perform()` via `usePendingPostsManager()`. The composer is cleared
-   * by the time this fires, so the user can keep working.
-   */
   (
     e: 'pending',
     payload: {
@@ -693,1417 +401,52 @@ const emit = defineEmits<{
   ): void
 }>()
 
-const props = defineProps<{
-  /** Home-feed audience sits above the draft, beside the avatar. */
-  inlineAudience?: boolean
-  autoFocus?: boolean
-  showDivider?: boolean
-  /** Override textarea placeholder (e.g. "Reply to @john…" in reply modal). */
-  placeholder?: string
-  /** Optional initial draft text (e.g. "@username "). Applied once per mount/open. */
-  initialText?: string
-  /** Optional initial media (used for publishing from only-me drafts). */
-  initialMedia?: import('~/types/api').PostMedia[]
-  /** Files staged by OS share-in. */
-  initialFiles?: File[]
-  /** Seed the group destination without locking the picker. */
-  initialGroupId?: string | null
-  /** Show Chat in the Post to / visibility menu. */
-  showChatDestination?: boolean
-  /** Optional override for allowed visibilities (intersected with account tier rules). */
-  allowedVisibilities?: PostVisibility[]
-  /** When set, composer visibility is forced to this value (cannot be changed). */
-  lockedVisibility?: PostVisibility
-  /** Hide the visibility picker (useful with lockedVisibility). */
-  hideVisibilityPicker?: boolean
-  /** Community group wall: show group scope pill + cyan composer tint (not for replies). */
-  groupComposer?: boolean
-  /** Name shown in the scope tag when groupComposer is true. */
-  groupName?: string
-  /** Community group id — used when scheduling a group post. */
-  communityGroupId?: string | null
-  // Optional override. Return full FeedPost for replies (so it can be rendered immediately).
-  createPost?: (body: string, visibility: PostVisibility, media: CreateMediaPayload[], poll?: ComposerPollPayload | null) => Promise<{ id: string } | import('~/types/api').FeedPost | null>
-  // When set, composer is in reply mode: visibility fixed to parent, parent_id + mentions sent.
-  replyTo?: {
-    parentId: string
-    visibility: PostVisibility
-    mentionUsernames: string[]
-    /** Community group thread: show this label with group styling instead of e.g. "Public". */
-    groupDisplayName?: string | null
-  }
-  /** When true, use compact top padding for thread/reply modal layout (connects with thread line). */
-  inReplyThread?: boolean
-  /** Optional fixed footer owned by a modal; keeps actions outside its scrolling draft. */
-  actionsTarget?: HTMLElement | null
-  /** Mobile full-screen replies place their primary action in the header. */
-  submitTarget?: HTMLElement | null
-  /** When true, omit the avatar (used when parent renders avatar in shared thread column). */
-  omitAvatar?: boolean
-  /** When set, composer is in edit mode (PATCH post). */
-  mode?: 'create' | 'edit'
-  /** Required when mode is edit. */
-  editPostId?: string
-  /** True when the edited post is a draft (only-me notes use /drafts/:id). */
-  editPostIsDraft?: boolean
-  /** When true, hide/disable all media capabilities (used for v1 post editing). */
-  disableMedia?: boolean
-  /** When true, hide poll controls (e.g. community groups disallow polls). */
-  disablePoll?: boolean
-  /** When false, success toast will not link to the new post. */
-  successToPermalink?: boolean
-  /** When false, do not register with the global unsaved-draft guard. */
-  registerUnsavedGuard?: boolean
-  /**
-   * When set, persist this composer draft (text + media) in-memory across SPA navigation.
-   * This survives route changes and modal open/close, but NOT a browser refresh.
-   */
-  persistKey?: string
-  /**
-   * When set, the composer is in quote-repost mode. The post is displayed as a
-   * locked embedded preview (cannot be removed). Its URL is appended to the body
-   * on submit. The textarea is left empty for the user's own text.
-   */
-  quotedPost?: import('~/types/api').FeedPost | null
-  /**
-   * Opt out of optimistic background posting. When false (default), creating
-   * a new post fires a `pending` event immediately, clears the composer, and
-   * lets the parent handle insertion + retry/discard via
-   * `usePendingPostsManager`. When true, the composer awaits the create call
-   * synchronously and shows a loading spinner (legacy behavior — used for
-   * flows where the parent cannot show an optimistic row, e.g. publishing
-   * from an only-me draft to a different page).
-   */
-  syncSubmit?: boolean
-  /** Home composer only: avatar status bubble opens the status editor instead of read-only status. */
-  enableAvatarStatusEditor?: boolean
-  /**
-   * When set, composer is in "edit scheduled post" mode.
-   * Submitting PATCHes /posts/scheduled/:id instead of creating a new post.
-   */
-  editScheduledId?: string
-  /**
-   * Pre-fill poll from an existing scheduled post.
-   * Shape mirrors ScheduledPollPreviewDto: { options: {text}[], durationHours: number }.
-   */
-  initialPoll?: { options: Array<{ text: string }>; durationHours: number } | null
-  /** Pre-fill visibility picker for scheduled-post editing. */
-  initialVisibility?: import('~/types/api').PostVisibility
-  /** Pre-fill the scheduled time chip (ISO string). */
-  initialScheduledAt?: string
-  initialCrosspost?: CrosspostPayload
-  /**
-   * Shows the full-width daily prompt above the answer editor, with prompt-specific
-   * typography and spacing. The question stays separate from the writing placeholder.
-   */
-  checkinPrompt?: string
-}>()
-
-const route = useRoute()
-const { user, me, isAuthed, isPremium, isVerified: viewerIsVerified, isVerifiedMember } = useAuth()
-const { apiFetchData } = useApiClient()
-const { getUserStatus, setMyStatus, editMyStatus, clearMyStatus } = usePresence()
-
-// Group audience picker — lets viewer target one of their groups when composing from the main feed.
-// Only used when `props.communityGroupId` is not already set (group-wall context already pins it).
-const selectedGroupId = ref<string | null>(null)
-const { groups: myGroups, loading: myGroupsLoading, error: myGroupsError, load: loadSharedMyGroups } = useMyGroups()
-const effectiveGroupId = computed(() => selectedGroupId.value ?? props.communityGroupId ?? null)
-const canChooseGroup = computed(() => mode.value === 'create' && !props.replyTo && !props.quotedPost && !props.communityGroupId && !props.lockedVisibility && !props.checkinPrompt && viewerIsVerified.value)
-const selectedGroupReadLabel = computed(() => {
-  const group = myGroups.value.find(group => group.id === effectiveGroupId.value)
-  return group?.joinPolicy === 'open' ? 'Verified members can read' : 'Visibility set by group'
-})
-
-async function loadMyGroups() {
-  if (props.communityGroupId) return
-  try {
-    await loadSharedMyGroups()
-  } catch {
-    // The picker can remain empty; a later open retries through the shared cache.
-  }
-}
-
-const { rememberFeed, rememberGroup } = useShareDestination()
-
-function selectDestinationVisibility(value: PostVisibility) {
-  if (submitting.value || composerUploading.value) return
-  visibility.value = value
-  selectGroup(null)
-}
-
-function selectGroup(id: string | null) {
-  if (submitting.value || composerUploading.value) return
-  selectedGroupId.value = id
-  if (id) {
-    const name = myGroups.value.find((group) => group.id === id)?.name
-    rememberGroup(id, name)
-  } else {
-    rememberFeed(visibility.value)
-  }
-}
-const toast = useAppToast()
-
-// Shared count of the user's scheduled posts — drives the badge on the
-// Schedule button and the "View scheduled posts" link inside the picker.
-const { count: scheduledCount, increment: incScheduledCount, refresh: refreshScheduledCount } = useScheduledPostsCount()
-
-const STREAK_MULTIPLIER_MILESTONES = new Set([8, 15, 22])
-function pushStreakToast(reward: PostStreakReward) {
-  const isMilestone = STREAK_MULTIPLIER_MILESTONES.has(reward.streakDays)
-  const coinWord = reward.coinsEarned === 1 ? 'coin' : 'coins'
-  if (isMilestone) {
-    toast.push({
-      title: `Streak milestone! Day ${reward.streakDays}`,
-      message: `Your multiplier is now ${reward.multiplier}x — you earned ${reward.coinsEarned} ${coinWord} today!`,
-      tone: 'success',
-      to: '/coins',
-      durationMs: 4000,
-    })
-  } else {
-    toast.push({
-      title: `+${reward.coinsEarned} ${coinWord} from your streak`,
-      message: `Day ${reward.streakDays} · ${reward.multiplier}x multiplier`,
-      tone: 'success',
-      to: '/coins',
-      durationMs: 3000,
-    })
-  }
-}
-
-const mode = computed(() => props.mode ?? 'create')
-const editPostId = computed(() => (props.editPostId ?? '').trim() || null)
-const editPostIsDraft = computed(() => Boolean(props.editPostIsDraft))
-
-// ─── Scheduled posts ──────────────────────────────────────────────────────────
-/** Confirmed scheduled publish time (null = not scheduled). */
-const scheduledAt = ref<Date | null>(null)
-/** Draft value in the picker dialog before user confirms. */
-const scheduledAtDraft = ref<Date | null>(null)
-const schedulePickerOpen = ref(false)
-useOverlayDismiss(schedulePickerOpen, () => (schedulePickerOpen.value = false))
-/** When true, keeps the scheduled time after posting so the user can queue another immediately. */
-const scheduleMore = computed({
-  get: () => _scheduleMore.value,
-  set: (v: boolean) => { _scheduleMore.value = v },
-})
-/**
- * When set, submitting PATCHes PATCH /posts/scheduled/:id.
- * Only set when parent passes editScheduledId (edit scheduled post flow).
- */
-const scheduledEditId = computed(() => (props.editScheduledId ?? '').trim() || null)
-
-const scheduleMinDate = computed(() => {
-  const d = new Date()
-  d.setMinutes(d.getMinutes() + 5)
-  return d
-})
-
-const scheduleMaxDate = computed(() => {
-  const d = new Date()
-  d.setDate(d.getDate() + 60)
-  return d
-})
-
-function formatScheduledAt(d: Date | null): string {
-  if (!d) return ''
-  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
-}
-
-const scheduledAtDisplay = computed(() => formatScheduledAt(scheduledAt.value))
-const scheduledAtDraftIsPast = computed(() => Boolean(scheduledAtDraft.value && scheduledAtDraft.value.getTime() <= Date.now()))
-
-function openSchedulePicker() {
-  if (!isPremium.value) {
-    useSchedulePremiumModal().show()
-    return
-  }
-  // Make sure the picker's "View scheduled posts" count is fresh.
-  refreshScheduledCount()
-  if (scheduledAt.value) {
-    // Editing an already-confirmed schedule.
-    scheduledAtDraft.value = new Date(scheduledAt.value)
-  } else if (_lastPickedScheduleTime) {
-    // "Schedule more" flow — keep the last chosen time so user only tweaks it.
-    scheduledAtDraft.value = new Date(_lastPickedScheduleTime)
-  } else {
-    // First time — default to 5 minutes from now.
-    const d = new Date()
-    d.setMinutes(d.getMinutes() + 5, 0, 0)
-    scheduledAtDraft.value = d
-  }
-  schedulePickerOpen.value = true
-}
-
-function confirmSchedule() {
-  if (!scheduledAtDraft.value) return
-  scheduledAt.value = scheduledAtDraft.value
-  _lastPickedScheduleTime = new Date(scheduledAtDraft.value)
-  schedulePickerOpen.value = false
-}
-
-function clearSchedule() {
-  scheduledAt.value = null
-  scheduledAtDraft.value = null
-  // _lastPickedScheduleTime intentionally kept — survives until hard refresh.
-  schedulePickerOpen.value = false
-}
-
-function toScheduledPollBody(payload: ComposerPollPayload) {
-  const durationHours = Math.max(1, payload.duration.days * 24 + payload.duration.hours + Math.round(payload.duration.minutes / 60))
-  return {
-    options: payload.options.map((o) => ({ text: o.text })),
-    durationHours,
-  }
-}
-
-async function performSchedule(submitBody: string, vis: PostVisibility, mediaPayload: CreateMediaPayload[], pollPayload: ComposerPollPayload | null) {
-  const targetAt = scheduledAt.value
-  if (!targetAt) throw new Error('No schedule time set.')
-  const groupId = effectiveGroupId.value
-  const body = {
-    body: submitBody,
-    visibility: vis,
-    scheduled_at: targetAt.toISOString(),
-    crosspost: crosspostChoice.value,
-    ...(mediaPayload.length ? { media: mediaPayload } : {}),
-    ...(pollPayload ? { poll: toScheduledPollBody(pollPayload) } : {}),
-    ...(groupId ? { community_group_id: groupId } : {}),
-  }
-  return apiFetchData<ScheduledPost>('/posts/scheduled', { method: 'POST', body })
-}
-const disableMedia = computed(() =>
-  Boolean(props.disableMedia) ||
-  // Regular edit: disable media unless editing a draft. Scheduled-edit re-enables it.
-  (mode.value === 'edit' && !editPostIsDraft.value && !scheduledEditId.value),
-)
-const disablePoll = computed(() => Boolean(props.disablePoll))
-const showDivider = computed(() => props.showDivider !== false)
-// Setting your own status is a verified-only engagement feature; unverified
-// users see the read-only avatar status instead of the editor affordance.
-const enableAvatarStatusEditor = computed(() => Boolean(props.enableAvatarStatusEditor) && isVerifiedMember.value)
-const statusEditorOpen = ref(false)
-const statusDraft = ref('')
-const statusSaving = ref(false)
-const statusError = ref<string | null>(null)
-const activeStatus = computed(() => {
-  const id = user.value?.id
-  return id ? getUserStatus(id) : null
-})
-
-function openStatusEditor() {
-  if (!enableAvatarStatusEditor.value) return
-  statusDraft.value = activeStatus.value?.text ?? ''
-  statusError.value = null
-  statusEditorOpen.value = true
-}
-
-function closeStatusEditor() {
-  statusEditorOpen.value = false
-  statusError.value = null
-}
-
-async function saveStatus(opts?: { durationHours?: 1 | 3 | 6 | 12 | 24; createsPost?: boolean }) {
-  const text = statusDraft.value.trim()
-  if (!text) return
-  statusSaving.value = true
-  statusError.value = null
-  try {
-    await setMyStatus(text, opts)
-    closeStatusEditor()
-  } catch (e) {
-    statusError.value = getApiErrorMessage(e) || 'Could not save status.'
-  } finally {
-    statusSaving.value = false
-  }
-}
-
-async function editStatus() {
-  const text = statusDraft.value.trim()
-  if (!text) return
-  statusSaving.value = true
-  statusError.value = null
-  try {
-    await editMyStatus(text)
-    closeStatusEditor()
-  } catch (e) {
-    statusError.value = getApiErrorMessage(e) || 'Could not update status.'
-  } finally {
-    statusSaving.value = false
-  }
-}
-
-async function clearStatus() {
-  if (!activeStatus.value) return
-  statusSaving.value = true
-  statusError.value = null
-  try {
-    await clearMyStatus()
-    statusDraft.value = ''
-    closeStatusEditor()
-  } catch (e) {
-    statusError.value = getApiErrorMessage(e) || 'Could not clear status.'
-  } finally {
-    statusSaving.value = false
-  }
-}
-
-function onStatusEditorKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') closeStatusEditor()
-}
-
-if (import.meta.client) {
-  watch(statusEditorOpen, (open) => {
-    if (open) document.addEventListener('keydown', onStatusEditorKeydown)
-    else document.removeEventListener('keydown', onStatusEditorKeydown)
-  })
-  onBeforeUnmount(() => document.removeEventListener('keydown', onStatusEditorKeydown))
-}
-
-const quotedPost = computed(() => props.quotedPost ?? null)
-const quotedPostUrl = computed(() => {
-  const pid = quotedPost.value?.id
-  if (!pid) return null
-  return `${siteConfig.url}/p/${encodeURIComponent(pid)}`
-})
-
-const persistKey = computed(() => {
-  if (!import.meta.client || !user.value?.id || mode.value !== 'create' || props.checkinPrompt || props.quotedPost) return null
-  return destinationDraftKey({ identity: user.value.id, surface: 'post', destination: effectiveGroupId.value ? `group:${effectiveGroupId.value}` : `feed:${effectiveVisibility.value}`, root: props.replyTo?.parentId })
-})
-
-const myProfilePath = computed(() => {
-  const username = (user.value?.username ?? '').trim()
-  return username ? `/u/${encodeURIComponent(username)}` : null
-})
-const draft = ref('')
-const composerEditorEl = ref<{ focus: () => void; insertAtCursor: (text: string) => void; clear: () => void } | null>(null)
-useJourneyReady('composer_ready', () => Boolean(composerEditorEl.value) && !submitting.value, {
-  source: () => 'local',
-})
-const emojiPickerEl = ref<{ close: () => void } | null>(null)
-const initialTextApplied = ref(false)
-
-/** Hashtag color passed to StyledTextarea, derived from effective visibility. */
-const composerHashtagColor = computed(() => {
-  if (useGroupScopeChrome.value) return 'var(--moh-group)'
-  const v = effectiveVisibility.value
-  if (v === 'premiumOnly') return 'var(--moh-premium)'
-  if (v === 'verifiedOnly') return 'var(--moh-verified)'
-  if (v === 'onlyMe') return 'var(--moh-onlyme)'
-  // Regular/public posts: muted gray that matches the rendered post body.
-  return 'var(--moh-hashtag-muted)'
-})
-
-function onDraftChange(value: string) {
-  draft.value = value
-}
-
-function insertEmoji(emoji: string) {
-  const e = (emoji ?? '').trim()
-  if (!e) return
-  composerEditorEl.value?.insertAtCursor(e)
-}
-
-type ComposerPollPayload = import('~/composables/composer/types').ComposerPollPayload
-const poll = ref<ComposerPollPayload | null>(null)
-const hasPoll = computed(() => poll.value != null)
-const pollIncomplete = computed(() => pollIsIncomplete(poll.value))
-const pollUploading = ref(false)
-const pollHasFailed = ref(false)
-function onPollStatus(v: { uploading: boolean; hasFailed: boolean }) {
-  pollUploading.value = Boolean(v?.uploading)
-  pollHasFailed.value = Boolean(v?.hasFailed)
-}
-
+const props = defineProps<PostComposerProps>()
 const {
-  composerMedia,
-  restoreDraftMedia,
-  canAddMoreMedia,
-  remainingMediaSlots,
-  displaySlots,
-  firstEmptySlotIndex,
-  composerUploading,
-  composerUploadStatusLabel,
-  mediaFileInputEl,
-  openMediaPicker,
-  onMediaFilesSelected,
-  removeComposerMedia,
-  patchComposerMedia,
-  draggingMediaId,
-  dragGhost,
-  dragGhostStyle,
-  dropOverlayVisible,
-  onComposerAreaDragEnter,
-  onComposerAreaDragOver,
-  onComposerAreaDragLeave,
-  onComposerDrop,
-  onComposerPaste,
-  ingestMediaFiles,
-  onMediaTilePointerDown,
-  giphyOpen,
-  giphyQuery,
-  giphyLoading,
-  giphyError,
-  giphyItems,
-  giphyInputRef,
-  openGiphyPicker,
-  searchGiphy,
-  selectGiphyGif,
-  toCreatePayload,
-  clearAll,
-} = useComposerMedia({
-  maxSlots: 4,
-  canAcceptImages: computed(() => Boolean(viewerIsVerified.value && !disableMedia.value && !hasPoll.value)),
-  canAcceptVideo: computed(() => Boolean(isPremium.value && !disableMedia.value && !hasPoll.value)),
-  onMediaRejectedNeedPremium: () => {
-    if (disableMedia.value) return
-    usePremiumMediaModal().show()
-  },
-})
+  user, isAuthed, isPremium, viewerIsVerified, mode, disableMedia, disablePoll, showDivider,
+  enableAvatarStatusEditor, quotedPost, myProfilePath, draft, composerEditorEl,
+  poll, hasPoll, pollIncomplete, pollUploading, pollHasFailed, onPollStatus, onUpdatePoll, clearPoll,
+  onClickAddPoll, selectedGroupId, myGroups, myGroupsLoading, myGroupsError, effectiveGroupId,
+  canChooseGroup, selectedGroupReadLabel, loadMyGroups, visibility, selectDestinationVisibility,
+  selectGroup, allowedComposerVisibilities, effectiveVisibility, showChatDestination,
+  showVisibilityPicker, showGroupScopeIcon, scopeTagLabel, scopeTagTooltip, scheduledAt,
+  scheduledAtDraft, schedulePickerOpen, scheduleMore, scheduledEditId, scheduleMinDate, scheduleMaxDate,
+  formatScheduledAt, scheduledAtDisplay, scheduledAtDraftIsPast, openSchedulePicker, confirmSchedule,
+  clearSchedule, statusEditorOpen, statusDraft, statusSaving, statusError, activeStatus,
+  openStatusEditor, closeStatusEditor, saveStatus, editStatus, clearStatus, composerHashtagColor,
+  composerUploadBarColor, scheduleAccentColor, composerTextareaVars, postButtonClass, composerMedia,
+  canAddMoreMedia, remainingMediaSlots, displaySlots, firstEmptySlotIndex, composerUploading,
+  composerUploadStatusLabel, mediaFileInputEl, openMediaPicker, onMediaFilesSelected,
+  removeComposerMedia, draggingMediaId, dragGhost, dragGhostStyle, dropOverlayVisible,
+  onComposerAreaDragEnter, onComposerAreaDragOver, onComposerAreaDragLeave, onComposerDrop,
+  onComposerPaste, ingestMediaFiles, onMediaTilePointerDown, giphyOpen, giphyQuery, giphyLoading,
+  giphyError, giphyItems, giphyInputRef, searchGiphy, selectGiphyGif, scheduledCount,
+  destinationDrafts, hasEditChanges, canPost, composerHasFailedMedia, postMaxLen, postCharCount,
+  composerPlaceholder, composerAcceptTypes, previewOpen, previewPost, previewDestinations,
+  onPreviewConfirm, submitting, submitError, submit, crosspostChoice, onDraftChange, insertEmoji,
+  onUpdateAltText, onClickAddMedia, onClickAddGiphy, handoffToChat, loginTo, showLoginPrompt,
+  clearComposer, focus, draftText, draftSnapshot, hasUnsavedContent, setEmojiPickerEl,
+} = usePostComposer(props, emit)
 
-const initialFilesApplied = ref(false)
-const initialGroupApplied = ref(false)
+const { inlineAudience, checkinPrompt, omitAvatar, inReplyThread, replyTo, autoFocus, actionsTarget, submitTarget } = toRefs(props)
 
-function seedInitialFilesIfNeeded() {
-  if (initialFilesApplied.value || disableMedia.value) return
-  const files = Array.isArray(props.initialFiles) ? props.initialFiles.filter(Boolean) : []
-  initialFilesApplied.value = true
-  if (!files.length) return
-  ingestMediaFiles(files, 'picker')
-}
-
-function seedInitialGroupIfNeeded() {
-  if (initialGroupApplied.value) return
-  initialGroupApplied.value = true
-  const id = (props.initialGroupId ?? '').trim()
-  if (!id || props.communityGroupId) return
-  selectedGroupId.value = id
-  rememberGroup(id)
-}
-
-function handoffToChat() {
-  const files = composerMedia.value
-    .map((item) => item.file)
-    .filter((file): file is File => file instanceof File)
-  emit('handoff-chat', { body: draft.value, files })
-}
-
-function seedInitialMediaIfNeeded() {
-  if (disableMedia.value) return
-  const items = Array.isArray(props.initialMedia) ? props.initialMedia : null
-  if (!items || items.length === 0) return
-  // Only seed into an empty composer to avoid clobbering user changes.
-  if ((composerMedia.value?.length ?? 0) > 0) return
-
-  const seeded = items
-    .filter((m) => m && !m.deletedAt)
-    .slice(0, 4)
-    .map((m) => {
-      const isVideo = m.kind === 'video'
-      const previewUrl = isVideo ? (m.thumbnailUrl || m.url) : m.url
-      return {
-        localId: makeLocalId(),
-        source: m.source,
-        kind: m.kind,
-        previewUrl,
-        url: m.source === 'giphy' ? m.url : undefined,
-        mp4Url: m.mp4Url ?? undefined,
-        width: m.width ?? null,
-        height: m.height ?? null,
-        durationSeconds: (m as any).durationSeconds ?? null,
-        altText: m.alt ?? null,
-        existingId: m.id,
-        uploadStatus: 'done',
-      }
-    })
-
-  composerMedia.value = seeded as any
-}
-
-function onClickAddMedia() {
-  if (disableMedia.value) return
-  if (hasPoll.value) return
-  if (!viewerIsVerified.value) {
-    toast.push({ title: 'Verify your account to post images and GIFs', to: '/tiers', durationMs: 3000 })
-    return
-  }
-  openMediaPicker()
-}
-
-function onClickAddGiphy() {
-  if (disableMedia.value) return
-  if (hasPoll.value) return
-  if (!viewerIsVerified.value) {
-    toast.push({ title: 'Verify your account to use GIF search', to: '/tiers', durationMs: 3000 })
-    return
-  }
-  openGiphyPicker()
-}
-
-function clearPoll() {
-  poll.value = null
-  pollUploading.value = false
-  pollHasFailed.value = false
-}
-
-function onUpdatePoll(v: ComposerPollPayload) {
-  poll.value = v
-}
-
-function onClickAddPoll() {
-  if (disableMedia.value) return
-  if (props.replyTo) return
-  if (hasPoll.value) return
-  if (!viewerIsVerified.value) {
-    toast.push({ title: 'Verify your account to create polls', to: '/tiers', durationMs: 3000 })
-    return
-  }
-  if (composerMedia.value.length > 0) return
-  poll.value = {
-    options: [
-      { text: '', image: null },
-      { text: '', image: null },
-    ],
-    duration: { days: 1, hours: 0, minutes: 0 },
-  }
-}
-
-const composerAcceptTypes = computed(
-  () => 'image/*,video/mp4,video/quicktime,video/webm,video/x-m4v',
+const submitLabel = computed(() =>
+  mode.value === 'edit' && scheduledEditId.value
+    ? 'Save'
+    : (scheduledAt.value ? 'Schedule' : (mode.value === 'edit' ? 'Save' : (replyTo.value ? 'Reply' : (checkinPrompt.value ? 'Post answer' : 'Post')))),
 )
-
-// Visibility + rules
-const { visibility } = useComposerVisibility()
-
-watch(visibility, (vis) => {
-  if (selectedGroupId.value || props.communityGroupId) return
-  rememberFeed(vis)
-})
-
-const lockedVisibility = computed<PostVisibility | null>(() => props.lockedVisibility ?? null)
-
-const allowedComposerVisibilities = computed<PostVisibility[]>(() => {
-  if (!isAuthed.value) return ['public']
-  if (lockedVisibility.value) return [lockedVisibility.value]
-
-  const tierAllowed: PostVisibility[] = !viewerIsVerified.value
-    ? ['onlyMe']
-    : (isPremium.value ? ['public', 'verifiedOnly', 'premiumOnly', 'onlyMe'] : ['public', 'verifiedOnly', 'onlyMe'])
-
-  const propAllowed = Array.isArray(props.allowedVisibilities) ? props.allowedVisibilities : null
-  if (!propAllowed) return tierAllowed
-
-  const propSet = new Set(propAllowed)
-  const intersected = tierAllowed.filter((v) => propSet.has(v))
-  // If the parent passes a restrictive list that removes all allowed visibilities,
-  // fall back to the first requested option (or public) so state stays valid (posting will be disabled by `canPost`).
-  if (!intersected.length) return [propAllowed[0] ?? 'public']
-  return intersected
-})
-
-watch(
-  allowedComposerVisibilities,
-  (allowed) => {
-    // In locked mode, effective visibility is forced and we should not mutate the user's cookie.
-    if (lockedVisibility.value) return
-    const set = new Set(allowed)
-    if (!set.has(visibility.value)) visibility.value = allowed[0] ?? 'public'
-  },
-  { immediate: true },
-)
-
-const effectiveVisibility = computed(() =>
-  effectiveGroupId.value || props.replyTo?.groupDisplayName ? 'verifiedOnly' : (props.replyTo?.visibility ?? lockedVisibility.value ?? visibility.value),
-)
-
-const replyGroupDisplayLabel = computed(() => (props.replyTo?.groupDisplayName ?? '').trim())
-const replyShowsGroupScope = computed(() => Boolean(replyGroupDisplayLabel.value))
-/** Group wall composer or reply inside a community group thread — shared chrome (pill, tint, button). */
-const useGroupScopeChrome = computed(
-  () => Boolean(effectiveGroupId.value || props.replyTo?.groupDisplayName || props.groupComposer) || replyShowsGroupScope.value,
-)
-
-const showChatDestination = computed(() => {
-  if (!props.showChatDestination) return false
-  if (props.replyTo || props.quotedPost || props.checkinPrompt) return false
-  if (props.communityGroupId || props.groupComposer) return false
-  return mode.value === 'create'
-})
-
-const showVisibilityPicker = computed(() => {
-  if (props.replyTo) return false
-  if (props.hideVisibilityPicker || effectiveGroupId.value) return false
-  if (lockedVisibility.value) return false
-  return true
-})
-const showGroupScopeIcon = computed(() => useGroupScopeChrome.value)
-
-const scopeTagLabel = computed(() => {
-  if (props.groupComposer && !props.replyTo) return props.groupName || 'Group'
-  if (replyShowsGroupScope.value) return replyGroupDisplayLabel.value
-  return visibilityTagLabel(effectiveVisibility.value) ?? 'Public'
-})
-const scopeTagTooltip = computed(() => {
-  if (useGroupScopeChrome.value) {
-    return tinyTooltip('Visible to members of this group only')
-  }
-  const v = effectiveVisibility.value
-  if (v === 'verifiedOnly') return tinyTooltip('Visible to verified members')
-  if (v === 'premiumOnly') return tinyTooltip('Visible to premium members')
-  if (v === 'onlyMe') return tinyTooltip('Visible only to you')
-  return tinyTooltip('Visible to everyone')
-})
-
-// Upload bar fill color matches effective visibility (parent tier when replying).
-const composerUploadBarColor = computed(() => {
-  if (useGroupScopeChrome.value) return 'var(--moh-group)'
-  const v = effectiveVisibility.value
-  if (v === 'verifiedOnly') return 'var(--moh-verified)'
-  if (v === 'premiumOnly') return 'var(--moh-premium)'
-  if (v === 'onlyMe') return 'var(--moh-onlyme)'
-  return 'var(--p-primary-color)'
-})
-
-/** Color for schedule-related UI (top-row time label + bottom calendar icon) when a time is set.
- *  Public posts use default text color (no override); tiers get their brand color. */
-const scheduleAccentColor = computed<string | null>(() => {
-  if (!scheduledAt.value) return null
-  if (useGroupScopeChrome.value) return 'var(--moh-group)'
-  const v = effectiveVisibility.value
-  if (v === 'verifiedOnly') return 'var(--moh-verified)'
-  if (v === 'premiumOnly') return 'var(--moh-premium)'
-  if (v === 'onlyMe') return 'var(--moh-onlyme)'
-  return null // public: inherit default text color
-})
-
-// Composer tint CSS for moh-composer-tint class (beats global theme overrides).
-const composerTintCss = computed(() => {
-  const baseSel = 'html .moh-composer-tint'
-  const darkSel = 'html.dark .moh-composer-tint'
-  if (useGroupScopeChrome.value) {
-    return (
-      primaryPaletteToCssVars(PRIMARY_GROUP_SKY, baseSel) +
-      primaryPaletteToCssVars(PRIMARY_GROUP_SKY, darkSel)
-    )
-  }
-  const v = effectiveVisibility.value
-  if (v === 'verifiedOnly') {
-    return primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, baseSel) + primaryPaletteToCssVars(PRIMARY_VERIFIED_BLUE, darkSel)
-  }
-  if (v === 'premiumOnly') {
-    return primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, baseSel) + primaryPaletteToCssVars(PRIMARY_PREMIUM_ORANGE, darkSel)
-  }
-  if (v === 'onlyMe') {
-    return primaryPaletteToCssVars(PRIMARY_ONLYME_PURPLE, baseSel) + primaryPaletteToCssVars(PRIMARY_ONLYME_PURPLE, darkSel)
-  }
-  return primaryPaletteToCssVars(PRIMARY_TEXT_LIGHT, baseSel) + primaryPaletteToCssVars(PRIMARY_TEXT_DARK, darkSel)
-})
-useHead({ style: [{ key: 'moh-composer-tint', textContent: () => composerTintCss.value }] })
-
-// Textarea styling (uses effective visibility so reply composer matches parent tier).
-const isDarkMode = computed(() => Boolean(useColorMode().value === 'dark'))
-const composerTextareaVars = computed<Record<string, string>>(() => {
-  if (useGroupScopeChrome.value) {
-    return { '--moh-compose-accent': 'var(--moh-group)', '--moh-compose-ring': 'var(--moh-group-ring)' }
-  }
-  const v = effectiveVisibility.value
-  if (v === 'verifiedOnly') return { '--moh-compose-accent': 'var(--moh-verified)', '--moh-compose-ring': 'var(--moh-verified-ring)' }
-  if (v === 'premiumOnly') return { '--moh-compose-accent': 'var(--moh-premium)', '--moh-compose-ring': 'var(--moh-premium-ring)' }
-  if (v === 'onlyMe') return { '--moh-compose-accent': 'var(--moh-onlyme)', '--moh-compose-ring': 'var(--moh-onlyme-ring)' }
-  return isDarkMode.value
-    ? { '--moh-compose-accent': 'rgba(255, 255, 255, 0.85)', '--moh-compose-ring': 'rgba(255, 255, 255, 0.25)' }
-    : { '--moh-compose-accent': 'rgba(0, 0, 0, 0.85)', '--moh-compose-ring': 'rgba(0, 0, 0, 0.18)' }
-})
-
-const postMaxLen = computed(() => (isPremium.value ? 1000 : 500))
-const composerPlaceholder = computed(
-  () =>
-    (props.checkinPrompt ? 'Write your answer…' : props.placeholder) ??
-    (props.replyTo ? 'Post your reply…' : (hasPoll.value ? 'Ask a question' : VOICE.feed.postHeading)),
-)
-const postCharCount = computed(() => draft.value.length)
-
-function onUpdateAltText(localId: string, value: string) {
-  patchComposerMedia(localId, { altText: value })
-}
-
-/** True when the composer has draft text or media (for "discard?" confirm before link nav). */
-const hasEditChanges = computed(() => draft.value.trim() !== (props.initialText ?? '').trim())
-const hasUnsavedContent = computed(
-  () => (draft.value?.trim() ?? '') !== '' || (composerMedia.value?.length ?? 0) > 0 || hasPoll.value,
-)
-
-function draftSnapshot(): import('~/composables/useUnsavedDraftGuard').UnsavedDraftSnapshot {
-  return {
-    body: String(draft.value ?? ''),
-    media: toCreatePayload(composerMedia.value ?? []),
-  }
-}
-
-function clearComposer() {
-  composerEditorEl.value?.clear()
-  draft.value = ''
-  clearAll()
-  clearPoll()
-}
-
-function focus() {
-  nextTick(() => {
-    composerEditorEl.value?.focus()
-  })
-}
-
-/** Expose draft text as a readonly string ref for consumers that need to watch typing (e.g. ReplyModal typing presence). */
-const draftText = computed(() => draft.value)
-
-const shouldRegisterUnsavedGuard = computed(() =>
-  // Register for create + reply composers so refresh/close warns about losing work.
-  props.registerUnsavedGuard !== false && mode.value === 'create',
-)
-
-let unregisterUnsavedGuard: (() => void) | null = null
-const unsavedGuardId =
-  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? `composer:${crypto.randomUUID()}`
-    : `composer:${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
-
-function registerUnsavedGuardIfNeeded() {
-  if (!import.meta.client) return
-  if (!shouldRegisterUnsavedGuard.value) return
-  if (unregisterUnsavedGuard) return
-  const { register } = useUnsavedDraftGuard()
-  unregisterUnsavedGuard = register({
-    id: unsavedGuardId,
-    hasUnsaved: () => Boolean(hasUnsavedContent.value) && (!persistKey.value || !destinationDrafts.saved.value),
-    snapshot: () => draftSnapshot(),
-    clear: () => clearComposer(),
-  })
-}
-
-onMounted(() => {
-  registerUnsavedGuardIfNeeded()
-  if (isAuthed.value && mode.value === 'create' && !props.replyTo) {
-    if (!pickaxIntegration.status.value) void pickaxIntegration.refresh()
-    if (!xIntegration.status.value) void xIntegration.refresh()
-  }
-  if (isAuthed.value && !props.communityGroupId) {
-    loadMyGroups()
-  }
-})
-
-onActivated(() => {
-  // Keepalive pages can deactivate/activate; ensure guard stays registered.
-  registerUnsavedGuardIfNeeded()
-  // If the component was kept alive and re-activated, ensure we rehydrate from cache if needed.
-  void destinationDrafts.persist()
-  if (isAuthed.value && !props.communityGroupId) void loadMyGroups()
-})
-
-onBeforeUnmount(() => {
-  unregisterUnsavedGuard?.()
-  unregisterUnsavedGuard = null
-})
-
-const crosspostChoice = ref<CrosspostPayload>(props.initialCrosspost ?? {})
-const destinationDrafts = useDestinationComposerDraft({
-  key: persistKey,
-  hasContent: () => hasUnsavedContent.value,
-  preserveInitial: () => Boolean(props.initialText || props.initialMedia?.length || props.initialFiles?.length),
-  snapshot: () => ({
-    body: draft.value,
-    media: composerMedia.value.map(item => {
-      const { abortController: _abort, ...media } = toRaw(item)
-      return { ...media, previewUrl: media.previewUrl?.startsWith('blob:') ? '' : media.previewUrl }
-    }),
-    poll: poll.value ? JSON.parse(JSON.stringify(poll.value)) as ComposerPollPayload : null,
-    scheduledAt: scheduledAt.value?.toISOString() ?? null,
-    crosspost: { ...crosspostChoice.value },
-  }),
-  restore: value => {
-    clearAll()
-    draft.value = value?.body ?? ''
-    restoreDraftMedia(value?.media ?? [])
-    poll.value = value?.poll ?? null
-    scheduledAt.value = value?.scheduledAt ? new Date(value.scheduledAt) : null
-    crosspostChoice.value = value?.crosspost ?? {}
-  },
-})
-
-const canPost = computed(() => Boolean(!destinationDrafts.loading.value && isAuthed.value && (viewerIsVerified.value || effectiveVisibility.value === 'onlyMe')))
-
-/** True when any upload slot is in error state; user must remove before posting. */
-const composerHasFailedMedia = computed(
-  () => composerMedia.value?.some((m) => m.source === 'upload' && m.uploadStatus === 'error') ?? false,
-)
-
-const postButtonClass = computed(() => {
-  if (props.checkinPrompt) return 'moh-btn-tone !border-[var(--moh-checkin)] !bg-[var(--moh-checkin)] !text-white'
-  if (replyShowsGroupScope.value) {
-    return 'moh-btn-tone !border-[color:var(--moh-group)] !bg-[color:var(--moh-group)] !text-white'
-  }
-  const v = effectiveVisibility.value
-  if (v === 'verifiedOnly') return 'moh-btn-verified moh-btn-tone'
-  if (v === 'premiumOnly') return 'moh-btn-premium moh-btn-tone'
-  if (v === 'onlyMe') return 'moh-btn-onlyme moh-btn-tone'
-  return '!border-[color:var(--moh-button-primary-fill)] !bg-[var(--moh-button-primary-fill)] !text-[var(--moh-button-primary-label)]'
-})
-
-/**
- * Optimistic create is the default for new top-level posts. The composer
- * fires `pending` (with an optimistic FeedPost + a `perform` callback) and
- * clears immediately so the user can keep using the app. The parent inserts
- * the optimistic row into its feed and routes the perform call through
- * `usePendingPostsManager`, which surfaces failures via a persistent toast
- * with Retry / Discard.
- *
- * Non-optimistic paths that still await the network call (so they can show a
- * spinner + inline error):
- *   - Edit mode (PATCH).
- *   - syncSubmit prop = true (escape hatch for unusual flows).
- *   - createPost override (caller wants direct control of the network call).
- *
- * Replies use the optimistic path too: the composer fires `pending` (with the
- * optimistic FeedPost carrying `parentId`), the reply modal forwards it to a
- * registered handler, the modal closes immediately, and the parent feed slots
- * the reply in via `addReply` while the network call runs in the background.
- */
-const useOptimisticCreate = computed(
-  () => mode.value !== 'edit' && !props.syncSubmit && !props.createPost,
-)
-
-function buildSubmitBody(): string {
-  const quotedUrl = quotedPostUrl.value
-  if (!quotedUrl) return draft.value
-  return [draft.value.trim(), quotedUrl].filter(Boolean).join('\n\n')
-}
-
-function performCreate(
-  submitBody: string,
-  vis: PostVisibility,
-  mediaPayload: CreateMediaPayload[],
-  pollPayload: ComposerPollPayload | null,
-  crosspost: CrosspostPayload = {},
-  groupId: string | null = effectiveGroupId.value,
-) {
-  if (props.createPost) {
-    return props.createPost(submitBody, vis, mediaPayload, pollPayload)
-  }
-  // No x-marv-mode header — Marv always uses auto routing in post threads.
-  return apiFetchData<CreatePostData>('/posts', {
-    method: 'POST',
-    body: props.replyTo
-      ? {
-          body: submitBody,
-          visibility: vis,
-          parent_id: props.replyTo.parentId,
-          mentions: props.replyTo.mentionUsernames,
-          media: mediaPayload,
-        }
-      : {
-          body: submitBody,
-          visibility: vis,
-          media: mediaPayload,
-          ...(pollPayload ? { poll: pollPayload } : {}),
-          ...(groupId ? { community_group_id: groupId } : {}),
-          ...(Object.keys(crosspost).length ? { crosspost } : {}),
-        },
-  })
-}
-
-const pickaxIntegration = usePickaxIntegration()
-const xIntegration = useXIntegration()
-
-function mediaAllImages(media: CreateMediaPayload[]): boolean {
-  return media.every((m) => {
-    if (m.source !== 'existing') return m.source === 'upload' && m.kind === 'image'
-    const existing = composerMedia.value.find((item) => item.existingId === m.id)
-    return existing?.source === 'upload' && existing.kind === 'image'
-  })
-}
-
-function crosspostDraft(media: CreateMediaPayload[]): CrosspostDraft {
-  return {
-    visibility: effectiveVisibility.value,
-    body: draft.value,
-    mediaCount: media.length,
-    mediaAllUploadedImages: mediaAllImages(media),
-    hasPoll: hasPoll.value,
-    isReply: Boolean(props.replyTo),
-    isQuote: Boolean(props.quotedPost),
-    isCheckin: Boolean(props.checkinPrompt),
-    groupId: effectiveGroupId.value,
-    scheduled: Boolean(scheduledAt.value),
-  }
-}
-
-/**
- * Post and Schedule open a preview first (same shape as publishing an article): the post as it
- * will look, plus every other place it can go. Replies, quotes and edits stay one tap.
- */
-const previewOpen = ref(false)
-const previewApproved = ref(false)
-const previewSupported = computed(
-  () => (mode.value === 'create' || Boolean(scheduledEditId.value)) && !props.replyTo && !props.quotedPost,
-)
-
-/** The post exactly as it will publish, so the dialog can render a real feed row. */
-const previewPost = computed<FeedPost | null>(() => {
-  const author = makeOptimisticAuthor()
-  if (!author) return null
-  return buildPostPreview({
-    localId: 'preview',
-    body: buildSubmitBody(),
-    visibility: effectiveVisibility.value,
-    media: composerMedia.value,
-    poll: poll.value ? poll.value : null,
-    communityGroupId: effectiveGroupId.value,
-    checkinPrompt: props.checkinPrompt,
-    author,
-  })
-})
-
-function destinationRow(
-  id: 'pickax' | 'x',
-  media: CreateMediaPayload[],
-): CrosspostDestinationView | null {
-  const connected = id === 'pickax' ? pickaxIntegration.connected.value : xIntegration.connected.value
-  if (!connected) return null
-  if (!viewerIsVerified.value) return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to share outward', premiumHref: '/settings/verification' }
-  if (id === 'x' && xIntegration.status.value?.connected && !xIntegration.status.value.canPost) {
-    return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to post to X', premiumHref: '/settings/verification' }
-  }
-  const options = crosspostOptions(crosspostDraft(media), id, xIntegration.status.value?.linksEnabled === true, xIntegration.status.value?.capabilities)
-  const modes = options.modes
-  let allowanceNote: string | undefined
-  if (id === 'x' && xIntegration.status.value?.allowance) {
-    const allowance = xIntegration.status.value.allowance
-    const hasLink = xContainsLink(crosspostDraft(media).body)
-    const remaining = hasLink ? allowance.linkPostsLeft : allowance.nativePostsLeft
-    allowanceNote = hasLink ? 'Estimated $0.20 · Uses your shared high-cost allowance' : `${remaining} posts left this month`
-    if (scheduledAt.value) allowanceNote += ' · Checked again at publishing'
-    else if (remaining <= 0) return {
-      id, modes: [], disabled: true, allowanceNote, disabledNote: "You've used this month's X posts.",
-    }
-  }
-  if (!modes.length) return { id, modes, disabled: true, disabledNote: options.blockedReason, allowanceNote }
-  return { id, modes, linkOnlyReason: options.linkOnlyReason, allowanceNote }
-}
-
-/** Null hides the destinations section. */
-const previewDestinations = computed<CrosspostDestinationView[] | null>(() => {
-  if ((mode.value !== 'create' && !scheduledEditId.value) || props.createPost || props.groupComposer) return null
-  const media = toCreatePayload(composerMedia.value)
-  const rows = [destinationRow('pickax', media), destinationRow('x', media)].filter((row): row is CrosspostDestinationView => Boolean(row))
-  return rows.length ? rows : null
-})
-
-async function onPreviewConfirm(options: { crosspost: CrosspostPayload }) {
-  crosspostChoice.value = options.crosspost
-  previewApproved.value = true
-  previewOpen.value = false
-  await submit()
-}
-
-function notifyCrosspostSkipped(created: unknown) {
-  const crossposts = (created as CreatePostData | null | undefined)?.crossposts
-  const pickax = crossposts?.pickax ?? (created as CreatePostData | null | undefined)?.pickax
-  if (pickax?.status === 'skipped') {
-    toast.push({ title: crosspostSkipMessage('Pickax', pickax.reason), durationMs: 3500 })
-  }
-  if (crossposts?.x?.status === 'skipped') {
-    toast.push({ title: crosspostSkipMessage('X', crossposts.x.reason), durationMs: 3500 })
-  }
-}
-
-function unwrapCreated(created: unknown): { post: FeedPost | null; streakReward: PostStreakReward | null } {
-  const wrapped = created as CreatePostData | null | undefined
-  const post = (wrapped?.post ?? (created as FeedPost | null | undefined)) ?? null
-  const streakReward = wrapped?.streakReward ?? null
-  return { post: post && (post as FeedPost).id ? (post as FeedPost) : null, streakReward }
-}
-
-function makeOptimisticAuthor(): PostAuthor | null {
-  const u = user.value
-  if (!u?.id) return null
-  return {
-    id: u.id,
-    username: (u.username ?? '') || null,
-    name: (u as any).name ?? null,
-    premium: Boolean(u.premium),
-    premiumPlus: Boolean((u as any).premiumPlus),
-    isOrganization: Boolean((u as any).isOrganization),
-    verifiedStatus: ((u as any).verifiedStatus ?? 'none') as PostAuthor['verifiedStatus'],
-    avatarUrl: (u as any).avatarUrl ?? null, avatarVideo: u.avatarVideo ?? null,
-  }
-}
-
-// Composer submit (sync path: edit + reply + opt-out via `syncSubmit`).
-const { submit: submitPost, submitting, submitError } = useFormSubmit(
-  async () => {
-    await destinationDrafts.persist()
-    const submittedDraft = destinationDrafts.capture()
-    // ── Edit scheduled post ───────────────────────────────────────────────
-    if (scheduledEditId.value) {
-      const id = scheduledEditId.value
-      const vis = effectiveVisibility.value
-      const mediaPayload: CreateMediaPayload[] = hasPoll.value ? [] : toCreatePayload(composerMedia.value)
-      const pollPayload = poll.value ? poll.value : null
-      const groupId = effectiveGroupId.value
-      const patchBody: Record<string, unknown> = {
-        body: buildSubmitBody(),
-        crosspost: crosspostChoice.value,
-        visibility: vis,
-        ...(scheduledAt.value ? { scheduled_at: scheduledAt.value.toISOString() } : {}),
-        media: mediaPayload,
-        ...(pollPayload ? { poll: toScheduledPollBody(pollPayload) } : { poll: null }),
-        ...(groupId ? { community_group_id: groupId } : {}),
-      }
-      const updated = await apiFetchData<ScheduledPost>(
-        `/posts/scheduled/${encodeURIComponent(id)}`,
-        { method: 'PATCH', body: patchBody },
-      )
-      emit('scheduled-updated', updated)
-      toast.push({ title: 'Saved', tone: 'success', durationMs: 1600 })
-      return
-    }
-
-    if (mode.value === 'edit') {
-      if (!hasEditChanges.value) return
-      const id = editPostId.value
-      if (!id) throw new Error('Missing editPostId.')
-      const basePath = editPostIsDraft.value ? '/drafts/' : '/posts/'
-      const patchBody: Record<string, unknown> = { body: draft.value }
-      if (editPostIsDraft.value && !props.disableMedia) {
-        const mediaPayload: CreateMediaPayload[] = toCreatePayload(composerMedia.value)
-        patchBody.media = mediaPayload
-      }
-      const updatedPost = await apiFetchData<FeedPost>(`${basePath}${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        body: patchBody,
-      })
-      emit('edited', { id, post: updatedPost })
-      toast.push({ title: 'Saved', tone: 'success', durationMs: 1600 })
-      return
-    }
-
-    const pollPayload = poll.value ? poll.value : null
-    const mediaPayload: CreateMediaPayload[] = hasPoll.value ? [] : toCreatePayload(composerMedia.value)
-    const vis = effectiveVisibility.value
-    const submitBody = buildSubmitBody()
-
-    // Schedule path: non-optimistic, does not insert into feed.
-    if (scheduledAt.value && !props.replyTo && !props.quotedPost) {
-      // Capture before clearing so the toast message shows the time.
-      const displayTime = scheduledAtDisplay.value
-      const wantsMore = scheduleMore.value
-      const scheduledPost = await performSchedule(submitBody, vis, mediaPayload, pollPayload)
-      incScheduledCount()
-      if (destinationDrafts.unchanged(submittedDraft)) clearComposer()
-      await destinationDrafts.submitted(submittedDraft)
-      if (!wantsMore) {
-        clearSchedule()
-      }
-      // When scheduling more, keep scheduledAt intact — the time chip stays visible
-      // and they can write the next post and hit Schedule right away.
-      emit('scheduled', { scheduledPost })
-      toast.push({
-        title: 'Post scheduled',
-        message: `Publishes ${displayTime}`,
-        tone: 'success',
-        to: '/scheduled',
-        durationMs: 4000,
-      })
-      return
-    }
-
-    const created = await performCreate(submitBody, vis, mediaPayload, pollPayload, crosspostChoice.value)
-    const { post, streakReward } = unwrapCreated(created)
-    notifyCrosspostSkipped(created)
-
-    if (destinationDrafts.unchanged(submittedDraft)) clearComposer()
-    await destinationDrafts.submitted(submittedDraft)
-
-    if (post?.id) {
-      recordWelcomeProgress(post.author.id, { posted: true })
-      emit('posted', { id: post.id, visibility: vis, post })
-      pushPostedToast(post)
-      if (streakReward) pushStreakToast(streakReward)
-    }
-  },
-  {
-    defaultError: mode.value === 'edit' ? 'Failed to save.' : 'Failed to post.',
-    onError: (message) => {
-      toast.push({ title: message, tone: 'error', durationMs: 2500 })
-    },
-  },
-)
-
-const actionSounds = useActionSounds()
-function pushPostedToast(post: FeedPost) {
-  void actionSounds.play(post.kind === 'checkin' ? 'checkin' : 'publish')
-  seedPermalinkPost(post)
-  toast.push(buildPostedToastParams(post, { isReply: Boolean(props.replyTo) }))
-}
-
-/**
- * Fire-and-forget submit for new posts/replies. Builds an optimistic FeedPost,
- * fires `pending` so the parent can render it + run the create via
- * `usePendingPostsManager`, then clears the composer. Success toast comes from
- * the pending manager once the server acknowledges. Streak rewards (if any)
- * are surfaced by the parent after the real post lands.
- */
-function submitOptimistic(): boolean {
-  void destinationDrafts.persist()
-  const author = makeOptimisticAuthor()
-  if (!author) return false
-
-  const vis = effectiveVisibility.value
-  const pollPayload = poll.value ? poll.value : null
-  const mediaPayload: CreateMediaPayload[] = hasPoll.value ? [] : toCreatePayload(composerMedia.value)
-  const submitBody = buildSubmitBody()
-
-  const localId = makePendingLocalId()
-  const optimisticPost = buildOptimisticPost({
-    localId,
-    body: submitBody,
-    visibility: vis,
-    media: composerMedia.value,
-    poll: pollPayload,
-    parentId: props.replyTo?.parentId ?? null,
-    communityGroupId: effectiveGroupId.value,
-    author,
-  })
-  optimisticPost._crosspostPending = {
-    pickax: Boolean(crosspostChoice.value.pickax),
-    x: Boolean(crosspostChoice.value.x),
-  }
-
-  // Snapshot what we need for the network call BEFORE clearing the composer.
-  const snapshot = {
-    body: submitBody,
-    vis,
-    mediaPayload,
-    pollPayload,
-    crosspost: crosspostChoice.value,
-    groupId: effectiveGroupId.value,
-    identity: user.value?.id,
-    draft: destinationDrafts.capture(),
-  }
-
-  emit('pending', {
-    localId,
-    optimisticPost,
-    perform: async () => {
-      if (user.value?.id !== snapshot.identity) throw new Error('Your account changed. Reopen this draft to send it.')
-      const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload, snapshot.crosspost, snapshot.groupId)
-      await destinationDrafts.submitted(snapshot.draft)
-      const { post } = unwrapCreated(created)
-      notifyCrosspostSkipped(created)
-      if (post) {
-        const wrapped = created as CreatePostData | null | undefined
-        const pickax = wrapped?.crossposts?.pickax ?? wrapped?.pickax
-        post._crosspostPending = {
-          pickax: pickax?.status === 'queued' && !post.pickaxUrl,
-          x: wrapped?.crossposts?.x?.status === 'queued' && !post.xUrl,
-        }
-        seedPermalinkPost(post)
-      }
-      return post
-    },
-  })
-
-  // Clear immediately so the user can keep typing / scrolling.
-  clearComposer()
-  submitError.value = null
-  return true
-}
-
-// If the user changes the composer after an error, clear the inline error so it doesn't "stick"
-// after a later successful post (or after correcting validation issues like poll duration).
-watch(
-  [draft, composerMedia, poll],
-  () => {
-    if (submitError.value) submitError.value = null
-  },
-  { deep: true },
-)
-
-const submit = async () => {
-  // Mobile backgrounding can leave auth state stale after transient /auth/me
-  // failures. Try one explicit refresh before blocking submit.
-  if (!isAuthed.value) {
-    try {
-      await me()
-    } catch {
-      // best-effort; normal canPost checks below handle final state
-    }
-  }
-  if (!canPost.value) {
-    if (!isAuthed.value) {
-      toast.push({
-        title: 'Session expired',
-        message: 'Please log in again to post your draft.',
-        tone: 'error',
-        durationMs: 2600,
-      })
-    }
-    return
-  }
-  if (mode.value === 'edit' && !scheduledEditId.value) {
-    if (!draft.value.trim()) return
-  } else {
-    if (!(draft.value.trim() || composerMedia.value.length || hasPoll.value)) return
-  }
-  if (postCharCount.value > postMaxLen.value) return
-  if (composerUploading.value) return
-  if (composerHasFailedMedia.value) return
-  if (pollUploading.value) return
-  if (pollHasFailed.value) return
-  if (hasPoll.value && poll.value) {
-    const opts = (poll.value.options ?? []).filter(Boolean) as Array<{ image: any }>
-    const anyHasImage = opts.some((o) => Boolean(o?.image?.r2Key))
-    const allHaveImages = opts.every((o) => Boolean(o?.image?.r2Key))
-    if (anyHasImage && !allHaveImages) {
-      toast.push({
-        title: 'Poll images must be all or none',
-        message: 'If you add an image to any choice, every choice must have an image.',
-        tone: 'error',
-        durationMs: 2600,
-      })
-      return
-    }
-  }
-
-  emojiPickerEl.value?.close()
-
-  if (previewSupported.value && !previewApproved.value) {
-    previewOpen.value = true
-    // Refresh this short-lived confirmation whenever it opens; submission rechecks on the API.
-    void pickaxIntegration.refresh()
-    void xIntegration.refresh()
-    return
-  }
-  previewApproved.value = false
-  submitError.value = null
-
-  // Scheduling (new or edit) must use the sync path, not the optimistic path.
-  const isScheduling = Boolean(
-    (scheduledAt.value || scheduledEditId.value) && !props.replyTo && !props.quotedPost,
-  )
-  if (useOptimisticCreate.value && !isScheduling) {
-    if (submitOptimistic()) return
-    // Author missing (shouldn't happen for authed users) — fall through to sync path.
-  }
-  await submitPost()
-}
-
-const loginTo = computed(() => {
-  const redirect = encodeURIComponent(route.fullPath || '/home')
-  return `/login?redirect=${redirect}`
-})
-
-const { show: showAuthActionModal } = useAuthActionModal()
-function showLoginPrompt() {
-  showAuthActionModal({ kind: 'login', action: 'post' })
-}
-
-function applyInitialTextIfNeeded() {
-  if (initialTextApplied.value) return
-  const t = (props.initialText ?? '').toString()
-  if (!t.trim()) {
-    initialTextApplied.value = true
-    return
-  }
-  // Only prefill into an empty composer to avoid clobbering user input.
-  if (!draft.value) {
-    draft.value = t
-  }
-  initialTextApplied.value = true
-}
-
-/** Seed poll from initialPoll (scheduled-post edit). Applied once per mount. */
-const initialPollApplied = ref(false)
-function seedInitialPollIfNeeded() {
-  if (initialPollApplied.value) return
-  const src = props.initialPoll
-  if (!src || !src.options?.length) {
-    initialPollApplied.value = true
-    return
-  }
-  if (poll.value) {
-    initialPollApplied.value = true
-    return
-  }
-  const h = src.durationHours ?? 24
-  poll.value = {
-    options: src.options.map((o) => ({ text: o.text, image: null })),
-    duration: { days: Math.floor(h / 24), hours: h % 24, minutes: 0 },
-  }
-  initialPollApplied.value = true
-}
-
-/** Seed visibility from initialVisibility (scheduled-post edit). Applied once per mount. */
-const initialVisibilityApplied = ref(false)
-function seedInitialVisibilityIfNeeded() {
-  if (initialVisibilityApplied.value) return
-  const v = props.initialVisibility
-  if (!v) {
-    initialVisibilityApplied.value = true
-    return
-  }
-  // Only set if not locked by parent; let allowed-list guard handle the rest.
-  if (!lockedVisibility.value) {
-    visibility.value = v
-  }
-  initialVisibilityApplied.value = true
-}
-
-/** Seed scheduledAt from initialScheduledAt (scheduled-post edit). Applied once per mount. */
-const initialScheduledAtApplied = ref(false)
-function seedInitialScheduledAtIfNeeded() {
-  if (initialScheduledAtApplied.value) return
-  const s = props.initialScheduledAt
-  if (!s) {
-    initialScheduledAtApplied.value = true
-    return
-  }
-  const d = new Date(s)
-  if (isNaN(d.getTime())) {
-    initialScheduledAtApplied.value = true
-    return
-  }
-  scheduledAt.value = d
-  _lastPickedScheduleTime = d
-  initialScheduledAtApplied.value = true
-}
-
-onMounted(() => {
-  // Destination draft restoration runs after the explicit initial values are seeded.
-  applyInitialTextIfNeeded()
-  seedInitialMediaIfNeeded()
-  seedInitialFilesIfNeeded()
-  seedInitialGroupIfNeeded()
-  seedInitialPollIfNeeded()
-  seedInitialVisibilityIfNeeded()
-  seedInitialScheduledAtIfNeeded()
-  // autoFocus is already handled by StyledTextarea's autoFocus prop.
-})
-
-watch(
-  () => props.initialText,
-  () => {
-    // If the composer instance is reused and initialText is provided later, apply once.
-    applyInitialTextIfNeeded()
-  },
-)
-
-watch(
-  () => props.initialMedia,
-  () => {
-    // If initial media is provided later (e.g. overlay open), seed once.
-    seedInitialMediaIfNeeded()
-  },
+const submitDisabled = computed(() =>
+  submitting.value
+  || !canPost.value
+  || (mode.value === 'edit' && !scheduledEditId.value
+    ? (!draft.value.trim() || !hasEditChanges.value)
+    : !(draft.value.trim() || composerMedia.value.length || hasPoll.value))
+  || postCharCount.value > postMaxLen.value
+  || composerUploading.value
+  || composerHasFailedMedia.value
+  || pollUploading.value
+  || pollHasFailed.value
+  || pollIncomplete.value,
 )
 
 defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, clearComposer, focus, draftText })
@@ -2112,7 +455,7 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
 <style scoped>
 .composer-media-slot {
   flex: 0 0 auto;
-  width: 5rem; /* h-20 / w-20 */
+  width: 5rem;
   height: 5rem;
 }
 
@@ -2148,9 +491,6 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
   opacity: 0.98;
 }
 
-/* Override StyledTextarea's DM-specific padding for use in PostComposer (no inline emoji/send buttons).
-   max-height + overflow-y: auto lets the editor grow to fill natural space, then scroll internally
-   rather than pushing the modal beyond the viewport. */
 .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) {
   min-height: 3.5rem;
   max-height: min(15rem, 40dvh);
@@ -2160,12 +500,10 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
   line-height: 1.75rem;
 }
 
-/* Figma: 304:1028 — compact idle composer, natural growth while drafting. */
 .moh-home-composer { padding-top: 12px; }
 .moh-home-composer .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) { min-height: 44px; }
 .moh-home-composer :deep(.composer-tools .iconify) { width: 22px; height: 22px; font-size: 22px; }
 
-/* Figma compact editing: 550:2169. Content sets height; footer remains visible. */
 .moh-edit-composer { padding: 20px 24px; }
 .moh-edit-composer .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) {
   min-height: 0;
@@ -2177,7 +515,6 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
 .moh-edit-actions :deep(.composer-publish) { flex: 0 0 auto; gap: 16px; }
 @media (max-width: 639px) { .moh-edit-composer { padding: 16px; } }
 
-/* Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=396-1894 */
 .moh-prompt-composer {
   padding: 16px 24px 20px;
 }
@@ -2196,11 +533,7 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
 }
 
 @keyframes moh-upload-indeterminate {
-  0% {
-    transform: translateX(-110%);
-  }
-  100% {
-    transform: translateX(210%);
-  }
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(210%); }
 }
 </style>

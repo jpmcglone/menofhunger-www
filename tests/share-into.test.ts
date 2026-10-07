@@ -42,12 +42,15 @@ describe('web share target', () => {
     const keys = readFromRepo('utils/injection-keys.ts')
     const layout = readFromRepo('composables/layout/useAppLayoutComposer.ts')
     const overlay = readFromRepo('components/app/layout/ComposerModalOverlay.vue')
-    const composer = readFromRepo('components/app/PostComposer.vue')
+    const composer = [
+      readFromRepo('components/app/PostComposer.vue'),
+      readFromRepo('composables/composer/usePostComposer.ts'),
+    ].join('\n')
     expect(keys).toContain('initialFiles?: File[]')
     expect(keys).toContain('communityGroupId?: string')
     expect(layout).toContain('composerInitialFiles')
     expect(overlay).toContain(':initial-files="composerInitialFiles"')
-    expect(composer).toContain('ingestMediaFiles(files, \'picker\')')
+    expect(composer).toContain("ingestMediaFiles(files, 'picker')")
     expect(composer).toContain('handoff-chat')
   })
 

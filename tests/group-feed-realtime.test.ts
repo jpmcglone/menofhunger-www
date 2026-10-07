@@ -15,9 +15,13 @@ describe('group feed realtime dedupe', () => {
   })
 
   it('PostComposer sends community_group_id when communityGroupId prop is set', () => {
-    const source = readFile('components/app/PostComposer.vue')
+    const source = [
+      readFile('components/app/PostComposer.vue'),
+      readFile('composables/composer/useComposerDestination.ts'),
+      readFile('composables/composer/useComposerSubmit.ts'),
+    ].join('\n')
     // effectiveGroupId falls back to props.communityGroupId when no group is selected by the picker.
-    expect(source).toContain('props.communityGroupId')
+    expect(source).toContain('communityGroupId')
     expect(source).toContain('effectiveGroupId')
     expect(source).toContain('community_group_id')
   })
