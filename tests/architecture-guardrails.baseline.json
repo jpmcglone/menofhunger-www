@@ -8,8 +8,6 @@
     "components/app/content/StyledTextarea.vue",
     "components/app/people/UserPreviewCard.vue",
     "components/app/map/MembersUsMap.vue",
-    "pages/admin/analytics.vue",
-    "pages/admin/users/index.vue",
     "pages/chat.vue",
     "pages/explore.vue",
     "pages/fitness.vue",

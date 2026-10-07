@@ -1,26 +1,34 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readSurfaceSource } from './helpers/surface-source'
+
+function readFromRepo(relativePath: string): string {
+  return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
+}
 
 function readAnalyticsPage(): string {
-  return readFileSync(resolve(process.cwd(), 'pages/admin/analytics.vue'), 'utf8')
+  return readSurfaceSource('pages/admin/analytics.vue')
 }
 
 describe('admin analytics layout', () => {
   it('orders sections by importance', () => {
-    const page = readAnalyticsPage()
-    const order = [
-      '>Overview<',
-      '>Engagement<',
-      '>Monetization<',
-      '>Content<',
-      '>Groups<',
-      '>Spaces<',
-      '>Coins<',
-      '>M.A.R.V.<',
-      '>Homepage<',
+    const page = readFromRepo('pages/admin/analytics.vue')
+    const order: [label: string, section: string][] = [
+      ['Overview', 'Overview'],
+      ['Engagement', 'Engagement'],
+      ['Monetization', 'Monetization'],
+      ['Content', 'Content'],
+      ['Groups', 'Groups'],
+      ['Spaces', 'Spaces'],
+      ['Coins', 'Coins'],
+      ['M.A.R.V.', 'Marv'],
+      ['Homepage', 'Homepage'],
     ]
-    const indexes = order.map((label) => page.indexOf(label))
+    for (const [label, section] of order) {
+      expect(readFromRepo(`components/app/admin/analytics/${section}.vue`)).toContain(`>${label}<`)
+    }
+    const indexes = order.map(([, section]) => page.indexOf(`<AppAdminAnalytics${section} `))
     expect(indexes.every((i) => i >= 0)).toBe(true)
     for (let i = 1; i < indexes.length; i++) {
       expect(indexes[i]).toBeGreaterThan(indexes[i - 1]!)

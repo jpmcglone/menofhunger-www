@@ -116,7 +116,7 @@ describe('unique people + total views', () => {
   })
 
   it('shows people and total views in admin analytics', () => {
-    const analytics = readFromRepo('pages/admin/analytics.vue')
+    const analytics = readSurfaceSource('pages/admin/analytics.vue')
     expect(analytics).toContain('People')
     expect(analytics).toContain('uniqueViewCount')
     expect(analytics).toContain('uniqueViewsInRange')
