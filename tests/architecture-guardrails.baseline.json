@@ -5,8 +5,6 @@
   "pageHandRolledCursor": [],
   "oversizedFiles": [
     "components/SpaceYouTubePlayer.vue",
-    "components/app/chrome/NotificationRow.vue",
-    "components/app/content/PostRow.vue",
     "components/app/content/StyledTextarea.vue",
     "components/app/people/UserPreviewCard.vue",
     "components/app/map/MembersUsMap.vue",

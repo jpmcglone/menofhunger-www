@@ -526,7 +526,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('gates the PostRow Catch-me-up trigger on auth (every real post row, not pending/deleted)', () => {
-    const row = readFromRepo('components/app/content/PostRow.vue')
+    const row = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
     // Signed-in viewers see it on every real row — catch-up summarizes the post itself
     // plus broader context, so it's useful even without a surrounding thread.
     expect(row).toMatch(/isAuthed\.value && !props\.preview && !isPendingRow\.value && !isDeletedPost\.value/)
@@ -538,7 +538,7 @@ describe('hydration guardrails (structural)', () => {
     // icon class than the server emitted — a hydration mismatch on every public feed page.
     // The initial read must happen in onMounted; the watcher exists only to re-read when a
     // row is recycled for a different post while scrolling.
-    const row = readFromRepo('components/app/content/PostRow.vue')
+    const row = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
     expect(row).toMatch(/const catchUpPersistedReady = ref\(false\)/)
     expect(row).toMatch(/onMounted\(\(\) => \{\s*catchUpPersistedReady\.value = isPostCaughtUp\(/)
     // Match the watcher's full shape: it must close right after the callback, with no options
@@ -764,7 +764,7 @@ describe('hydration guardrails (structural)', () => {
     // class before app:mounted makes SSR (muted) and the first client paint
     // (moh-text) disagree on every permalink. The icon stays gated; the
     // permalink view POST itself fires as soon as the client has a post id.
-    const row = readFromRepo('components/app/content/PostRow.vue')
+    const row = [readFromRepo('components/app/content/PostRow.vue'), readFromRepo('composables/post-row/usePostRow.ts')].join('\n')
     expect(row).toMatch(/useState<boolean>\('moh-hydrated'/)
     expect(row).toMatch(/hydrated\.value && hasViewedLocally/)
     const permalink = readFromRepo('pages/p/[id].vue')
