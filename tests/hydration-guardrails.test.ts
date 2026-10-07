@@ -250,7 +250,10 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('folds Check-ins notification chips into Posts', () => {
-    const notifications = readFromRepo('pages/notifications.vue')
+    const notifications = [
+      readFromRepo('pages/notifications.vue'),
+      readFromRepo('composables/notifications/useNotificationsPage.ts'),
+    ].join('\n')
     expect(notifications).not.toContain("label: 'Check-ins'")
     expect(notifications).toContain("if (q === 'checkin_post') return 'followed_post'")
   })
@@ -633,7 +636,10 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('renders flat reposts correctly in the notifications page (repost header + original post)', () => {
-    const page = readFromRepo('pages/notifications.vue')
+    const page = [
+      readFromRepo('pages/notifications.vue'),
+      readFromRepo('composables/notifications/useNotificationsPage.ts'),
+    ].join('\n')
     // notificationIsFlatRepost guard must be present
     expect(page).toMatch(/notificationIsFlatRepost/)
     // The repost header component must be used for flat reposts

@@ -27,7 +27,7 @@ describe('group feed realtime dedupe', () => {
   })
 
   it('marv_not_in_group uses NotificationRow, not AppPostRow', () => {
-    const source = readFile('pages/notifications.vue')
+    const source = [readFile('pages/notifications.vue'), readFile('composables/notifications/useNotificationsPage.ts')].join('\n')
     expect(source).toContain('notificationShowsPostRow')
     expect(source).not.toMatch(/v-if="item\.type === 'single' && item\.notification\.post"/)
   })

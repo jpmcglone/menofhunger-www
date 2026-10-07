@@ -43,7 +43,10 @@ describe('shouldRefreshTabReturn', () => {
 describe('tab-return refresh wiring', () => {
   it('gates home and notifications keepalive catch-up', () => {
     const home = readFileSync(resolve(process.cwd(), 'pages/home.vue'), 'utf8')
-    const notifications = readFileSync(resolve(process.cwd(), 'pages/notifications.vue'), 'utf8')
+    const notifications = [
+      readFileSync(resolve(process.cwd(), 'pages/notifications.vue'), 'utf8'),
+      readFileSync(resolve(process.cwd(), 'composables/notifications/useNotificationsPage.ts'), 'utf8'),
+    ].join('\n')
     expect(home).toContain("useTabReturnRefreshGate('home')")
     expect(home).toContain('homeTabReturnGate.shouldRefresh()')
     expect(notifications).toContain("useTabReturnRefreshGate('notifications')")
