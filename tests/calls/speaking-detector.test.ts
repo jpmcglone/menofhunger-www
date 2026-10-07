@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readCallSessionSource } from '../helpers/call-session-source'
 import {
   INITIAL_SPEAKING,
   SPEAKING_ENTER,
@@ -120,7 +121,7 @@ describe('rmsLevel', () => {
 
 describe('speaking ring wiring', () => {
   it('the monitor lives with the transport and feeds a per-user map the tiles read', () => {
-    const session = read('composables/calls/useCallSession.ts')
+    const session = readCallSessionSource()
     expect(session).toContain('speakingMonitor = new SpeakingMonitor(')
     expect(session).toContain('speakingMonitor?.setStream(userId, stream)')
     // Muted peers never ring, whatever the analyser hears.

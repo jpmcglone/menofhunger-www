@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readCallSessionSource } from '../helpers/call-session-source'
 
 const root = resolve(import.meta.dirname, '../..')
 const read = (p: string) => readFileSync(resolve(root, p), 'utf8')
 
 describe('screen share session', () => {
   it('publishes the share on a separate screen track and leaves the camera alone', () => {
-    const session = read('composables/calls/useCallSession.ts')
+    const session = readCallSessionSource()
     expect(session).toContain("track.contentHint = 'detail'")
     expect(session).toContain('getDisplayMedia')
     expect(session).toContain('track.onended')

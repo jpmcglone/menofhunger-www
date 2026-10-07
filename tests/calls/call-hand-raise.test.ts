@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readCallSessionSource } from '../helpers/call-session-source'
 
 const root = resolve(import.meta.dirname, '../..')
 const read = (p: string) => readFileSync(resolve(root, p), 'utf8')
@@ -10,7 +11,7 @@ describe('call hand raise', () => {
     const emitters = read('composables/presence/createPresenceEmitters.ts')
     expect(emitters).toContain('handRaised?: boolean')
 
-    const session = read('composables/calls/useCallSession.ts')
+    const session = readCallSessionSource()
     expect(session).toContain('function toggleHand(')
     expect(session).toContain('participants.length ?? 0) > 2')
     expect(session).toContain("presence.emitCallsState(current.id, { handRaised: next })")

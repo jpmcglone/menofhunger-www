@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { readCallSessionSource } from '../helpers/call-session-source'
 
 const root = resolve(import.meta.dirname, '../..')
 const read = (p: string) => readFileSync(resolve(root, p), 'utf8')
@@ -13,7 +14,7 @@ describe('hangup chime', () => {
     expect(sound).toContain("osc.type = 'sine'")
     expect(sound).toContain('NOTE_TWO_START = 0.2')
 
-    const session = read('composables/calls/useCallSession.ts')
+    const session = readCallSessionSource()
     expect(session).toContain('createHangupChime')
     expect(session).toContain('playHangupChime')
     expect(session).toContain('shouldPlayHangupChime')

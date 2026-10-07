@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readCallSessionSource } from '../helpers/call-session-source'
 
 const root = resolve(import.meta.dirname, '../..')
 const read = (p: string) => readFileSync(resolve(root, p), 'utf8')
@@ -38,7 +39,7 @@ describe('DM calling realtime wiring', () => {
     expect(host).toContain('unbind = bind()')
     expect(host).toContain('registerCallPipSource')
 
-    const session = read('composables/calls/useCallSession.ts')
+    const session = readCallSessionSource()
     // Reload/close behavior is exercised by call-reload-session.test.ts.
     expect(session).toContain('void rejoinAfterReconnect()')
     expect(session).toContain('resumeAfterForeground')
@@ -46,10 +47,10 @@ describe('DM calling realtime wiring', () => {
   })
 
   it('gives up on the server-owned grace window: socket down, all peers failed, online restart, visibility resync', () => {
-    const session = read('composables/calls/useCallSession.ts')
+    const session = readCallSessionSource()
     expect(session).toContain('ack.reconnectGraceMs')
     expect(session).toContain('reconnectGraceMs,')
-    expect(session).toMatch(/socketDownTimer = setTimeout\([\s\S]*connectionLost\(\)[\s\S]*\}, reconnectGraceMs\)/)
+    expect(session).toMatch(/socketDownTimer = setTimeout\([\s\S]*connectionLost\(\)[\s\S]*\}, rt\.reconnectGraceMs\)/)
     expect(session).toContain("ids.every((id) => peerStates.value[id] === 'failed')")
     expect(session).toContain("window.addEventListener('online', onOnline)")
     expect(session).toContain('transport?.resumeConnections()')
@@ -78,7 +79,7 @@ describe('DM calling realtime wiring', () => {
     expect(domains).toContain("socket.on('calls:seat-taken'")
     expect(domains).toContain('cb.onSeatTaken?.(data)')
 
-    const session = read('composables/calls/useCallSession.ts')
+    const session = readCallSessionSource()
     const handler = session.slice(session.indexOf('function onSeatTaken('), session.indexOf('function bind('))
     expect(handler).toContain('if (presence.getSocketId() !== payload.socketId) return')
     expect(handler).toContain('teardown()')
@@ -107,7 +108,7 @@ describe('DM calling realtime wiring', () => {
     expect(row).toContain('const showJoin = computed(() => !inThisTab.value)')
 
     // joinCall accepts the idle tab that got here via reload.
-    const session = read('composables/calls/useCallSession.ts')
+    const session = readCallSessionSource()
     expect(session).toContain("if (phase.value !== 'idle' && phase.value !== 'in_call_elsewhere' && phase.value !== 'incoming')")
   })
 

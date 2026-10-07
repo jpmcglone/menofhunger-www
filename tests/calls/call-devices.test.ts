@@ -2,6 +2,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
+import { readCallSessionSource } from '../helpers/call-session-source'
 import {
   describeMediaError,
   videoConstraints,
@@ -54,7 +55,7 @@ describe('shouldStartCallWithCamera', () => {
   })
 
   it('join/accept acquires audio only', () => {
-    const session = read('composables/calls/useCallSession.ts')
+    const session = readCallSessionSource()
     expect(session).toContain('acquireForCall(session.type, true)')
     expect(session).toContain('await acquireForCall(type)')
   })

@@ -1,39 +1,13 @@
-import { CloudflareSfuCallTransport } from './transport/CloudflareSfuCallTransport'
-import { mediaFocus } from '~/utils/mediaFocus'
-import { shallowRef, type ShallowRef } from 'vue'
-import type {
-  CallSession,
-  CallType,
-  CallsAck,
-  Message,
-  RtcIceServer,
-  WsCallsIncomingPayload,
-  WsCallsSeatTakenPayload,
-  WsRtcSignalPayload,
-} from '~/types/api'
-import { usePresence, type CallsCallback, type MessagesCallback } from '~/composables/usePresence'
-import { useUsersStore, type PublicUserEntity } from '~/composables/useUsersStore'
-import { createReactionBlip } from './callReactionSound'
-import { createHangupChime } from './callHangupSound'
-import {
-  encodeCallReaction,
-  isCallReactionEmoji,
-  parseCallReactionPayload,
-  pruneCallReactions,
-  reduceCallReactions,
-  type CallReaction,
-} from './callReactions'
-import { createRingtone, type Ringtone } from './callRingtone'
-import { reduceCallsIncoming, reduceCallsUpdated, remotePeerIds, type CallPhase, type CallSessionState } from './callSessionReducer'
-import { qualityBarsFor, type IcePathKind } from './callQuality'
-import { CALL_RELOAD_KEY, readCallReloadMarker, canResumeCallSeat, type CallReloadMarker } from './callReloadRecovery'
-import { tabCallSessionId } from './callSessionId'
-import { enterCallPictureInPicture, exitCallPictureInPicture } from './callPictureInPicture'
-import { callMediaLog, callMediaTrackInfo } from './callMediaLog'
-import { acquireAudioTrack, acquireCallMedia, acquireVideoTrack, canScreenShare, shouldStartCallWithCamera, stopTrack } from './useCallDevices'
-import { SpeakingMonitor } from './speakingDetector'
-import type { CallTransportOptions, CallTransport, PeerMediaState } from './transport/CallTransport'
-const DEFAULT_RECONNECT_GRACE_MS = 30_000
+import type { CallSession, CallType } from '~/types/api'
+import type { PublicUserEntity } from '~/composables/useUsersStore'
+import { createRingtone } from './callRingtone'
+import type { CallReloadMarker } from './callReloadRecovery'
+import { acquireCallMedia, stopTrack } from './useCallDevices'
+import { localScreenStream, localStream, remoteScreenStreams, remoteStreams, rt } from './session/callSessionRuntime'
+import { useCallSessionState } from './session/useCallSessionState'
+import { useCallMedia } from './session/useCallMedia'
+import { useCallReactions } from './session/useCallReactions'
+import { useCallSignaling } from './session/useCallSignaling'
 
 export type { CallPhase } from './callSessionReducer'
 export { canScreenShare } from './useCallDevices'
@@ -51,319 +25,35 @@ export type CallDisplayUser = {
 }
 
 /**
- * Media objects can't live in `useState` (not serializable, and there is exactly one
- * media pipeline per tab anyway). Module scope on the client is the singleton.
+ * Public facade for the tab's call. State lives in useCallSessionState, capture in useCallMedia,
+ * reactions in useCallReactions, and transport/realtime in useCallSignaling; this file owns the
+ * user-facing actions (start, join, accept, decline, leave).
  */
-const localStream: ShallowRef<MediaStream | null> = shallowRef(null)
-const localScreenStream: ShallowRef<MediaStream | null> = shallowRef(null)
-const remoteStreams: ShallowRef<Record<string, MediaStream>> = shallowRef({})
-const remoteScreenStreams: ShallowRef<Record<string, MediaStream>> = shallowRef({})
-let transport: CallTransport | null = null
-/** Web Audio taps on local + remote streams; drives the "speaking" ring. Lives with the transport. */
-let speakingMonitor: SpeakingMonitor | null = null
-let iceServers: RtcIceServer[] = []
-let ringtone: Ringtone | null = null
-/** The OS "X is calling" notification; closed when the ring stops (answered anywhere, cancelled). */
-let incomingNotification: Notification | null = null
-let ringback: Ringtone | null = null
-let unbind: (() => void) | null = null
-/** Server-owned grace window from the last start/join ack; every give-up timer keys off it. */
-let reconnectGraceMs = DEFAULT_RECONNECT_GRACE_MS
-/** Runs while the signaling socket is down mid-call. */
-let socketDownTimer: ReturnType<typeof setTimeout> | null = null
-let reactionPruneTimer: ReturnType<typeof setInterval> | null = null
-const reactionBlip = createReactionBlip()
-const hangupChime = createHangupChime()
-/** Signals that landed before `createTransport` (join ack). Replay after the transport exists. */
-const MAX_PENDING_SIGNALS = 64
-let pendingSignals: WsRtcSignalPayload[] = []
-/** Call id we're joining/starting before `call` is on session state. */
-let joiningCallId: string | null = null
-let callAttempt = 0
-
 export function useCallSession() {
-  const state = useState<CallSessionState>('call-session-state', () => ({ phase: 'idle', call: null, incoming: null }))
-  const isMicEnabled = useState<boolean>('call-mic-enabled', () => true)
-  const isCameraEnabled = useState<boolean>('call-camera-enabled', () => false)
-  const micError = useState<string | null>('call-mic-error', () => null)
-  const cameraError = useState<string | null>('call-camera-error', () => null)
-  const peerStates = useState<Record<string, PeerMediaState>>('call-peer-states', () => ({}))
-  /** userId → currently talking (self included), with hysteresis so it doesn't flicker. */
-  const speakingIds = useState<Record<string, number>>('call-speaking-ids', () => ({}))
-  const qualityTier = useState<number>('call-quality-tier', () => 0)
-  /** userId → selected ICE path. Admin tiles only. */
-  const icePaths = useState<Record<string, IcePathKind>>('call-ice-paths', () => ({}))
-  const facingMode = useState<'user' | 'environment'>('call-facing-mode', () => 'user')
-  const audioDeviceId = useState<string | null>('call-audio-device', () => null)
-  const videoDeviceId = useState<string | null>('call-video-device', () => null)
-  const speakerDeviceId = useState<string | null>('call-speaker-device', () => null)
-  /** Overlay collapsed into the mini bar so the user can browse while on the call. */
-  const minimized = useState<boolean>('call-overlay-minimized', () => false)
-  /** Elapsed-time anchor for the in-call timer (ms epoch when this tab connected). */
-  const connectedAt = useState<number | null>('call-connected-at', () => null)
-  const pendingVoicemail = useState<{ conversationId: string; messageId: string } | null>(
-    'call-pending-voicemail',
-    () => null,
-  )
-  let outgoingMessageId: string | null = null
-  /** Direct call we started: who we're ringing (not yet a participant). */
-  const outgoingCalleeId = useState<string | null>('call-outgoing-callee', () => null)
-  const isScreenSharing = useState<boolean>('call-screen-sharing', () => false)
-  const reactions = useState<CallReaction[]>('call-reactions', () => [])
-
-  const { user } = useAuth()
-  const presence = usePresence()
-  const toast = useAppToast()
-  const usersStore = useUsersStore()
-  const router = useRouter()
-
-  const meId = computed(() => user.value?.id ?? '')
-  const phase = computed<CallPhase>(() => state.value.phase)
-  const call = computed<CallSession | null>(() => state.value.call)
-  const incoming = computed<WsCallsIncomingPayload | null>(() => state.value.incoming)
-  const isEngaged = computed(() => phase.value === 'outgoing' || phase.value === 'joining' || phase.value === 'in_call' || phase.value === 'requesting_media')
-  watch(isEngaged, (engaged) => {
-    mediaFocus.setCallActive(engaged)
-  }, { immediate: true, flush: 'sync' })
-  const remoteParticipants = computed(() => (call.value ? call.value.participants.filter((p) => p.userId !== meId.value) : []))
-  const qualityBars = computed(() => qualityBarsFor(qualityTier.value))
-
-  // ─── Local media ────────────────────────────────────────────────────────────
-
-  function localAudioTrack(): MediaStreamTrack | null {
-    return localStream.value?.getAudioTracks()[0] ?? null
-  }
-  function localVideoTrack(): MediaStreamTrack | null {
-    return localStream.value?.getVideoTracks()[0] ?? null
-  }
-  function localScreenTrack(): MediaStreamTrack | null {
-    return localScreenStream.value?.getVideoTracks()[0] ?? null
-  }
-
-  function otherPresenterId(): string | null {
-    const me = meId.value
-    return call.value?.participants.find((p) => p.screenSharing && p.userId !== me)?.userId ?? null
-  }
-
-  function releaseLocalMedia() {
-    const s = localStream.value
-    if (s) for (const t of s.getTracks()) stopTrack(t)
-    localStream.value = null
-    const share = localScreenStream.value
-    if (share) for (const t of share.getTracks()) stopTrack(t)
-    localScreenStream.value = null
-  }
-
-  async function acquireForCall(type: CallType, joining = false): Promise<boolean> {
-    const media = await acquireCallMedia({
-      audio: true,
-      video: shouldStartCallWithCamera(type === 'video', joining),
-      audioDeviceId: audioDeviceId.value,
-      videoDeviceId: videoDeviceId.value,
-      facingMode: facingMode.value,
-    })
-    localStream.value = media.stream
-    micError.value = media.micError
-    cameraError.value = media.cameraError
-    isMicEnabled.value = Boolean(media.audioTrack)
-    isCameraEnabled.value = Boolean(media.videoTrack)
-    callMediaLog('acquire', {
-      type,
-      joining,
-      camera: callMediaTrackInfo(media.videoTrack),
-      cameraError: media.cameraError,
-      mic: callMediaTrackInfo(media.audioTrack),
-    })
-    if (media.micError && !media.audioTrack) {
-      toast.push({ title: media.micError, message: 'You can still listen, but others won’t hear you.', tone: 'error', durationMs: 6000 })
-    }
-    if (type === 'video' && media.cameraError && !media.videoTrack) {
-      toast.push({ title: media.cameraError, message: 'Joining with audio only.', durationMs: 5000 })
-    }
-    return true
-  }
-
-  // ─── Transport ──────────────────────────────────────────────────────────────
-
-  function createTransport(callId: string) {
-    transport?.destroy()
-    peerStates.value = {}
-    remoteStreams.value = {}
-    remoteScreenStreams.value = {}
-    icePaths.value = {}
-    qualityTier.value = 0
-    speakingMonitor?.destroy()
-    speakingMonitor = new SpeakingMonitor((levels) => {
-      speakingIds.value = levels
-    })
-    speakingMonitor.setStream(meId.value, localStream.value)
-    speakingMonitor.setMuted(meId.value, !isMicEnabled.value)
-    const options: CallTransportOptions = {
-        callId,
-        selfUserId: meId.value,
-        iceServers,
-        reconnectGraceMs,
-        events: {
-          onRemoteStream(userId, stream) {
-            const next = { ...remoteStreams.value }
-            if (stream) next[userId] = stream
-            else delete next[userId]
-            remoteStreams.value = next
-            speakingMonitor?.setStream(userId, stream)
-          },
-          onRemoteScreenStream(userId, stream) {
-            const next = { ...remoteScreenStreams.value }
-            if (stream) next[userId] = stream
-            else delete next[userId]
-            remoteScreenStreams.value = next
-          },
-          onPeerState(userId, s) {
-            peerStates.value = { ...peerStates.value, [userId]: s }
-            if (s === 'failed') onPeerFailed()
-          },
-          onData(userId, raw) {
-            ingestReaction(userId, raw)
-          },
-          onIcePath(userId, path) {
-            const next = { ...icePaths.value }
-            if (path) next[userId] = path
-            else delete next[userId]
-            icePaths.value = next
-          },
-        },
-      }
-    const onTierChange = () => {
-      qualityTier.value = (transport as CloudflareSfuCallTransport | null)?.qualityManager.worstTier() ?? 0
-    }
-    transport = new CloudflareSfuCallTransport(options, request => presence.emitCallsSfu(request), onTierChange)
-    void transport.setLocalTrack('audio', isMicEnabled.value ? localAudioTrack() : null)
-    void transport.setLocalTrack('video', isCameraEnabled.value ? localVideoTrack() : null)
-    void transport.setLocalTrack('screen', localScreenTrack())
-    flushPendingSignals()
-  }
-
-  function shouldPlayHangupChime(): boolean {
-    return phase.value === 'in_call' || phase.value === 'outgoing'
-  }
-
-  function playHangupChime() {
-    hangupChime.play(speakerDeviceId.value)
-  }
-
-  function clearReloadMarker() {
-    try { window.sessionStorage.removeItem(CALL_RELOAD_KEY) } catch { /* Storage can be unavailable. */ }
-  }
-
-  function teardown() {
-    callAttempt += 1
-    clearReloadMarker()
-    stopRinging()
-    transport?.destroy()
-    transport = null
-    speakingMonitor?.destroy()
-    speakingMonitor = null
-    releaseLocalMedia()
-    remoteStreams.value = {}
-    remoteScreenStreams.value = {}
-    peerStates.value = {}
-    speakingIds.value = {}
-    icePaths.value = {}
-    qualityTier.value = 0
-    pendingSignals = []
-    joiningCallId = null
-    connectedAt.value = null
-    outgoingCalleeId.value = null
-    minimized.value = false
-    isScreenSharing.value = false
-    reactions.value = []
-    if (reactionPruneTimer) {
-      clearInterval(reactionPruneTimer)
-      reactionPruneTimer = null
-    }
-    clearSocketDownTimer()
-  }
-
-  function clearSocketDownTimer() {
-    if (!socketDownTimer) return
-    clearTimeout(socketDownTimer)
-    socketDownTimer = null
-  }
-
-  /** Unrecoverable mid-call: drop the session and tell the user once. */
-  function connectionLost() {
-    const current = call.value
-    const chime = shouldPlayHangupChime()
-    if (current) void presence.emitCallsLeave(current.id)
-    teardown()
-    state.value = { phase: 'idle', call: null, incoming: null }
-    if (chime) playHangupChime()
-    toast.push({ title: 'Connection lost.', message: 'The call couldn’t be reconnected.', tone: 'error', durationMs: 5000 })
-  }
-
-  /**
-   * A peer's media path gave up after the grace window. In a 1:1 there is nobody left to talk
-   * to; in a group the server will remove them from `participants` if their socket also died,
-   * otherwise they stay as a failed tile. Give up only when every remote peer has failed.
-   */
-  function onPeerFailed() {
-    const current = call.value
-    if (phase.value !== 'in_call' || !current) return
-    const ids = remotePeerIds(current, meId.value)
-    if (ids.length === 0) return
-    if (ids.every((id) => peerStates.value[id] === 'failed')) connectionLost()
-  }
-
-  function stopRinging() {
-    incomingNotification?.close()
-    incomingNotification = null
-    ringtone?.stop()
-    ringtone = null
-    ringback?.stop()
-    ringback = null
-  }
-
-  function applyAck(ack: CallsAck): CallSession | null {
-    if (ack.error || !ack.call) {
-      toast.push({ title: ack.error?.message ?? 'Couldn’t connect the call.', tone: 'error' })
-      return null
-    }
-    if (ack.call.mediaTransport !== 'sfu') {
-      toast.push({ title: 'Calling is temporarily unavailable. Please try again later.', tone: 'error' })
-      return null
-    }
-    if (ack.iceServers) iceServers = ack.iceServers
-    if (typeof ack.reconnectGraceMs === 'number' && ack.reconnectGraceMs > 0) reconnectGraceMs = ack.reconnectGraceMs
-    return ack.call
-  }
-
-  function enterCall(session: CallSession) {
-    state.value = { ...state.value, phase: 'in_call', call: session, incoming: null }
-    connectedAt.value = connectedAt.value ?? Date.now()
-    minimized.value = false
-    stopRinging()
-    presence.emitCallsState(session.id, {
-      micEnabled: isMicEnabled.value,
-      cameraEnabled: isCameraEnabled.value,
-      screenSharing: isScreenSharing.value,
-    })
-    callMediaLog('enter-call', {
-      callId: session.id,
-      cameraEnabled: isCameraEnabled.value,
-      micEnabled: isMicEnabled.value,
-      remotes: remotePeerIds(session, meId.value),
-    })
-    transport?.setPeers(remotePeerIds(session, meId.value))
-    transport?.syncPeerSessions(peerSessionsOf(session))
-    ensureReactionPrune()
-  }
-
-  function peerSessionsOf(session: CallSession): Record<string, string | null> {
-    const out: Record<string, string | null> = {}
-    for (const p of session.participants) {
-      if (p.userId !== meId.value) out[p.userId] = p.sessionId ?? null
-    }
-    return out
-  }
+  const s = useCallSessionState()
+  const {
+    state,
+    isMicEnabled,
+    isCameraEnabled,
+    micError,
+    cameraError,
+    minimized,
+    outgoingCalleeId,
+    user,
+    presence,
+    toast,
+    usersStore,
+    meId,
+    phase,
+    call,
+    incoming,
+  } = s
+  const inst: { outgoingMessageId: string | null } = { outgoingMessageId: null }
+  const media = useCallMedia(s)
+  const { acquireForCall } = media
+  const reactionsApi = useCallReactions(s)
+  const signaling = useCallSignaling(s, media, reactionsApi, inst, { seedParticipants, joinCall })
+  const { createTransport, shouldPlayHangupChime, playHangupChime, clearReloadMarker, teardown, stopRinging, applyAck, enterCall } = signaling
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
@@ -412,7 +102,7 @@ export function useCallSession() {
 
     const ack = await presence.emitCallsStart(conversationId, type)
     const session = applyAck(ack)
-    if (session) joiningCallId = session.id
+    if (session) rt.joiningCallId = session.id
     if (!session) {
       teardown()
       state.value = { phase: 'idle', call: null, incoming: null }
@@ -420,11 +110,11 @@ export function useCallSession() {
     }
     createTransport(session.id)
     if (session.status === 'ringing') {
-      outgoingMessageId = session.messageId
+      inst.outgoingMessageId = session.messageId
       state.value = { phase: 'outgoing', call: session, incoming: null }
       minimized.value = false
-      ringback = createRingtone('outgoing')
-      ringback.start()
+      rt.ringback = createRingtone('outgoing')
+      rt.ringback.start()
     } else {
       enterCall(session)
     }
@@ -439,7 +129,7 @@ export function useCallSession() {
       toast.push({ title: 'You’re already in a call.' })
       return
     }
-    const attempt = ++callAttempt
+    const attempt = ++rt.callAttempt
     if (opts?.participants) seedParticipants(opts.participants)
     stopRinging()
     state.value = { phase: 'requesting_media', call: null, incoming: null }
@@ -447,9 +137,9 @@ export function useCallSession() {
       const marker = opts.resume
       const media = await acquireCallMedia({ audio: marker.micEnabled, video: marker.cameraEnabled })
       // Never resurrect capture after logout, another call, or expiry while permission was pending.
-      if (attempt !== callAttempt || meId.value !== marker.userId || state.value.phase !== 'requesting_media' || Date.now() >= marker.expiresAt) {
+      if (attempt !== rt.callAttempt || meId.value !== marker.userId || state.value.phase !== 'requesting_media' || Date.now() >= marker.expiresAt) {
         for (const track of media.stream?.getTracks() ?? []) stopTrack(track)
-        if (attempt !== callAttempt) return
+        if (attempt !== rt.callAttempt) return
         teardown()
         state.value = { phase: 'idle', call: null, incoming: null }
         return
@@ -461,10 +151,10 @@ export function useCallSession() {
       cameraError.value = media.cameraError
     } else await acquireForCall(session.type, true)
 
-    joiningCallId = session.id
+    rt.joiningCallId = session.id
     state.value = { phase: 'joining', call: null, incoming: null }
     const ack = await presence.emitCallsJoin(session.id, opts?.resume?.sessionId)
-    if (attempt !== callAttempt) {
+    if (attempt !== rt.callAttempt) {
       if (ack.call && !call.value) void presence.emitCallsLeave(ack.call.id)
       return
     }
@@ -478,8 +168,8 @@ export function useCallSession() {
     createTransport(joined.id)
     if (joined.status === 'ringing') {
       state.value = { phase: 'outgoing', call: joined, incoming: null }
-      ringback = createRingtone('outgoing')
-      ringback.start()
+      rt.ringback = createRingtone('outgoing')
+      rt.ringback.start()
     } else enterCall(joined)
   }
 
@@ -513,603 +203,37 @@ export function useCallSession() {
     if (current) await presence.emitCallsLeave(current.id)
   }
 
-  async function toggleMic(): Promise<void> {
-    const current = call.value
-    let track = localAudioTrack()
-    if (!track) {
-      const got = await acquireAudioTrack({ audioDeviceId: audioDeviceId.value })
-      if (!got.track) {
-        micError.value = got.error
-        toast.push({ title: got.error ?? 'Couldn’t access your microphone.', tone: 'error' })
-        return
-      }
-      track = got.track
-      micError.value = null
-      ;(localStream.value ?? (localStream.value = new MediaStream())).addTrack(track)
-      isMicEnabled.value = true
-      await transport?.setLocalTrack('audio', track)
-    } else {
-      isMicEnabled.value = !isMicEnabled.value
-      track.enabled = isMicEnabled.value
-    }
-    if (current) presence.emitCallsState(current.id, { micEnabled: isMicEnabled.value })
-  }
-
-  async function toggleCamera(): Promise<void> {
-    const current = call.value
-    callMediaLog('toggle-camera', {
-      from: isCameraEnabled.value,
-      callId: current?.id ?? null,
-    })
-    if (isCameraEnabled.value) {
-      // Stop publishing entirely (privacy + bandwidth) rather than sending black frames.
-      const track = localVideoTrack()
-      await transport?.setLocalTrack('video', null)
-      if (track) {
-        localStream.value?.removeTrack(track)
-        stopTrack(track)
-      }
-      localStream.value = localStream.value ? new MediaStream(localStream.value.getTracks()) : null
-      isCameraEnabled.value = false
-    } else {
-      const got = await acquireVideoTrack({ videoDeviceId: videoDeviceId.value, facingMode: facingMode.value })
-      if (!got.track) {
-        cameraError.value = got.error
-        toast.push({ title: got.error ?? 'Couldn’t access your camera.', tone: 'error' })
-        return
-      }
-      cameraError.value = null
-      const s = new MediaStream(localStream.value?.getTracks() ?? [])
-      s.addTrack(got.track)
-      localStream.value = s
-      isCameraEnabled.value = true
-      await transport?.setLocalTrack('video', got.track)
-    }
-    if (current) presence.emitCallsState(current.id, { cameraEnabled: isCameraEnabled.value })
-    callMediaLog('camera-state', { cameraEnabled: isCameraEnabled.value, callId: current?.id ?? null })
-  }
-
-  async function replaceVideoTrack(next: MediaStreamTrack) {
-    const prev = localVideoTrack()
-    const s = new MediaStream(localStream.value?.getTracks().filter((t) => t !== prev) ?? [])
-    s.addTrack(next)
-    localStream.value = s
-    stopTrack(prev)
-    await transport?.setLocalTrack('video', next)
-  }
-
-  async function switchCamera(): Promise<void> {
-    if (!isCameraEnabled.value) return
-    const nextFacing = facingMode.value === 'user' ? 'environment' : 'user'
-    videoDeviceId.value = null
-    const got = await acquireVideoTrack({ facingMode: nextFacing })
-    if (!got.track) {
-      toast.push({ title: got.error ?? 'Couldn’t switch camera.', tone: 'error' })
-      return
-    }
-    facingMode.value = nextFacing
-    await replaceVideoTrack(got.track)
-  }
-
-  async function setCameraDevice(deviceId: string): Promise<void> {
-    videoDeviceId.value = deviceId
-    if (!isCameraEnabled.value) return
-    const got = await acquireVideoTrack({ videoDeviceId: deviceId })
-    if (!got.track) {
-      toast.push({ title: got.error ?? 'Couldn’t switch camera.', tone: 'error' })
-      return
-    }
-    await replaceVideoTrack(got.track)
-  }
-
-  async function setMicrophoneDevice(deviceId: string): Promise<void> {
-    audioDeviceId.value = deviceId
-    const got = await acquireAudioTrack({ audioDeviceId: deviceId })
-    if (!got.track) {
-      toast.push({ title: got.error ?? 'Couldn’t switch microphone.', tone: 'error' })
-      return
-    }
-    const prev = localAudioTrack()
-    got.track.enabled = isMicEnabled.value
-    const s = new MediaStream(localStream.value?.getTracks().filter((t) => t !== prev) ?? [])
-    s.addTrack(got.track)
-    localStream.value = s
-    stopTrack(prev)
-    await transport?.setLocalTrack('audio', got.track)
-  }
-
-  function setSpeakerDevice(deviceId: string): void {
-    speakerDeviceId.value = deviceId
-  }
-
-  async function startScreenShare(): Promise<void> {
-    if (!canScreenShare() || isScreenSharing.value) return
-    if (otherPresenterId()) {
-      toast.push({ title: 'Someone is already presenting.', durationMs: 3000 })
-      return
-    }
-    let display: MediaStream
-    try {
-      display = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 15 } }, audio: false })
-    } catch (err) {
-      const name = err instanceof DOMException ? err.name : ''
-      if (name !== 'NotAllowedError' && name !== 'AbortError') {
-        toast.push({ title: 'Couldn’t share your screen.', tone: 'error' })
-      }
-      return
-    }
-    const track = display.getVideoTracks()[0]
-    if (!track) return
-    if (otherPresenterId()) {
-      stopTrack(track)
-      toast.push({ title: 'Someone is already presenting.', durationMs: 3000 })
-      return
-    }
-    try {
-      track.contentHint = 'detail'
-    } catch {
-      // Older browsers ignore contentHint.
-    }
-    localScreenStream.value = new MediaStream([track])
-    isScreenSharing.value = true
-    track.onended = () => {
-      void stopScreenShare()
-    }
-    await transport?.setLocalTrack('screen', track)
-    const current = call.value
-    if (current) presence.emitCallsState(current.id, { screenSharing: true })
-  }
-
-  async function stopScreenShare(): Promise<void> {
-    if (!isScreenSharing.value) return
-    const stream = localScreenStream.value
-    // Release capture before awaiting WebRTC. A stalled sender must never keep the
-    // browser's screen-capture session running after the user presses Stop.
-    localScreenStream.value = null
-    isScreenSharing.value = false
-    for (const track of stream?.getTracks() ?? []) {
-      track.onended = null
-      stopTrack(track)
-    }
-    const current = call.value
-    if (current) presence.emitCallsState(current.id, { screenSharing: false })
-    await transport?.setLocalTrack('screen', null)
-  }
-
-  async function toggleScreenShare(): Promise<void> {
-    if (isScreenSharing.value) await stopScreenShare()
-    else await startScreenShare()
-  }
-
-  function ensureReactionPrune() {
-    if (reactionPruneTimer || !import.meta.client) return
-    reactionPruneTimer = setInterval(() => {
-      reactions.value = pruneCallReactions(reactions.value, Date.now())
-    }, 400)
-  }
-
-  function ingestReaction(userId: string, raw: unknown) {
-    const parsed = parseCallReactionPayload(raw)
-    if (!parsed) return
-    const incoming: CallReaction = {
-      id: `${userId}-${parsed.at}-${parsed.emoji}`,
-      userId,
-      emoji: parsed.emoji,
-      at: parsed.at,
-    }
-    reactions.value = reduceCallReactions(reactions.value, incoming, Date.now())
-    reactionBlip.play(speakerDeviceId.value)
-    ensureReactionPrune()
-  }
-
-  function sendReaction(emoji: string) {
-    if (!isCallReactionEmoji(emoji) || !meId.value) return
-    const at = Date.now()
-    const payload = encodeCallReaction(emoji, at)
-    transport?.sendData(payload)
-    ingestReaction(meId.value, payload)
-  }
-
-  function isGroupCall(session: CallSession | null | undefined): boolean {
-    return (session?.participants.length ?? 0) > 2
-  }
-
-  function selfHandRaised(session: CallSession | null | undefined): boolean {
-    if (!session || !meId.value) return false
-    return session.participants.find((p) => p.userId === meId.value)?.handRaised === true
-  }
-
-  function patchSelfHand(session: CallSession, raised: boolean): CallSession {
-    if (!meId.value) return session
-    return {
-      ...session,
-      participants: session.participants.map((p) =>
-        p.userId === meId.value ? { ...p, handRaised: raised } : p,
-      ),
-    }
-  }
-
-  function toggleHand(): void {
-    const current = call.value
-    if (!current || !isGroupCall(current)) return
-    const next = !selfHandRaised(current)
-    state.value = { ...state.value, call: patchSelfHand(current, next) }
-    presence.emitCallsState(current.id, { handRaised: next })
-  }
-
-  // ─── Realtime ───────────────────────────────────────────────────────────────
-
-  function onUpdated(session: CallSession) {
-    if (session.status !== 'ended' && session.budgetWarningDeadline
-      && call.value?.id === session.id && call.value.budgetWarningDeadline !== session.budgetWarningDeadline) {
-      toast.push({ title: 'Call ending soon. Calling is temporarily unavailable.', durationMs: 10_000 })
-    }
-    const { state: next, effects } = reduceCallsUpdated(state.value, session, meId.value)
-    state.value = next
-    if (!isGroupCall(session) && selfHandRaised(session)) {
-      presence.emitCallsState(session.id, { handRaised: false })
-    }
-    // A muted peer's tile must never ring, even if their analyser still hears room noise.
-    for (const p of session.participants) {
-      if (p.userId !== meId.value) speakingMonitor?.setMuted(p.userId, !p.micEnabled)
-    }
-    for (const e of effects) {
-      if (e.type === 'ended') {
-        const chime = shouldPlayHangupChime()
-        teardown()
-        if (chime) playHangupChime()
-        toast.push({ title: session.endReason === 'budget_exhausted' ? 'Call ended. Calling has reached its monthly allowance.' : e.reason === 'removed' ? 'You were disconnected from the call.' : 'Call ended.', durationMs: 3000 })
-      } else if (e.type === 'dismiss_incoming') {
-        stopRinging()
-      } else if (e.type === 'connected') {
-        stopRinging()
-        connectedAt.value = connectedAt.value ?? Date.now()
-        presence.emitCallsState(session.id, {
-          micEnabled: isMicEnabled.value,
-          cameraEnabled: isCameraEnabled.value,
-          screenSharing: isScreenSharing.value,
-        })
-      } else if (e.type === 'peers') {
-        transport?.setPeers(e.userIds)
-      }
-    }
-    if (next.phase === 'in_call' && next.call?.id === session.id) {
-      transport?.syncPeerSessions(peerSessionsOf(session))
-      // Self-heal the presenting flag: a Stop pressed while the socket was down (or a start
-      // whose emit was lost) leaves everyone else on the wrong layout until we correct it.
-      const mine = session.participants.find((p) => p.userId === meId.value)
-      if (mine && Boolean(mine.screenSharing) !== isScreenSharing.value) {
-        presence.emitCallsState(session.id, { screenSharing: isScreenSharing.value })
-      }
-    }
-  }
-
-  function onIncoming(payload: WsCallsIncomingPayload) {
-    const next = reduceCallsIncoming(state.value, payload)
-    if (next === state.value) return
-    seedParticipants([payload.caller])
-    state.value = next
-    ringtone = createRingtone('incoming')
-    ringtone.start()
-    notifyIfHidden(payload)
-  }
-
-  function onSignal(payload: WsRtcSignalPayload) {
-    const activeId = call.value?.id ?? joiningCallId
-    if (!activeId || payload.callId !== activeId) return
-    if (!transport) {
-      if (pendingSignals.length < MAX_PENDING_SIGNALS) pendingSignals.push(payload)
-      return
-    }
-    void transport.handleSignal(payload)
-  }
-
-  function flushPendingSignals() {
-    if (!transport || pendingSignals.length === 0) return
-    const queued = pendingSignals.splice(0)
-    for (const s of queued) void transport.handleSignal(s)
-  }
-
-  function notifyIfHidden(payload: WsCallsIncomingPayload) {
-    if (!import.meta.client || typeof Notification === 'undefined') return
-    if (document.visibilityState === 'visible') return
-    if (Notification.permission !== 'granted') return
-    try {
-      const name = payload.caller.name || (payload.caller.username ? `@${payload.caller.username}` : 'Someone')
-      const n = new Notification(`${name} is calling`, {
-        body: payload.call.type === 'video' ? 'Incoming video call' : 'Incoming voice call',
-        tag: `call-${payload.call.id}`,
-      })
-      n.onclick = () => {
-        window.focus()
-        n.close()
-      }
-      incomingNotification = n
-    } catch {
-      // Notifications unavailable in this context.
-    }
-  }
-
-  /**
-   * Socket came back while this tab was ringing: the `calls:updated` saying it was answered on
-   * another device (or cancelled) may have gone out while we were offline. Ask once.
-   */
-  async function resyncRingingCall() {
-    const ringing = incoming.value?.call
-    if (phase.value !== 'incoming' || !ringing) return
-    const ack = await presence.emitCallsStatus(ringing.id)
-    if (phase.value !== 'incoming' || incoming.value?.call.id !== ringing.id) return
-    if (ack.call) {
-      onUpdated(ack.call)
-      return
-    }
-    const code = ack.error?.code
-    if (code === 'call_ended' || code === 'call_not_found') {
-      stopRinging()
-      state.value = { phase: 'idle', call: null, incoming: null }
-    }
-  }
-
-  /** Socket came back mid-call: re-bind this tab to its seat before the server's grace expires. */
-  async function rejoinAfterReconnect() {
-    const current = call.value
-    if (!current || (phase.value !== 'in_call' && phase.value !== 'outgoing')) return
-    const ack = await presence.emitCallsJoin(current.id)
-    if (ack.call) {
-      state.value = { ...state.value, call: ack.call }
-      transport?.setPeers(remotePeerIds(ack.call, meId.value))
-      transport?.syncPeerSessions(peerSessionsOf(ack.call))
-      transport?.resumeConnections()
-      // Changes made while offline never reached the server; republish what this tab really has.
-      presence.emitCallsState(ack.call.id, {
-        micEnabled: isMicEnabled.value,
-        cameraEnabled: isCameraEnabled.value,
-        screenSharing: isScreenSharing.value,
-      })
-      return
-    }
-    const code = ack.error?.code
-    if (code === 'call_not_found' || code === 'call_ended' || code === 'client_update_required' || code === 'calling_unavailable' || code === 'budget_exhausted') {
-      const chime = shouldPlayHangupChime()
-      teardown()
-      state.value = { phase: 'idle', call: null, incoming: null }
-      if (chime) playHangupChime()
-      toast.push({ title: ack.error?.message ?? 'Call ended.', durationMs: 3000 })
-    }
-  }
-
-  /** iOS stops camera/mic tracks when the page is frozen; grab them again if they died. */
-  async function restoreLocalTracks() {
-    if (phase.value !== 'in_call' && phase.value !== 'outgoing') return
-    if (isMicEnabled.value) {
-      const audio = localAudioTrack()
-      if (!audio || audio.readyState === 'ended') {
-        const got = await acquireAudioTrack({ audioDeviceId: audioDeviceId.value })
-        if (got.track) {
-          got.track.enabled = true
-          const prev = localAudioTrack()
-          const s = new MediaStream(localStream.value?.getTracks().filter((t) => t !== prev) ?? [])
-          s.addTrack(got.track)
-          localStream.value = s
-          stopTrack(prev)
-          await transport?.setLocalTrack('audio', got.track)
-        }
-      }
-    }
-    if (isCameraEnabled.value && !isScreenSharing.value) {
-      const video = localVideoTrack()
-      if (!video || video.readyState === 'ended') {
-        const got = await acquireVideoTrack({ videoDeviceId: videoDeviceId.value, facingMode: facingMode.value })
-        if (got.track) await replaceVideoTrack(got.track)
-      }
-    }
-  }
-
-  async function resumeAfterForeground() {
-    if (phase.value !== 'in_call' && phase.value !== 'outgoing') return
-    await exitCallPictureInPicture()
-    await restoreLocalTracks()
-    transport?.resumeConnections()
-    if (presence.isSocketConnected.value) await rejoinAfterReconnect()
-  }
-
-  /**
-   * One seat per member: a newer tab or device of ours joined this call and the server handed
-   * it our seat. Tear down locally WITHOUT `calls:leave` — that would hang up the newcomer.
-   */
-  function onSeatTaken(payload: WsCallsSeatTakenPayload) {
-    const current = call.value
-    if (!current || current.id !== payload.callId) return
-    if (phase.value !== 'in_call' && phase.value !== 'outgoing' && phase.value !== 'joining') return
-    if (presence.getSocketId() !== payload.socketId) return
-    teardown()
-    state.value = { phase: 'in_call_elsewhere', call: current, incoming: null }
-    toast.push({ title: 'Call moved to another tab or device.', durationMs: 3000 })
-  }
-
-  /**
-   * Wire realtime + lifecycle once per tab. Called from the call host component that
-   * lives in GlobalOverlays, so it's active on every page.
-   */
-  function bind(): () => void {
-    if (!import.meta.client || unbind) return unbind ?? (() => {})
-    const cb: CallsCallback = {
-      onIncoming: (p) => onIncoming(p),
-      onUpdated: (p) => onUpdated(p.call),
-      onSignal: (p) => onSignal(p),
-      onSeatTaken: (p) => onSeatTaken(p),
-    }
-    presence.addCallsCallback(cb)
-
-    const messagesCb: MessagesCallback = {
-      onMessageEdited: (payload) => {
-        const message = payload.message as Message | undefined
-        if (!message || message.id !== outgoingMessageId) return
-        if (message.kind !== 'call' || message.call?.outcome !== 'missed') return
-        if (message.media?.length) return
-        pendingVoicemail.value = { conversationId: payload.conversationId ?? message.conversationId, messageId: message.id }
-      },
-    }
-    presence.addMessagesCallback(messagesCb)
-
-    // Reload and close share lifecycle events. Neither is an explicit Hang Up.
-    // Let the server hold the seat for its bounded reconnect grace instead.
-    const rememberCall = () => {
-      const current = call.value
-      if (!current || (phase.value !== 'in_call' && phase.value !== 'outgoing')) return
-      const marker: CallReloadMarker = {
-        userId: meId.value, callId: current.id, sessionId: tabCallSessionId(),
-        expiresAt: Date.now() + reconnectGraceMs,
-        micEnabled: isMicEnabled.value, cameraEnabled: isCameraEnabled.value,
-      }
-      try { window.sessionStorage.setItem(CALL_RELOAD_KEY, JSON.stringify(marker)) } catch { /* Best effort. */ }
-    }
-    window.addEventListener('pagehide', rememberCall)
-    window.addEventListener('beforeunload', rememberCall)
-
-    // sessionStorage can be copied into a newly opened tab. Only a real reload may auto-rejoin.
-    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
-    let restorePending = navigation?.type === 'reload'
-    if (!restorePending) clearReloadMarker()
-    let restoring = false
-    let restoreTimer: ReturnType<typeof setTimeout> | null = null
-    const restoreReloadedCall = async () => {
-      if (!restorePending || restoring || !meId.value || !presence.isSocketConnected.value) return
-      if (phase.value !== 'idle' && phase.value !== 'in_call_elsewhere') return
-      let marker: CallReloadMarker | null = null
-      try { marker = readCallReloadMarker(window.sessionStorage, meId.value) } catch { /* Storage can be disabled. */ }
-      if (!marker) { restorePending = false; return }
-      restoring = true
-      try {
-        const ack = await presence.emitCallsStatus(marker.callId)
-        if (!restorePending || meId.value !== marker.userId) return
-        if (!ack.call && (!ack.error || ['invalid_payload', 'not_authenticated'].includes(ack.error.code))) {
-          restoreTimer = setTimeout(() => { restoreTimer = null; void restoreReloadedCall() }, 1000)
-          return
-        }
-        restorePending = false
-        if (!canResumeCallSeat(ack.call, marker) || marker.expiresAt <= Date.now()) { clearReloadMarker(); return }
-        await joinCall(ack.call!, { resume: marker })
-      } finally { restoring = false }
-    }
-    const stopReloadWatch = watch([meId, () => presence.isSocketConnected.value], () => {
-      void restoreReloadedCall()
-    }, { immediate: true })
-
-    const stopReconnectWatch = watch(
-      () => presence.isSocketConnected.value,
-      (connected, was) => {
-        if (connected) {
-          clearSocketDownTimer()
-          if (was === false) {
-            void rejoinAfterReconnect()
-            void resyncRingingCall()
-          }
-          return
-        }
-        // The server drops our seat after `reconnectGraceMs`; stop spinning at the same moment.
-        if (!isEngaged.value || socketDownTimer) return
-        socketDownTimer = setTimeout(() => {
-          socketDownTimer = null
-          if (!presence.isSocketConnected.value && isEngaged.value) connectionLost()
-        }, reconnectGraceMs)
-      },
-    )
-
-    // Network came back (Wi-Fi ↔ hotspot, VPN toggle): don't wait for ICE to time out.
-    const onOnline = () => {
-      if (phase.value === 'in_call') transport?.resumeConnections()
-    }
-    window.addEventListener('online', onOnline)
-
-    // Background: keep the call (PiP) instead of hanging up. Foreground: restore tracks + ICE.
-    const onVisibility = () => {
-      if (document.visibilityState !== 'visible') {
-        if (phase.value === 'in_call') void enterCallPictureInPicture()
-        return
-      }
-      if (phase.value === 'in_call' || phase.value === 'outgoing') void resumeAfterForeground()
-    }
-    document.addEventListener('visibilitychange', onVisibility)
-    const onPageShow = (event: PageTransitionEvent) => {
-      if (event.persisted && (phase.value === 'in_call' || phase.value === 'outgoing')) void resumeAfterForeground()
-    }
-    window.addEventListener('pageshow', onPageShow)
-    // Coming back to the window (not only the tab) brings the video home from PiP.
-    const onFocus = () => {
-      if (document.visibilityState === 'visible' && isEngaged.value) void exitCallPictureInPicture()
-    }
-    window.addEventListener('focus', onFocus)
-
-    const stopRouteHook = router.afterEach(() => {
-      if (phase.value === 'in_call' || phase.value === 'outgoing') minimized.value = true
-    })
-
-    // The local MediaStream object is replaced on every mic/camera swap; re-tap it each time.
-    const stopLocalSpeakingWatch = watch([localStream, isMicEnabled], ([stream, micOn]) => {
-      speakingMonitor?.setStream(meId.value, stream)
-      speakingMonitor?.setMuted(meId.value, !micOn)
-    })
-
-    const stopPresenterWatch = watch(
-      () => call.value?.participants,
-      () => {
-        if (isScreenSharing.value && otherPresenterId()) void stopScreenShare()
-      },
-    )
-
-    unbind = () => {
-      stopPresenterWatch()
-      stopLocalSpeakingWatch()
-      presence.removeCallsCallback(cb)
-      presence.removeMessagesCallback(messagesCb)
-      restorePending = false
-      stopReloadWatch()
-      if (restoreTimer) clearTimeout(restoreTimer)
-      window.removeEventListener('pagehide', rememberCall)
-      window.removeEventListener('beforeunload', rememberCall)
-      window.removeEventListener('online', onOnline)
-      window.removeEventListener('pageshow', onPageShow)
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onVisibility)
-      stopReconnectWatch()
-      stopRouteHook()
-      clearSocketDownTimer()
-      unbind = null
-    }
-    return unbind
-  }
 
   return {
     phase,
     call,
     incoming,
-    isEngaged,
-    remoteParticipants,
+    isEngaged: s.isEngaged,
+    remoteParticipants: s.remoteParticipants,
     localStream,
     localScreenStream,
     remoteStreams,
     remoteScreenStreams,
-    peerStates,
-    speakingIds,
-    icePaths,
+    peerStates: s.peerStates,
+    speakingIds: s.speakingIds,
+    icePaths: s.icePaths,
     isMicEnabled,
     isCameraEnabled,
     micError,
     cameraError,
-    qualityTier,
-    qualityBars,
-    facingMode,
-    audioDeviceId,
-    videoDeviceId,
-    speakerDeviceId,
+    qualityTier: s.qualityTier,
+    qualityBars: s.qualityBars,
+    facingMode: s.facingMode,
+    audioDeviceId: s.audioDeviceId,
+    videoDeviceId: s.videoDeviceId,
+    speakerDeviceId: s.speakerDeviceId,
     minimized,
-    connectedAt,
+    connectedAt: s.connectedAt,
     outgoingCalleeId,
-    isScreenSharing,
-    reactions,
-    pendingVoicemail,
-    dismissVoicemail: () => { pendingVoicemail.value = null },
+    isScreenSharing: s.isScreenSharing,
+    reactions: s.reactions,
+    pendingVoicemail: s.pendingVoicemail,
+    dismissVoicemail: () => { s.pendingVoicemail.value = null },
     participantUser,
     participantLabel,
     startCall,
@@ -1118,15 +242,15 @@ export function useCallSession() {
     declineIncoming,
     dismissIncoming,
     leaveCall,
-    toggleMic,
-    toggleCamera,
-    switchCamera,
-    toggleScreenShare,
-    sendReaction,
-    toggleHand,
-    setCameraDevice,
-    setMicrophoneDevice,
-    setSpeakerDevice,
-    bind,
+    toggleMic: media.toggleMic,
+    toggleCamera: media.toggleCamera,
+    switchCamera: media.switchCamera,
+    toggleScreenShare: media.toggleScreenShare,
+    sendReaction: reactionsApi.sendReaction,
+    toggleHand: reactionsApi.toggleHand,
+    setCameraDevice: media.setCameraDevice,
+    setMicrophoneDevice: media.setMicrophoneDevice,
+    setSpeakerDevice: media.setSpeakerDevice,
+    bind: signaling.bind,
   }
 }
