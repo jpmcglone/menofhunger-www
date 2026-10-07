@@ -2,7 +2,7 @@
 <template>
   <div>
     <div class="moh-gutter-x py-3 border-b moh-border">
-      <AppTabSelector
+      <AppUnderlineTabs
         :model-value="mode"
         aria-label="Board activity"
         :tabs="[{ key: 'threads', label: 'Posts' }, { key: 'comments', label: 'Comments' }]"

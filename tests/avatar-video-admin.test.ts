@@ -38,7 +38,7 @@ describe('admin video avatar editor', () => {
   it('plays the saved avatar, switches to the cropped draft, and stops when hidden or removed', async () => {
     const wrapper = shallowMount(EditProfileDialog, { props: { modelValue: true, profile: updated, isSelf: false, targetUserId: target.id,
       profileAvatarUrl: updated.avatarUrl, profileBannerUrl: null }, global: { renderStubDefaultSlot: true,
-      stubs: { AppFormModal: true }, config: { warnHandler: () => {} } } })
+      stubs: { AppModal: true, AppBannerAvatarEditor: false }, config: { warnHandler: () => {} } } })
     try {
       await flushPromises()
       expect(wrapper.findComponent(AvatarVideo).props('asset')).toEqual(updated.avatarVideo)
@@ -61,7 +61,7 @@ describe('admin video avatar editor', () => {
 
   it('saves a seven-second clip on the selected user without replacing the admin session', async () => {
     const wrapper = shallowMount(EditProfileDialog, { props: { modelValue: true, profile: target, isSelf: false, targetUserId: target.id,
-      profileAvatarUrl: target.avatarUrl, profileBannerUrl: null }, global: { stubs: { AppFormModal: true }, config: { warnHandler: () => {} } } })
+      profileAvatarUrl: target.avatarUrl, profileBannerUrl: null }, global: { stubs: { AppModal: true, AppBannerAvatarEditor: false }, config: { warnHandler: () => {} } } })
     try {
       await flushPromises()
       const editor = wrapper.vm as unknown as { canSetVideoAvatar: boolean; stageVideo: (edit: unknown) => void; saveProfile: () => Promise<void> }
@@ -86,7 +86,7 @@ describe('admin video avatar editor', () => {
       throw new Error(`Unexpected route: ${path}`)
     })
     const wrapper = shallowMount(EditProfileDialog, { props: { modelValue: true, profile: updated, isSelf: false, targetUserId: target.id,
-      profileAvatarUrl: updated.avatarUrl, profileBannerUrl: null }, global: { stubs: { AppFormModal: true }, config: { warnHandler: () => {} } } })
+      profileAvatarUrl: updated.avatarUrl, profileBannerUrl: null }, global: { stubs: { AppModal: true, AppBannerAvatarEditor: false }, config: { warnHandler: () => {} } } })
     try {
       await flushPromises()
       const editor = wrapper.vm as unknown as { pendingAvatarRemoval: boolean; saveProfile: () => Promise<void> }

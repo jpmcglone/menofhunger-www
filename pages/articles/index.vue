@@ -43,7 +43,7 @@
           :class="activeTab === 'drafts' ? 'opacity-0 pointer-events-none' : 'opacity-100'"
           :aria-hidden="activeTab === 'drafts'"
         >
-          <AppTabSelector
+          <AppUnderlineTabs
             :model-value="scope"
             aria-label="Article scope"
             :tabs="scopeTabs"

@@ -25,12 +25,13 @@
     </div>
   </div>
 
-  <AppFormModal
+  <AppModal
     v-model="altModalOpen"
     title="Alt text"
-    :show-submit="true"
+    show-submit
     submit-label="Save"
     :can-submit="true"
+    body-class="p-4"
     @submit="saveAltText"
   >
     <div class="flex flex-col gap-4">
@@ -57,7 +58,7 @@
         >
       </div>
     </div>
-  </AppFormModal>
+  </AppModal>
 </template>
 
 <script setup lang="ts">

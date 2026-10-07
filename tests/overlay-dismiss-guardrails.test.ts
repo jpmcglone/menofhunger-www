@@ -140,7 +140,6 @@ describe('overlay dismissal', () => {
       'components/app/AppModal.vue',
       'components/app/BottomSheet.vue',
       'components/app/ConfirmDialog.vue',
-      'components/app/FormModal.vue',
       'components/app/ReplyModal.vue',
     ]) {
       expect(read(path), path).toContain('useOverlayDismiss(')

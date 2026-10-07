@@ -45,16 +45,26 @@
                     {{ subtitle }}
                   </p>
                 </div>
-                <button
-                  v-if="showClose"
-                  type="button"
-                  class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full moh-text-muted hover:moh-text moh-surface-hover disabled:opacity-50"
-                  aria-label="Close"
-                  :disabled="disableClose"
-                  @click="close('close_button')"
-                >
-                  <Icon name="tabler:x" aria-hidden="true" />
-                </button>
+                <div class="flex shrink-0 items-center gap-2">
+                  <Button
+                    v-if="showSubmit"
+                    :label="submitLabel"
+                    severity="secondary"
+                    :loading="saving"
+                    :disabled="saving || !canSubmit"
+                    @click="emit('submit')"
+                  />
+                  <button
+                    v-if="showClose"
+                    type="button"
+                    class="moh-tap moh-focus inline-flex h-9 w-9 items-center justify-center rounded-full moh-text-muted hover:moh-text moh-surface-hover disabled:opacity-50"
+                    aria-label="Close"
+                    :disabled="disableClose || saving"
+                    @click="close('close_button')"
+                  >
+                    <Icon name="tabler:x" aria-hidden="true" />
+                  </button>
+                </div>
               </header>
 
               <button
@@ -118,6 +128,11 @@ const props = withDefaults(
     titleWrap?: boolean
     /** Hide the title bar and overlay the close control on the panel. */
     hideHeader?: boolean
+    /** Form configuration absorbed from FormModal. */
+    showSubmit?: boolean
+    submitLabel?: string
+    saving?: boolean
+    canSubmit?: boolean
   }>(),
   {
     maxWidthClass: 'max-w-[38rem]',
@@ -129,19 +144,24 @@ const props = withDefaults(
     maxHeight: 'min(90vh, 40rem)',
     titleWrap: false,
     hideHeader: false,
+    showSubmit: false,
+    submitLabel: 'Save',
+    saving: false,
+    canSubmit: true,
   },
 )
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
   (e: 'dismiss', reason: 'close_button' | 'backdrop' | 'escape'): void
+  (e: 'submit'): void
 }>()
 
 const open = computed(() => Boolean(props.modelValue))
 useScrollLock(open)
 
 function close(reason: 'close_button' | 'backdrop' | 'escape' = 'close_button') {
-  if (props.disableClose) return
+  if (props.disableClose || props.saving) return
   emit('dismiss', reason)
   emit('update:modelValue', false)
 }

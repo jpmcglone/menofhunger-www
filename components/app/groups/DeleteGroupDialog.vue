@@ -1,11 +1,13 @@
 <template>
-  <AppFormModal
+  <AppModal
     :model-value="modelValue"
     title="Delete group"
+    show-submit
     submit-label="Delete"
     :saving="busy"
     :can-submit="matches"
-    :style="{ width: 'min(28rem, 96vw)' }"
+    max-width-class="max-w-md"
+    body-class="p-4"
     @update:model-value="emit('update:modelValue', $event)"
     @submit="remove"
   >
@@ -20,7 +22,7 @@
       </AppFormField>
       <AppInlineAlert v-if="error" severity="danger">{{ error }}</AppInlineAlert>
     </div>
-  </AppFormModal>
+  </AppModal>
 </template>
 
 <script setup lang="ts">

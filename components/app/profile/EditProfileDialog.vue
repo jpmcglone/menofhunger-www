@@ -1,181 +1,23 @@
 <template>
-  <AppFormModal
+  <AppModal
     :model-value="modelValue"
     title="Edit profile"
+    show-submit
     :saving="saving"
     :can-submit="canEdit"
+    body-class="p-4"
     @update:model-value="emit('update:modelValue', $event)"
     @submit="saveProfile"
   >
     <div class="space-y-4">
-      <!-- Banner: edge-to-edge, no corner radius. Avatar overflows below. -->
-      <div class="relative shrink-0 border-0 border-b border-gray-200 bg-white dark:border-zinc-800 dark:bg-black/20">
-        <div class="overflow-hidden">
-          <div class="relative">
-            <div class="aspect-[3/1] w-full min-h-0 shrink-0 overflow-hidden bg-gray-200 dark:bg-zinc-900">
-              <img
-                v-if="editBannerPreviewUrl"
-                :src="editBannerPreviewUrl"
-                alt=""
-                class="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
-              >
-            </div>
-
-            <div class="absolute right-3 top-3 flex gap-2">
-              <Button
-                v-if="showBannerTrash"
-                rounded
-                :severity="pendingBannerRemoval ? 'secondary' : 'danger'"
-                :aria-label="pendingBannerRemoval ? 'Undo banner removal' : 'Remove banner'"
-                :disabled="saving || !canEdit"
-                @click="pendingBannerRemoval ? undoPendingBannerRemoval() : requestBannerRemoval()"
-              >
-                <template #icon>
-                  <Icon :name="pendingBannerRemoval ? 'tabler:arrow-back-up' : 'tabler:trash'" aria-hidden="true" />
-                </template>
-              </Button>
-              <Button
-                rounded
-                severity="secondary"
-                :aria-label="pendingBannerFile ? 'Discard banner change' : 'Edit banner'"
-                :disabled="saving || !canEdit"
-                @click="pendingBannerFile ? clearPendingBanner() : openBannerPicker()"
-              >
-                <template #icon>
-                  <Icon :name="pendingBannerFile ? 'tabler:x' : 'tabler:camera'" aria-hidden="true" />
-                </template>
-              </Button>
-            </div>
-
-            <div
-              v-if="pendingBannerFile || pendingBannerRemoval || (saving && pendingBannerFile)"
-              class="absolute inset-x-0 bottom-0 px-3 py-2"
-            >
-              <div
-                class="mx-auto w-fit rounded-lg bg-black/45 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
-                style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
-              >
-                {{
-                  pendingBannerRemoval
-                    ? 'Will be removed'
-                    : saving
-                      ? 'Uploading…'
-                      : 'Not saved yet'
-                }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="absolute left-4 bottom-0 z-10 translate-y-1/2">
-          <div
-            class="relative h-28 w-28 overflow-hidden bg-gray-200 ring-4 ring-white dark:bg-zinc-800 dark:ring-black"
-            :class="avatarRoundClass"
-          >
-            <img
-              v-if="editAvatarPreviewUrl"
-              :src="editAvatarPreviewUrl"
-              alt=""
-              class="h-full w-full object-cover"
-              loading="lazy"
-              decoding="async"
-            >
-
-            <AppProfileEditAvatarVideoDraftPreview
-              v-if="modelValue && pendingVideoEdit && !pendingAvatarRemoval"
-              :edit="pendingVideoEdit"
-            />
-            <AppAvatarVideo
-              v-else-if="modelValue && !pendingAvatarFile && !pendingAvatarRemoval && profile?.avatarVideo"
-              :asset="profile.avatarVideo"
-            />
-
-            <div class="absolute inset-0 flex items-center justify-center gap-1.5">
-              <Button
-                v-if="showAvatarTrash"
-                rounded
-                :severity="pendingAvatarRemoval ? 'secondary' : 'danger'"
-                size="small"
-                :aria-label="pendingAvatarRemoval ? 'Undo avatar removal' : 'Remove avatar'"
-                :disabled="saving || !canEdit"
-                @click="pendingAvatarRemoval ? undoPendingAvatarRemoval() : requestAvatarRemoval()"
-              >
-                <template #icon>
-                  <Icon :name="pendingAvatarRemoval ? 'tabler:arrow-back-up' : 'tabler:trash'" aria-hidden="true" />
-                </template>
-              </Button>
-              <Button
-                rounded
-                severity="secondary"
-                :aria-label="pendingAvatarFile ? 'Discard avatar change' : 'Edit avatar'"
-                :disabled="saving || !canEdit"
-                @click="pendingAvatarFile ? clearPendingAvatar() : openAvatarPicker()"
-              >
-                <template #icon>
-                  <Icon :name="pendingAvatarFile ? 'tabler:x' : 'tabler:camera'" aria-hidden="true" />
-                </template>
-              </Button>
-            </div>
-
-            <div
-              v-if="pendingAvatarFile || pendingAvatarRemoval || (saving && pendingAvatarFile)"
-              class="absolute inset-x-0 bottom-0 px-2 pb-2"
-            >
-              <div
-                class="mx-auto w-fit rounded-lg bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm"
-                style="text-shadow: 0 1px 2px rgba(0,0,0,.55);"
-              >
-                {{
-                  pendingAvatarRemoval
-                    ? 'Will be removed'
-                    : saving
-                      ? 'Uploading…'
-                      : 'Not saved yet'
-                }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Spacer so the form doesn't sit under the overhanging avatar -->
-      <div class="h-16" aria-hidden="true" />
-
-      <input
-        ref="bannerInputEl"
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        class="hidden"
-        :disabled="saving || !canEdit"
-        @change="onBannerInputChange"
-      >
-      <input
-        ref="avatarInputEl"
-        type="file"
-        :accept="canSetVideoAvatar ? 'image/png,image/jpeg,image/webp,video/mp4,video/quicktime,video/webm' : 'image/png,image/jpeg,image/webp'"
-        class="hidden"
-        :disabled="saving || !canEdit"
-        @change="onAvatarInputChange"
-      >
-
-      <AppProfileEditAvatarVideoDialog :file="videoEditorFile" :is-organization="isOrganization" @cancel="videoEditorFile = null" @selected="stageVideo" />
-      <AppProfileEditAvatarCropDialog
-        v-model="avatarCropOpen"
-        :file="avatarCropFile"
-        :disabled="saving"
+      <AppBannerAvatarEditor
+        :variant="isOrganization ? 'organization' : 'user'"
+        :saving="saving"
+        :can-edit="canEdit"
+        :open="modelValue"
+        :avatar-video="profile?.avatarVideo"
         :is-organization="isOrganization"
-        @cancel="onAvatarCropCancelled"
-        @cropped="onAvatarCropped"
-      />
-
-      <AppProfileEditBannerCropDialog
-        v-model="bannerCropOpen"
-        :file="bannerCropFile"
-        :disabled="saving"
-        @cancel="onBannerCropCancelled"
-        @cropped="onBannerCropped"
+        :avatar-round-class="avatarRoundClass"
       />
 
       <AppFormField label="Name">
@@ -235,15 +77,15 @@ v-model="editSocialUrls[field.key]" type="url" :placeholder="field.placeholder"
         {{ editError }}
       </AppInlineAlert>
     </div>
-  </AppFormModal>
+  </AppModal>
 </template>
 
 <script setup lang="ts">
 import { useFormSubmit } from '~/composables/useFormSubmit'
+import { bannerAvatarEditorKey, useStagedBannerAvatarEdit } from '~/composables/useStagedBannerAvatarEdit'
 import { useSyncUserCaches } from '~/composables/settings/useSyncUserCaches'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 import { avatarVideoBasePath } from '~/utils/avatar-video-upload'
-import type { AvatarVideoEdit } from '~/utils/avatar-video-upload'
 import { putPresignedFile } from '~/utils/put-presigned-file'
 
 type PublicProfile = {
@@ -314,258 +156,26 @@ const nameCharCount = useFormCharCount(editName, 50)
 const bioCharCount = useFormCharCount(editBio, 160)
 const editError = ref<string | null>(null)
 
-// We stage avatar changes locally (preview) and only upload/commit when the user hits Save.
-const canSetVideoAvatar = ref(false)
-const videoEditorFile = ref<File | null>(null)
-const pendingVideoEdit = shallowRef<AvatarVideoEdit | null>(null)
-watch([() => props.modelValue, () => authUser.value?.id, () => props.targetUserId], async ([open]) => {
-  canSetVideoAvatar.value = false
-  const identity = authUser.value?.id
-  const targetId = props.targetUserId
-  if (!open) return
-  try {
-    const capability = await apiFetchData<{ canSet: boolean }>(`${avatarVideoBasePath(targetId)}/capabilities`)
-    if (authUser.value?.id === identity && props.targetUserId === targetId && props.modelValue) canSetVideoAvatar.value = capability.canSet
-  } catch { /* Image upload stays available. */ }
-}, { immediate: true })
-function stageVideo(edit: AvatarVideoEdit) {
-  clearPendingAvatar()
-  pendingVideoEdit.value = edit
-  pendingAvatarFile.value = edit.file
-  pendingAvatarPreviewUrl.value = URL.createObjectURL(edit.poster)
-  pendingAvatarRemoval.value = false
-  videoEditorFile.value = null
-}
-const avatarInputEl = ref<HTMLInputElement | null>(null)
-const pendingAvatarFile = ref<File | null>(null)
-const pendingAvatarPreviewUrl = ref<string | null>(null)
-// When true, the user has asked to clear the existing avatar and Save will
-// issue a DELETE. Mutually exclusive with `pendingAvatarFile` (uploading wins).
-const pendingAvatarRemoval = ref(false)
-
-// Banner staged upload
-const bannerInputEl = ref<HTMLInputElement | null>(null)
-const pendingBannerFile = ref<File | null>(null)
-const pendingBannerPreviewUrl = ref<string | null>(null)
-const pendingBannerRemoval = ref(false)
-
-// Crop step (Twitter-like): choose file -> crop -> stage cropped file
-const avatarCropOpen = ref(false)
-const avatarCropFile = ref<File | null>(null)
-
-const editAvatarPreviewUrl = computed(() => {
-  if (pendingAvatarFile.value && pendingAvatarPreviewUrl.value) return pendingAvatarPreviewUrl.value
-  if (pendingAvatarRemoval.value) return null
-  return profileAvatarUrl.value
+const photo = useStagedBannerAvatarEdit({
+  avatarUrl: profileAvatarUrl,
+  bannerUrl: profileBannerUrl,
+  canEdit,
+  allowAvatarRemoval: isAdminMode,
+  allowVideo: true,
+  videoTargetUserId: () => props.targetUserId,
+  open: () => props.modelValue,
+  avatarNoun: 'avatar',
+  bannerNoun: 'banner',
+  error: editError,
 })
-const editBannerPreviewUrl = computed(() => {
-  if (pendingBannerFile.value && pendingBannerPreviewUrl.value) return pendingBannerPreviewUrl.value
-  if (pendingBannerRemoval.value) return null
-  return profileBannerUrl.value
-})
-
-// Avatars are intentionally replace-only for the owner — only a site admin
-// acting in admin-override mode can clear an avatar. Banners stay removable
-// by the owner (any editor with `canEdit`).
-const showAvatarTrash = computed(
-  () =>
-    isAdminMode.value
-    && (Boolean(profileAvatarUrl.value) || pendingAvatarRemoval.value)
-    && !pendingAvatarFile.value,
-)
-const showBannerTrash = computed(
-  () =>
-    canEdit.value
-    && (Boolean(profileBannerUrl.value) || pendingBannerRemoval.value)
-    && !pendingBannerFile.value,
-)
-
-const { confirm } = useAppConfirm()
-
-function clearPendingAvatar() {
-  pendingVideoEdit.value = null
-  videoEditorFile.value = null
-  pendingAvatarFile.value = null
-  if (pendingAvatarPreviewUrl.value) {
-    URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
-    pendingAvatarPreviewUrl.value = null
-  }
-  if (avatarInputEl.value) avatarInputEl.value.value = ''
-}
-
-function clearPendingBanner() {
-  pendingBannerFile.value = null
-  if (pendingBannerPreviewUrl.value) {
-    URL.revokeObjectURL(pendingBannerPreviewUrl.value)
-    pendingBannerPreviewUrl.value = null
-  }
-  if (bannerInputEl.value) bannerInputEl.value.value = ''
-}
-
-function clearAvatarCropState() {
-  avatarCropOpen.value = false
-  avatarCropFile.value = null
-}
-
-function stageAvatarFile(file: File) {
-  pendingVideoEdit.value = null
-  // Clean up old preview URL (if any).
-  if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
-  pendingAvatarFile.value = file
-  pendingAvatarPreviewUrl.value = URL.createObjectURL(file)
-  // Picking a new file supersedes a staged removal — the new image is the
-  // user's latest intent.
-  pendingAvatarRemoval.value = false
-}
-
-function stageBannerFile(file: File) {
-  if (pendingBannerPreviewUrl.value) URL.revokeObjectURL(pendingBannerPreviewUrl.value)
-  pendingBannerFile.value = file
-  pendingBannerPreviewUrl.value = URL.createObjectURL(file)
-  pendingBannerRemoval.value = false
-}
-
-async function requestAvatarRemoval() {
-  if (!canEdit.value) return
-  const ok = await confirm({
-    header: 'Remove avatar?',
-    message: 'Your profile photo will be cleared when you save. The change is reversible until you save.',
-    confirmLabel: 'Remove',
-    confirmSeverity: 'danger',
-  })
-  if (!ok) return
-  clearPendingAvatar()
-  pendingAvatarRemoval.value = true
-}
-
-function undoPendingAvatarRemoval() {
-  pendingAvatarRemoval.value = false
-}
-
-async function requestBannerRemoval() {
-  if (!canEdit.value) return
-  const ok = await confirm({
-    header: 'Remove banner?',
-    message: 'Your cover image will be cleared when you save. The change is reversible until you save.',
-    confirmLabel: 'Remove',
-    confirmSeverity: 'danger',
-  })
-  if (!ok) return
-  clearPendingBanner()
-  pendingBannerRemoval.value = true
-}
-
-function undoPendingBannerRemoval() {
-  pendingBannerRemoval.value = false
-}
-
-// Banner crop state
-const bannerCropOpen = ref(false)
-const bannerCropFile = ref<File | null>(null)
-
-function clearBannerCropState() {
-  bannerCropOpen.value = false
-  bannerCropFile.value = null
-}
-
-function openBannerPicker() {
-  if (!canEdit.value) return
-  bannerInputEl.value?.click()
-}
-
-function onBannerInputChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0] ?? null
-  if (!file) return
-  handleBannerSelectedFile(file)
-}
-
-function handleBannerSelectedFile(file: File) {
-  if (!canEdit.value) return
-
-  const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
-  if (!allowed.has(file.type)) {
-    editError.value = 'Unsupported image type. Please upload a JPG, PNG, or WebP.'
-    clearPendingBanner()
-    return
-  }
-  if (file.size > 8 * 1024 * 1024) {
-    editError.value = 'Banner is too large (max 8MB).'
-    clearPendingBanner()
-    return
-  }
-
-  editError.value = null
-  bannerCropFile.value = file
-  bannerCropOpen.value = true
-}
-
-function openCropForAvatarFile(file: File) {
-  clearAvatarCropState()
-  avatarCropFile.value = file
-  avatarCropOpen.value = true
-}
-
-function onAvatarCropCancelled() {
-  clearAvatarCropState()
-  clearPendingAvatar()
-}
-
-function onAvatarCropped(file: File) {
-  stageAvatarFile(file)
-  clearAvatarCropState()
-  if (avatarInputEl.value) avatarInputEl.value.value = ''
-}
-
-function onBannerCropCancelled() {
-  clearBannerCropState()
-  clearPendingBanner()
-}
-
-function onBannerCropped(file: File) {
-  stageBannerFile(file)
-  clearBannerCropState()
-  if (bannerInputEl.value) bannerInputEl.value.value = ''
-}
-
-function openAvatarPicker() {
-  if (!canEdit.value) return
-  avatarInputEl.value?.click()
-}
-
-function onAvatarInputChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0] ?? null
-  if (!file) return
-  handleAvatarSelectedFile(file)
-}
-
-function handleAvatarSelectedFile(file: File) {
-  if (!canEdit.value) return
-
-  if (file.type.startsWith('video/')) {
-    if (!canSetVideoAvatar.value) { editError.value = 'Video avatars require Premium or Premium Plus.'; return }
-    if (file.size > 100 * 1024 * 1024) { editError.value = 'Video must be under 100 MB.'; return }
-    videoEditorFile.value = file
-    return
-  }
-  // Basic client-side checks (server also validates).
-  const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
-  if (!allowed.has(file.type)) {
-    editError.value = 'Unsupported image type. Please upload a JPG, PNG, or WebP.'
-    clearPendingAvatar()
-    return
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    editError.value = 'Avatar is too large (max 5MB).'
-    clearPendingAvatar()
-    return
-  }
-
-  editError.value = null
-  // Route through cropper before staging.
-  openCropForAvatarFile(file)
-}
+const pendingAvatarFile = toRef(photo, 'pendingAvatarFile')
+const pendingBannerFile = toRef(photo, 'pendingBannerFile')
+const pendingAvatarRemoval = toRef(photo, 'pendingAvatarRemoval')
+const pendingBannerRemoval = toRef(photo, 'pendingBannerRemoval')
+const pendingVideoEdit = toRef(photo, 'pendingVideoEdit')
+const canSetVideoAvatar = toRef(photo, 'canSetVideoAvatar')
+const { stageVideo, clearPendingAvatar, clearPendingBanner } = photo
+provide(bannerAvatarEditorKey, photo)
 
 function locationQueryFromProfile(profile: { locationZip?: string | null; locationCountry?: string | null; locationDisplay?: string | null } | null | undefined) {
   if (profile?.locationCountry && profile.locationCountry !== 'US' && profile.locationDisplay) return profile.locationDisplay
@@ -592,22 +202,9 @@ function fillEmptyEditFieldsFromProfile() {
 watch(
   () => props.modelValue,
   (open) => {
-    if (!open) {
-      clearAvatarCropState()
-      clearBannerCropState()
-      clearPendingAvatar()
-      clearPendingBanner()
-      pendingAvatarRemoval.value = false
-      pendingBannerRemoval.value = false
-      return
-    }
+    photo.reset()
+    if (!open) return
     hydrateEditFields()
-    clearAvatarCropState()
-    clearBannerCropState()
-    clearPendingAvatar()
-    clearPendingBanner()
-    pendingAvatarRemoval.value = false
-    pendingBannerRemoval.value = false
   },
   { immediate: true },
 )
@@ -828,10 +425,5 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
   },
 )
 
-onBeforeUnmount(() => {
-  clearAvatarCropState()
-  clearBannerCropState()
-  if (pendingAvatarPreviewUrl.value) URL.revokeObjectURL(pendingAvatarPreviewUrl.value)
-  if (pendingBannerPreviewUrl.value) URL.revokeObjectURL(pendingBannerPreviewUrl.value)
-})
+defineExpose({ pendingAvatarRemoval, canSetVideoAvatar, stageVideo, saveProfile })
 </script>
