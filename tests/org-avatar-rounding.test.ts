@@ -18,7 +18,7 @@ describe('org avatar rounding', () => {
     expect(crop).toMatch(/isOrganization\?: boolean/)
     expect(crop).not.toMatch(/isGroupVariant\.value \? groupAvatarRoundClass\(\) : 'rounded-full'/)
 
-    const admin = readFromRepo('pages/admin/users/[username]/index.vue')
+    const admin = readFromRepo('pages/admin/users/[username]/index.vue') + readFromRepo('composables/pages/admin/useAdminUserDetailPage.ts')
     expect(admin).toMatch(/avatarRoundClass/)
     expect(admin).not.toMatch(/ring-4 ring-white dark:ring-black rounded-full/)
   })

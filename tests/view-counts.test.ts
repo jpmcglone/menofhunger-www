@@ -108,7 +108,7 @@ describe('unique people + total views', () => {
   })
 
   it('uses landing headline totals with unique available on hover', () => {
-    const landing = readFromRepo('pages/index.vue')
+    const landing = readFromRepo('pages/index.vue') + readFromRepo('composables/pages/useIndexPage.ts')
     expect(landing).toContain('total views')
     expect(landing).toContain("label: 'Unique views'")
     expect(landing).toContain('s.unique ?? s.total')
@@ -145,7 +145,7 @@ describe('unique people + total views', () => {
     const tracker = readFromRepo('composables/usePostViewTracker.ts')
     const anon = readFromRepo('composables/useAnonViewId.ts')
     const util = readFromRepo('utils/anon-view-id.ts')
-    const landing = readFromRepo('pages/index.vue')
+    const landing = readFromRepo('pages/index.vue') + readFromRepo('composables/pages/useIndexPage.ts')
     const postRow = readFromRepo('components/app/PostRow.vue')
     const feedRow = readFromRepo('components/app/FeedPostRow.vue')
 

@@ -95,7 +95,7 @@ describe('space layout', () => {
   })
 
   it('puts reactions beside a compact presence stack', () => {
-    const page = readFromRepo('pages/s/[username].vue')
+    const page = readFromRepo('pages/s/[username].vue') + readFromRepo('composables/pages/spaces/useSpaceUsernamePage.ts')
     const reactionsIdx = page.indexOf('v-for="r in reactions"')
     const stackIdx = page.indexOf('presenceStack')
     expect(reactionsIdx).toBeGreaterThan(-1)
@@ -108,7 +108,7 @@ describe('space layout', () => {
   })
 
   it('tracks a space page view once per space', () => {
-    const page = readFromRepo('pages/s/[username].vue')
+    const page = readFromRepo('pages/s/[username].vue') + readFromRepo('composables/pages/spaces/useSpaceUsernamePage.ts')
     const helper = readFromRepo('composables/usePostHog.ts')
     expect(helper).toMatch(/\$posthog\?\.capture/)
     expect(page).toMatch(/capture\('space_viewed'/)
@@ -127,7 +127,7 @@ describe('space layout', () => {
 
   it('overlays expanded owner controls instead of pushing the player down', () => {
     const panel = readFromRepo('components/SpaceOwnerPanel.vue')
-    const page = readFromRepo('pages/s/[username].vue')
+    const page = readFromRepo('pages/s/[username].vue') + readFromRepo('composables/pages/spaces/useSpaceUsernamePage.ts')
     expect(panel).toMatch(/absolute right-0 top-full z-30/)
     expect(panel).toMatch(/aria-expanded/)
     expect(panel).toMatch(/rounded-xl border moh-border px-4 pb-4 pt-3 moh-bg/)
@@ -156,7 +156,7 @@ describe('space layout', () => {
   })
 
   it('keeps the watch-party player visible while mobile chat is open', () => {
-    const page = readFromRepo('pages/s/[username].vue')
+    const page = readFromRepo('pages/s/[username].vue') + readFromRepo('composables/pages/spaces/useSpaceUsernamePage.ts')
     const overlay = readFromRepo('components/app/SpaceLiveChatOverlay.vue')
     const overlays = readFromRepo('components/app/layout/GlobalOverlays.vue')
     const player = readFromRepo('components/SpaceYouTubePlayer.vue')

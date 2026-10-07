@@ -143,13 +143,13 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('avoids inline Date rendering in landing template', () => {
-    const landing = readFromRepo('pages/index.vue')
+    const landing = readFromRepo('pages/index.vue') + readFromRepo('composables/pages/useIndexPage.ts')
     expect(landing).not.toMatch(/new Date\(\)\.getFullYear\(\)/)
     expect(landing).toMatch(/currentYear = new Date\(\)\.getUTCFullYear\(\)/)
   })
 
   it('keeps optimized landing theme images stable through first hydration', () => {
-    const landing = readFromRepo('pages/index.vue')
+    const landing = readFromRepo('pages/index.vue') + readFromRepo('composables/pages/useIndexPage.ts')
     expect(landing).toMatch(/<img[\s\S]*:src="landingHeroSrc"/)
     expect(landing).toMatch(/\/images\/landing-light\.webp/)
     expect(landing).toMatch(/\/images\/landing-dark\.webp/)

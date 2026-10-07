@@ -45,7 +45,7 @@ describe('spaces updated realtime wiring (structural)', () => {
   it('subscribes to lobby counts from the app shell, not page unmount', async () => {
     const layout = await read('layouts/app.vue')
     const index = await read('pages/spaces/index.vue')
-    const spacePage = await read('pages/s/[username].vue')
+    const spacePage = (await read('pages/s/[username].vue')) + (await read('composables/pages/spaces/useSpaceUsernamePage.ts'))
     expect(layout).toMatch(/subscribeLobbyCounts\(/)
     expect(layout).toMatch(/unsubscribeLobbyCounts\(/)
     expect(index).not.toMatch(/unsubscribeLobbyCounts/)
@@ -67,7 +67,7 @@ describe('spaces updated realtime wiring (structural)', () => {
     const index = await read('pages/spaces/index.vue')
     const preview = await read('components/app/post/PostRowLinkPreview.vue')
     const badge = await read('components/app/AppSpaceStatusBadge.vue')
-    const spacePage = await read('pages/s/[username].vue')
+    const spacePage = (await read('pages/s/[username].vue')) + (await read('composables/pages/spaces/useSpaceUsernamePage.ts'))
     const radioBar = await read('components/app/RadioBar.vue')
     expect(row).toMatch(/useSpaceDisplayTitle/)
     expect(row).toMatch(/spaceLobbyRowKind/)
@@ -104,7 +104,7 @@ describe('spaces updated realtime wiring (structural)', () => {
   })
 
   it('re-joins the open space when spaces:updated flips isActive true', async () => {
-    const spacePage = await read('pages/s/[username].vue')
+    const spacePage = (await read('pages/s/[username].vue')) + (await read('composables/pages/spaces/useSpaceUsernamePage.ts'))
     expect(spacePage).toMatch(/wasInactive && updated\.isActive/)
     expect(spacePage).toMatch(/joinNowThatLive/)
     expect(spacePage).toMatch(/requestCurrentState\(s\.id\)/)
@@ -162,7 +162,7 @@ describe('spaces updated realtime wiring (structural)', () => {
   })
 
   it('locks the watch-party player to 16:9 with an overlaid local volume control', async () => {
-    const spacePage = await read('pages/s/[username].vue')
+    const spacePage = (await read('pages/s/[username].vue')) + (await read('composables/pages/spaces/useSpaceUsernamePage.ts'))
     const player = await read('components/SpaceYouTubePlayer.vue')
     expect(spacePage).toMatch(/aspect-video/)
     expect(spacePage).toMatch(/pinWatchPlayerForChat/)
