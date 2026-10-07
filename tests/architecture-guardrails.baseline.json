@@ -11,8 +11,6 @@
     "components/app/UserPreviewCard.vue",
     "components/app/map/MembersUsMap.vue",
     "components/app/profile/Header.vue",
-    "composables/chat/useChatThread.ts",
-    "composables/presence/usePresenceDomains.ts",
     "pages/a/[id].vue",
     "pages/admin/analytics.vue",
     "pages/admin/marv.vue",

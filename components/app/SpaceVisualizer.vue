@@ -69,7 +69,7 @@
 
 <script setup lang="ts">
 import { getSpaceAudioAnalyser, resumeSpaceAudioContext, debugSpaceAudio } from '~/composables/useSpaceAudio'
-import { SPACE_VISUALIZER_PALETTES, spaceVisualizerRgb } from '~/composables/spaces/spaceVisualizerPalette'
+import { SPACE_VISUALIZER_PALETTES, spaceVisualizerRgb, type SpaceVisualizerPalette } from '~/composables/spaces/spaceVisualizerPalette'
 import { userColorTier, type UserColorTier } from '~/utils/user-tier'
 
 const props = withDefaults(
@@ -162,7 +162,7 @@ function drawBackground(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  p: TierPalette,
+  p: SpaceVisualizerPalette,
   dark: boolean,
   t: number,
   bassEnergy: number,  // 0–1 snappy bass
@@ -252,7 +252,7 @@ function drawParticles(
   ctx: CanvasRenderingContext2D,
   W: number,
   H: number,
-  p: TierPalette,
+  p: SpaceVisualizerPalette,
   t: number,
   energy: number,
 ) {
@@ -501,7 +501,7 @@ function draw() {
   drawParticles(ctx, W, H, p, t, energy)
 }
 
-function drawIdleLine(ctx: CanvasRenderingContext2D, W: number, H: number, p: TierPalette, dark: boolean) {
+function drawIdleLine(ctx: CanvasRenderingContext2D, W: number, H: number, p: SpaceVisualizerPalette, dark: boolean) {
   const y = H - 2
   const alpha = dark ? 0.22 : 0.15
   const grad = ctx.createLinearGradient(0, 0, W, 0)

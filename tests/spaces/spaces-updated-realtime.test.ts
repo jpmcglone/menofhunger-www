@@ -12,7 +12,12 @@ describe('spaces updated realtime wiring (structural)', () => {
   }
 
   it('listens for spaces:updated and exposes onUpdated on SpacesCallback', async () => {
-    const domains = await read('composables/presence/usePresenceDomains.ts')
+    const domains = [
+      await read('composables/presence/usePresenceDomains.ts'),
+      await read('composables/presence/registerPresenceSocketHandlers.ts'),
+      await read('composables/presence/registerPresenceMediaHandlers.ts'),
+      await read('composables/presence/registerPresenceSocialHandlers.ts'),
+    ].join('\n')
     const types = await read('composables/presence/types.ts')
     expect(domains).toMatch(/socket\.on\('spaces:updated'/)
     expect(types).toMatch(/onUpdated\?:\s*\(payload:\s*SpacesUpdatedPayload\)/)

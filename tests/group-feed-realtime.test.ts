@@ -41,7 +41,12 @@ describe('groups:marv-changed realtime', () => {
   })
 
   it('usePresenceDomains fans groups:marv-changed out to groupFeedCallbacks', () => {
-    const source = readFile('composables/presence/usePresenceDomains.ts')
+    const source = [
+      readFile('composables/presence/usePresenceDomains.ts'),
+      readFile('composables/presence/registerPresenceSocketHandlers.ts'),
+      readFile('composables/presence/registerPresenceMediaHandlers.ts'),
+      readFile('composables/presence/registerPresenceSocialHandlers.ts'),
+    ].join('\n')
     expect(source).toContain("socket.on('groups:marv-changed'")
     expect(source).toContain('cb.onMarvChanged?.(data)')
   })

@@ -1,4 +1,8 @@
 import type {
+  ChannelChangedEvent,
+  ChannelMessagesEvent,
+  ChannelTypingEvent,
+  ChannelViewerEvent,
   CommunityGroupInviteStatus,
   FollowListUser,
   Recruit,
@@ -51,6 +55,13 @@ import type {
   WsRtcSignalPayload,
   WsPresenceCallChangedPayload,
 } from '~/types/api'
+
+export type ChannelCallback = (event:
+  | { type: 'changed'; payload: ChannelChangedEvent }
+  | { type: 'messages'; payload: ChannelMessagesEvent }
+  | { type: 'viewer'; payload: ChannelViewerEvent }
+  | { type: 'typing'; payload: ChannelTypingEvent }
+) => void
 
 export type PresenceOnlinePayload = {
   userId: string

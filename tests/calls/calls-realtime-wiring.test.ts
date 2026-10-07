@@ -8,7 +8,12 @@ const read = (p: string) => readFileSync(resolve(root, p), 'utf8')
 
 describe('DM calling realtime wiring', () => {
   it('routes calls:incoming / calls:updated / rtc:signal through the shared presence registry', () => {
-    const domains = read('composables/presence/usePresenceDomains.ts')
+    const domains = [
+      read('composables/presence/usePresenceDomains.ts'),
+      read('composables/presence/registerPresenceSocketHandlers.ts'),
+      read('composables/presence/registerPresenceMediaHandlers.ts'),
+      read('composables/presence/registerPresenceSocialHandlers.ts'),
+    ].join('\n')
     expect(domains).toContain("socket.on('calls:incoming'")
     expect(domains).toContain("socket.on('calls:updated'")
     expect(domains).toContain("socket.on('rtc:signal'")
@@ -75,7 +80,12 @@ describe('DM calling realtime wiring', () => {
   })
 
   it('one seat per member: a displaced tab stands down locally and never sends calls:leave', () => {
-    const domains = read('composables/presence/usePresenceDomains.ts')
+    const domains = [
+      read('composables/presence/usePresenceDomains.ts'),
+      read('composables/presence/registerPresenceSocketHandlers.ts'),
+      read('composables/presence/registerPresenceMediaHandlers.ts'),
+      read('composables/presence/registerPresenceSocialHandlers.ts'),
+    ].join('\n')
     expect(domains).toContain("socket.on('calls:seat-taken'")
     expect(domains).toContain('cb.onSeatTaken?.(data)')
 
