@@ -6,6 +6,19 @@ import { resolve } from 'node:path'
  * section components and composables. Source-level assertions read the whole surface.
  */
 const SURFACE_PARTS: Record<string, string[]> = {
+  'components/app/content/StyledTextarea.vue': [
+    'composables/composer/useStyledTextarea.ts',
+    'composables/composer/useStyledTextareaTags.ts',
+    'composables/composer/useStyledTextareaEditor.ts',
+  ],
+  'components/SpaceYouTubePlayer.vue': [
+    'composables/spaces/useSpaceYouTubePlayer.ts',
+    'composables/spaces/useSpaceYouTubePlayerSync.ts',
+    'composables/spaces/useSpaceYouTubePlayerLifecycle.ts',
+  ],
+  'components/app/people/UserPreviewCard.vue': [
+    'composables/people/useUserPreviewCard.ts',
+  ],
   'pages/g/[slug]/index.vue': [
     'composables/pages/group',
   ],

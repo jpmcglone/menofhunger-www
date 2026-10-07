@@ -3,10 +3,5 @@
   "undefinedLocaleDates": [],
   "transitionAll": [],
   "pageHandRolledCursor": [],
-  "oversizedFiles": [
-    "components/SpaceYouTubePlayer.vue",
-    "components/app/content/StyledTextarea.vue",
-    "components/app/people/UserPreviewCard.vue",
-    "components/app/map/MembersUsMap.vue"
-  ]
+  "oversizedFiles": []
 }

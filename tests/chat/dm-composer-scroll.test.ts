@@ -1,15 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readSurfaceSource } from '../helpers/surface-source'
 
 const dm = readFileSync(
   resolve(process.cwd(), 'components/app/content/DmComposer.vue'),
   'utf8',
 )
-const styled = readFileSync(
-  resolve(process.cwd(), 'components/app/content/StyledTextarea.vue'),
-  'utf8',
-)
+const styled = readSurfaceSource('components/app/content/StyledTextarea.vue')
 
 describe('DM composer field scroll', () => {
   it('scrolls the contenteditable, not a parent wrapper', () => {
@@ -42,7 +40,7 @@ describe('TipTap commandManager null (MENOFHUNGER-WWW-1R)', () => {
       'components/app/article/TiptapEditor.vue',
       'components/admin/NewsletterEditor.vue',
     ]) {
-      const src = readFileSync(resolve(process.cwd(), file), 'utf8')
+      const src = readSurfaceSource(file, process.cwd())
       expect(src).toContain('isEditorAlive')
       expect(src).toContain('commandManager')
     }

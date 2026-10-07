@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readSurfaceSource } from './helpers/surface-source'
 
 /**
  * Guardrail: the mention-decoration refresh must not dispatch during an IME composition.
@@ -17,10 +16,8 @@ import { describe, expect, it } from 'vitest'
  * and flush afterwards, so mention colors still resolve once the composition ends.
  */
 
-const SOURCE = resolve(process.cwd(), 'components/app/content/StyledTextarea.vue')
-
 describe('StyledTextarea composition safety', () => {
-  const source = readFileSync(SOURCE, 'utf8')
+  const source = readSurfaceSource('components/app/content/StyledTextarea.vue')
 
   const refreshFn = source.slice(
     source.indexOf('function refreshMentionDecorations'),

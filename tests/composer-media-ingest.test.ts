@@ -6,6 +6,7 @@ import {
   isComposerMediaType,
   isComposerVideoType,
 } from '~/composables/composer/types'
+import { readSurfaceSource } from './helpers/surface-source'
 
 function readFromRepo(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -32,7 +33,7 @@ describe('composer media type helpers', () => {
 
 describe('paste and drop reach the TipTap editor', () => {
   it('StyledTextarea claims file paste/drop so media is not swallowed by the editor', () => {
-    const source = readFromRepo('components/app/content/StyledTextarea.vue')
+    const source = readSurfaceSource('components/app/content/StyledTextarea.vue')
     expect(source).toMatch(/handlePaste\(_view, event\)/)
     expect(source).toMatch(/handleDrop\(_view, event\)/)
     expect(source).toMatch(/emit\('media-files', files\)/)

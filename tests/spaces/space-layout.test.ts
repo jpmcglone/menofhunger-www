@@ -7,6 +7,7 @@ import {
   navCompactModePath,
   shouldInterceptSameNavClick,
 } from '../../config/routes'
+import { readSurfaceSource } from '../helpers/surface-source'
 
 function readFromRepo(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -159,7 +160,7 @@ describe('space layout', () => {
     const page = readFromRepo('pages/s/[username].vue') + readFromRepo('composables/pages/spaces/useSpaceUsernamePage.ts')
     const overlay = readFromRepo('components/app/media/SpaceLiveChatOverlay.vue')
     const overlays = readFromRepo('components/app/layout/GlobalOverlays.vue')
-    const player = readFromRepo('components/SpaceYouTubePlayer.vue')
+    const player = readSurfaceSource('components/SpaceYouTubePlayer.vue')
     expect(page).toMatch(/pinWatchPlayerForChat/)
     expect(page).toMatch(/z-\[var\(--moh-z-pinned-player\)\]/)
     expect(overlays).toMatch(/keep-watch-player-visible/)

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readSurfaceSource } from '../helpers/surface-source'
 
 /**
  * Structural guard: spaces notify/schedule live updates must patch in place via
@@ -163,7 +164,7 @@ describe('spaces updated realtime wiring (structural)', () => {
 
   it('locks the watch-party player to 16:9 with an overlaid local volume control', async () => {
     const spacePage = (await read('pages/s/[username].vue')) + (await read('composables/pages/spaces/useSpaceUsernamePage.ts'))
-    const player = await read('components/SpaceYouTubePlayer.vue')
+    const player = readSurfaceSource('components/SpaceYouTubePlayer.vue')
     expect(spacePage).toMatch(/aspect-video/)
     expect(spacePage).toMatch(/pinWatchPlayerForChat/)
     expect(spacePage).toMatch(/flex items-center justify-center/)
@@ -182,7 +183,7 @@ describe('spaces updated realtime wiring (structural)', () => {
     expect(player).toMatch(/if \(isYtPlaying\(\)\) return/)
     expect(player).toMatch(/function snapOwnerToRoomState/)
     expect(player).toMatch(/snapOwnerToRoomState\(\)/)
-    expect(player).not.toMatch(/if \(ytPlayer && playerReady\.value\) emitCurrentState\(\)/)
+    expect(player).not.toMatch(/if \((playerSync\.)?ytPlayer && playerReady\.value\) emitCurrentState\(\)/)
     expect(player).toMatch(/onDeactivated/)
     expect(player).toMatch(/isFollowingPlayback\.value/)
     expect(player).toMatch(/loadVideoById\?\.\(\{ videoId, startSeconds \}\)/)
