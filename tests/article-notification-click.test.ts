@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { readNotificationsSource } from './helpers/notifications-source'
+import { readSurfaceSource } from './helpers/surface-source'
 
 function readFile(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -44,7 +45,7 @@ describe('article notification click-through', () => {
   })
 
   it('reads a comment id from the hash or a comment query param', () => {
-    const source = readFile('pages/a/[id].vue')
+    const source = readSurfaceSource('pages/a/[id].vue')
     expect(source).toContain('function commentIdFromRoute')
     expect(source).toContain('extractCommentIdFromHash(route.hash)')
     expect(source).toContain('route.query.comment')

@@ -6,6 +6,7 @@ import {
   findInnermostPostEl,
   isUsableHighlightTarget,
 } from '../utils/align-highlighted-post-scroll'
+import { readSurfaceSource } from './helpers/surface-source'
 
 describe('computeAlignDelta', () => {
   it('scrolls down when the target sits below the title bar', () => {
@@ -79,7 +80,7 @@ describe('permalink highlight align triggers (structural)', () => {
     // Regression: `watch(() => [postId, parentId], …)` returns a new array every time
     // `post` is replaced (boost/liveUpdated), so Object.is always fails and the initial
     // under-title-bar align re-ran after the page had settled.
-    const page = readFromRepo('pages/p/[id].vue')
+    const page = readSurfaceSource('pages/p/[id].vue')
     expect(page).toMatch(/watch\(\s*\[postId,\s*\(\)\s*=>\s*post\.value\?\.parent\?\.id\s*\?\?\s*null\]/)
     expect(page).not.toMatch(/watch\(\s*\(\)\s*=>\s*\[\s*postId\.value/)
     expect(page).toMatch(/highlightAlignFinishedForId/)

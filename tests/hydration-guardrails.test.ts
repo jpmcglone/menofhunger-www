@@ -595,7 +595,7 @@ describe('hydration guardrails (structural)', () => {
     // The pill reads/writes localStorage (lastSeenCount, dismissedCount). On the server that
     // call would throw. The v-if guard must include `isMounted` so the pill is invisible
     // during the SSR pass and first client paint, then appears after hydration.
-    const page = readFromRepo('pages/p/[id].vue')
+    const page = readSurfaceSource('pages/p/[id].vue')
     expect(page).toMatch(/v-if="isMounted && showCatchMeUpPill/)
     expect(page).toMatch(/const isMounted = ref\(false\)/)
     expect(page).toMatch(/onMounted\(\(\)\s*=>\s*\{[\s\S]*?isMounted\.value\s*=\s*true/)
@@ -603,7 +603,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('keeps Discover more behind ClientOnly + IntersectionObserver (lazy, not SSR)', () => {
-    const page = readFromRepo('pages/p/[id].vue')
+    const page = readSurfaceSource('pages/p/[id].vue')
     expect(page).toMatch(/<ClientOnly>[\s\S]*Discover more[\s\S]*<\/ClientOnly>/)
     expect(page).toMatch(/usePostDiscoverMore/)
     expect(page).toMatch(/IntersectionObserver/)
@@ -768,7 +768,7 @@ describe('hydration guardrails (structural)', () => {
     const row = readSurfaceSource('components/app/content/PostRow.vue')
     expect(row).toMatch(/useState<boolean>\('moh-hydrated'/)
     expect(row).toMatch(/hydrated\.value && hasViewedLocally/)
-    const permalink = readFromRepo('pages/p/[id].vue')
+    const permalink = readSurfaceSource('pages/p/[id].vue')
     const watchBody = permalink.slice(permalink.indexOf('const { markEngaged }'), permalink.indexOf('function onDeleted'))
     expect(watchBody).toMatch(/markEngaged\(chainIds\)/)
     expect(watchBody).toMatch(/\(\) => post\.value\?\.id/)

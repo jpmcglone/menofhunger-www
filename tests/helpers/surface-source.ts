@@ -6,8 +6,10 @@ import { resolve } from 'node:path'
  * section components and composables. Source-level assertions read the whole surface.
  */
 const SURFACE_PARTS: Record<string, string[]> = {
+  'pages/a/[id].vue': ['components/app/article/page', 'composables/pages/article'],
   'components/app/content/PostRow.vue': ['composables/post-row/usePostRow.ts'],
   'components/app/profile/Header.vue': ['components/app/profile/header', 'composables/profile'],
+  'pages/p/[id].vue': ['components/app/post/permalink', 'composables/pages/post'],
   'pages/u/[username].vue': ['components/app/profile/page', 'composables/pages/profile'],
 }
 

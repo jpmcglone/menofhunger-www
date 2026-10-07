@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { readSurfaceSource } from './helpers/surface-source'
 
 function readFile(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -89,7 +90,7 @@ describe('group join feedback', () => {
   })
 
   it('gated permalink shows Join and confirms after success', () => {
-    const source = readFile('pages/p/[id].vue')
+    const source = readSurfaceSource('pages/p/[id].vue')
     expect(source).toContain(':show-join="isAuthed"')
     expect(source).toContain('applyCommunityGroupJoin')
     expect(source).toContain('communityGroupJoinToast')

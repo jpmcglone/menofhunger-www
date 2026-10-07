@@ -92,7 +92,7 @@ describe('unique people + total views', () => {
 
   it('shows unique people and impression breakdowns on articles', () => {
     const listCard = readFromRepo('components/app/article/ListCard.vue')
-    const articlePage = readFromRepo('pages/a/[id].vue')
+    const articlePage = readSurfaceSource('pages/a/[id].vue')
     const tracker = readFromRepo('composables/useArticleViewTracker.ts')
 
     expect(listCard).toContain('AppPostRowViewerBreakdown')
@@ -124,11 +124,11 @@ describe('unique people + total views', () => {
   })
 
   it('reports permalink views even when app:mounted already flipped hydrated', () => {
-    const permalink = readFromRepo('pages/p/[id].vue')
+    const permalink = readSurfaceSource('pages/p/[id].vue')
     const tracker = readFromRepo('composables/usePostViewTracker.ts')
     const watchBody = permalink.slice(permalink.indexOf('const { markEngaged }'), permalink.indexOf('function onDeleted'))
 
-    expect(permalink).toContain('await usePostPermalink(postId)')
+    expect(permalink).toContain('await usePostPermalink(routeState.postId)')
     expect(watchBody).toContain('reportPermalinkViews')
     expect(watchBody).not.toContain('viewTrackerHydrated')
     expect(watchBody).toContain("() => post.value?.id")
