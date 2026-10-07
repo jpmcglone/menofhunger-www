@@ -66,7 +66,7 @@ function spacesLog(...args: unknown[]) {
 // og:description, and JSON-LD Event. We deliberately do NOT seed space.value
 // from this so the interactive template (SpaceYouTubePlayer etc.) stays unmounted
 // until onMounted runs and the socket is ready, preserving sync timing.
-const { data: ssrSpace } = await useAsyncData(
+const ssrSpaceRequest = useAsyncData(
   `space-${username.value}`,
   () => fetchSpaceByUsername(username.value),
   { server: true },
@@ -74,6 +74,7 @@ const { data: ssrSpace } = await useAsyncData(
 
 // Used only by usePageSeo below — falls back from the live ref to the SSR
 // snapshot so bots get rich metadata even before onMounted runs.
+const { data: ssrSpace } = ssrSpaceRequest
 const seoSpace = computed(() => space.value ?? ssrSpace.value)
 
 const isOwner = computed(() => Boolean(user.value?.id && space.value?.owner?.id && user.value.id === space.value.owner.id))
@@ -425,6 +426,7 @@ usePageSeo({
     }]
   }),
 })
+await ssrSpaceRequest
   return {
     setAvatarEl,
     onReactionClick,

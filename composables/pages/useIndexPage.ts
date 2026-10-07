@@ -68,11 +68,12 @@ const taglineParts = computed(() => {
 
 const { apiFetchData } = useApiClient()
 
-const { data: landingSnapshotData } = await useAsyncData<LandingSnapshot>(
+const landingSnapshotRequest = useAsyncData<LandingSnapshot>(
   'landing:snapshot',
   () => apiFetchData<LandingSnapshot>('/meta/landing', { method: 'GET' }),
   { server: true },
 )
+const { data: landingSnapshotData } = landingSnapshotRequest
 const landingSnapshot = computed(() => landingSnapshotData.value ?? null)
 const recentlyActiveMen = computed(() => landingSnapshot.value?.recentlyActiveMen ?? [])
 const topPostsThisWeek = computed(() => landingSnapshot.value?.topPostsThisWeek ?? [])
@@ -247,6 +248,7 @@ usePageSeo({
   ogType: 'website',
   twitterCard: 'summary_large_image'
 })
+await landingSnapshotRequest
   return {
     setLandingPostCardEl,
     formatLandingCount,

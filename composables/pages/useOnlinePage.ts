@@ -43,11 +43,12 @@ const { user: authUser } = useAuth()
 const { membersVisible } = useMembersAccess()
 
 // Server-rendered counts so search results and link previews show the live number.
-const { data: ssrCounts } = await useAsyncData('online-page-counts', () =>
+const ssrCountsRequest = useAsyncData('online-page-counts', () =>
   apiFetch<GetPresenceOnlineData>('/presence/online', { method: 'GET', query: { includeSelf: '1', summary: '1' } })
     .then((res) => ({ total: res?.pagination?.totalOnline ?? 0, guests: res?.pagination?.anonymousOnline ?? 0 }))
     .catch(() => null),
 )
+const { data: ssrCounts } = ssrCountsRequest
 const displayTotal = computed(() => totalOnline.value ?? ssrCounts.value?.total ?? null)
 const displayGuests = computed(() => anonymousOnline.value ?? ssrCounts.value?.guests ?? 0)
 
@@ -393,6 +394,7 @@ onBeforeUnmount(() => {
 })
 const loadingInitial = useInitialLoading(loading, () => users.value.length > 0, error)
 const recentLoadingInitial = useInitialLoading(recentLoading, () => recentUsers.value.length > 0, recentError)
+await ssrCountsRequest
   return {
     recentLastOnlineLabel,
     loadMoreRecent,
