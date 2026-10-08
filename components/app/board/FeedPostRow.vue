@@ -2,7 +2,7 @@
 <template>
   <div
     ref="rowEl"
-    class="relative flex gap-2 pt-2 pr-4 pb-1 pl-1 transition-colors"
+    class="relative moh-gutter-x moh-post-row pt-2 pb-1 transition-colors"
     :class="clickable ? 'cursor-pointer hover:bg-[var(--moh-surface-hover)]' : ''"
     :style="scopeStyle"
     :role="clickable ? 'link' : undefined"
@@ -21,17 +21,7 @@
       aria-hidden="true"
     />
 
-    <div class="relative z-10 flex w-11 shrink-0 justify-center">
-      <AppBoardBoostButton
-        :post-id="post.id"
-        :points="post.boostCount"
-        :viewer-has-boosted="Boolean(post.viewerHasBoosted)"
-        :disabled="locked"
-        vertical
-      />
-    </div>
-
-    <div class="relative z-[2] flex min-w-0 flex-1 flex-col gap-1.5">
+    <div class="relative z-[2] flex min-w-0 flex-col gap-1.5">
       <div class="flex min-h-5 items-center gap-1.5 text-xs">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5">
           <Icon name="tabler:layout-list" class="shrink-0 text-[14px] moh-text-soft" aria-hidden="true" />

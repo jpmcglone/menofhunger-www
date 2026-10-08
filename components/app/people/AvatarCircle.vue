@@ -61,7 +61,7 @@
       v-else
       :class="[
         'absolute rounded-full border-2 transition-opacity duration-200',
-        effectivePresenceStatus === 'online' ? 'border-white bg-green-500 dark:border-zinc-900 dark:bg-green-500' : '',
+        effectivePresenceStatus === 'online' ? 'border-white bg-[var(--moh-online)] dark:border-zinc-900' : '',
         effectivePresenceStatus === 'connecting' ? 'border-white bg-yellow-500 dark:border-zinc-900 dark:bg-yellow-500' : '',
         effectivePresenceStatus !== 'offline' ? '' : 'pointer-events-none'
       ]"

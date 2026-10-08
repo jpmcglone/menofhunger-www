@@ -151,7 +151,7 @@
           class="rounded-full px-2 py-0.5 text-[11px] shadow-sm backdrop-blur-sm"
           :class="
             showOnlineNow
-              ? 'bg-green-600/90 text-white dark:bg-green-500/20 dark:text-green-200'
+              ? 'bg-[var(--moh-online)]/90 text-white dark:bg-[var(--moh-online)]/20 dark:text-[var(--moh-online)]'
               : 'bg-white/70 text-gray-600 dark:bg-black/60 dark:text-gray-400 tabular-nums'
           "
         >

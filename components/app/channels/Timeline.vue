@@ -20,8 +20,8 @@
       <div v-if="root" :data-message-id="root.id"><AppChannelsMessageRow :message="root" :permalink="permalink(root)" hide-replies :grouped="false" :can-react="channel.capabilities.canReact" :actions="actions(root)" :reactions="reactions" @react="react(root, $event)" @reply="openThread(root)" @hide-preview="hidePreview(root, $event)" /><div class="border-b moh-border" /></div>
       <TransitionGroup tag="div" :name="loading ? 'channel-static' : 'channel-rows'">
       <div v-for="(message, index) in rows" :key="message.id">
-        <div v-if="startsDay(index)" class="flex items-center gap-3 py-5 text-xs moh-text-muted"><span class="h-px flex-1 bg-[var(--moh-border)]" /><time :datetime="message.createdAt">{{ new Date(message.createdAt).toLocaleDateString([], { month: 'long', day: 'numeric' }) }}</time><span class="h-px flex-1 bg-[var(--moh-border)]" /></div>
-        <button v-if="message.id === newMarkerId" type="button" class="moh-focus flex min-h-11 w-full items-center gap-3 text-xs text-orange-600" aria-label="New messages. Dismiss marker" title="Dismiss (Esc)" @click="newDismissed = true"><span class="h-px flex-1 bg-current" />New<span class="h-px flex-1 bg-current" /></button>
+        <div v-if="startsDay(index)" class="flex items-center gap-3 py-5 text-xs moh-text-muted"><span class="h-px flex-1 bg-[var(--moh-border)]" /><time :datetime="message.createdAt">{{ formatDayDividerLabel(message.createdAt) }}</time><span class="h-px flex-1 bg-[var(--moh-border)]" /></div>
+        <button v-if="message.id === newMarkerId" type="button" class="moh-focus flex min-h-11 w-full items-center" aria-label="New messages. Dismiss marker" title="Dismiss (Esc)" @click="newDismissed = true"><AppNewSinceVisitDivider /></button>
         <div :id="`channel-message-${message.id}`" :data-message-id="message.id" :class="targetId === message.id ? 'bg-[var(--moh-surface-2)]' : ''"><AppChannelsMessageRow :message="message" :permalink="permalink(message)" :grouped="grouped(index)" :latest-own="message.id === latestOwnId && !pending.length" :fresh="freshlySent.has(message.id)" :can-react="channel.capabilities.canReact" :actions="actions(message)" :reactions="reactions" @react="react(message, $event)" @reply="openThread(message)" @hide-preview="hidePreview(message, $event)" /></div>
       </div>
       </TransitionGroup>
@@ -52,6 +52,7 @@ import { channelArrivals, channelLink, channelPath, channelTitle } from '~/utils
 import { useBottomAnchoredList } from '~/composables/useBottomAnchoredList'
 import type { SurfaceAction } from '~/utils/surface-actions'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
+import { formatDayDividerLabel } from '~/utils/time-format'
 const props = defineProps<{ group: CommunityGroupShell; channel: GroupChannel; rootId?: string; targetId?: string }>()
 const state = inject(groupChannelsKey)!
 const { apiFetchData } = useApiClient()

@@ -223,7 +223,7 @@
               <div v-else class="relative mt-3">
                 <template v-for="item in postsFeedDisplayItems" :key="item.kind === 'ad' ? item.key : (item.post._localId ?? item.post.id)">
                   <AppFeedFakeAdRow v-if="item.kind === 'ad'" />
-                  <p v-if="item.kind !== 'ad' && focusedNewActivity && item.post.id === firstNewPostId" ref="firstNewPostAnchor" class="moh-gutter-x py-3 text-xs font-semibold uppercase moh-text-muted">New since your last visit</p>
+                  <div v-if="item.kind !== 'ad' && focusedNewActivity && item.post.id === firstNewPostId" ref="firstNewPostAnchor" class="moh-gutter-x py-3"><AppNewSinceVisitDivider /></div>
                   <AppFeedPostRow
                     v-if="item.kind !== 'ad'"
                     :post="item.post"

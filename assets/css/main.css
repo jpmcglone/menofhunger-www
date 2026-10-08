@@ -225,6 +225,12 @@ html.dark .moh-vignette::after {
   --moh-status-rgb: 124, 58, 237;
   --moh-status-soft: rgba(124, 58, 237, 0.10);
 
+  /* Action accents (boost, repost, share/social, nudge). */
+  --moh-boost: #ea580c;
+  --moh-repost: #059669;
+  --moh-social: #0284c7;
+  --moh-nudge: #8b5cf6;
+
   /* Group posting shares the verified audience accent. */
   --moh-group: var(--moh-verified);
   --moh-group-rgb: var(--moh-verified-rgb);
@@ -290,6 +296,12 @@ html.dark {
   --moh-org-rgb: 185, 192, 204;
   --moh-org-ring: rgba(185, 192, 204, 0.22);
   --moh-org-soft: rgba(185, 192, 204, 0.10);
+
+  /* Action accents (boost, repost, share/social, nudge). */
+  --moh-boost: #f97316;
+  --moh-repost: #10b981;
+  --moh-social: #0ea5e9;
+  --moh-nudge: #8b5cf6;
 
   --moh-group: var(--moh-verified);
   --moh-group-rgb: var(--moh-verified-rgb);

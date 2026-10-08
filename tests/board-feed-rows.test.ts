@@ -59,12 +59,16 @@ async function mountRow(post: FeedPost) {
 }
 
 describe('Board post row in feeds', () => {
-  it('leads with the vertical Board boost and links the title to the thread', async () => {
+  it('upvotes from the action row and links the title to the thread', async () => {
     const w = await mountRow(thread)
     const row = w.find('[data-board-feed-row="post"]')
     expect(row.exists()).toBe(true)
-    expect(row.find('button[aria-label="Boost"]').exists()).toBe(true)
-    expect(w.find('button[aria-label="Upvote"]').exists()).toBe(false)
+    expect(row.find('button[aria-label="Boost"]').exists()).toBe(false)
+    const labels = row.findAll('button').map((button) => button.attributes('aria-label'))
+    const upvoteAt = labels.indexOf('Upvote')
+    const replyAt = labels.indexOf('Reply')
+    expect(upvoteAt).toBeGreaterThanOrEqual(0)
+    expect(replyAt).toBeGreaterThan(upvoteAt)
     const title = w.findAll('a').find((a) => a.text() === 'What a 5am lift did to my marriage')
     expect(title?.attributes('href')).toBe('/b/t1')
     expect(w.text()).toContain('menofhunger.com')
@@ -98,7 +102,8 @@ describe('Board post row in feeds', () => {
     }))
     expect(w.find('[data-board-gate]').exists()).toBe(true)
     expect(w.find('button[aria-label="Share"]').exists()).toBe(true)
-    expect(w.find('button[aria-label="Boost"]').attributes('disabled')).toBeDefined()
+    expect(w.find('button[aria-label="Boost"]').exists()).toBe(false)
+    expect(w.find('button[aria-label="Upvote"]').exists()).toBe(false)
     expect(w.find('button[aria-label="Reply"]').exists()).toBe(false)
     expect(w.find('button[aria-label="Repost"]').exists()).toBe(false)
     expect(w.find('button[aria-label="Save post"]').exists()).toBe(false)

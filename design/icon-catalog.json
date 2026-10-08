@@ -615,5 +615,53 @@
     "iosSelected": "person.slash",
     "selectedTreatment": "bold",
     "iosSelectedTreatment": "bold"
+  },
+  "hash": {
+    "web": "hash",
+    "webSelected": "hash",
+    "figma": true,
+    "selectedTreatment": "bold"
+  },
+  "mention": {
+    "web": "at",
+    "webSelected": "at",
+    "figma": true,
+    "selectedTreatment": "bold"
+  },
+  "addReaction": {
+    "web": "mood-plus",
+    "webSelected": "mood-plus",
+    "figma": true,
+    "selectedTreatment": "bold"
+  },
+  "arrowDown": {
+    "web": "arrow-down",
+    "webSelected": "arrow-down",
+    "figma": true,
+    "selectedTreatment": "bold"
+  },
+  "pin": {
+    "web": "pin",
+    "webSelected": "pin-filled",
+    "figma": true,
+    "selectedTreatment": "bold"
+  },
+  "send": {
+    "web": "send",
+    "webSelected": "send",
+    "figma": true,
+    "selectedTreatment": "bold"
+  },
+  "mute": {
+    "web": "bell-off",
+    "webSelected": "bell-off",
+    "figma": true,
+    "selectedTreatment": "bold"
+  },
+  "replyInline": {
+    "web": "arrow-back-up",
+    "webSelected": "arrow-back-up",
+    "figma": true,
+    "selectedTreatment": "bold"
   }
 }
