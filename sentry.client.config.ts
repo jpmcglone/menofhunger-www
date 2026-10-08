@@ -113,6 +113,9 @@ Sentry.init({
     'UnavailableError',
     // DuckDuckGo's injected extension bridge rejects after its tab disappears.
     /^Invalid call to runtime\.sendMessage\(\)\. Tab not found\.$/,
+    // A browser extension's injected script rejects with a non-Error after its
+    // page object is already gone. No stack and no app frame (MENOFHUNGER-WWW-1Z).
+    /Object Not Found Matching Id:\d+, MethodName:\w+, ParamCount:\d+/,
   ],
 
   // Anything whose stack lives in an extension bundle is not our code.

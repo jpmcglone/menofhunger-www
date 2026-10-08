@@ -32,6 +32,18 @@ describe('Sentry client ignore list', () => {
     expect(ignored('navigation_performance_logger_android')).toBe(true)
     expect(ignored('Cannot read properties of null (reading commands)')).toBe(false)
   })
+
+  it('drops extension object-not-found rejections (MENOFHUNGER-WWW-1Z)', () => {
+    const patterns = sentryInitOptions().ignoreErrors ?? []
+    const ignored = (message: string) => patterns.some(pattern =>
+      typeof pattern === 'string' ? message.includes(pattern) : pattern.test(message),
+    )
+    expect(ignored(
+      'Non-Error promise rejection captured with value: Object Not Found Matching Id:1, MethodName:update, ParamCount:4',
+    )).toBe(true)
+    expect(ignored('Object Not Found Matching Id:12, MethodName:update, ParamCount:4')).toBe(true)
+    expect(ignored('Cannot read properties of null (reading commands)')).toBe(false)
+  })
 })
 
 
