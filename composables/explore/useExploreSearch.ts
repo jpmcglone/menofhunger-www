@@ -78,7 +78,7 @@ export function useExploreSearch(opts: { query: Readonly<Ref<string>>; tab: Read
     seq++
   }
 
-  async function fetchPage(params: { append: boolean }) {
+  async function fetchPage(params: { append: boolean; record?: boolean }) {
     const mySeq = ++seq
     const q = opts.query.value
     if (q.length < 2) return
@@ -96,6 +96,7 @@ export function useExploreSearch(opts: { query: Readonly<Ref<string>>; tab: Read
 
     try {
       const query: Record<string, string> = { type: 'all', source: source.value, q, limit: '30' }
+      if (!isAppend && params.record !== false) query.record = '1'
       if (isAppend && cursors.users) query.userCursor = cursors.users
       if (isAppend && cursors.articles) query.articleCursor = cursors.articles
       if (isAppend && cursors.posts) query.postCursor = cursors.posts

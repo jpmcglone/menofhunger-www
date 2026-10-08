@@ -47,7 +47,7 @@ v-for="tab in searchTabs" :key="tab.key"
 
     <!-- Search results -->
       <template v-if="isSearching && searchTab === 'board'">
-        <AppBoardSearchResults :query="searchQueryTrimmed" />
+        <AppBoardSearchResults :query="committedSearchQuery" />
       </template>
       <template v-else-if="isSearching">
         <AppExploreSearchResults
@@ -134,6 +134,7 @@ const {
   searchInputRef,
   searchQuery,
   searchQueryTrimmed,
+  committedSearchQuery,
   isSearching,
   searchActive,
   searchTabs,

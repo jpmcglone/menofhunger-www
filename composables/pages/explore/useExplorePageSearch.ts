@@ -139,7 +139,8 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
     }
   }
 
-  const exploreSearch = useExploreSearch({ query: searchQueryTrimmed, tab: searchTab })
+  const committedSearchQuery = computed(() => getRouteQ())
+  const exploreSearch = useExploreSearch({ query: committedSearchQuery, tab: searchTab })
   const {
     users,
     articles,
@@ -408,6 +409,7 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
   )
 
   return {
+    committedSearchQuery,
     clearSearch,
     cancelSearch,
     joinExploreGroup,
