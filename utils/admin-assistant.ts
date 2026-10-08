@@ -1,3 +1,4 @@
+import { formatLocaleDateTime } from '~/utils/time-format'
 import type { AdminAssistantTurnDto } from '~/types/api'
 
 /** Sort a copy so realtime payloads retain their original order. Invalid dates go last. */
@@ -8,7 +9,7 @@ export function adminNewestAsks(turns: AdminAssistantTurnDto[]): AdminAssistantT
 
 export function adminAskDate(value: string): string {
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return Number.isNaN(date.getTime()) ? value : formatLocaleDateTime(date, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 export function adminSourceUrl(value: string | null): string | undefined {

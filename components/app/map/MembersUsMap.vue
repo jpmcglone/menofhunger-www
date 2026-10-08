@@ -103,11 +103,11 @@
         class="moh-map-count absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border moh-border bg-[color-mix(in_srgb,var(--moh-surface-2)_86%,transparent)] px-6 py-4 text-center shadow-lg backdrop-blur-md"
         :style="{ left: `${selectedCount.x}px`, top: `${selectedCount.y}px` }"
       >
-        <p class="text-4xl font-bold tabular-nums tracking-tight moh-text sm:text-5xl">{{ selectedCount.members.toLocaleString('en-US') }}</p>
+        <p class="text-4xl font-bold tabular-nums tracking-tight moh-text sm:text-5xl">{{ formatCount(selectedCount.members) }}</p>
         <p class="mt-0.5 text-sm font-medium moh-text-muted">{{ selectedCount.members === 1 ? 'man' : 'men' }} in {{ selectedCount.name }}</p>
         <p class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--moh-online)]">
           <span class="h-1.5 w-1.5 rounded-full bg-[var(--moh-online)]" aria-hidden="true" />
-          {{ selectedCount.online.toLocaleString('en-US') }} online now
+          {{ formatCount(selectedCount.online) }} online now
         </p>
       </div>
     </div>
@@ -145,6 +145,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { MembersUsMapProps, MembersUsMapEmits } from '../../../composables/map/members-us-map-types'
 import { useMembersUsMap } from '~/composables/map/useMembersUsMap'
 

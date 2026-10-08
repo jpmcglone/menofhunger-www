@@ -129,11 +129,11 @@
               </div>
               <div class="space-y-1">
                 <div class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">Requests</div>
-                <div class="text-2xl font-bold tabular-nums leading-none">{{ totalRequests.toLocaleString() }}</div>
+                <div class="text-2xl font-bold tabular-nums leading-none">{{ formatCount(totalRequests) }}</div>
               </div>
               <div class="space-y-1">
                 <div class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">Credits spent</div>
-                <div class="text-2xl font-bold tabular-nums leading-none">{{ totalCredits.toLocaleString() }}</div>
+                <div class="text-2xl font-bold tabular-nums leading-none">{{ formatCount(totalCredits) }}</div>
               </div>
             </div>
 
@@ -156,10 +156,10 @@
                   class="border-t moh-border"
                 >
                   <td class="py-1 pr-3 font-mono">{{ row.dayKey }}</td>
-                  <td class="py-1 pr-3 tabular-nums">{{ row.totalRequests.toLocaleString() }}</td>
-                  <td class="py-1 pr-3 tabular-nums">{{ row.totalCreditsSpent.toLocaleString() }}</td>
-                  <td class="py-1 pr-3 tabular-nums">{{ row.totalInputTokens.toLocaleString() }}</td>
-                  <td class="py-1 pr-3 tabular-nums">{{ row.totalOutputTokens.toLocaleString() }}</td>
+                  <td class="py-1 pr-3 tabular-nums">{{ formatCount(row.totalRequests) }}</td>
+                  <td class="py-1 pr-3 tabular-nums">{{ formatCount(row.totalCreditsSpent) }}</td>
+                  <td class="py-1 pr-3 tabular-nums">{{ formatCount(row.totalInputTokens) }}</td>
+                  <td class="py-1 pr-3 tabular-nums">{{ formatCount(row.totalOutputTokens) }}</td>
                   <td class="py-1 tabular-nums">${{ row.totalCostUsd.toFixed(4) }}</td>
                 </tr>
               </tbody>
@@ -233,9 +233,9 @@
                 <td class="px-3 py-2">
                   <span class="font-mono">{{ row.preferredMode }}</span>
                 </td>
-                <td class="px-3 py-2 tabular-nums">{{ row.credits.toLocaleString() }}</td>
-                <td class="px-3 py-2 tabular-nums">{{ row.totalCreditsSpent30d.toLocaleString() }}</td>
-                <td class="px-3 py-2 tabular-nums">{{ row.totalEvents30d.toLocaleString() }}</td>
+                <td class="px-3 py-2 tabular-nums">{{ formatCount(row.credits) }}</td>
+                <td class="px-3 py-2 tabular-nums">{{ formatCount(row.totalCreditsSpent30d) }}</td>
+                <td class="px-3 py-2 tabular-nums">{{ formatCount(row.totalEvents30d) }}</td>
                 <td class="px-3 py-2">
                   <Badge
                     v-if="row.disabledByAdmin"
@@ -285,7 +285,7 @@
             input-class="w-full"
           />
           <div class="text-xs text-gray-500 dark:text-gray-400">
-            Current: {{ editing.credits.toLocaleString() }}. Leave unchanged to keep.
+            Current: {{ formatCount(editing.credits) }}. Leave unchanged to keep.
           </div>
         </div>
 
@@ -315,6 +315,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import { useAdminMarvPage } from '~/composables/pages/admin/useAdminMarvPage'
 import { formatDateTime } from '~/utils/time-format'
 import { marvinModeLabel } from '~/utils/marvin-mode'

@@ -3,5 +3,36 @@
   "undefinedLocaleDates": [],
   "transitionAll": [],
   "pageHandRolledCursor": [],
-  "oversizedFiles": []
+  "oversizedFiles": [
+    "layouts/app.vue",
+    "utils/link-utils.ts",
+    "utils/post-permalink-seo-meta.ts"
+  ],
+  "presenceCallbacks": [
+    "composables/calls/session/useCallSignaling.ts",
+    "composables/notifications/useNotificationsRealtime.ts",
+    "composables/useAccountSwitcher.ts",
+    "composables/useAuth.ts",
+    "composables/useFollowState.ts",
+    "composables/useMarv.ts",
+    "composables/useRadioLiveChat.ts",
+    "composables/useRadioPlayer.ts",
+    "composables/useScheduledPostsCount.ts",
+    "composables/useSpaceLiveChat.ts",
+    "composables/useSpaceLobby.ts",
+    "plugins/crew-realtime-sync.client.ts",
+    "plugins/post-cache.client.ts"
+  ],
+  "adHocFormatting": [
+    "components/SpaceOwnerPanel.vue",
+    "components/admin/delegation/DelegationEditor.vue",
+    "components/app/kit/ConversationInsightsSummary.vue",
+    "composables/pages/spaces/useSpaceUsernamePage.ts",
+    "composables/post-row/usePostRow.ts",
+    "utils/admin-assistant.ts",
+    "utils/checkin-schedule.ts",
+    "utils/countries.ts",
+    "utils/space-display.ts",
+    "utils/text.ts"
+  ]
 }

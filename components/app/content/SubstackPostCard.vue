@@ -5,7 +5,7 @@
     rel="noopener noreferrer"
     class="group block overflow-hidden rounded-xl border moh-border bg-white text-gray-950 transition-colors hover:bg-gray-50 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
     :aria-label="`Open on Substack: ${meta.title ?? 'post'}`"
-    @click.stop
+    @click.stop="confirmExternal($event, href)"
   >
     <div class="flex min-h-[6rem] gap-0">
       <!-- Cover image (left) -->
@@ -63,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+const { onClick: confirmExternal } = useExternalLinkConfirm()
 import type { LinkMetadata } from '~/utils/link-metadata'
 
 defineProps<{

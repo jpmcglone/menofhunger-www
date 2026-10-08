@@ -1148,6 +1148,8 @@ export type AdminImageReviewDetailResponse = {
     r2DeletedAt: string | null
     publicUrl: string | null
     primaryType: AdminImageReviewBelongsTo
+    /** Echo as `referencesToken` on delete; a 409 `references_changed` means ownership changed since review. */
+    referencesToken: string
   }
   references: {
     posts: Array<{
@@ -1792,7 +1794,7 @@ export type WsCallsSeatTakenPayload = Contracts.CallsSeatTakenPayloadDto
 export type WsRtcSignalPayload = Contracts.RtcSignalPayloadDto
 export type WsPresenceCallChangedPayload = Contracts.PresenceCallChangedPayloadDto
 
-export type MessageKind = 'text' | 'call'
+export type MessageKind = 'text' | 'call' | 'groupJoin'
 
 export type Message = {
   id: string

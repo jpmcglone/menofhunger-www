@@ -11,15 +11,15 @@
         <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Paying (Stripe)</div>
         <div class="grid grid-cols-3 gap-3 text-center">
           <div class="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 p-3">
-            <div class="text-2xl font-bold tabular-nums text-green-700 dark:text-green-400">{{ totalPaying.toLocaleString() }}</div>
+            <div class="text-2xl font-bold tabular-nums text-green-700 dark:text-green-400">{{ formatCount(totalPaying) }}</div>
             <div class="text-xs text-green-600 dark:text-green-500 mt-1">Total paying</div>
           </div>
           <div class="rounded-lg border moh-border p-3">
-            <div class="text-2xl font-bold tabular-nums">{{ data.monetization.payingPremium.toLocaleString() }}</div>
+            <div class="text-2xl font-bold tabular-nums">{{ formatCount(data.monetization.payingPremium) }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium</div>
           </div>
           <div class="rounded-lg border moh-border p-3">
-            <div class="text-2xl font-bold tabular-nums">{{ data.monetization.payingPremiumPlus.toLocaleString() }}</div>
+            <div class="text-2xl font-bold tabular-nums">{{ formatCount(data.monetization.payingPremiumPlus) }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium+</div>
           </div>
         </div>
@@ -30,28 +30,28 @@
         <div class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">Comped (grants)</div>
         <div class="grid grid-cols-3 gap-3 text-center">
           <div class="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-3">
-            <div class="text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">{{ totalComped.toLocaleString() }}</div>
+            <div class="text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">{{ formatCount(totalComped) }}</div>
             <div class="text-xs text-amber-600 dark:text-amber-500 mt-1">Active comped</div>
           </div>
           <div class="rounded-lg border moh-border p-3">
-            <div class="text-2xl font-bold tabular-nums">{{ data.monetization.compedPremium.toLocaleString() }}</div>
+            <div class="text-2xl font-bold tabular-nums">{{ formatCount(data.monetization.compedPremium) }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium</div>
           </div>
           <div class="rounded-lg border moh-border p-3">
-            <div class="text-2xl font-bold tabular-nums">{{ data.monetization.compedPremiumPlus.toLocaleString() }}</div>
+            <div class="text-2xl font-bold tabular-nums">{{ formatCount(data.monetization.compedPremiumPlus) }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Premium+</div>
           </div>
         </div>
         <div class="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 px-1">
           <span>Users with banked free months (incl. unverified)</span>
-          <span class="font-semibold tabular-nums">{{ data.summary.usersWithActiveGrants.toLocaleString() }}</span>
+          <span class="font-semibold tabular-nums">{{ formatCount(data.summary.usersWithActiveGrants) }}</span>
         </div>
       </div>
 
       <!-- Free -->
       <div class="flex items-center justify-between text-sm border-t moh-border pt-4">
         <span class="text-gray-500 dark:text-gray-400">Free users</span>
-        <span class="font-semibold tabular-nums">{{ data.monetization.free.toLocaleString() }}</span>
+        <span class="font-semibold tabular-nums">{{ formatCount(data.monetization.free) }}</span>
       </div>
 
       <!-- Visual bar -->
@@ -77,7 +77,7 @@
           class="flex items-center justify-between text-sm"
         >
           <span class="font-mono text-xs">{{ status }}</span>
-          <span class="tabular-nums font-medium">{{ Number(count).toLocaleString() }}</span>
+          <span class="tabular-nums font-medium">{{ formatCount(Number(count)) }}</span>
         </div>
       </div>
       <div v-else class="border-t moh-border pt-4 text-xs text-gray-400 dark:text-gray-500 italic">
@@ -94,15 +94,15 @@
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div class="rounded-xl border moh-border p-4 space-y-1">
           <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Referral Codes</div>
-          <div class="text-2xl font-bold">{{ referralAnalytics.totalCodesCreated.toLocaleString() }}</div>
+          <div class="text-2xl font-bold">{{ formatCount(referralAnalytics.totalCodesCreated) }}</div>
         </div>
         <div class="rounded-xl border moh-border p-4 space-y-1">
           <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Recruits</div>
-          <div class="text-2xl font-bold">{{ referralAnalytics.totalRecruits.toLocaleString() }}</div>
+          <div class="text-2xl font-bold">{{ formatCount(referralAnalytics.totalRecruits) }}</div>
         </div>
         <div class="rounded-xl border moh-border p-4 space-y-1">
           <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Bonuses Granted</div>
-          <div class="text-2xl font-bold">{{ referralAnalytics.totalBonusesGranted.toLocaleString() }}</div>
+          <div class="text-2xl font-bold">{{ formatCount(referralAnalytics.totalBonusesGranted) }}</div>
         </div>
         <div class="rounded-xl border moh-border p-4 space-y-1">
           <div class="text-xs font-semibold text-gray-600 dark:text-gray-300">Conversion Rate</div>
@@ -142,8 +142,8 @@
       Signups by source <span class="text-gray-400 font-normal">(last {{ acquisition.days }} days)</span>
     </div>
     <div class="text-xs text-gray-500 dark:text-gray-400">
-      {{ acquisition.totalSignups.toLocaleString() }} signups, {{ acquisition.totalVerified.toLocaleString() }} verified,
-      {{ acquisition.distinctRecruiters.toLocaleString() }} members recruited someone
+      {{ formatCount(acquisition.totalSignups) }} signups, {{ formatCount(acquisition.totalVerified) }} verified,
+      {{ formatCount(acquisition.distinctRecruiters) }} members recruited someone
     </div>
     <div class="grid gap-4 sm:grid-cols-2">
       <div v-for="group in [{ title: 'Source', rows: acquisition.bySource }, { title: 'Campaign', rows: acquisition.byCampaign }]" :key="group.title">
@@ -161,6 +161,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { AdminAnalytics } from '~/types/api'
 import { useAdminAnalyticsContext } from '~/composables/pages/admin/useAdminAnalyticsPage'
 

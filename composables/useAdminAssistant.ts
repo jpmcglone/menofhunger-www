@@ -1,10 +1,11 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { AdminAssistantActionDto, AdminAssistantTurnDto, AdminAssistantWorkspaceDto } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 export function useAdminAssistant() {
   const { apiFetchData } = useApiClient()
   const { user } = useAuth()
-  const { addAdminCallback, removeAdminCallback, isSocketConnected } = usePresence()
+  const { isSocketConnected } = usePresence()
   const workspace = ref<AdminAssistantWorkspaceDto | null>(null)
   const error = ref<string | null>(null)
   const loading = ref(false)
@@ -68,10 +69,10 @@ export function useAdminAssistant() {
   }
   const callback = { onUpdated: ({ kind }: { kind: string }) => { if (kind === 'assistant') scheduleRefresh() } }
   const onVisible = () => { if (document.visibilityState === 'visible') scheduleRefresh() }
+  usePresenceCallback('Admin', callback)
   onMounted(() => {
     mounted = true
     void refresh()
-    addAdminCallback(callback)
     window.addEventListener('online', scheduleRefresh)
     window.addEventListener('focus', scheduleRefresh)
     document.addEventListener('visibilitychange', onVisible)
@@ -80,7 +81,6 @@ export function useAdminAssistant() {
     mounted = false
     ++generation
     if (reloadTimer) clearTimeout(reloadTimer)
-    removeAdminCallback(callback)
     window.removeEventListener('online', scheduleRefresh)
     window.removeEventListener('focus', scheduleRefresh)
     document.removeEventListener('visibilitychange', onVisible)

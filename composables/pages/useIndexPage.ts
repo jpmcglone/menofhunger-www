@@ -1,3 +1,4 @@
+import { formatCompact, formatCount } from '~/utils/number-format'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
@@ -138,14 +139,14 @@ onBeforeUnmount(() => {
 })
 
 function formatLandingCount(value: number): string {
-  return new Intl.NumberFormat('en-US', { notation: value >= 1_000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(value)
+  return formatCompact(value, { compactFrom: 1_000 })
 }
 
 const menBreakdownTitle = computed(() => {
   const s = landingSnapshot.value?.stats.men
   if (!s) return 'verified men'
   const contributors = Math.min(Math.max(0, s.contributors ?? 0), s.total)
-  return `${contributors.toLocaleString('en-US')} of ${s.total.toLocaleString('en-US')} have posted`
+  return `${formatCount(contributors)} of ${formatCount(s.total)} have posted`
 })
 
 const menBreakdownSections = computed<BreakdownSection[]>(() => {
@@ -197,6 +198,31 @@ const postsBreakdownSections = computed<BreakdownSection[]>(() => {
     ],
   ]
 })
+
+const articlesBreakdownSections = computed<BreakdownSection[]>(() => {
+  const s = landingSnapshot.value?.stats.articles
+  if (!s) return []
+  return [
+    [
+      { key: 'public', label: 'Public', count: s.public, dotClass: 'bg-gray-400' },
+      { key: 'verified', label: 'Verified', count: s.verified, dotClass: 'bg-blue-400' },
+      { key: 'premium', label: 'Premium', count: s.premium, dotClass: 'bg-yellow-400' },
+    ],
+    [
+      { key: 'authors', label: 'Authors', count: s.authors },
+      { key: 'unique', label: 'Readers', count: s.unique },
+      { key: 'views', label: 'Total views', count: s.views },
+    ],
+  ]
+})
+
+/** Up to three published articles the viewer can open, in trending order. */
+const trendingArticles = computed(() => (landingSnapshot.value?.trendingArticles ?? []).filter(article => !article.isDraft && !article.deletedAt).slice(0, 3))
+function articleHref(article: { id: string }): string { return `/a/${encodeURIComponent(article.id)}` }
+function articleReadLabel(article: { readingTimeMinutes?: number }): string | null {
+  const minutes = article.readingTimeMinutes
+  return minutes && minutes > 0 ? `${minutes} min read` : null
+}
 
 const viewsBreakdownRows = computed<BreakdownRow[]>(() => {
   const s = landingSnapshot.value?.stats.views
@@ -274,5 +300,9 @@ await landingSnapshotRequest
     menBreakdownSections,
     postsBreakdownSections,
     viewsBreakdownRows,
+    articlesBreakdownSections,
+    trendingArticles,
+    articleHref,
+    articleReadLabel,
   }
 }

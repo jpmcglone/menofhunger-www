@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
+import { formatLocaleDateTime } from '~/utils/time-format'
 definePageMeta({ layout: 'app', title: 'Coin Receipt', hideTopBar: true })
 
 import type { CoinTransferItem, CoinTransferReceipt } from '~/types/api'
@@ -14,11 +16,11 @@ const isLoading = ref(true)
 const error = ref<string | null>(null)
 
 function fmtAmount(n: number): string {
-  return new Intl.NumberFormat('en-US').format(Math.max(0, Math.floor(Number(n) || 0)))
+  return formatCount(Math.max(0, Math.floor(Number(n) || 0)))
 }
 
 function shortDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('en-US', {
+  return formatLocaleDateTime(new Date(iso), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

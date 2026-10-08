@@ -32,6 +32,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { FeedPost, GetPostCommentsData, WsPostsCommentAddedPayload } from '~/types/api'
 import type { ReplyPostedPayload } from '~/composables/useReplyModal'
 
@@ -97,7 +98,7 @@ function onNestedDeleted(id: string) {
 }
 
 let unregisterReplyPosted: null | (() => void) = null
-const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
+const { subscribePosts, unsubscribePosts } = usePresence()
 
 const liveReplyCb = {
   onCommentAdded(payload: WsPostsCommentAddedPayload) {
@@ -126,12 +127,11 @@ onMounted(() => {
 
   // Subscribe to the comment's own post room so we receive live nested replies.
   subscribePosts([props.comment.id])
-  addPostsCallback(liveReplyCb)
 })
+usePresenceCallback('Posts', liveReplyCb)
 onBeforeUnmount(() => {
   unregisterReplyPosted?.()
   unregisterReplyPosted = null
-  removePostsCallback(liveReplyCb)
   unsubscribePosts([props.comment.id])
 })
 

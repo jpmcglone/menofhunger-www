@@ -1,4 +1,5 @@
 import type catalog from '../design/icon-catalog.json'
+import { splitTextByScriptureDisplay } from './scripture-reference'
 import { userColorTier, userTierTextClass, type UserTierLike } from './user-tier'
 
 const ACTOR_EVENTS = new Set(['boost', 'repost', 'follow', 'comment', 'mention', 'crew_wall_mention', 'message', 'status_update', 'nudge'])
@@ -76,4 +77,14 @@ export function notificationGlyph(kind: string): { name: keyof typeof catalog; s
   }
   const glyph = glyphs[icon]
   return glyph ? { name: glyph[0], selected: glyph[1] } : null
+}
+
+/**
+ * The one passage a daily-quote notification points at, for the inline scripture card.
+ * Several or no references stay a plain text row.
+ */
+export function notificationScriptureReference(notification: { kind: string; body: string | null }): string | null {
+  if (notification.kind !== 'quote_of_the_day' || !notification.body) return null
+  const refs = new Set(splitTextByScriptureDisplay(notification.body).flatMap(segment => (segment.scripture ? [segment.scripture.reference] : [])))
+  return refs.size === 1 ? [...refs][0]! : null
 }

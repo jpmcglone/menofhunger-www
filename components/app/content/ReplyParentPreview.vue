@@ -153,6 +153,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDateTime } from '~/utils/time-format'
 import { postActionVisibilityColor, visibilityTagLabel } from '~/utils/post-visibility'
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import { useUserOverlay } from '~/composables/useUserOverlay'
@@ -260,7 +261,7 @@ const createdAtShort = computed(() => {
   const diffDay = Math.floor(diffHr / 24)
   if (diffDay < 7) return `${diffDay}d`
   const sameYear = new Date(nowVal).getFullYear() === d.getFullYear()
-  const month = d.toLocaleString('en-US', { month: 'short' })
+  const month = formatLocaleDateTime(d, { month: 'short' })
   const day = d.getDate()
   return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
 })

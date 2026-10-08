@@ -71,6 +71,7 @@ const { user } = useAuth()
 const { spaces, loading, loadedOnce, loadSpaces } = useSpaces()
 const { getMySpace, createSpace } = useSpaceOwner()
 const toast = useAppToast()
+const { run } = useAsyncAction()
 
 const mySpace = useState<any>('my-space', () => null)
 
@@ -81,7 +82,7 @@ const mySpaceHref = computed(() => {
 })
 
 async function onCreateSpace() {
-  try {
+  await run(async () => {
     const space = await createSpace({ title: `${user.value?.username ?? 'My'}'s Space` })
     if (!space) {
       toast.push({ title: 'Could not create space', tone: 'error', durationMs: 2200 })
@@ -89,13 +90,7 @@ async function onCreateSpace() {
     }
     mySpace.value = space
     navigateTo(`/s/${encodeURIComponent(space.owner?.username ?? '')}`)
-  } catch (err) {
-    toast.push({
-      title: getSafeUserErrorMessage(err, 'Could not create space.'),
-      tone: 'error',
-      durationMs: 2200,
-    })
-  }
+  }, { error: 'Could not create space.', durationMs: 2200 })
 }
 
 async function refreshSpaces() {

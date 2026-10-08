@@ -204,6 +204,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import { ClientOnly } from '#components'
 import type { MarvinModeDto } from '~/types/api'
 import { marvinModeLabel } from '~/utils/marvin-mode'
@@ -264,7 +265,7 @@ const marvUser = computed(() => {
 const creditsLabel = computed(() => {
   const c = credits.value
   if (!c) return null
-  return `${Math.floor(c.credits).toLocaleString()} credits`
+  return `${formatCount(Math.floor(c.credits))} credits`
 })
 
 const costBreakdownLabel = computed(() => {

@@ -57,8 +57,7 @@ describe('groups:marv-changed realtime', () => {
     expect(source).toContain('onMarvChanged')
     expect(source).toContain('subscribeGroups')
     expect(source).toContain('unsubscribeGroups')
-    expect(source).toContain('addGroupFeedCallback')
-    expect(source).toContain('removeGroupFeedCallback')
+    expect(source).toContain("usePresenceCallback('GroupFeed'")
   })
 
   it('group dialogs onMarvChanged patches shell.marv.isMember and guards by groupId', () => {

@@ -26,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDate } from '~/utils/time-format'
 import type { PartnerConnection } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 const { user } = useAuth()
@@ -35,7 +36,7 @@ function connectionLabel(connection: PartnerConnection) {
   if (connection.status === 'needs_reauthorization') return 'Read access paused · Reconnect required'
   if (connection.status === 'suspended') return 'Read access suspended'
   if (connection.status === 'expired') return 'Read access expired · Reconnect required'
-  return `Read access · Expires ${new Date(connection.expiresAt).toLocaleDateString()}`
+  return `Read access · Expires ${formatLocaleDate(new Date(connection.expiresAt))}`
 }
 type Delivery = { id: string; platform: string; status: string; action: string; lastError: string | null; remoteUrl: string | null }
 const deliveries = ref<Delivery[]>([])

@@ -8,10 +8,12 @@
       </div>
     </template>
     <p v-if="error" role="alert" class="py-3 text-sm text-red-600">{{ error }}</p><p v-else-if="loading" role="status" class="py-3 text-sm moh-text-muted">Searching…</p><p v-else-if="!results.length" class="py-3 text-sm moh-text-muted">{{ pins ? 'No pinned messages.' : query ? 'No messages found.' : scope === 'channel' ? `Search messages in ${channelTitle(channel)}.` : 'Search messages in every channel you can read.' }}</p>
-    <div class="max-h-[60dvh] overflow-y-auto moh-divide"><NuxtLink v-for="message in results" :key="message.id" :to="channelLink(group.slug, message.channelId, message)" class="moh-focus block py-3" @click="visible = false"><span class="flex items-baseline gap-2"><strong class="text-sm">{{ message.sender.name ?? message.sender.username }}</strong><span v-if="scope === 'group' && !pins" class="text-xs moh-text-muted">#{{ channelName(message.channelId) }}</span></span><p class="mt-1 line-clamp-4 text-sm whitespace-pre-wrap">{{ message.body || 'Attachment' }}</p><time class="text-xs moh-text-muted" :datetime="message.createdAt">{{ new Date(message.createdAt).toLocaleString() }}</time></NuxtLink><button v-if="nextCursor" type="button" class="moh-focus min-h-11 w-full text-sm" :disabled="loadingMore" @click="more">{{ loadingMore ? 'Loading…' : 'More results' }}</button></div>
+    <div class="max-h-[60dvh] overflow-y-auto moh-divide"><NuxtLink v-for="message in results" :key="message.id" :to="channelLink(group.slug, message.channelId, message)" class="moh-focus block py-3" @click="visible = false"><span class="flex items-baseline gap-2"><strong class="text-sm">{{ message.sender.name ?? message.sender.username }}</strong><span v-if="scope === 'group' && !pins" class="text-xs moh-text-muted">#{{ channelName(message.channelId) }}</span></span><p class="mt-1 line-clamp-4 text-sm whitespace-pre-wrap">{{ message.body || 'Attachment' }}</p><time class="text-xs moh-text-muted" :datetime="message.createdAt">{{ formatLocaleDateTime(new Date(message.createdAt)) }}</time></NuxtLink><button v-if="nextCursor" type="button" class="moh-focus min-h-11 w-full text-sm" :disabled="loadingMore" @click="more">{{ loadingMore ? 'Loading…' : 'More results' }}</button></div>
   </Dialog>
 </template>
 <script setup lang="ts">
+import { formatLocaleDateTime } from '~/utils/time-format'
+import { formatCount } from '~/utils/number-format'
 import type { ChannelMessage, CommunityGroupShell, GroupChannel } from '~/types/api'
 import { groupChannelsKey } from '~/composables/channels/useGroupChannels'
 import { channelLink, channelPath, channelTitle } from '~/utils/channels/reducer'

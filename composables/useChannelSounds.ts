@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { ChannelMessagesEvent } from '~/types/api'
 import { channelSoundFor, othersReactionCount } from '~/utils/sound-policy'
 
@@ -7,7 +8,6 @@ import { channelSoundFor, othersReactionCount } from '~/utils/sound-policy'
  */
 export function useChannelSounds() {
   if (!import.meta.client) return
-  const presence = usePresence()
   const route = useRoute()
   const { user } = useAuth()
   const sounds = useSoundPolicy()
@@ -52,14 +52,8 @@ export function useChannelSounds() {
     },
   }
 
-  onMounted(() => {
-    presence.addChannelCallback(channelCallback as never)
-    presence.addMessagesCallback(messagesCallback as never)
-  })
-  onBeforeUnmount(() => {
-    presence.removeChannelCallback(channelCallback as never)
-    presence.removeMessagesCallback(messagesCallback as never)
-  })
+  usePresenceCallback('Channel', channelCallback)
+  usePresenceCallback('Messages', messagesCallback)
 }
 
 

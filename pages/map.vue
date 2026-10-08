@@ -138,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { MembersMapSummary, MembersMapUser } from '~/types/api'
 import { siteConfig } from '~/config/site'
 import type { MembersMapBucket } from '~/composables/useMembersMap'
@@ -222,7 +223,7 @@ const title = computed(() => {
 })
 
 function men(n: number) {
-  return `${n.toLocaleString('en-US')} ${n === 1 ? 'man' : 'men'}`
+  return `${formatCount(n)} ${n === 1 ? 'man' : 'men'}`
 }
 
 const subtitle = computed(() => {

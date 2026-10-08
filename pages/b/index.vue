@@ -155,6 +155,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { BoardComment, BoardRange, BoardThread } from '~/types/api'
 import { formatListTime } from '~/utils/time-format'
 import { userActionColor } from '~/utils/user-tier'
@@ -171,6 +172,7 @@ const route = useRoute()
 const router = useRouter()
 const api = useBoardApi()
 const toast = useAppToast()
+const { run } = useAsyncAction()
 const { user, isAuthed, isPremium, isVerifiedMember } = useAuth()
 const presence = usePresence()
 const { apiFetch } = useApiClient()
@@ -206,12 +208,10 @@ const feedCopyLabel = computed(() => (feedTag.value ? `Copy RSS feed for #${feed
 const { copyText: copyTextRaw } = useCopyToClipboard()
 
 async function copyBoardFeed() {
-  try {
+  await run(async () => {
     await copyTextRaw(`${feedBase.value}/feed.xml`)
     toast.push({ title: 'RSS feed link copied', tone: 'success', durationMs: 1400 })
-  } catch {
-    toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-  }
+  }, { error: () => 'Copy failed', durationMs: 1800 })
 }
 
 useHead(computed(() => {
@@ -370,19 +370,17 @@ watch(() => route.fullPath, () => {
 
 async function onToggleHide(thread: BoardThread) {
   const hide = !thread.viewerHidden
-  try {
+  await run(async () => {
     await api.setHidden(thread.id, hide)
     // Hidden threads leave the main Board; in the Hidden view, unhiding sends them back.
     if (hide !== showHidden.value) threads.value = threads.value.filter((t) => t.id !== thread.id)
     toast.push({ title: hide ? 'Hidden from your Board' : 'Back on your Board', tone: 'success', durationMs: 1400 })
-  } catch (e) {
-    toast.push({ title: getApiErrorMessage(e) || 'Couldn’t update.', tone: 'error', durationMs: 2000 })
-  }
+  }, { error: 'Couldn’t update.', durationMs: 2000 })
 }
 
 // Realtime: new threads in scopes this viewer can read. The pill refetches through HTTP access rules.
 const newThreadCount = ref(0)
-const { addBoardCallback, removeBoardCallback, subscribeBoard, unsubscribeBoard } = usePresence()
+const { subscribeBoard, unsubscribeBoard } = usePresence()
 const boardCb = {
   onNewThread: (payload: { threadId: string; tags: string[] }) => {
     if (threads.value.some((t) => t.id === payload.threadId)) return
@@ -397,14 +395,12 @@ function showNewThreads() {
 async function enterBoard() {
   const account = user.value?.id
   if (!account || !boardActive) return
-  try {
+  await run(async () => {
     await apiFetch('/notifications/mark-delivered', { method: 'POST', body: { filter: 'board' } })
     const revision = notificationRevision
     const counts = await apiFetch<{ boardUnreadCount?: number; boardMentionCount?: number; articlesUnreadCount?: number }>('/notifications/unread-count', { mohDedupe: false })
     if (user.value?.id === account && revision === notificationRevision) presence.setNotificationNavUnread(counts.data)
-  } catch (error) {
-    toast.push({ title: getApiErrorMessage(error) || 'Couldn’t acknowledge Board activity.', tone: 'error' })
-  }
+  }, { error: 'Couldn’t acknowledge Board activity.' })
 }
 async function markAllBoardRead(event: Event) {
   (event.currentTarget as HTMLElement)?.closest('details')?.removeAttribute('open')
@@ -433,17 +429,16 @@ watch(() => user.value?.id, () => {
   if (boardActive) { void enterBoard(); void load(true) }
 })
 
+usePresenceCallback('Notifications', notificationCallback, { activate: true })
+usePresenceCallback('Board', boardCb)
 onMounted(() => {
   boardActive = true
   void load(true)
-  presence.addNotificationsCallback(notificationCallback)
-  addBoardCallback(boardCb)
   subscribeBoard()
   void enterBoard()
 })
 let activatedOnce = false
 onActivated(() => {
-  if (!boardActive) presence.addNotificationsCallback(notificationCallback)
   boardActive = true
   if (!activatedOnce) {
     activatedOnce = true
@@ -456,12 +451,9 @@ onDeactivated(() => {
   boardActive = false
   loadSeq += 1
   clearTimeout(refreshTimer)
-  presence.removeNotificationsCallback(notificationCallback)
 })
 onBeforeUnmount(() => {
   clearTimeout(refreshTimer)
-  presence.removeNotificationsCallback(notificationCallback)
-  removeBoardCallback(boardCb)
   unsubscribeBoard()
 })
 </script>

@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { CommunityGroupPreview, FeedPost } from '~/types/api'
 import { applyLiveUpdatedPatch } from '~/utils/feed-patch'
 import { applyCommunityGroupJoin, communityGroupJoinToast } from '~/utils/community-group-preview'
@@ -30,7 +31,7 @@ export function usePostPageThread(ctx: ReturnType<typeof usePostPageRoute> & Ret
   // PostRow always shows the freshest data without needing explicit data.value updates.
   // onLiveUpdated here handles permalink-specific concerns: commentsCounts, comment
   // re-fetching, and deletion.
-  const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
+  const { subscribePosts, unsubscribePosts } = usePresence()
   const postsCb: PostsCallback = {
     onLiveUpdated: (payload) => {
       const pid = String(payload?.postId ?? '').trim()
@@ -98,8 +99,8 @@ export function usePostPageThread(ctx: ReturnType<typeof usePostPageRoute> & Ret
       subscribedPermalinkIds = next
     }
 
+    usePresenceCallback('Posts', postsCb)
     onMounted(() => {
-      addPostsCallback(postsCb)
       syncPermalinkSubscriptions(post.value)
     })
     watch(
@@ -115,7 +116,6 @@ export function usePostPageThread(ctx: ReturnType<typeof usePostPageRoute> & Ret
       },
     )
     onBeforeUnmount(() => {
-      removePostsCallback(postsCb)
       if (subscribedPermalinkIds.length) unsubscribePosts(subscribedPermalinkIds)
       subscribedPermalinkIds = []
     })

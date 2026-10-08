@@ -1,3 +1,4 @@
+import { formatLocaleDate } from '~/utils/time-format'
 import type { ProfileHeaderProps, ProfileHeaderEmits } from './profile-header-types'
 import { userNotificationOptions, userNotificationPreference } from '~/utils/user-notification-preference'
 import type { NudgeState } from '~/types/api'
@@ -164,7 +165,7 @@ export function useProfileHeaderProfile(props: ProfileHeaderProps, emit: Profile
     if (!raw) return null
     const d = new Date(String(raw))
     if (Number.isNaN(d.getTime())) return null
-    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    return formatLocaleDate(d, { month: 'short', year: 'numeric' })
   })
 
   // Subtle "my crew" pill sourced lazily from the compact crew summary endpoint.

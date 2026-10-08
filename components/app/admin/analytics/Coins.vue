@@ -39,7 +39,7 @@
             </div>
             <div class="flex items-center gap-3 tabular-nums">
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ row.pct }}%</span>
-              <span class="font-semibold">{{ row.count.toLocaleString() }}</span>
+              <span class="font-semibold">{{ formatCount(row.count) }}</span>
             </div>
           </div>
           <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
@@ -73,6 +73,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { AdminAnalytics } from '~/types/api'
 import { useAdminAnalyticsContext } from '~/composables/pages/admin/useAdminAnalyticsPage'
 

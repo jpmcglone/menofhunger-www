@@ -1,5 +1,6 @@
 <template>
   <article ref="row" :aria-busy="status === 'sending'" class="channel-message group relative px-4 hover:bg-[var(--moh-surface-1)] focus-within:bg-[var(--moh-surface-1)]" :class="grouped ? 'py-1' : 'pt-4 pb-2'" tabindex="0" :aria-label="`${message.sender.name ?? message.sender.username ?? 'Member'}: ${message.deletedForAll ? 'Message deleted' : message.body}`" @contextmenu.prevent="showActions" @keydown.shift.f10.prevent="showActions" @pointerdown="startPress" @pointerup="cancelPress" @pointercancel="cancelPress" @pointermove="cancelMoved">
+    <button v-if="message.replyTo && !deleted" type="button" class="moh-focus relative ml-11 mb-1 flex min-h-6 max-w-[calc(100%-2.75rem)] items-center gap-1.5 text-left text-xs moh-text-muted hover:underline" :class="grouped ? 'mt-1' : ''" :aria-label="`Replying to ${message.replyTo.senderUsername ? '@' + message.replyTo.senderUsername : 'a message'}: ${message.replyTo.bodyPreview}`" data-testid="channel-quoted-reply" @click="emit('quote-click', message.replyTo.id)"><Icon name="tabler:corner-up-right" class="size-3 shrink-0" aria-hidden="true" /><strong class="shrink-0 font-semibold">{{ message.replyTo.senderUsername ? `@${message.replyTo.senderUsername}` : 'Unknown' }}</strong><span class="truncate">{{ message.replyTo.bodyPreview }}</span><img v-if="message.replyTo.mediaThumbnailUrl" :src="message.replyTo.mediaThumbnailUrl" class="size-5 shrink-0 rounded object-cover" alt=""></button>
     <div class="flex items-start gap-3">
       <div class="relative w-8 shrink-0">
         <span v-if="deleted" class="flex size-8 items-center justify-center rounded-lg border border-dashed moh-border moh-text-soft" aria-hidden="true"><Icon name="tabler:trash" class="size-4" /></span>
@@ -20,10 +21,11 @@
     <button v-if="!status && !deleted" type="button" class="touch-message-more moh-focus absolute right-1 top-1 size-11" aria-label="More message actions" @click="showActions"><Icon name="tabler:dots-vertical" /></button>
     <div v-if="!status && !deleted" class="message-toolbar absolute right-3 top-0 flex rounded-xl border moh-border moh-surface shadow-sm">
       <template v-if="canReact && !message.deletedForAll"><button v-for="reaction in quick" :key="reaction.id" type="button" class="moh-focus size-11" :aria-label="reaction.label" @click="emit('react', reaction.id)">{{ reaction.emoji }}</button><button type="button" class="moh-focus size-11" aria-label="Choose reaction" @click="reactionPicker?.toggle($event)"><Icon name="tabler:mood-plus" /></button></template>
+      <button v-if="canQuote" type="button" class="moh-focus size-11" aria-label="Reply" @click="emit('quote')"><Icon name="tabler:arrow-back-up" /></button>
       <button type="button" class="moh-focus size-11" aria-label="Reply in thread" @click="emit('reply')"><Icon name="tabler:message-reply" /></button>
       <button type="button" class="moh-focus size-11" aria-label="More message actions" @click="showMore"><Icon name="tabler:dots-vertical" /></button>
     </div>
-    <Popover ref="menu" @hide="restoreFocus"><AppInteractionsActionList :actions="actions.filter(action => action.id !== 'reply')" @select="menu?.hide()" /></Popover>
+    <Popover ref="menu" @hide="restoreFocus"><AppInteractionsActionList :actions="actions.filter(action => action.id !== 'reply' && action.id !== 'quote')" @select="menu?.hide()" /></Popover>
     <AppChatReactionPicker ref="reactionPicker" :reactions="reactions" :active-reaction-ids="new Set(message.reactions?.filter(item => item.reactedByMe).map(item => item.reactionId))" @select="emit('react', $event)" />
     <Dialog v-model:visible="touchOpen" modal header="Message actions" class="w-full max-w-lg" @hide="restoreFocus">
       <blockquote class="mb-3 rounded-lg border moh-border p-3 text-sm"><strong>{{ message.sender.name ?? message.sender.username }}</strong><p class="mt-1 line-clamp-5 whitespace-pre-wrap">{{ message.deletedForAll ? 'Message deleted' : message.body }}</p></blockquote>
@@ -33,6 +35,7 @@
   </article>
 </template>
 <script setup lang="ts">
+import { formatLocaleTime } from '~/utils/time-format'
 import type { ChannelMessage, MessageReaction } from '~/types/api'
 import type { SurfaceAction } from '~/utils/surface-actions'
 import type { RouteLocationRaw } from 'vue-router'
@@ -47,8 +50,10 @@ const props = defineProps<{
   fresh?: boolean
   /** Route to this message. The time links here so a message can be shared and selected. */
   permalink?: RouteLocationRaw
+  /** Offer an inline quoted reply (channel timeline, not threads). */
+  canQuote?: boolean
 }>()
-const emit = defineEmits<{ react: [id: string]; reply: []; 'hide-preview': [url: string] }>()
+const emit = defineEmits<{ react: [id: string]; reply: []; quote: []; 'quote-click': [id: string]; 'hide-preview': [url: string] }>()
 const { user: viewer } = useAuth()
 const isOwn = computed(() => !!viewer.value && props.message.sender.id === viewer.value.id)
 // A just-delivered own message eases from "sending" to "sent" instead of snapping, so the handoff is readable.
@@ -74,8 +79,8 @@ const menu = ref<{ toggle: (event: Event) => void; hide: () => void } | null>(nu
 const reactionPicker = ref<{ toggle: (event: Event) => void } | null>(null)
 const touchOpen = ref(false)
 const quick = computed(() => props.reactions.filter(reaction => ['check', 'eyes', 'raised_hands'].includes(reaction.id)))
-const time = computed(() => new Date(props.message.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
-const lastReply = computed(() => props.message.lastReplyAt ? new Date(props.message.lastReplyAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '')
+const time = computed(() => formatLocaleTime(new Date(props.message.createdAt), { hour: 'numeric', minute: '2-digit' }))
+const lastReply = computed(() => props.message.lastReplyAt ? formatLocaleTime(new Date(props.message.lastReplyAt), { hour: 'numeric', minute: '2-digit' }) : '')
 let origin: HTMLElement | null = null
 let press: ReturnType<typeof setTimeout> | undefined
 let point = { x: 0, y: 0 }

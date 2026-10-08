@@ -38,6 +38,7 @@ export function usePostRowInteractions(opts: {
   const { user, isAuthed, isVerified: viewerIsVerified, isPremium: viewerIsPremium } = useAuth()
   const viewerHasUsername = computed(() => Boolean(user.value?.usernameIsSet))
   const toast = useAppToast()
+  const { run } = useAsyncAction()
   const { show: showAuthActionModal } = useAuthActionModal()
   const boostState = useBoostState()
   const repostState = useRepostState()
@@ -290,14 +291,12 @@ export function usePostRowInteractions(opts: {
       iconName: 'tabler:link',
       command: async () => {
         if (!import.meta.client) return
-        try {
+        await run(async () => {
           await ensureReferralCode()
           const url = buildPostShareUrl(postView.value.id, referralCode.value ?? null, siteConfig.url)
           await copyToClipboard(url)
           toast.push({ title: 'Post link copied', tone: toastToneForPostVisibility(), durationMs: 1400 })
-        } catch {
-          toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-        }
+        }, { error: () => 'Copy failed', durationMs: 1800 })
       },
     })
 

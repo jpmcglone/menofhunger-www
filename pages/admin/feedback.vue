@@ -210,6 +210,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 definePageMeta({
   layout: 'app',
   title: 'Feedback',
@@ -224,7 +225,6 @@ usePageSeo({
 })
 
 const { apiFetchData } = useApiClient()
-const { addAdminCallback, removeAdminCallback } = usePresence()
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminFeedbackItem, FeedbackCategory, FeedbackStatus } from '~/types/api'
@@ -304,12 +304,8 @@ const adminCb: AdminCallback = {
 watch(linkedFeedbackId, () => { void refresh() })
 onMounted(() => {
   void refresh().then(() => { const linked = items.value.find(item => item.id === linkedFeedbackId.value); if (linked) openDetails(linked) })
-  addAdminCallback(adminCb)
 })
-
-onBeforeUnmount(() => {
-  removeAdminCallback(adminCb)
-})
+usePresenceCallback('Admin', adminCb)
 
 watch([statusFilter, categoryFilter], () => void refresh())
 

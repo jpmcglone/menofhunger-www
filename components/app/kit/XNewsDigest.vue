@@ -14,10 +14,11 @@ v-for="story in digest.items.slice(0, 5)" :key="story.id" :href="story.sourceUrl
 </template>
 
 <script setup lang="ts">
+import { formatLocaleTime } from '~/utils/time-format'
 import type { XNewsDigestDto } from '~/types/api-contracts.gen'
 const digest = ref<XNewsDigestDto | null>(null)
 const { apiFetchData } = useApiClient()
-const updated = computed(() => digest.value ? new Date(digest.value.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '')
+const updated = computed(() => digest.value ? formatLocaleTime(new Date(digest.value.fetchedAt), { hour: 'numeric', minute: '2-digit' }) : '')
 let expiry: ReturnType<typeof setTimeout> | undefined
 let request: AbortController | undefined
 async function load() {

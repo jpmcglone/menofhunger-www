@@ -221,7 +221,7 @@
               <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Coins</div>
               <div class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
                 <Icon name="tabler:coin" size="16" aria-hidden="true" />
-                <span class="text-lg font-bold tabular-nums">{{ (user?.coins ?? 0).toLocaleString() }}</span>
+                <span class="text-lg font-bold tabular-nums">{{ formatCount(user?.coins ?? 0) }}</span>
               </div>
             </div>
             <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
@@ -407,6 +407,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import { useAdminUserDetailPage } from '~/composables/pages/admin/useAdminUserDetailPage'
 import { formatDateTime } from '~/utils/time-format'
 import { APP_FEATURE_TOGGLE_OPTIONS } from '~/config/app-feature-toggles'

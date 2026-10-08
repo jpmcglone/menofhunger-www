@@ -153,6 +153,7 @@
                 <span v-else>{{ seg.text }}</span>
               </template>
             </div>
+            <AppScriptureVerseCard v-if="scriptureReference" :reference="scriptureReference" class="mt-2" data-testid="notification-scripture" />
             <!-- Poll name chip -->
             <div
               v-if="notification.kind === 'poll_results_ready' && notification.body"
@@ -438,7 +439,7 @@
 </template>
 
 <script setup lang="ts">
-import { notificationShowsActor } from '~/utils/notification-presentation'
+import { notificationScriptureReference, notificationShowsActor } from '~/utils/notification-presentation'
 import type { Notification } from '~/types/api'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useNotificationRow } from '~/composables/notifications/useNotificationRow'
@@ -492,5 +493,6 @@ const {
   onDeclineGroupInvite,
   onFollowBack,
 } = useNotificationRow(props)
+const scriptureReference = computed(() => notificationScriptureReference(props.notification))
 
 </script>

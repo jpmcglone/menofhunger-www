@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { useDocumentVisibility } from '@vueuse/core'
 import { postBodyHasVideoEmbed } from '~/utils/link-utils'
 import type { useHomePageFeed } from './useHomePage'
@@ -65,7 +66,7 @@ export function useHomePageArrivals(ctx: ReturnType<typeof useHomePageFeed>) {
   }
 
   const replyModal = useReplyModal()
-  const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
+  const { subscribePosts, unsubscribePosts } = usePresence()
   const { prependToHomeFeed } = useHomeFeedPrepend()
 
   const feedArrivals = useFeedArrivals({
@@ -125,6 +126,7 @@ export function useHomePageArrivals(ctx: ReturnType<typeof useHomePageFeed>) {
     }),
     receive: posts => { feedArrivals.receiveBatch(posts); homeTabReturnGate.markSuccess() },
   })
+  const feedNewPostRealtime = usePresenceCallback('Posts', feedNewPostCb, { manual: true })
   function catchUpHomeFeed() {
     if (!posts.value.length) { void refresh().then(() => homeTabReturnGate.markSuccess()); return }
     if (homeTabReturnGate.shouldRefresh()) void arrivalPolling.check()
@@ -136,7 +138,7 @@ export function useHomePageArrivals(ctx: ReturnType<typeof useHomePageFeed>) {
     catchUpHomeFeed()
     void nextTick(updateFeedReadingPosition)
     // Realtime and HTTP arrivals share the same explicit-reveal queue.
-    addPostsCallback(feedNewPostCb)
+    feedNewPostRealtime.register()
     // Optimistic replies: when the reply modal forwards a pending submit, slot
     // the optimistic row into the parent's position via `addReply` and let
     // pendingPosts handle the network call + retry/discard surface.
@@ -159,7 +161,7 @@ export function useHomePageArrivals(ctx: ReturnType<typeof useHomePageFeed>) {
   })
   onDeactivated(() => {
     arrivalsActive.value = false
-    removePostsCallback(feedNewPostCb)
+    feedNewPostRealtime.unregister()
     unregisterReplyPending?.()
     unregisterReplyPending = null
   })

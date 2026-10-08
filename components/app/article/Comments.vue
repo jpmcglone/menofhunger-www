@@ -212,6 +212,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { ArticleComment, ArticleAuthor, FollowListUser } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
@@ -298,8 +299,6 @@ watch(replyingToId, (id) => {
 
 // ─── Realtime ───────────────────────────────────────────────────────────────
 
-const { addArticlesCallback, removeArticlesCallback } = usePresence()
-
 function findComment(commentId: string): ArticleComment | undefined {
   for (const c of comments.value) {
     if (c.id === commentId) return c
@@ -372,7 +371,6 @@ const articlesCallback = {
 
 onMounted(() => {
   load()
-  addArticlesCallback(articlesCallback)
 })
 
 watch(
@@ -383,9 +381,7 @@ watch(
   },
 )
 
-onUnmounted(() => {
-  removeArticlesCallback(articlesCallback)
-})
+usePresenceCallback('Articles', articlesCallback)
 
 // ─── Mention priority users ──────────────────────────────────────────────────
 
@@ -456,18 +452,16 @@ function focusCompose() {
 
 defineExpose({ focusCompose })
 
-const toast = useAppToast()
+const { run } = useAsyncAction()
 
 async function submitComment() {
   if (!newCommentBody.value.trim()) return
-  try {
+  await run(async () => {
     const comment = await createComment(newCommentBody.value, null)
     newCommentBody.value = ''
     await nextTick()
     scrollToComment(comment.id)
-  } catch (e: any) {
-    toast.push({ title: getSafeUserErrorMessage(e, 'Could not post reply.'), tone: 'error' })
-  }
+  }, { error: 'Could not post reply.' })
 }
 
 function handleReply(commentId: string, mentionUsername?: string) {
@@ -477,15 +471,13 @@ function handleReply(commentId: string, mentionUsername?: string) {
 
 async function submitReply(parentId: string) {
   if (!replyBody.value.trim()) return
-  try {
+  await run(async () => {
     const reply = await createComment(replyBody.value, parentId)
     replyBody.value = ''
     replyingToId.value = null
     await nextTick()
     scrollToComment(reply.id)
-  } catch (e: any) {
-    toast.push({ title: getSafeUserErrorMessage(e, 'Could not post reply.'), tone: 'error' })
-  }
+  }, { error: 'Could not post reply.' })
 }
 
 function scrollToComment(commentId: string) {
@@ -499,12 +491,7 @@ function cancelReply() {
 }
 
 async function handleDelete(commentId: string, parentId?: string | null) {
-  try {
-    await deleteComment(commentId, parentId)
-  } catch (e: any) {
-    toast.push({ title: getSafeUserErrorMessage(e, 'Could not delete reply.')
-, tone: 'error' })
-  }
+  await run(() => deleteComment(commentId, parentId), { error: 'Could not delete reply.' })
 }
 
 function hasMoreReplies(comment: ArticleComment): boolean {

@@ -1,3 +1,4 @@
+import { formatLocaleDate } from '~/utils/time-format'
 import type { Article } from '~/types/api'
 import { useArticlePageActions } from './useArticlePageActions'
 import type { InjectionKey } from 'vue'
@@ -154,13 +155,13 @@ export function useArticlePageContent() {
   const publishedLabel = computed(() => {
     const dateStr = article.value?.publishedAt ?? article.value?.createdAt
     if (!dateStr) return ''
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    return formatLocaleDate(new Date(dateStr), { month: 'long', day: 'numeric', year: 'numeric' })
   })
 
   const editedLabel = computed(() => {
     const dateStr = article.value?.editedAt
     if (!dateStr) return ''
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return formatLocaleDate(new Date(dateStr), { month: 'short', day: 'numeric', year: 'numeric' })
   })
 
   // Author bio (use articleBio override if set, otherwise regular bio)

@@ -13,7 +13,7 @@
         target="_blank"
         rel="noopener noreferrer"
         class="underline decoration-gray-300 underline-offset-2 hover:decoration-gray-500 dark:decoration-zinc-700 dark:hover:decoration-zinc-500"
-        @click.stop
+        @click.stop="confirmExternal($event, seg.href)"
       >
         {{ seg.text }}
       </a>
@@ -60,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+const { onClick: confirmExternal } = useExternalLinkConfirm()
 import LinkifyIt from 'linkify-it'
 import { siteConfig } from '~/config/site'
 import { extractLinksFromText } from '~/utils/link-utils'

@@ -55,12 +55,8 @@ export function useExplorePageDiscover() {
   // current without a manual refresh. Post subscriptions keep search / topic /
   // category / discover rows live via the global post cache.
   const {
-    addOnlineFeedCallback,
-    removeOnlineFeedCallback,
     subscribeOnlineFeed,
     unsubscribeOnlineFeed,
-    addPostsCallback,
-    removePostsCallback,
     subscribePosts,
     unsubscribePosts,
   } = usePresence()
@@ -144,12 +140,8 @@ export function useExplorePageDiscover() {
     searchInputRef,
     hydrated,
     onGlobalKeyDown,
-    addOnlineFeedCallback,
-    removeOnlineFeedCallback,
     subscribeOnlineFeed,
     unsubscribeOnlineFeed,
-    addPostsCallback,
-    removePostsCallback,
     subscribePosts,
     unsubscribePosts,
     onlineFeedCb,

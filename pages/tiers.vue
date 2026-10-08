@@ -7,16 +7,15 @@
         <h1 class="text-[28px] font-semibold leading-9">{{ tiersIntro.title }}</h1>
         <p class="moh-body moh-text-muted">{{ tiersIntro.description }}</p>
       </header>
-      <section aria-label="Your membership" class="space-y-3 rounded-xl moh-surface p-5" :aria-busy="loading">
+      <section aria-label="Your membership" class="space-y-3 rounded-xl moh-surface p-5" :aria-busy="loading || activationChecking" :data-state="membershipState">
         <p class="moh-meta uppercase">Your membership</p>
-        <h2 class="text-xl font-semibold leading-7" :style="{ color: membershipAccent(currentTier) }">{{ currentTierName }}</h2>
-        <p class="moh-body moh-text-muted">{{ membershipDescription }}</p>
-        <AppMembershipAction :action="summaryAction" :disabled="!billing || loading || Boolean(checkoutLoading) || Boolean(membershipError)" :busy="Boolean(checkoutLoading)" @checkout="startCheckout" />
-        <p v-if="loading" class="moh-meta moh-text-muted" role="status">Checking membership…</p>
-        <div v-if="membershipError" class="space-y-2" role="alert">
-          <p>{{ membershipError }}</p>
-          <Button label="Retry" severity="secondary" :loading="loading" @click="refresh" />
-        </div>
+        <h2 class="text-xl font-semibold leading-7" :style="{ color: membershipState === 'ready' ? membershipAccent(currentTier) : 'var(--moh-verified)' }">{{ membershipHeading }}</h2>
+        <p class="moh-body moh-text-muted" :role="membershipState === 'ready' ? undefined : 'alert'">{{ membershipDescription }}</p>
+        <Button v-if="membershipState === 'unavailable'" label="Retry" class="w-full" :loading="loading" @click="refresh" />
+        <Button v-else-if="membershipState === 'activation-pending'" label="Check again" class="w-full" :loading="activationChecking" @click="checkAgain" />
+        <AppMembershipAction v-else :action="summaryAction" :disabled="!billing || loading || Boolean(checkoutLoading)" :busy="Boolean(checkoutLoading)" @checkout="startCheckout" />
+        <p v-if="loading && membershipState === 'ready'" class="moh-meta moh-text-muted" role="status">Checking membership…</p>
+        <p v-if="activationError" class="moh-meta text-red-600" role="alert">{{ activationError }}</p>
         <AppInlineAlert v-if="checkoutError" severity="danger">{{ checkoutError }}</AppInlineAlert>
       </section>
       <div class="membership-grid grid gap-4">
@@ -34,7 +33,7 @@
           <ul class="moh-body space-y-4">
             <li v-for="highlight in tier.highlights" :key="highlight">{{ highlight }}</li>
           </ul>
-          <AppMembershipAction class="mt-auto" :action="membershipAction(tier.id, currentTier, billing)" :disabled="!billing || loading || Boolean(checkoutLoading) || Boolean(membershipError)" :busy="checkoutLoading === tier.id" @checkout="startCheckout" />
+          <AppMembershipAction class="mt-auto" :action="membershipAction(tier.id, currentTier, billing)" :disabled="!billing || loading || Boolean(checkoutLoading) || membershipState !== 'ready'" :busy="checkoutLoading === tier.id" @checkout="startCheckout" />
         </article>
       </div>
       <p v-if="recruitBonusEligible && !isPremium" class="moh-body moh-text-muted">
@@ -78,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { includesMembership, membershipAccent, membershipAction } from '~/utils/membership'
+import { includesMembership, membershipAccent, membershipAction, membershipStateFor } from '~/utils/membership'
 import { tiers, tiersFooterNote, tiersIntro, tiersMetaDescription, type Tier, type TierId } from '~/config/tiers.data'
 definePageMeta({
   layout: 'app',
@@ -105,7 +104,19 @@ const nextTier = computed<TierId>(() => {
   return currentTier.value === 'premium' || currentTier.value === 'premiumPlus' ? 'premiumPlus' : 'premium'
 })
 const summaryAction = computed(() => membershipAction(nextTier.value, currentTier.value, billing.value))
+const activation = useActivationPending()
+const activationChecking = activation.checking
+const activationError = activation.error
+const membershipState = computed(() => membershipStateFor({ error: membershipError.value, activationPending: Boolean(activation.pending.value) }))
+const membershipHeading = computed(() => membershipState.value === 'unavailable' ? 'Membership unavailable' : membershipState.value === 'activation-pending' ? 'Activation pending' : currentTierName.value)
+watch(() => billing.value?.premium || billing.value?.premiumPlus, active => { if (active) activation.clear() })
+async function checkAgain() {
+  const latest = await activation.check()
+  if (latest) await refresh()
+}
 const membershipDescription = computed(() => {
+  if (membershipState.value === 'unavailable') return membershipError.value
+  if (membershipState.value === 'activation-pending') return 'Your payment went through, but activation has not finished yet. Check again in a moment; do not pay again.'
   if (!user.value) return 'Compare the tiers below, then sign in to choose your next step.'
   if (billing.value?.source === 'apple') return 'Your subscription is managed by Apple.'
   if (billing.value?.source === 'grant') return 'Your membership includes granted access. View Billing for its details.'

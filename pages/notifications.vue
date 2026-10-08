@@ -209,10 +209,6 @@ const {
   itemHref,
   addInterest,
   removeInterest,
-  addCrewCallback,
-  removeCrewCallback,
-  addGroupInviteCallback,
-  removeGroupInviteCallback,
   notificationViewer,
   notificationUndeliveredCount,
 } = useNotificationsPage()

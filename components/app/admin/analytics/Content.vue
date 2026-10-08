@@ -34,7 +34,7 @@
             </div>
             <div class="flex items-center gap-3 tabular-nums">
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ vis.pct }}%</span>
-              <span class="font-semibold">{{ vis.count.toLocaleString() }}</span>
+              <span class="font-semibold">{{ formatCount(vis.count) }}</span>
             </div>
           </div>
           <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
@@ -82,7 +82,7 @@
             </div>
             <div class="flex items-center gap-3 tabular-nums">
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ vis.pct }}%</span>
-              <span class="font-semibold">{{ vis.count.toLocaleString() }}</span>
+              <span class="font-semibold">{{ formatCount(vis.count) }}</span>
             </div>
           </div>
           <div class="h-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
@@ -128,11 +128,11 @@
               {{ visibilityLabel(article.visibility) }}
             </span>
           </td>
-          <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ (article.uniqueViewCount ?? article.viewCount).toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ Math.max(article.uniqueViewCount ?? article.viewCount, article.viewCount).toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ article.boostCount.toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ article.reactionCount.toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ article.commentCount.toLocaleString() }}</td>
+          <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ formatCount(article.uniqueViewCount ?? article.viewCount) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(Math.max(article.uniqueViewCount ?? article.viewCount, article.viewCount)) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(article.boostCount) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(article.reactionCount) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(article.commentCount) }}</td>
           <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ articleAge(article.publishedAt) }}</td>
         </tr>
         <tr v-if="!data?.articles.topArticles.length">
@@ -186,10 +186,10 @@
               {{ visibilityLabel(thread.visibility) }}
             </span>
           </td>
-          <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ thread.boostCount.toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ thread.commentCount.toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ thread.uniqueViewCount.toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ thread.viewCount.toLocaleString() }}</td>
+          <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ formatCount(thread.boostCount) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(thread.commentCount) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(thread.uniqueViewCount) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(thread.viewCount) }}</td>
           <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ articleAge(thread.createdAt) }}</td>
         </tr>
         <tr v-if="!data?.board.topThreads.length">
@@ -227,11 +227,11 @@
             <div class="relative z-[1] line-clamp-2 font-medium">{{ post.bodyPreview || 'Untitled post' }}</div>
             <div class="relative z-[1] text-xs text-gray-400 dark:text-gray-500">@{{ post.authorUsername || 'unknown' }}</div>
           </td>
-          <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ (post.uniqueViewCount ?? post.viewCount).toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ Math.max(post.uniqueViewCount ?? post.viewCount, post.viewCount).toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ post.boostCount.toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ post.commentCount.toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ post.reactionCount.toLocaleString() }}</td>
+          <td class="px-4 py-3 text-right tabular-nums font-semibold">{{ formatCount(post.uniqueViewCount ?? post.viewCount) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(Math.max(post.uniqueViewCount ?? post.viewCount, post.viewCount)) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(post.boostCount) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(post.commentCount) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(post.reactionCount) }}</td>
           <td class="px-4 py-3 text-right text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{{ articleAge(post.createdAt) }}</td>
         </tr>
         <tr v-if="!data?.topPostsAllTime.length">
@@ -244,6 +244,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { AdminAnalytics } from '~/types/api'
 import { useAdminAnalyticsContext } from '~/composables/pages/admin/useAdminAnalyticsPage'
 

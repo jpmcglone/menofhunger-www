@@ -22,7 +22,7 @@
       <div v-for="(message, index) in rows" :key="message.id">
         <div v-if="startsDay(index)" class="flex items-center gap-3 py-5 text-xs moh-text-muted"><span class="h-px flex-1 bg-[var(--moh-border)]" /><time :datetime="message.createdAt">{{ formatDayDividerLabel(message.createdAt) }}</time><span class="h-px flex-1 bg-[var(--moh-border)]" /></div>
         <button v-if="message.id === newMarkerId" type="button" class="moh-focus flex min-h-11 w-full items-center" aria-label="New messages. Dismiss marker" title="Dismiss (Esc)" @click="newDismissed = true"><AppNewSinceVisitDivider /></button>
-        <div :id="`channel-message-${message.id}`" :data-message-id="message.id" :class="targetId === message.id ? 'bg-[var(--moh-surface-2)]' : ''"><AppChannelsMessageRow :message="message" :permalink="permalink(message)" :grouped="grouped(index)" :latest-own="message.id === latestOwnId && !pending.length" :fresh="freshlySent.has(message.id)" :can-react="channel.capabilities.canReact" :actions="actions(message)" :reactions="reactions" @react="react(message, $event)" @reply="openThread(message)" @hide-preview="hidePreview(message, $event)" /></div>
+        <div :id="`channel-message-${message.id}`" :data-message-id="message.id" :class="targetId === message.id ? 'bg-[var(--moh-surface-2)]' : ''"><AppChannelsJoinRow v-if="isJoinRow(message)" :message="message" :busy="welcoming.has(message.id)" @welcome="welcome(message)" /><AppChannelsMessageRow v-else :message="message" :permalink="permalink(message)" :grouped="grouped(index)" :latest-own="message.id === latestOwnId && !pending.length" :fresh="freshlySent.has(message.id)" :can-react="channel.capabilities.canReact" :can-quote="canQuote(message)" :actions="actions(message)" :reactions="reactions" @react="react(message, $event)" @reply="openThread(message)" @quote="startQuote(message)" @quote-click="jumpTo" @hide-preview="hidePreview(message, $event)" /></div>
       </div>
       </TransitionGroup>
       <p v-if="!loading && !rows.length" class="p-6 text-sm moh-text-muted">{{ rootId ? 'Start the conversation in this thread.' : `This is the beginning of ${channelTitle(channel)}.` }}</p>
@@ -35,7 +35,7 @@
     <button v-if="!atBottom" type="button" class="moh-focus absolute bottom-3 left-1/2 z-10 flex min-h-11 -translate-x-1/2 items-center gap-1.5 rounded-full border moh-border bg-[var(--moh-surface-2)] px-4 text-sm font-semibold shadow-lg" @click="list.onScrollToBottomClick"><Icon name="tabler:arrow-down" aria-hidden="true" />{{ list.pendingNewLabel.value }}</button>
     </div>
     <div class="min-h-6 px-4"><AppTypingIndicator :users="typingNow" verb="typing" size="compact" /></div>
-    <AppChannelsComposer v-if="channel.capabilities.canSend" :key="`${key}:${state.accessEpoch.value}`" :group="group" :channel="channel" :root-id="rootId" />
+    <AppChannelsComposer v-if="channel.capabilities.canSend" :key="`${key}:${state.accessEpoch.value}`" :group="group" :channel="channel" :root-id="rootId" :reply-to="quoteTarget" @clear-reply="quoteTarget = null" />
     <p v-else class="border-t moh-border p-4 text-center text-sm moh-text-muted">{{ channel.archivedAt ? 'This channel is archived.' : 'Only group leaders can post here.' }}</p>
     <AppChannelsManagement v-model="manageOpen" :group="group" :channel="channel" @updated="state.load" />
     <AppChannelsSearch v-model="searchOpen" :group="group" :channel="channel" :start-on-pins="startOnPins" />
@@ -53,6 +53,7 @@ import { useBottomAnchoredList } from '~/composables/useBottomAnchoredList'
 import type { SurfaceAction } from '~/utils/surface-actions'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 import { formatDayDividerLabel } from '~/utils/time-format'
+import { isJoinRow, markWelcomed } from '~/utils/channels/join-row'
 const props = defineProps<{ group: CommunityGroupShell; channel: GroupChannel; rootId?: string; targetId?: string }>()
 const state = inject(groupChannelsKey)!
 const { apiFetchData } = useApiClient()
@@ -85,16 +86,17 @@ const newMarkerId = computed(() => entryHadUnread && !newDismissed.value ? rows.
 function followLatest() { list.lockToBottom() }
 let newestId: string | null = null, opened = false
 const pending = computed(() => outbox.entries.value.filter(entry => entry.channelId === props.channel.id && entry.rootId === props.rootId && entry.status !== 'sent'))
-const latestOwnId = computed(() => rows.value.findLast(message => message.sender.id === user.value?.id && !message.deletedForAll)?.id)
+const latestOwnId = computed(() => rows.value.findLast(message => message.sender.id === user.value?.id && !message.deletedForAll && !isJoinRow(message))?.id)
 const freshlySent = ref(new Set<string>())
 function pendingMessage(entry: ChannelOutboxEntry): ChannelMessage {
-  return { id: `pending:${entry.id}`, body: entry.input.body, createdAt: entry.queuedAt ?? new Date().toISOString(), sender: user.value, media: [], hiddenPreviews: [], reactions: [], deletedForAll: false, replyCount: 0, pinned: false, editedAt: null, receipt: null } as unknown as ChannelMessage
+  const quoted = entry.input.replyToId ? state.messages.value[entry.input.replyToId] : undefined
+  return { id: `pending:${entry.id}`, body: entry.input.body, replyTo: quoted ? quoteSnippet(quoted) : null, createdAt: entry.queuedAt ?? new Date().toISOString(), sender: user.value, media: [], hiddenPreviews: [], reactions: [], deletedForAll: false, replyCount: 0, pinned: false, editedAt: null, receipt: null, kind: 'text', joinWelcome: null } as unknown as ChannelMessage
 }
 function pendingGrouped(index: number) {
   const prior = index > 0 ? pending.value[index - 1] : undefined
   if (prior) return true
   const last = rows.value.at(-1)
-  return !!last && last.sender.id === user.value?.id && !last.deletedForAll && Date.now() - new Date(last.createdAt).getTime() < 300_000
+  return !!last && last.sender.id === user.value?.id && !last.deletedForAll && !isJoinRow(last) && Date.now() - new Date(last.createdAt).getTime() < 300_000
 }
 let observer: IntersectionObserver | undefined, ackTimer: ReturnType<typeof setTimeout> | undefined, lease: ReturnType<typeof setInterval> | undefined, closed = false
 const visible = new Set<string>(), acknowledged = new Set<string>()
@@ -122,14 +124,36 @@ async function load(older = false) {
   finally { loading.value = false }
 }
 function startsDay(index: number) { return index === 0 || rows.value[index]!.createdAt.slice(0, 10) !== rows.value[index - 1]!.createdAt.slice(0, 10) }
-function grouped(index: number) { const current = rows.value[index], prior = rows.value[index - 1]; return !!current && !!prior && !startsDay(index) && current.sender.id === prior.sender.id && new Date(current.createdAt).getTime() - new Date(prior.createdAt).getTime() < 300_000 && !prior.deletedForAll }
+function grouped(index: number) { const current = rows.value[index], prior = rows.value[index - 1]; return !!current && !!prior && !isJoinRow(current) && !isJoinRow(prior) && !startsDay(index) && current.sender.id === prior.sender.id && new Date(current.createdAt).getTime() - new Date(prior.createdAt).getTime() < 300_000 && !prior.deletedForAll }
 function permalink(message: ChannelMessage) { return { path: channelLink(props.group.slug, props.channel.id), query: { ...(props.rootId ? { thread: props.rootId } : {}), message: message.id } } }
+const quoteTarget = ref<ChannelMessage | null>(null)
+function canQuote(message: ChannelMessage) { return !props.rootId && props.channel.capabilities.canSend && !props.channel.archivedAt && !message.deletedForAll }
+function startQuote(message: ChannelMessage) { if (canQuote(message)) quoteTarget.value = message }
+function quoteSnippet(message: ChannelMessage) { return { id: message.id, senderUsername: message.sender.username ?? null, bodyPreview: message.body.slice(0, 200), mediaThumbnailUrl: message.media?.[0]?.thumbnailUrl ?? message.media?.[0]?.url ?? null } }
+function jumpTo(id: string) {
+  const element = document.getElementById(`channel-message-${id}`)
+  if (element) element.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  else void router.push(channelLink(props.group.slug, props.channel.id, { id, threadRootId: null }))
+}
 function openThread(message: ChannelMessage) { void router.push({ path: channelLink(props.group.slug, props.channel.id), query: { thread: message.threadRootId ?? message.id } }) }
 function react(message: ChannelMessage, id: string) { void action(() => apiFetchData(`${path.value}/messages/${message.id}/reactions/${id}`, { method: message.reactions?.some(item => item.reactionId === id && item.reactedByMe) ? 'DELETE' : 'PUT', body: {} })) }
+const welcoming = reactive(new Set<string>())
+/** Posts "Welcome, <name> 🤝" as the viewer; the button hides for them and other viewers' rows are unaffected. */
+async function welcome(message: ChannelMessage) {
+  if (welcoming.has(message.id)) return
+  welcoming.add(message.id)
+  await action(async () => {
+    const sent = await apiFetchData<ChannelMessage>(`${path.value}/messages/${message.id}/welcome`, { method: 'POST', body: {} })
+    state.append(sent)
+    state.mergeMessage(markWelcomed(message))
+  })
+  welcoming.delete(message.id)
+}
 function hidePreview(message: ChannelMessage, url: string) { void action(() => apiFetchData(`${path.value}/messages/${message.id}/previews`, { method: 'PUT', body: { url, hidden: true } })) }
 function actions(message: ChannelMessage): SurfaceAction[] {
   const rootId = message.threadRootId ?? message.id
   return [
+    { id: 'quote', label: 'Reply', icon: 'tabler:arrow-back-up', section: 'conversation', available: canQuote(message), run: () => startQuote(message) },
     { id: 'reply', label: 'Reply in thread', icon: 'tabler:message-reply', section: 'conversation', run: () => openThread(message) },
     { id: 'follow', label: message.following ? 'Unfollow thread' : 'Follow thread', icon: 'tabler:bell', section: 'conversation', run: () => action(() => apiFetchData(`${path.value}/threads/${rootId}/follow`, { method: 'PUT', body: { following: !message.following } })) },
     { id: 'unread', label: 'Mark unread', icon: 'tabler:mail', section: 'conversation', run: () => action(() => apiFetchData(`${path.value}/unread`, { method: 'POST', body: { messageId: message.id } })) },

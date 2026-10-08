@@ -1,3 +1,4 @@
+import { formatCurrency } from '~/utils/number-format'
 /** Parse dollars without floating-point rounding or accepting exponential notation. */
 export function integrationMicros(text: string): number | null {
   if (!/^\d+(?:\.\d{1,6})?$/.test(text)) return null
@@ -5,4 +6,4 @@ export function integrationMicros(text: string): number | null {
   const value = BigInt(whole) * 1_000_000n + BigInt(fraction.padEnd(6, '0'))
   return value <= 2_000_000_000n ? Number(value) : null
 }
-export const integrationDollars = (micros: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(micros / 1_000_000)
+export const integrationDollars = (micros: number) => formatCurrency(micros / 1_000_000)

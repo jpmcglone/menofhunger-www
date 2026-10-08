@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { MenuItem } from 'primevue/menuitem'
 import type { Space, SpaceModeChanged, SpaceReactionEvent } from '~/types/api'
 import { siteConfig } from '~/config/site'
@@ -170,6 +171,7 @@ const spaceShareUrl = computed(() =>
   username.value ? `${siteConfig.url}/s/${encodeURIComponent(username.value)}` : '',
 )
 const toast = useAppToast()
+const { run } = useAsyncAction()
 const { copyText: copyToClipboard } = useCopyToClipboard()
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 const spaceShareTooltip = tinyTooltip('Share')
@@ -179,12 +181,11 @@ const spaceShareMenuItems = computed<MenuItemWithIcon[]>(() => [
     iconName: 'tabler:link',
     command: async () => {
       if (!import.meta.client || !spaceShareUrl.value) return
-      try {
-        await copyToClipboard(spaceShareUrl.value)
+      const url = spaceShareUrl.value
+      await run(async () => {
+        await copyToClipboard(url)
         toast.push({ title: 'Space link copied', tone: 'public', durationMs: 1400 })
-      } catch {
-        toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-      }
+      }, { error: () => 'Copy failed', durationMs: 1800 })
     },
   },
 ])
@@ -256,13 +257,14 @@ async function joinNowThatLive(s: Space) {
   }
 }
 
+const spacesRealtime = usePresenceCallback('Spaces', spacesReactionsCb, { manual: true })
 function addPageCallbacks() {
-  presence.removeSpacesCallback(spacesReactionsCb as any)
-  presence.addSpacesCallback(spacesReactionsCb as any)
+  spacesRealtime.unregister()
+  spacesRealtime.register()
 }
 
 function removePageCallbacks() {
-  presence.removeSpacesCallback(spacesReactionsCb as any)
+  spacesRealtime.unregister()
 }
 
 onMounted(async () => {

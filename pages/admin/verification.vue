@@ -271,6 +271,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminVerificationListData, AdminVerificationRequest, AdminVerificationUser, VerificationRequestStatus } from '~/types/api'
@@ -293,7 +294,6 @@ usePageSeo({
 type VerifiedStatus = 'none' | 'identity' | 'manual'
 
 const { apiFetchData } = useApiClient()
-const { addAdminCallback, removeAdminCallback } = usePresence()
 
 const statusOptions = [
   { label: 'All', value: 'all' as const },
@@ -338,12 +338,8 @@ const adminCb: AdminCallback = {
 }
 onMounted(() => {
   void refresh()
-  addAdminCallback(adminCb)
 })
-
-onBeforeUnmount(() => {
-  removeAdminCallback(adminCb)
-})
+usePresenceCallback('Admin', adminCb)
 
 watch(statusFilter, () => void refresh())
 

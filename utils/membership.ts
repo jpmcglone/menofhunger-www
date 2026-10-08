@@ -38,3 +38,11 @@ export function membershipAction(tier: TierId, current: TierId | null, billing: 
   if (tier === current) return { label: 'Manage membership', to: '/settings/billing' }
   return { label: `Upgrade to ${tier === 'premiumPlus' ? 'Premium+' : 'Premium'}`, tier, primary: true }
 }
+
+export type MembershipState = 'unavailable' | 'activation-pending' | 'ready'
+
+/** A failed load wins: never offer a paid plan against an unknown membership. A paid return still activating comes next. */
+export function membershipStateFor(input: { error: string | null; activationPending: boolean }): MembershipState {
+  if (input.error) return 'unavailable'
+  return input.activationPending ? 'activation-pending' : 'ready'
+}

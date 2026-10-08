@@ -89,6 +89,17 @@
 
     <Dialog v-model:visible="openDelete" modal header="Delete from storage?" :draggable="false" class="w-[min(32rem,calc(100vw-2rem))]">
       <div class="space-y-4">
+        <div v-if="referencesChanged" class="space-y-3" role="alert" data-testid="media-delete-references-changed">
+          <AppInlineAlert severity="warning">
+            <strong>References changed.</strong> Where this file is used changed since you reviewed it, so nothing was deleted. The list on this page is now up to date. Review it before deleting.
+          </AppInlineAlert>
+          <Button label="Review updated references" severity="secondary" :loading="loading" @click="referencesChanged = false" />
+        </div>
+        <template v-else>
+        <div class="flex items-center gap-2 text-sm" data-testid="media-delete-ready" role="status">
+          <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100">Ready to confirm</span>
+          <span class="moh-text-muted">{{ usage.length ? `Reviewed ${usage.length} ${usage.length === 1 ? 'reference' : 'references'}.` : 'No references found.' }}</span>
+        </div>
         <AppInlineAlert :severity="usage.length ? 'warning' : 'info'">
           {{ usage.length
             ? 'This file is still in use. Where it appears will show a removed placeholder, and the object is permanently deleted from storage.'
@@ -103,10 +114,11 @@
           <label class="text-sm font-semibold moh-text" for="media-delete-confirm">Type DELETE to confirm</label>
           <InputText id="media-delete-confirm" v-model="deleteConfirm" class="w-full font-mono" placeholder="DELETE" />
         </div>
+        </template>
       </div>
       <template #footer>
         <Button label="Cancel" text severity="secondary" :disabled="deleting" @click="openDelete = false" />
-        <Button label="Delete" severity="danger" :loading="deleting" :disabled="deleting || !deleteReason.trim() || (usage.length > 0 && deleteConfirm.trim() !== 'DELETE')" @click="doDelete">
+        <Button label="Delete" severity="danger" :loading="deleting" :disabled="deleting || referencesChanged || loading || !deleteReason.trim() || (usage.length > 0 && deleteConfirm.trim() !== 'DELETE')" @click="doDelete">
           <template #icon><Icon name="tabler:trash" aria-hidden="true" /></template>
         </Button>
       </template>
@@ -116,7 +128,7 @@
 
 <script setup lang="ts">
 import type { AdminImageReviewDeleteResponse, AdminImageReviewDetailResponse } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
+import { getApiErrorMessage, hasApiErrorReason } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
 import { mediaTypeLabel } from '~/utils/media-review'
 import { channelLink } from '~/utils/channels/reducer'
@@ -269,6 +281,8 @@ const openDelete = ref(false)
 const deleteReason = ref('')
 const deleteConfirm = ref('')
 const deleting = ref(false)
+const referencesChanged = ref(false)
+watch(openDelete, open => { if (open) referencesChanged.value = false })
 
 async function doDelete() {
   if (deleting.value) return
@@ -278,14 +292,21 @@ async function doDelete() {
   try {
     const res = await apiFetchData<AdminImageReviewDeleteResponse>('/admin/media-review/' + encodeURIComponent(assetId), {
       method: 'DELETE',
-      body: { reason: deleteReason.value.trim() },
+      body: { reason: deleteReason.value.trim(), referencesToken: data.value?.asset.referencesToken },
     })
     toast.push({ title: res.r2Deleted === false ? 'Deleted (R2 failed)' : 'Deleted', tone: res.r2Deleted === false ? 'error' : 'success', durationMs: 2200 })
     openDelete.value = false
     deleteConfirm.value = ''
     await load()
   } catch (e: unknown) {
-    toast.pushError(e, 'Delete failed.')
+    if (hasApiErrorReason(e, 'references_changed')) {
+      // Ownership changed since review: refresh the list and token, then require a fresh confirmation.
+      referencesChanged.value = true
+      deleteConfirm.value = ''
+      await load()
+    } else {
+      toast.pushError(e, 'Delete failed.')
+    }
   } finally {
     deleting.value = false
   }

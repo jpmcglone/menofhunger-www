@@ -260,9 +260,10 @@ const { share: nativeShare, isSupported: nativeShareSupported } = useWebShare()
 const { copyText } = useCopyToClipboard()
 const { referralCode, ensureReferralCode } = useEnsureReferralCode()
 const toast = useAppToast()
+const { run } = useAsyncAction()
 
 async function shareWeeklyMission() {
-  try {
+  await run(async () => {
     await ensureReferralCode()
     const text = weeklyMissionShareText(viewerStreakDays.value || 1)
     const url = appendShareParams(siteConfig.url, { ref: referralCode.value ?? null })
@@ -272,9 +273,7 @@ async function shareWeeklyMission() {
     }
     await copyText(`${text}\n${url}`)
     toast.push({ title: 'Invite copied', tone: 'success', durationMs: 1400 })
-  } catch {
-    toast.push({ title: 'Share failed', tone: 'error', durationMs: 1800 })
-  }
+  }, { error: () => 'Share failed', durationMs: 1800 })
 }
 
 function commitScope(tabId: TabId) {

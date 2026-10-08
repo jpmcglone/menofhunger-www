@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { PublicProfile } from '~/composables/usePublicProfile'
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { settleCrosspostPending } from '~/utils/feed-patch'
@@ -14,8 +15,7 @@ export function useProfilePageActions(ctx: ReturnType<typeof useProfilePageRoute
   // Realtime nudges: if you are already viewing this user's profile and they nudge you,
   // update the local followSummary.nudge immediately so the header shows "Nudge back",
   // then refresh from the API to keep outbound/inbound state consistent.
-  const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
-  const notificationsCb = {
+    const notificationsCb = {
     onNew: (payload: any) => {
       const n = payload?.notification ?? null
       if (!n || n.kind !== 'nudge') return
@@ -54,9 +54,9 @@ export function useProfilePageActions(ctx: ReturnType<typeof useProfilePageRoute
   // Post-room subscriptions (so the server delivers those events for the posts on
   // screen) are wired by useUserPosts via `realtime: true` above.
 
+  usePresenceCallback('Notifications', notificationsCb)
   if (import.meta.client) {
     onMounted(() => {
-      addNotificationsCallback(notificationsCb as any)
       document.addEventListener('pointerdown', onProfileStatPointerDown, { capture: true })
       if (isSelf.value) {
         unregisterProfilePrepend = registerProfilePrepend((post) => {
@@ -134,7 +134,6 @@ export function useProfilePageActions(ctx: ReturnType<typeof useProfilePageRoute
       }
     })
     onBeforeUnmount(() => {
-      removeNotificationsCallback(notificationsCb as any)
       document.removeEventListener('pointerdown', onProfileStatPointerDown, true)
       unregisterProfilePrepend?.()
       unregisterProfilePrepend = null

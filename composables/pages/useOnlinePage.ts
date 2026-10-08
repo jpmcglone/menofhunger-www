@@ -1,3 +1,5 @@
+import { formatCount } from '~/utils/number-format'
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { GetPresenceOnlineData, GetPresenceOnlinePageData, OnlineUser, RecentlyOnlineUser } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { hydrateFollowRelationship } from '~/utils/follow-relationship'
@@ -10,8 +12,6 @@ const { apiFetch } = useApiClient()
 const {
   subscribeOnlineFeed,
   unsubscribeOnlineFeed,
-  addOnlineFeedCallback,
-  removeOnlineFeedCallback,
   addInterest,
   removeInterest,
   addOnlineIdsFromRest,
@@ -56,8 +56,8 @@ const onlineSeoDescription = computed(() => {
   const total = displayTotal.value
   if (total === null) return 'See how many men are online on Men of Hunger right now. Updates live.'
   const guests = displayGuests.value
-  const guestsText = guests > 0 ? `, plus ${guests.toLocaleString('en-US')} ${guests === 1 ? 'guest' : 'guests'} browsing` : ''
-  return `${total.toLocaleString('en-US')} ${total === 1 ? 'man is' : 'men are'} online on Men of Hunger right now${guestsText}. A live count of the brotherhood, updated in real time.`
+  const guestsText = guests > 0 ? `, plus ${formatCount(guests)} ${guests === 1 ? 'guest' : 'guests'} browsing` : ''
+  return `${formatCount(total)} ${total === 1 ? 'man is' : 'men are'} online on Men of Hunger right now${guestsText}. A live count of the brotherhood, updated in real time.`
 })
 
 usePageSeo({
@@ -356,8 +356,8 @@ useLoadMoreObserver(
   },
 )
 
+usePresenceCallback('OnlineFeed', feedCallback)
 onMounted(async () => {
-  addOnlineFeedCallback(feedCallback)
   // Wait for socket so we're registered before REST returns our listing; subscribe before fetch for real-time.
   await whenSocketConnected(12000)
   subscribeOnlineFeed()
@@ -387,7 +387,6 @@ onBeforeUnmount(() => {
     mergeRefetchTimeout = null
   }
   unsubscribeOnlineFeed()
-  removeOnlineFeedCallback(feedCallback)
   if (users.value.length > 0) {
     removeInterest(users.value.map((u) => u.id))
   }

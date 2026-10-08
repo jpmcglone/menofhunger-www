@@ -312,7 +312,5 @@ const {
   getApiErrorMessage,
   isVerified,
   authUser,
-  addCrewCallback,
-  removeCrewCallback,
 } = useCrewIndexPage()
 </script>

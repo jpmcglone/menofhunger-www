@@ -38,7 +38,7 @@
 
       <!-- Member count -->
       <div class="mt-1.5 text-sm">
-        <span class="font-semibold moh-text tabular-nums">{{ crew.memberCount.toLocaleString() }}</span>
+        <span class="font-semibold moh-text tabular-nums">{{ formatCount(crew.memberCount) }}</span>
         <span class="ml-1 moh-text-muted">{{ crew.memberCount === 1 ? 'Member' : 'Members' }}</span>
       </div>
 
@@ -73,6 +73,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { CrewPublic } from '~/types/api'
 import { crewDisplayName } from '~/composables/useCrew'
 import { avatarRoundClass } from '~/utils/avatar-rounding'

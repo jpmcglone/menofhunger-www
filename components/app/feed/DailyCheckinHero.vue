@@ -170,6 +170,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import CheckinClosedNotice from './CheckinClosedNotice.vue'
 import type {
   CheckinAllowedVisibility,
@@ -224,7 +225,6 @@ const props = defineProps<{
 }>()
 
 const { isAuthed } = useAuth()
-const { addCrewCallback, removeCrewCallback } = usePresence()
 const { dayKey: etDayKey } = useEasternMidnightRollover()
 
 const { isOpen } = useCheckinWindow()
@@ -343,14 +343,9 @@ const crewCb = {
   },
 }
 
+const crewRealtime = usePresenceCallback('Crew', crewCb, { manual: true })
 onMounted(() => {
-  if (props.verifyCta) return
-  addCrewCallback(crewCb)
-})
-
-onBeforeUnmount(() => {
-  if (props.verifyCta) return
-  removeCrewCallback(crewCb)
+  if (!props.verifyCta) crewRealtime.register()
 })
 
 watch(etDayKey, () => {

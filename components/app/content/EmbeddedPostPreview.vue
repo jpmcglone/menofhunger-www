@@ -94,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDateTime } from '~/utils/time-format'
 import AppCheckinPromptContext from '~/components/app/dialogs/CheckinPromptContext.vue'
 import type { FeedPost, GetPostData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -140,7 +141,7 @@ function formatShortDate(d: Date, nowMsVal: number): string {
   if (diffDay < 7) return `${diffDay}d`
   const sameYear = new Date(nowMsVal).getFullYear() === d.getFullYear()
   // Fixed locale for SSR: server and client must produce identical output.
-  const month = d.toLocaleString('en-US', { month: 'short' })
+  const month = formatLocaleDateTime(d, { month: 'short' })
   const day = d.getDate()
   return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
 }

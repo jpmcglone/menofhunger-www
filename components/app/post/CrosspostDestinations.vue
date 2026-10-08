@@ -17,7 +17,7 @@
       </div>
       <div class="flex h-11 w-[7.25rem] shrink-0 items-center justify-end">
         <ToggleSwitch
-          v-if="(row.id === 'x' && row.modes.length < 2) || row.disabled || isOff(row)"
+          v-if="scheduled || (row.id === 'x' && row.modes.length < 2) || row.disabled || isOff(row)"
           :model-value="!row.disabled && !isOff(row)"
           :disabled="row.disabled"
           :input-id="`crosspost-${row.id}`"
@@ -39,7 +39,7 @@
         </button>
       </div>
       <Menu
-        v-if="row.id !== 'x' || row.modes.length > 1"
+        v-if="!scheduled && (row.id !== 'x' || row.modes.length > 1)"
         :ref="(el) => bindMenu(row.id, el)"
         :model="menuModel(row)"
         popup
@@ -80,7 +80,7 @@ export type CrosspostDestinationView = {
   premiumHref?: string | null
 }
 
-const props = defineProps<{ destinations: CrosspostDestinationView[]; initialSelection?: CrosspostPayload }>()
+const props = defineProps<{ destinations: CrosspostDestinationView[]; initialSelection?: CrosspostPayload; scheduled?: boolean }>()
 
 const selected = reactive<Record<string, 'off' | CrosspostMode>>({})
 
@@ -95,6 +95,7 @@ watch(() => props.destinations, (rows) => {
 }, { immediate: true })
 
 function label(row: CrosspostDestinationView): string {
+  if (props.scheduled) return row.id === 'x' ? 'Also post to X' : 'Also post to Pickax'
   return row.id === 'x' ? 'Post to X' : `${modeLabel(displayMode(row))} on Pickax`
 }
 
@@ -155,6 +156,7 @@ function menuOptions(row: CrosspostDestinationView): Array<{ id: 'off' | Crosspo
 
 function subtitle(row: CrosspostDestinationView): string {
   if (row.disabled) return row.disabledNote || ''
+  if (props.scheduled) return row.id === 'x' ? 'Men of Hunger posts it to X at the scheduled time.' : 'Men of Hunger sends it to Pickax at the scheduled time.'
   if (displayMode(row) === 'native') return 'Your words and photos'
   return row.linkOnlyReason || 'A link back to this post'
 }

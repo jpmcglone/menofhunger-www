@@ -106,11 +106,10 @@ const emit = defineEmits<{
 }>()
 
 const { apiFetchData } = useApiClient()
-const toast = useAppToast()
+const { run, pending: uploading } = useAsyncAction()
 const { assetUrl } = useAssets()
 const toolbarEl = ref<HTMLDivElement | null>(null)
 const imageInputEl = ref<HTMLInputElement | null>(null)
-const uploading = ref(false)
 const linkDialogVisible = ref(false)
 useOverlayDismiss(linkDialogVisible, () => onCloseLinkDialog(false))
 const linkDialogMode = ref<'link' | 'youtube'>('link')
@@ -334,11 +333,7 @@ async function uploadAndInsertImage(file: File) {
       editor.value?.chain().focus().setImage({ src: imageUrl }).run()
       emit('change')
     }
-  } catch (e: any) {
-    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Image upload failed.', tone: 'error' })
-  } finally {
-    uploading.value = false
-  }
+  }, { error: 'Image upload failed.' })
 }
 
 async function onImageFileChange(event: Event) {

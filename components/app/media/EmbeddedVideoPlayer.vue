@@ -2,7 +2,15 @@
   <div ref="box" class="relative w-full overflow-hidden bg-black" :style="frameStyle" data-post-row-interactive>
     <div ref="surface" class="absolute inset-0" :inert="!active || undefined" />
     <img v-if="poster && !painted" :src="poster" class="pointer-events-none absolute inset-0 h-full w-full object-cover" alt="" @error="$emit('posterError')">
-    <button v-if="!active || state === 'blocked' || state === 'failed'" type="button" class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-black/20 text-white" :aria-label="state === 'failed' ? 'Retry video' : `Play ${title || 'video'}`" @click.stop="play">
+    <div v-if="state === 'failed' && youtubeUrl" class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/60 px-4 text-center text-white" data-testid="youtube-unavailable">
+      <span class="text-sm font-semibold">Playback unavailable</span>
+      <span class="text-xs text-white/70">This video can’t play here.</span>
+      <div class="flex items-center gap-2">
+        <button type="button" class="moh-tap min-h-11 rounded-full bg-white/15 px-4 text-sm font-semibold" aria-label="Retry video" @click.stop="play">Retry</button>
+        <a :href="youtubeUrl" target="_blank" rel="noopener noreferrer" class="moh-tap inline-flex min-h-11 items-center rounded-full bg-white px-4 text-sm font-semibold text-black" aria-label="Open on YouTube" @click.stop>Open on YouTube</a>
+      </div>
+    </div>
+    <button v-else-if="!active || state === 'blocked' || state === 'failed'" type="button" class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-black/20 text-white" :aria-label="state === 'failed' ? 'Retry video' : `Play ${title || 'video'}`" @click.stop="play">
       <Icon name="tabler:player-play-filled" class="h-12 w-12 rounded-full bg-black/60 p-3" aria-hidden="true" />
       <span v-if="state === 'failed'" class="rounded bg-black/70 px-3 py-1 text-sm">Couldn’t play. Tap to retry.</span>
       <span v-else-if="state === 'blocked'" class="rounded bg-black/70 px-3 py-1 text-sm">Tap to play</span>

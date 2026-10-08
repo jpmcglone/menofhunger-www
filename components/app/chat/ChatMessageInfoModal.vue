@@ -81,6 +81,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDateTime } from '~/utils/time-format'
 import type { Message, MessageParticipant } from '~/types/api'
 
 const props = defineProps<{
@@ -117,7 +118,7 @@ const senderForAvatar = computed(() => {
 const formattedSentAt = computed(() => {
   if (!props.message?.createdAt) return ''
   const d = new Date(props.message.createdAt)
-  return d.toLocaleString('en-US', {
+  return formatLocaleDateTime(d, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -149,7 +150,7 @@ const readReceipts = computed<ReadReceipt[]>(() => {
         isOrganization: p.user.isOrganization,
         verifiedStatus: p.user.verifiedStatus,
       },
-      readAt: new Date(p.lastReadAt!).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      readAt: formatLocaleDateTime(new Date(p.lastReadAt!), { hour: 'numeric', minute: '2-digit' }),
     }))
 })
 </script>

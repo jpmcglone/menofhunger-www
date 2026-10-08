@@ -237,6 +237,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 definePageMeta({
   layout: 'app',
   title: 'Reports',
@@ -257,7 +258,6 @@ import type { AdminCallback } from '~/composables/usePresence'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 
 const { apiFetchData } = useApiClient()
-const { addAdminCallback, removeAdminCallback } = usePresence()
 
 const statusOptions = [
   { label: 'All', value: 'all' as const },
@@ -335,12 +335,8 @@ const adminCb: AdminCallback = {
 }
 onMounted(() => {
   void refresh()
-  addAdminCallback(adminCb)
 })
-
-onBeforeUnmount(() => {
-  removeAdminCallback(adminCb)
-})
+usePresenceCallback('Admin', adminCb)
 
 watch([statusFilter, targetFilter, reasonFilter, sortMode], () => void refresh())
 

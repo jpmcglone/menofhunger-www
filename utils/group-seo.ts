@@ -1,9 +1,10 @@
+import { formatCount } from '~/utils/number-format'
 import { siteConfig } from '~/config/site'
 import type { CommunityGroupShell } from '~/types/api'
 
 type GroupSeoInput = Pick<CommunityGroupShell, 'slug' | 'name' | 'description' | 'avatarImageUrl' | 'coverImageUrl' | 'memberCount' | 'joinPolicy'>
 
-const plural = (count: number) => `${count.toLocaleString()} ${count === 1 ? 'member' : 'members'}`
+const plural = (count: number) => `${formatCount(count)} ${count === 1 ? 'member' : 'members'}`
 const clip = (value: string, max: number) => value.length <= max ? value : `${value.slice(0, max - 1).replace(/\s+\S*$/, '')}…`
 
 /**

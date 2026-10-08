@@ -44,12 +44,11 @@ const props = defineProps<{
 
 const { dismissVoicemail, localStream } = useCallSession()
 const { apiFetchData } = useApiClient()
-const toast = useAppToast()
 
 const liveEl = ref<HTMLVideoElement | null>(null)
 const recording = ref(false)
 const reviewing = ref(false)
-const sending = ref(false)
+const { run, pending: sending } = useAsyncAction()
 const elapsed = ref(0)
 const previewUrl = ref<string | null>(null)
 const recorded = ref<{ file: File; durationSeconds: number; width: number; height: number; poster: Blob | null } | null>(null)
@@ -79,11 +78,10 @@ onMounted(async () => {
     attachLive(localStream.value)
     return
   }
-  try {
-    attachLive(await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true }))
-  } catch {
-    toast.push({ title: 'Couldn’t access your camera.', tone: 'error' })
-  }
+  await run(
+    async () => attachLive(await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true })),
+    { error: () => 'Couldn’t access your camera.' },
+  )
 })
 
 onBeforeUnmount(() => {
@@ -177,8 +175,7 @@ function cancel() {
 async function send() {
   const clip = recorded.value
   if (!clip || sending.value) return
-  sending.value = true
-  try {
+  await run(async () => {
     let thumbnailKey: string | undefined
     if (clip.poster) {
       const thumbInit = await apiFetchData<{ key: string; uploadUrl?: string; headers: Record<string, string> }>(
@@ -223,10 +220,6 @@ async function send() {
       },
     })
     dismissVoicemail()
-  } catch (e) {
-    toast.push({ title: getSafeUserErrorMessage(e, 'Couldn’t send the video message.'), tone: 'error' })
-  } finally {
-    sending.value = false
-  }
+  }, { error: 'Couldn’t send the video message.' })
 }
 </script>

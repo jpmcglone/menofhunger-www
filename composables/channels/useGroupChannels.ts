@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref, type InjectionKey } from 'vue'
 import type { ChannelAttention, ChannelMessage, CommunityGroupShell, GroupChannel } from '~/types/api'
 import type { ChannelCallback } from '~/composables/presence/usePresenceDomains'
@@ -142,8 +143,9 @@ export function useGroupChannels(group: Ref<CommunityGroupShell | null>) {
   watch(() => group.value?.id, () => { revoke(); void load().catch(() => revoke()) })
   watch(presence.isSocketConnected, connected => { if (connected) void resync() })
   const onVisible = () => { if (document.visibilityState === 'visible') void resync() }
-  onMounted(() => { presence.addChannelCallback(callback); document.addEventListener('visibilitychange', onVisible) })
-  onBeforeUnmount(() => { presence.removeChannelCallback(callback); document.removeEventListener('visibilitychange', onVisible); revoke() })
+  usePresenceCallback('Channel', callback)
+  onMounted(() => { document.addEventListener('visibilitychange', onVisible) })
+  onBeforeUnmount(() => { document.removeEventListener('visibilitychange', onVisible); revoke() })
   return { typingUsers: typing.typingUsers, typingByChannel: typing.typingByChannel, channels, messages, mergeMessage, windows, cursors, attention, accessEpoch, loading, error, load, history, append, loadAttention, windowKey, patchChannel, revoke,
     personalCount: computed(() => channels.value.reduce((sum, channel) => sum + channel.personalCount, 0)) }
 }

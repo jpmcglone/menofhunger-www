@@ -135,6 +135,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { DailyContentToday, DailyQuote, Websters1828WordOfDay } from '~/types/api'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 
@@ -145,7 +146,6 @@ definePageMeta({
 
 const { user: authUser } = useAuth()
 const { markReadByKind } = useNotifications()
-const { addNotificationsCallback, removeNotificationsCallback } = usePresence()
 
 const [{ data: dailyContent, refresh: refreshDailyContent }, { data: wotd, refresh: refreshWotd }] = await Promise.all([
   useDailyContentToday(),
@@ -172,16 +172,13 @@ const notificationsCb = {
   },
 }
 
+usePresenceCallback('Notifications', notificationsCb)
 if (import.meta.client) {
   onMounted(() => {
-    addNotificationsCallback(notificationsCb as any)
     clearDailyNotifications()
   })
   onActivated(() => {
     clearDailyNotifications()
-  })
-  onBeforeUnmount(() => {
-    removeNotificationsCallback(notificationsCb as any)
   })
 }
 

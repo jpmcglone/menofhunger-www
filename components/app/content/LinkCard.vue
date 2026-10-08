@@ -10,7 +10,7 @@
     :class="previewOnly ? '' : 'moh-surface-hover'"
     :aria-label="previewOnly ? undefined : ariaLabel"
     :aria-busy="state === 'loading' || undefined"
-    @click.stop
+    @click.stop="onLinkClick"
   >
     <button
       v-if="dismissible"
@@ -69,6 +69,7 @@
 </template>
 
 <script setup lang="ts">
+const { onClick: confirmExternal } = useExternalLinkConfirm()
 const props = defineProps<{
   href: string
   siteLabel: string
@@ -81,6 +82,8 @@ const props = defineProps<{
   /** Composer: show a remove control over the thumbnail. */
   dismissible?: boolean
 }>()
+function onLinkClick(event: MouseEvent) { if (!props.previewOnly) confirmExternal(event, props.href) }
+
 defineEmits<{ dismiss: [] }>()
 
 const imageLoaded = ref(false)

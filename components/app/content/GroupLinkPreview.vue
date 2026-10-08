@@ -18,7 +18,7 @@
         <div class="truncate text-sm font-semibold leading-5 moh-text">{{ group.name }}</div>
         <div v-if="group.description" class="line-clamp-2 text-xs leading-4 moh-text-muted">{{ group.description }}</div>
         <div class="truncate text-xs leading-4 moh-text-soft">
-          {{ group.memberCount.toLocaleString() }} {{ group.memberCount === 1 ? 'member' : 'members' }} · {{ group.joinPolicy === 'open' ? 'Open to join' : 'Request to join' }}
+          {{ formatCount(group.memberCount) }} {{ group.memberCount === 1 ? 'member' : 'members' }} · {{ group.joinPolicy === 'open' ? 'Open to join' : 'Request to join' }}
         </div>
       </div>
     </div>
@@ -27,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { LinkMetadata } from '~/utils/link-metadata'
 
 type GroupCard = NonNullable<LinkMetadata['group']>

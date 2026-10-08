@@ -2,7 +2,7 @@
   <section v-if="isMember" class="moh-gutter-x border-b moh-border py-3">
     <div class="flex items-center gap-2.5">
       <div class="min-w-0 flex-1">
-        <p v-if="!focused" class="truncate text-xs moh-text-muted"><NuxtLink :to="`/g/${encodeURIComponent(shell.slug)}/members`" class="moh-focus hover:underline">{{ shell.memberCount.toLocaleString() }} members</NuxtLink> · {{ shell.joinPolicy === 'open' ? 'Verified members can read' : 'Members only' }}</p>
+        <p v-if="!focused" class="truncate text-xs moh-text-muted"><NuxtLink :to="`/g/${encodeURIComponent(shell.slug)}/members`" class="moh-focus hover:underline">{{ formatCount(shell.memberCount) }} members</NuxtLink> · {{ shell.joinPolicy === 'open' ? 'Verified members can read' : 'Members only' }}</p>
       </div>
       <Button v-if="!focused" label="Post" size="small" rounded class="!bg-[var(--moh-group)] !border-[var(--moh-group)] !text-white" aria-label="Post to group" @click="$emit('post')" />
       <Button v-if="!focused" aria-label="Group notification preferences" text rounded size="small" severity="secondary" @click="preferencesOpen = true"><template #icon><Icon name="tabler:bell" /></template></Button>
@@ -162,13 +162,13 @@
               :to="`/g/${encodeURIComponent(shell.slug)}/members`"
               class="font-medium hover:underline underline-offset-2 text-gray-700 dark:text-gray-200 tabular-nums"
             >
-              {{ shell.memberCount.toLocaleString() }} members
+              {{ formatCount(shell.memberCount) }} members
             </NuxtLink>
             <span
               v-else
               class="font-medium text-gray-700 dark:text-gray-200 tabular-nums"
             >
-              {{ shell.memberCount.toLocaleString() }} members
+              {{ formatCount(shell.memberCount) }} members
             </span>
             <span aria-hidden="true">·</span>
             <span class="inline-flex items-center gap-1">
@@ -383,6 +383,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { MenuItem } from 'primevue/menuitem'
 import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
@@ -449,6 +450,7 @@ const { confirm } = useAppConfirm()
 const { copyText } = useCopyToClipboard()
 const { share: nativeShare, isSupported: nativeShareSupported } = useWebShare()
 const toast = useAppToast()
+const { run } = useAsyncAction()
 const { user } = useAuth()
 const { referralCode, ensureReferralCode } = useEnsureReferralCode()
 
@@ -481,7 +483,7 @@ async function resolveGroupShare() {
 }
 
 async function shareGroup() {
-  try {
+  await run(async () => {
     const { url, message } = await resolveGroupShare()
     if (nativeShareSupported.value) {
       const shared = await nativeShare({ title: 'Men of Hunger', text: message, url })
@@ -492,19 +494,15 @@ async function shareGroup() {
     }
     await copyText(`${message}\n${url}`)
     toast.push({ title: 'Invite link copied', tone: 'public', durationMs: 1400 })
-  } catch {
-    toast.push({ title: 'Share failed', tone: 'error', durationMs: 1800 })
-  }
+  }, { error: () => 'Share failed', durationMs: 1800 })
 }
 
 async function copyGroupLink() {
-  try {
+  await run(async () => {
     const { url, message } = await resolveGroupShare()
     await copyText(`${message}\n${url}`)
     toast.push({ title: 'Invite link copied', tone: 'public', durationMs: 1400 })
-  } catch {
-    toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-  }
+  }, { error: () => 'Copy failed', durationMs: 1800 })
 }
 
 const moreMenuItems = computed<MenuItemWithIcon[]>(() => {

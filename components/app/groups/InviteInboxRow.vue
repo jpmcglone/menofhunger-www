@@ -57,46 +57,28 @@ const emit = defineEmits<{
 
 const groupInvites = useGroupInvites()
 const toast = useAppToast()
-const busy = ref(false)
+const { run, pending: busy } = useAsyncAction()
 const action = ref<'accept' | 'decline' | null>(null)
 
 async function onAccept() {
   if (busy.value) return
-  busy.value = true
   action.value = 'accept'
-  try {
+  await run(async () => {
     const res = await groupInvites.acceptInvite(props.invite.id)
     emit('accepted', props.invite, res.groupSlug)
     toast.push({ title: 'Joined group', tone: 'success', durationMs: 1400 })
     if (res.groupSlug) void navigateTo(`/g/${encodeURIComponent(res.groupSlug)}`)
-  } catch (e: unknown) {
-    toast.push({
-      title: getSafeUserErrorMessage(e, 'Could not accept invite.'),
-      tone: 'error',
-      durationMs: 2200,
-    })
-  } finally {
-    busy.value = false
-    action.value = null
-  }
+  }, { error: 'Could not accept invite.', durationMs: 2200 })
+  action.value = null
 }
 
 async function onDecline() {
   if (busy.value) return
-  busy.value = true
   action.value = 'decline'
-  try {
+  await run(async () => {
     await groupInvites.declineInvite(props.invite.id)
     emit('declined', props.invite)
-  } catch (e: unknown) {
-    toast.push({
-      title: getSafeUserErrorMessage(e, 'Could not decline invite.'),
-      tone: 'error',
-      durationMs: 2200,
-    })
-  } finally {
-    busy.value = false
-    action.value = null
-  }
+  }, { error: 'Could not decline invite.', durationMs: 2200 })
+  action.value = null
 }
 </script>

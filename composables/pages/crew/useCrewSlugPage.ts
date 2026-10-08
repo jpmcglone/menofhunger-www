@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { formatMonthYear } from '~/utils/time-format'
 import type { CrewBySlugViewerMembership, CrewInvite, CrewMemberListItem, CrewPrivate, CrewPublic, FeedPost } from '~/types/api'
 import type { CrewMemberActionTarget } from '~/components/app/crew/CrewMemberActionMenu.vue'
@@ -26,7 +27,6 @@ const canonicalSlug = ref<string | null>(null)
 const unreadChatOverride = ref<number | null>(null)
 
 const crewApi = useCrew()
-const { addCrewCallback, removeCrewCallback } = usePresence()
 const { user: meUser } = useAuth()
 const { markReadBySubject } = useNotifications()
 
@@ -61,6 +61,7 @@ const addMemberExcludeIds = computed<string[]>(() => {
 })
 
 const toast = useAppToast()
+const { run } = useAsyncAction()
 
 const memberMenuOpen = ref(false)
 const memberMenuTarget = ref<CrewMemberActionTarget | null>(null)
@@ -112,7 +113,7 @@ async function performRemoveMember() {
   const target = pendingRemoveUser.value
   if (!target) return
   removingMember.value = true
-  try {
+  await run(async () => {
     await crewApi.kickMember(target.id)
     if (crew.value) {
       crew.value = {
@@ -122,30 +123,29 @@ async function performRemoveMember() {
       }
     }
     toast.push({ title: `Removed ${target.name}`, tone: 'success' })
-  } catch (e) {
-    toast.push({ title: getApiErrorMessage(e) || 'Could not remove that member.', tone: 'error' })
-  } finally {
-    removingMember.value = false
-    removeConfirmOpen.value = false
-    pendingRemoveUser.value = null
-  }
+  }, { error: 'Could not remove that member.' })
+  removingMember.value = false
+  removeConfirmOpen.value = false
+  pendingRemoveUser.value = null
 }
 
 async function onCancelInviteRequested(inviteId: string) {
   const invite = pendingInvitees.value.find((i) => i.id === inviteId)
   const name = invite?.invitee.name ?? invite?.invitee.username ?? 'invite'
   pendingInvitees.value = pendingInvitees.value.filter((i) => i.id !== inviteId)
-  try {
+  await run(async () => {
     await crewApi.cancelInvite(inviteId)
     toast.push({ title: `Invite to ${name} withdrawn`, tone: 'success' })
-  } catch (e) {
-    if (invite) {
-      pendingInvitees.value = [...pendingInvitees.value, invite].sort((a, b) =>
-        a.createdAt.localeCompare(b.createdAt),
-      )
-    }
-    toast.push({ title: getApiErrorMessage(e) || 'Could not cancel the invite.', tone: 'error' })
-  }
+  }, {
+    error: 'Could not cancel the invite.',
+    rollback: () => {
+      if (invite) {
+        pendingInvitees.value = [...pendingInvitees.value, invite].sort((a, b) =>
+          a.createdAt.localeCompare(b.createdAt),
+        )
+      }
+    },
+  })
 }
 
 async function refreshPendingInvitees(crewId: string | null) {
@@ -419,8 +419,7 @@ const realtimeCb: CrewCallback = {
     unreadChatOverride.value = base + 1
   },
 }
-onMounted(() => addCrewCallback(realtimeCb))
-onBeforeUnmount(() => removeCrewCallback(realtimeCb))
+usePresenceCallback('Crew', realtimeCb)
 
 onMounted(() => {
   // Fire the initial feed load once roster + auth are settled (the composable's

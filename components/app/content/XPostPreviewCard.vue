@@ -6,7 +6,7 @@
     class="group block overflow-hidden border border-gray-300 bg-white text-gray-950 transition-colors hover:bg-gray-50 dark:border-zinc-700 dark:bg-black dark:text-zinc-100 dark:hover:bg-zinc-950"
     :class="compact ? 'rounded-lg' : 'rounded-xl'"
     aria-label="Open post on X"
-    @click.stop
+    @click.stop="confirmExternal($event, href)"
   >
     <div :class="compact ? 'p-2.5' : 'p-3.5'">
       <div class="flex items-start gap-2.5">
@@ -136,6 +136,7 @@
 </template>
 
 <script setup lang="ts">
+const { onClick: confirmExternal } = useExternalLinkConfirm()
 import { formatShortDate } from '~/utils/time-format'
 import type { SocialPostMetadata } from '~/utils/link-metadata'
 

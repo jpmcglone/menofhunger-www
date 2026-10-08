@@ -2,7 +2,7 @@ import type { ChannelMessage } from '~/types/api'
 import { clearChannelDraft } from '~/utils/channels/drafts'
 import { channelPath } from '~/utils/channels/reducer'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
-export type ChannelSend = { body: string; clientRequestId: string; threadRootId?: string; attachments?: Array<{ uploadId: string }>; giphy?: { url: string; mp4Url?: string; width?: number; height?: number } }
+export type ChannelSend = { body: string; clientRequestId: string; threadRootId?: string; replyToId?: string; attachments?: Array<{ uploadId: string }>; giphy?: { url: string; mp4Url?: string; width?: number; height?: number } }
 export type ChannelOutboxEntry = { id: string; identity: string; groupId: string; channelId: string; rootId?: string; input: ChannelSend; files?: File[]; uploaded?: Record<number, string>; status: 'uploading' | 'sending' | 'failed' | 'sent'; error?: string; draftKey: string; draftRevision: string; queuedAt?: string; message?: ChannelMessage }
 export function useChannelOutbox() {
   const { apiFetchData } = useApiClient()

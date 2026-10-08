@@ -59,21 +59,29 @@
       <section v-if="recentlyActiveMen.length && landingSnapshot" class="landing-shell landing-activity" aria-label="Community activity">
         <div class="landing-stats">
           <AppLandingStatBreakdown
-            :title="`${landingSnapshot.stats.men.total.toLocaleString('en-US')} men`" :subtitle="menBreakdownTitle"
+            :title="`${formatCount(landingSnapshot.stats.men.total)} men`" :subtitle="menBreakdownTitle"
             :trigger-label="`${formatLandingCount(landingSnapshot.stats.men.total)}+ men — show breakdown`" :sections="menBreakdownSections"
           >
             <span class="landing-stat-value">{{ formatLandingCount(landingSnapshot.stats.men.total) }}+ <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span>
             <span class="landing-stat-label">men</span>
           </AppLandingStatBreakdown>
           <AppLandingStatBreakdown
-            :title="`${landingSnapshot.stats.posts.total.toLocaleString('en-US')} posts`" subtitle="Originals, replies, and audience"
+            :title="`${formatCount(landingSnapshot.stats.posts.total)} posts`" subtitle="Originals, replies, and audience"
             :trigger-label="`${formatLandingCount(landingSnapshot.stats.posts.total)}+ posts — show breakdown`" :sections="postsBreakdownSections"
           >
             <span class="landing-stat-value">{{ formatLandingCount(landingSnapshot.stats.posts.total) }}+ <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span>
             <span class="landing-stat-label">posts</span>
           </AppLandingStatBreakdown>
           <AppLandingStatBreakdown
-            v-if="landingSnapshot.stats.views" :title="`${landingSnapshot.stats.views.total.toLocaleString('en-US')} total views`" subtitle="Views across the community"
+            v-if="landingSnapshot.stats.articles?.total"
+            :title="`${formatCount(landingSnapshot.stats.articles.total)} articles`" subtitle="Published articles and readers"
+            :trigger-label="`${formatLandingCount(landingSnapshot.stats.articles.total)}+ articles — show breakdown`" :sections="articlesBreakdownSections"
+          >
+            <span class="landing-stat-value">{{ formatLandingCount(landingSnapshot.stats.articles.total) }}+ <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span>
+            <span class="landing-stat-label">articles</span>
+          </AppLandingStatBreakdown>
+          <AppLandingStatBreakdown
+            v-if="landingSnapshot.stats.views" :title="`${formatCount(landingSnapshot.stats.views.total)} total views`" subtitle="Views across the community"
             :trigger-label="`${formatLandingCount(landingSnapshot.stats.views.total)}+ views — show breakdown`" :rows="viewsBreakdownRows"
           >
             <span class="landing-stat-value">{{ formatLandingCount(landingSnapshot.stats.views.total) }}+ <Icon name="tabler:arrow-up-right" aria-hidden="true" /></span>
@@ -140,6 +148,27 @@
             </div>
           </div>
         </TransitionGroup>
+      </section>
+
+      <section v-if="trendingArticles.length" class="landing-shell landing-section landing-articles" aria-labelledby="landing-articles-heading" data-testid="landing-articles">
+        <div class="landing-section-heading">
+          <div>
+            <p class="landing-eyebrow">Read next</p>
+            <h2 id="landing-articles-heading">Articles worth opening</h2>
+          </div>
+          <NuxtLink to="/articles" class="landing-text-link">See all <Icon name="tabler:arrow-right" aria-hidden="true" /></NuxtLink>
+        </div>
+        <div class="landing-article-grid">
+          <article v-for="article in trendingArticles" :key="article.id" class="landing-article-card">
+            <p v-if="articleReadLabel(article)" class="landing-eyebrow">{{ articleReadLabel(article) }}</p>
+            <h3><NuxtLink :to="articleHref(article)" class="landing-article-link">{{ article.title }}</NuxtLink></h3>
+            <p v-if="article.excerpt" class="landing-article-excerpt">{{ article.excerpt }}</p>
+            <p class="landing-article-meta">
+              <span>{{ article.author.name || article.author.username || 'Member' }}</span>
+              <NuxtLink :to="articleHref(article)" class="landing-read-link" tabindex="-1" aria-hidden="true">Read <Icon name="tabler:arrow-up-right" aria-hidden="true" /></NuxtLink>
+            </p>
+          </article>
+        </div>
       </section>
 
       <section class="landing-merch-band" aria-labelledby="landing-merch-heading">
@@ -272,6 +301,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import { useIndexPage } from '~/composables/pages/useIndexPage'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { siteConfig } from '~/config/site'
@@ -307,6 +337,10 @@ const {
   menBreakdownSections,
   postsBreakdownSections,
   viewsBreakdownRows,
+  articlesBreakdownSections,
+  trendingArticles,
+  articleHref,
+  articleReadLabel,
 } = await useIndexPage()
 </script>
 
@@ -353,6 +387,13 @@ const {
 .landing-section-heading h2 { margin-top: 8px; font-size: 32px; font-weight: 700; line-height: 1.45; }
 .landing-section-description { margin-top: 8px; color: var(--moh-text-muted); font-size: 16px; line-height: 1.45; }
 .landing-text-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-shrink: 0; font-size: 15px; font-weight: 600; }
+.landing-article-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
+.landing-article-card { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.landing-article-card h3 { font-size: 24px; font-weight: 600; line-height: 1.35; letter-spacing: -.01em; }
+.landing-article-link { display: block; min-height: 44px; }
+.landing-article-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.landing-article-excerpt { display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; color: var(--moh-text-muted); font-size: 15px; line-height: 1.55; }
+.landing-article-meta { display: flex; align-items: center; gap: 16px; color: var(--moh-text-muted); font-size: 13px; }
 .landing-post-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 24px; position: relative; }
 .landing-post-card { position: relative; min-width: 0; border-radius: 12px; background: var(--moh-surface-1); cursor: pointer; transition: background-color 150ms ease; }
 .landing-post-card:hover { background: var(--moh-surface-hover); }
@@ -408,6 +449,7 @@ const {
   .landing-how { grid-template-columns: 1fr; gap: 32px; }
   .landing-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .landing-post-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .landing-article-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; }
 }
 @media (max-width: 599px) {
   .landing-shell { padding-inline: 24px; }

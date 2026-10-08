@@ -163,9 +163,10 @@ const connections = ref<FitnessConnection[]>([])
 const units = ref<'us' | 'metric'>('us')
 const stravaEnabled = ref(false)
 const connecting = ref(false)
-const disconnecting = ref(false)
-const disconnectingAppleHealth = ref(false)
-const syncing = ref(false)
+const { run: runDisconnect, pending: disconnecting } = useAsyncAction()
+const { run: runDisconnectAppleHealth, pending: disconnectingAppleHealth } = useAsyncAction()
+const { run: runSync, pending: syncing } = useAsyncAction()
+const { run } = useAsyncAction()
 const syncCooldownRemaining = ref(0)
 let cooldownInterval: ReturnType<typeof setInterval> | null = null
 
@@ -199,54 +200,36 @@ watch(canAccessFitness, loadPage)
 
 async function setUnits(u: 'us' | 'metric') {
   units.value = u
-  try {
-    await apiFetchData<void>('/fitness/units', { method: 'PUT', body: { units: u } })
-  } catch {
-    toast.push({ title: 'Failed to update units.', tone: 'error' })
-  }
+  await run(() => apiFetchData<void>('/fitness/units', { method: 'PUT', body: { units: u } }), { error: () => 'Failed to update units.' })
 }
 
 async function connectStrava() {
   connecting.value = true
-  try {
+  await run(async () => {
     const redirectUri = `${window.location.origin}/settings/fitness?strava_callback=1`
     const data = await apiFetchData<{ url: string }>(`/fitness/strava/auth-url?redirectUri=${encodeURIComponent(redirectUri)}`)
     window.location.href = data.url
-  } catch {
-    toast.push({ title: 'Could not start Strava connection.', tone: 'error' })
-    connecting.value = false
-  }
+  }, { error: () => 'Could not start Strava connection.', onError: () => { connecting.value = false } })
 }
 
 async function disconnectStrava() {
-  disconnecting.value = true
-  try {
+  await runDisconnect(async () => {
     await apiFetchData<void>('/fitness/strava/disconnect', { method: 'DELETE' })
     connections.value = connections.value.filter((c) => c.provider !== 'strava')
     toast.push({ title: 'Strava disconnected.', tone: 'success' })
-  } catch {
-    toast.push({ title: 'Failed to disconnect Strava.', tone: 'error' })
-  } finally {
-    disconnecting.value = false
-  }
+  }, { error: () => 'Failed to disconnect Strava.' })
 }
 
 async function disconnectAppleHealth() {
-  disconnectingAppleHealth.value = true
-  try {
+  await runDisconnectAppleHealth(async () => {
     await apiFetchData<void>('/fitness/apple_health/disconnect', { method: 'DELETE' })
     connections.value = connections.value.filter((c) => c.provider !== 'apple_health')
     toast.push({ title: 'Apple Health disconnected.', tone: 'success' })
-  } catch {
-    toast.push({ title: 'Failed to disconnect Apple Health.', tone: 'error' })
-  } finally {
-    disconnectingAppleHealth.value = false
-  }
+  }, { error: () => 'Failed to disconnect Apple Health.' })
 }
 
 async function syncNow() {
-  syncing.value = true
-  try {
+  await runSync(async () => {
     await apiFetchData<{ inserted: number; deduped: number }>('/fitness/sync', {
       method: 'POST',
       body: { provider: 'strava' },
@@ -254,16 +237,20 @@ async function syncNow() {
     toast.push({ title: 'Sync complete.', tone: 'success' })
     await loadPage()
     startCooldown(300)
-  } catch (err: any) {
-    const msg = err?.data?.message ?? 'Sync failed.'
-    toast.push({ title: msg, tone: 'error' })
-    if (msg.includes('wait')) {
-      const match = msg.match(/(\d+) more seconds/)
-      if (match) startCooldown(Number(match[1]))
-    }
-  } finally {
-    syncing.value = false
-  }
+  }, {
+    error: syncErrorMessage,
+    onError: (e) => {
+      const msg = syncErrorMessage(e)
+      if (msg.includes('wait')) {
+        const match = msg.match(/(\d+) more seconds/)
+        if (match) startCooldown(Number(match[1]))
+      }
+    },
+  })
+}
+
+function syncErrorMessage(e: unknown): string {
+  return (e as { data?: { message?: string } } | null)?.data?.message ?? 'Sync failed.'
 }
 
 function startCooldown(seconds: number) {
@@ -300,7 +287,7 @@ const route = useRoute()
 onMounted(async () => {
   if (!canAccessFitness.value || route.query.strava_callback !== '1' || !route.query.code) return
   connecting.value = true
-  try {
+  await run(async () => {
     const code = String(route.query.code)
     const redirectUri = `${window.location.origin}/settings/fitness?strava_callback=1`
     await apiFetchData<{ connection: FitnessConnection }>('/fitness/strava/connect', {
@@ -310,10 +297,7 @@ onMounted(async () => {
     toast.push({ title: 'Strava connected.', tone: 'success' })
     await loadPage()
     await navigateTo('/settings/fitness', { replace: true })
-  } catch {
-    toast.push({ title: 'Failed to connect Strava.', tone: 'error' })
-  } finally {
-    connecting.value = false
-  }
+  }, { error: () => 'Failed to connect Strava.' })
+  connecting.value = false
 })
 </script>

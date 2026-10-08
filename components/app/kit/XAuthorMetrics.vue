@@ -9,10 +9,10 @@
         <dl class="flex flex-wrap gap-5">
           <div v-for="item in values" :key="item.label">
             <dt class="text-xs moh-text-muted">{{ item.label }}</dt>
-            <dd class="text-lg font-semibold moh-text">{{ item.value.toLocaleString() }}</dd>
+            <dd class="text-lg font-semibold moh-text">{{ formatCount(item.value) }}</dd>
           </div>
         </dl>
-        <p class="text-xs moh-text-muted">Updated {{ new Date(metrics.fetchedAt).toLocaleString() }}</p>
+        <p class="text-xs moh-text-muted">Updated {{ formatLocaleDateTime(new Date(metrics.fetchedAt)) }}</p>
         <a :href="metrics.externalUrl" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center text-sm text-[var(--moh-link)]">View on X</a>
       </template>
       <p v-else class="text-sm moh-text-muted">Metrics aren't available right now.</p>
@@ -20,6 +20,8 @@
   </section>
 </template>
 <script setup lang="ts">
+import { formatLocaleDateTime } from '~/utils/time-format'
+import { formatCount } from '~/utils/number-format'
 import type { XAuthorMetricsDto } from '~/types/api-contracts.gen'
 const props = defineProps<{ postId: string }>()
 const { apiFetchData } = useApiClient()

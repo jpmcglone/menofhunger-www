@@ -32,11 +32,12 @@
           </NuxtLink>
         </div>
       </section>
-      <p class="moh-gutter-x py-4 text-sm moh-text-muted">Updated {{ new Date(data.asOf).toLocaleTimeString() }}. Counts update as work is resolved.</p>
+      <p class="moh-gutter-x py-4 text-sm moh-text-muted">Updated {{ formatLocaleTime(new Date(data.asOf)) }}. Counts update as work is resolved.</p>
     </template>
   </section>
 </template>
 <script setup lang="ts">
+import { formatLocaleTime } from '~/utils/time-format'
 import { usePrivateApiData } from '~/composables/usePrivateApiData'
 import type { AdminAttentionDto } from '~/types/api'
 

@@ -20,35 +20,27 @@
 
     <div class="flex-1 min-w-0">
       <!-- Author + timestamp -->
-      <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-        <span
-          class="text-sm font-semibold text-[var(--moh-text)] cursor-pointer hover:underline"
-          @mouseenter="authorEnter"
-          @mousemove="authorMove"
-          @mouseleave="authorLeave"
-        >
-          {{ comment.author.name || comment.author.username }}
-        </span>
-        <AppVerifiedBadge
-          :status="comment.author.verifiedStatus"
-          :premium="comment.author.premium"
-          :premium-plus="comment.author.premiumPlus"
-          :is-organization="comment.author.isOrganization"
-        />
-        <AppOrgAffiliationAvatars
-          v-if="comment.author.orgAffiliations?.length"
-          :orgs="comment.author.orgAffiliations"
-          size="xs"
-        />
-        <span class="text-[11px] moh-text-soft">@{{ comment.author.username }}</span>
-        <span class="text-[11px] moh-text-soft">·</span>
-        <a
-          :href="`/a/${articleId}#comment-${comment.id}`"
-          class="text-[11px] moh-text-soft hover:underline hover:text-[var(--moh-text-muted)]"
-          :title="fullTimestamp"
-          @click.prevent="onTimestampClick"
-        >{{ commentAge }}</a>
-      </div>
+      <AppCommentRowChrome
+        :author="comment.author"
+        :name-text="comment.author.name || comment.author.username || ''"
+        name-class="text-sm font-semibold text-[var(--moh-text)] cursor-pointer hover:underline"
+        :preview="authorPreview"
+        :age="commentAge"
+        :time-title="fullTimestamp"
+        :time-href="`/a/${articleId}#comment-${comment.id}`"
+        time-class="text-[11px] moh-text-soft hover:underline hover:text-[var(--moh-text-muted)]"
+        separator-class="text-[11px] moh-text-soft"
+        @time-click="onTimestampClick"
+      >
+        <template #after-badge>
+          <AppOrgAffiliationAvatars
+            v-if="comment.author.orgAffiliations?.length"
+            :orgs="comment.author.orgAffiliations"
+            size="xs"
+          />
+          <span class="text-[11px] moh-text-soft">@{{ comment.author.username }}</span>
+        </template>
+      </AppCommentRowChrome>
 
       <!-- Body -->
       <div v-if="!deleted" class="mt-0.5">
@@ -164,75 +156,21 @@
             </Menu>
 
             <!-- More (only shown when there are items, e.g. delete for own comments) -->
-            <div v-if="hasMoreOptions" ref="moreWrapRef">
-              <button
-                type="button"
-                class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]"
-                aria-label="More options"
-                v-tooltip.bottom="moreTooltip"
-                @click="onMoreClick"
-              >
-                <Icon name="tabler:dots" size="15" />
-              </button>
-              <Teleport to="body">
-                <Transition name="popover">
-                  <div
-                    v-if="moreOpen"
-                    ref="moreMenuEl"
-                    class="fixed z-[var(--moh-z-menu)] w-36 overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
-                    :style="moreMenuStyle"
-                  >
-                    <button
-                      type="button"
-                      class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
-                      @click="onDeleteClick"
-                    >
-                      <Icon name="tabler:trash" size="15" class="shrink-0" />
-                      Delete
-                    </button>
-                  </div>
-                </Transition>
-              </Teleport>
-            </div>
+            <AppArticleCommentRowMoreMenu
+              v-if="hasMoreOptions"
+              ref="moreMenuRef"
+              @delete="confirmingDelete = true"
+              @dismiss="confirmingDelete = false"
+            />
           </div>
         </div>
 
-        <!-- Mobile overflow-safe reactions row -->
-        <div v-if="commentReactions.length > 0 || isAuthed" class="mt-1 sm:hidden">
-          <div class="flex items-center gap-2">
-            <div class="min-w-0 flex-1 overflow-x-auto no-scrollbar">
-              <div class="flex w-max items-center gap-1.5 pr-2">
-                <button
-                  v-for="r in commentReactions"
-                  :key="`mobile-pill-${r.reactionId}`"
-                  type="button"
-                  class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm font-medium transition-colors"
-                  :class="r.viewerHasReacted
-                    ? 'border-[var(--moh-marv)] bg-[color-mix(in_srgb,var(--moh-marv)_12%,transparent)] text-[var(--moh-text)]'
-                    : 'border-[var(--moh-border)] moh-surface-2 text-[var(--moh-text)] hover:bg-[var(--moh-surface-hover)]'"
-                  :aria-pressed="r.viewerHasReacted"
-                  :aria-label="`${r.emoji} ${r.count} reactions`"
-                  @click="reactionState.toggle(r.reactionId, r.emoji)"
-                >
-                  <span>{{ r.emoji }}</span>
-                  <AppAnimatedCount :value="r.count" />
-                </button>
-              </div>
-            </div>
-            <div v-if="isAuthed" class="relative shrink-0">
-              <button
-                ref="reactButtonMobileRef"
-                type="button"
-                class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]"
-                aria-label="Add reaction"
-                v-tooltip.bottom="reactTooltip"
-                @click="toggleReactionPicker(reactButtonMobileRef)"
-              >
-                <Icon name="tabler:mood-smile" size="15" />
-              </button>
-            </div>
-          </div>
-        </div>
+        <AppArticleCommentRowMobileReactions
+          :reactions="commentReactions"
+          :is-authed="isAuthed"
+          @toggle="reactionState.toggle"
+          @react="toggleReactionPicker"
+        />
       </div>
     </div>
 
@@ -287,13 +225,15 @@
 </template>
 
 <script setup lang="ts">
-import { formatCompactAge } from '~/utils/time-format'
+import { formatCompactAge, formatLocaleDateTime } from '~/utils/time-format'
 import type { MenuItem } from 'primevue/menuitem'
 import type { ArticleComment } from '~/types/api'
 import { ARTICLE_REACTIONS as REACTIONS } from '~/utils/article-reactions'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
-import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
+import { useExpandableCommentBody } from '~/composables/article/useExpandableCommentBody'
+import { useCommentReactionPicker } from '~/composables/article/useCommentReactionPicker'
+import { useCommentRowActions } from '~/composables/useCommentRowActions'
 
 const props = defineProps<{
   comment: ArticleComment
@@ -311,79 +251,16 @@ const emit = defineEmits<{
 }>()
 
 const { user, isAuthed } = useAuth()
-const { onEnter: authorEnter, onMove: authorMove, onLeave: authorLeave } = useUserPreviewTrigger({ username: computed(() => props.comment.author.username ?? '') })
-const toast = useAppToast()
-const { copyText: copyToClipboard } = useCopyToClipboard()
+const authorPreview = useUserPreviewTrigger({ username: computed(() => props.comment.author.username ?? '') })
 
 const deleted = computed(() => Boolean(props.comment.deletedAt))
 const isOwnComment = computed(() => user.value?.id === props.comment.author.id)
 const hasMoreOptions = computed(() => isOwnComment.value)
 const confirmingDelete = ref(false)
-const moreOpen = ref(false)
+const moreMenuRef = ref<{ close: () => void } | null>(null)
 const {
-  style: moreMenuStyle,
-  menuEl: moreMenuEl,
-  place: placeMoreMenu,
-  reset: resetMoreMenu,
-} = useMenuPosition()
-
-function onMoreClick(e: MouseEvent) {
-  const next = !moreOpen.value
-  if (next) {
-    const btn = e.currentTarget as HTMLElement
-    placeMoreMenu(btn, { align: 'end', menuWidth: 144, menuHeight: 44 })
-  } else {
-    resetMoreMenu()
-  }
-  moreOpen.value = next
-}
-
-// ─── Truncation (animated) ────────────────────────────────────────────────────
-const expanded = ref(false)
-const bodyWrapEl = ref<HTMLElement | null>(null)
-const bodyTextEl = ref<HTMLElement | null>(null)
-
-const COLLAPSED_MAX = '5.6em'
-
-const isTruncatable = computed(() => {
-  const body = props.comment.body
-  return body.length > 280 || (body.match(/\n/g)?.length ?? 0) >= 4
-})
-
-const bodyClampStyle = computed(() => {
-  if (!isTruncatable.value) return undefined
-  if (expanded.value) return { maxHeight: expandedHeight.value }
-  return { maxHeight: COLLAPSED_MAX }
-})
-
-const expandedHeight = ref('none')
-
-async function toggleExpand() {
-  if (!expanded.value) {
-    const textEl = bodyTextEl.value
-    if (textEl) expandedHeight.value = `${textEl.scrollHeight}px`
-    expanded.value = true
-    // After transition finishes, remove the constraint so content reflows naturally
-    const wrap = bodyWrapEl.value
-    if (wrap) {
-      const onEnd = () => {
-        wrap.removeEventListener('transitionend', onEnd)
-        if (expanded.value) expandedHeight.value = 'none'
-      }
-      wrap.addEventListener('transitionend', onEnd)
-    }
-  } else {
-    // Snap to the measured pixel height so CSS transition has a concrete start value,
-    // then wait for Vue to flush that change to the DOM before setting expanded=false
-    // (which switches max-height to the collapsed em value and triggers the animation).
-    const textEl = bodyTextEl.value
-    if (textEl) expandedHeight.value = `${textEl.scrollHeight}px`
-    await nextTick()
-    // Force reflow so the browser paints the explicit height before the transition starts
-    void bodyWrapEl.value?.offsetHeight
-    expanded.value = false
-  }
-}
+  expanded, bodyWrapEl, bodyTextEl, isTruncatable, bodyClampStyle, toggleExpand,
+} = useExpandableCommentBody(computed(() => props.comment.body))
 
 // ─── Timestamp deep-link ──────────────────────────────────────────────────────
 
@@ -394,23 +271,29 @@ function onTimestampClick() {
 
 const fullTimestamp = computed(() => {
   try {
-    return new Date(props.comment.createdAt).toLocaleString()
+    return formatLocaleDateTime(new Date(props.comment.createdAt))
   } catch {
     return ''
   }
 })
-const reactPickerOpen = ref(false)
-const moreWrapRef = ref<HTMLElement | null>(null)
-const reactButtonDesktopRef = ref<HTMLElement | null>(null)
-const reactButtonMobileRef = ref<HTMLElement | null>(null)
-const reactionPickerEl = ref<HTMLElement | null>(null)
-const reactionPickerStyle = ref<Record<string, string>>({})
-const reactionPickerAnchorEl = ref<HTMLElement | null>(null)
+const reactionState = useArticleReactions(
+  'comment',
+  computed(() => props.comment.id),
+  computed(() => props.comment.reactions),
+)
+const commentReactions = reactionState.reactions
+const {
+  open: reactPickerOpen,
+  buttonDesktopRef: reactButtonDesktopRef,
+  pickerEl: reactionPickerEl,
+  pickerStyle: reactionPickerStyle,
+  toggle: toggleReactionPicker,
+  pick: pickReaction,
+} = useCommentReactionPicker((reactionId, emoji) => reactionState.toggle(reactionId, emoji))
 
 const replyTooltip = computed(() => tinyTooltip('Reply'))
 const reactTooltip = computed(() => tinyTooltip('React'))
 const shareTooltip = computed(() => tinyTooltip('Share'))
-const moreTooltip = computed(() => tinyTooltip('More'))
 
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 const { mounted: shareMenuMounted, menuRef: shareMenuRef, toggle: toggleShareMenu } = useAutoToggleMenu()
@@ -421,127 +304,23 @@ const highlightColor = computed(() => {
   return '#a1a1aa'
 })
 
-function onDocPointerDown(e: PointerEvent) {
-  const target = e.target as Node
-  if (
-    moreOpen.value
-    && !moreWrapRef.value?.contains(target)
-    && !moreMenuEl.value?.contains(target)
-  ) {
-    moreOpen.value = false
-    confirmingDelete.value = false
-    resetMoreMenu()
-  }
-  if (
-    reactPickerOpen.value
-    && !reactionPickerAnchorEl.value?.contains(target)
-    && !reactionPickerEl.value?.contains(target)
-  ) {
-    reactPickerOpen.value = false
-  }
-}
-
-onMounted(() => window.addEventListener('pointerdown', onDocPointerDown, { capture: true }))
-onBeforeUnmount(() => window.removeEventListener('pointerdown', onDocPointerDown, { capture: true } as EventListenerOptions))
-
-function updateReactionPickerPosition() {
-  if (!import.meta.client) return
-  const anchor = reactionPickerAnchorEl.value
-  if (!anchor) return
-  const rect = anchor.getBoundingClientRect()
-  const pickerWidth = 240
-  const margin = 8
-  let left = rect.left
-  if (left + pickerWidth > window.innerWidth - margin) left = window.innerWidth - pickerWidth - margin
-  if (left < margin) left = margin
-  const top = rect.bottom + 6
-  reactionPickerStyle.value = {
-    top: `${Math.max(margin, top)}px`,
-    left: `${left}px`,
-  }
-}
-
-function toggleReactionPicker(anchor: HTMLElement | null) {
-  if (!anchor) return
-  if (reactPickerOpen.value && reactionPickerAnchorEl.value === anchor) {
-    reactPickerOpen.value = false
-    return
-  }
-  reactionPickerAnchorEl.value = anchor
-  updateReactionPickerPosition()
-  reactPickerOpen.value = true
-}
-
-function onViewportChange() {
-  if (!reactPickerOpen.value) return
-  updateReactionPickerPosition()
-}
-
-onMounted(() => {
-  if (!import.meta.client) return
-  window.addEventListener('resize', onViewportChange, { passive: true })
-  window.addEventListener('scroll', onViewportChange, { passive: true })
+const { copyLink, buildMenuItems } = useCommentRowActions({
+  linkUrl: () => `${window.location.origin}/a/${props.articleId}#comment-${props.comment.id}`,
+  copySuccess: { title: 'Link copied!', message: 'Reply link copied to clipboard.', tone: 'success' },
+  copyFailure: (url) => ({ title: 'Reply link', message: url }),
 })
-
-onBeforeUnmount(() => {
-  if (!import.meta.client) return
-  window.removeEventListener('resize', onViewportChange)
-  window.removeEventListener('scroll', onViewportChange)
-})
-
-function onDeleteClick() {
-  confirmingDelete.value = true
-  moreOpen.value = false
-}
-
 async function onShare() {
-  moreOpen.value = false
-  const url = `${window.location.origin}/a/${props.articleId}#comment-${props.comment.id}`
-  try {
-    await copyToClipboard(url)
-    toast.push({ title: 'Link copied!', message: 'Reply link copied to clipboard.', tone: 'success' })
-  } catch {
-    toast.push({ title: 'Reply link', message: url })
-  }
+  moreMenuRef.value?.close()
+  await copyLink()
 }
+const shareMenuItems = computed<MenuItemWithIcon[]>(() => buildMenuItems({}).map((item) => ({ ...item, command: () => void onShare() })))
 
-const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
-  {
-    label: 'Copy link',
-    iconName: 'tabler:link',
-    command: () => {
-      void onShare()
-    },
-  },
-])
-
-const reactionState = useArticleReactions(
-  'comment',
-  computed(() => props.comment.id),
-  computed(() => props.comment.reactions),
-)
-const commentReactions = reactionState.reactions
 const replyCountDisplay = computed(() => Math.max(0, Math.floor(Number(props.comment.replyCount ?? 0))))
-
-function pickReaction(reactionId: string, emoji: string) {
-  reactionState.toggle(reactionId, emoji)
-  reactPickerOpen.value = false
-}
 
 const commentAge = computed(() => formatCompactAge(props.comment.createdAt))
 </script>
 
 <style scoped>
-.popover-enter-active,
-.popover-leave-active {
-  transition: opacity 0.12s ease, transform 0.12s ease;
-}
-.popover-enter-from,
-.popover-leave-to {
-  opacity: 0;
-  transform: translateY(-4px) scale(0.97);
-}
-
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.15s ease;

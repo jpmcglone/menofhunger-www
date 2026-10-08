@@ -1,6 +1,7 @@
 <template>
   <form class="shrink-0 border-t moh-border p-3" @submit.prevent="send" @paste="paste">
     <p v-if="error" class="mb-2 text-sm text-red-600" role="alert">{{ error }}</p>
+    <div v-if="replyTo" class="mb-2 flex min-h-11 items-center gap-2 rounded-xl border moh-border px-3 text-sm" data-testid="channel-reply-bar"><span class="moh-text-muted">Replying to</span><strong class="min-w-0 truncate">{{ replyTo.sender.name ?? replyTo.sender.username ?? 'Member' }}</strong><button type="button" class="moh-focus ml-auto flex size-11 shrink-0 items-center justify-center" aria-label="Cancel reply" @click="emit('clear-reply')"><Icon name="tabler:x" /></button></div>
     <div v-if="files.length || gif" class="mb-2 flex flex-wrap items-center gap-3">
       <div v-for="(item, tileIndex) in files" :key="`${item.name}:${item.size}:${tileIndex}`" class="relative" :title="`${item.name} · ${formatBytes(item.size)}`">
         <AppChannelsAttachmentTile :file="item" state="ready" />
@@ -28,7 +29,7 @@
   </form>
 </template>
 <script setup lang="ts">
-import type { CommunityGroupShell, GroupChannel, GiphyItem } from '~/types/api'
+import type { ChannelMessage, CommunityGroupShell, GroupChannel, GiphyItem } from '~/types/api'
 import { channelPath, channelTitle } from '~/utils/channels/reducer'
 import { CHANNEL_MAX_ATTACHMENTS, destinationDraftKey, loadChannelDraft, saveChannelDraft } from '~/utils/channels/drafts'
 import { useChannelOutbox } from '~/composables/channels/useChannelOutbox'
@@ -36,7 +37,8 @@ import { useVoiceRecorder } from '~/composables/chat/useVoiceRecorder'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 import { formatBytes } from '~/utils/channels/format'
 type Mention = { user: { id: string; username: string | null; name: string | null } }
-const props = defineProps<{ group: CommunityGroupShell; channel: GroupChannel; rootId?: string }>()
+const props = defineProps<{ group: CommunityGroupShell; channel: GroupChannel; rootId?: string; replyTo?: ChannelMessage | null }>()
+const emit = defineEmits<{ 'clear-reply': [] }>()
 const { user } = useAuth()
 const { apiFetchData } = useApiClient()
 const outbox = useChannelOutbox()
@@ -80,9 +82,10 @@ async function send() {
   await persist()
   sending = false
   if (closed || user.value?.id !== destination.identity) return
-  outbox.enqueue({ id: submitted.requestId, ...destination, input: { body: submitted.text.trim(), clientRequestId: submitted.requestId, threadRootId: destination.rootId, giphy: submitted.gif ? { url: submitted.gif.url, ...(submitted.gif.mp4Url ? { mp4Url: submitted.gif.mp4Url } : {}), ...(submitted.gif.width ? { width: submitted.gif.width } : {}), ...(submitted.gif.height ? { height: submitted.gif.height } : {}) } : undefined }, files: submitted.files.length ? submitted.files : undefined, status: 'sending', draftRevision: submitted.revision, queuedAt: new Date().toISOString() })
+  outbox.enqueue({ id: submitted.requestId, ...destination, input: { body: submitted.text.trim(), clientRequestId: submitted.requestId, threadRootId: destination.rootId, ...(props.replyTo && !destination.rootId ? { replyToId: props.replyTo.id } : {}), giphy: submitted.gif ? { url: submitted.gif.url, ...(submitted.gif.mp4Url ? { mp4Url: submitted.gif.mp4Url } : {}), ...(submitted.gif.width ? { width: submitted.gif.width } : {}), ...(submitted.gif.height ? { height: submitted.gif.height } : {}) } : undefined }, files: submitted.files.length ? submitted.files : undefined, status: 'sending', draftRevision: submitted.revision, queuedAt: new Date().toISOString() })
   if (revision !== submitted.revision) return
   text.value = ''; files.value = []; gif.value = undefined; suggestions.value = []
+  if (props.replyTo) emit('clear-reply')
   revision = crypto.randomUUID(); requestId = crypto.randomUUID()
   input.value?.focus()
 }
@@ -130,6 +133,7 @@ function mention(value: Mention) {
 }
 function keyDown(event: KeyboardEvent) {
   if (event.isComposing) return
+  if (event.key === 'Escape' && props.replyTo && !suggestions.value.length) { event.preventDefault(); emit('clear-reply'); return }
   if (suggestions.value.length && ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) {
     event.preventDefault()
     if (event.key === 'Escape') suggestions.value = []

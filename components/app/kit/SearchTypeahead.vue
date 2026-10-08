@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { FollowListUser, CommunityGroupShell, RecentSearch } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 
@@ -446,7 +447,7 @@ defineExpose({
                 </template>
                 <template v-else-if="r.group">
                   <div class="text-sm font-medium moh-text truncate">{{ r.group.name }}</div>
-                  <div class="text-xs moh-text-muted truncate">{{ r.group.memberCount.toLocaleString() }} {{ r.group.memberCount === 1 ? 'member' : 'members' }}</div>
+                  <div class="text-xs moh-text-muted truncate">{{ formatCount(r.group.memberCount) }} {{ r.group.memberCount === 1 ? 'member' : 'members' }}</div>
                 </template>
                 <span v-else class="text-sm moh-text truncate">{{ r.query }}</span>
               </div>
@@ -573,7 +574,7 @@ defineExpose({
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="text-sm font-medium moh-text truncate">{{ g.name }}</div>
-                  <div class="text-xs moh-text-muted truncate">{{ g.memberCount.toLocaleString() }} {{ g.memberCount === 1 ? 'member' : 'members' }}</div>
+                  <div class="text-xs moh-text-muted truncate">{{ formatCount(g.memberCount) }} {{ g.memberCount === 1 ? 'member' : 'members' }}</div>
                 </div>
                 <span class="shrink-0 text-xs moh-text-muted">Group</span>
               </div>

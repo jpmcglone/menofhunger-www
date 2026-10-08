@@ -113,6 +113,7 @@ export function useSettingsBilling() {
 
   // ─── Checkout success modal ─────────────────────────────────────────
 
+  const activation = useActivationPending()
   const checkoutSuccessModal = ref(false)
   const checkoutSuccessTier = ref<'premium' | 'premiumPlus'>('premium')
 
@@ -146,11 +147,15 @@ export function useSettingsBilling() {
       await refreshBilling()
       if (billingDisposed) return
       if (billingMe.value?.premium || billingMe.value?.premiumPlus) {
+        activation.clear()
         await me()
         showSuccessModal()
       } else if (attempts < 5) {
         billingPollTimer = setTimeout(() => pollForPremium(attempts + 1), 2000)
         return
+      } else {
+        // Paid, but the webhook has not activated the membership yet.
+        activation.markPending(sessionId)
       }
       stripCheckoutQuery()
     }
@@ -165,6 +170,7 @@ export function useSettingsBilling() {
           })
           if (synced) billingMe.value = synced
           if (synced?.premium || synced?.premiumPlus) {
+            activation.clear()
             // me() updates auth-user; useMarv watches auth-user.premium and will
             // force-refresh its own state automatically.
             await me()
@@ -290,7 +296,19 @@ export function useSettingsBilling() {
     }
   })
 
+  async function checkActivationAgain() {
+    const latest = await activation.check()
+    if (!latest) return
+    billingMe.value = latest
+    await me()
+    showSuccessModal()
+  }
+
   return {
+    activationPending: activation.pending,
+    activationChecking: activation.checking,
+    activationError: activation.error,
+    checkActivationAgain,
     billingMe,
     billingLoading,
     billingError,

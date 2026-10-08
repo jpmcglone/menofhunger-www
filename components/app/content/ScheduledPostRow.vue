@@ -128,6 +128,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDateTime } from '~/utils/time-format'
 import type { ScheduledPost } from '~/types/api'
 import { visibilityTagLabel, visibilityTagClasses } from '~/utils/post-visibility'
 
@@ -144,7 +145,7 @@ const visClass = computed(() => visibilityTagClasses(props.item.scheduledVisibil
 
 const formattedScheduledAt = computed(() => {
   if (!props.item.scheduledAt) return ''
-  return new Date(props.item.scheduledAt).toLocaleString('en-US', {
+  return formatLocaleDateTime(new Date(props.item.scheduledAt), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

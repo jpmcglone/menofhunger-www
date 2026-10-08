@@ -266,13 +266,12 @@ const perTopicFeeds = [
 
 const { copyText } = useCopyToClipboard()
 const toast = useAppToast()
+const { run } = useAsyncAction()
 
 async function copyFeed(url: string) {
-  try {
+  await run(async () => {
     await copyText(url)
     toast.push({ title: 'Feed URL copied', tone: 'success', durationMs: 1400 })
-  } catch {
-    toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-  }
+  }, { error: () => 'Copy failed', durationMs: 1800 })
 }
 </script>

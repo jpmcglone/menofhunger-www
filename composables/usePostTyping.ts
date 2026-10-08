@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { Ref } from 'vue'
 import type { WsPostsTypingPayload } from '~/types/api'
 import type { TypingUserDisplay } from '~/composables/chat/useChatTyping'
@@ -19,7 +20,7 @@ type TypingEntry = { exp: number; display: TypingUserDisplay; replyToId: string 
  */
 export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
   const { user } = useAuth()
-  const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts, emitPostsTyping } = usePresence()
+  const { subscribePosts, unsubscribePosts, emitPostsTyping } = usePresence()
 
   const typingByUserId = ref<Map<string, TypingEntry>>(new Map())
   let sweepTimer: ReturnType<typeof setInterval> | null = null
@@ -86,9 +87,9 @@ export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
     if (next) subscribePosts([next])
   }
 
+  usePresenceCallback('Posts', cb)
   onMounted(() => {
     if (!import.meta.client) return
-    addPostsCallback(cb)
     ensureSub(postIdRef.value)
     sweepTimer = setInterval(sweepExpired, 500)
   })
@@ -104,7 +105,6 @@ export function usePostTyping(postIdRef: Ref<string | null | undefined>) {
   }
 
   onBeforeUnmount(() => {
-    removePostsCallback(cb)
     if (sweepTimer) clearInterval(sweepTimer)
     if (startTimer) clearTimeout(startTimer)
     if (stopTimer) clearTimeout(stopTimer)

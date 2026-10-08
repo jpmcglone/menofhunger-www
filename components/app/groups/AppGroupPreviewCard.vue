@@ -6,7 +6,7 @@
     </NuxtLink>
     <p v-if="preview.descriptionPreview" class="text-[15px] moh-text-muted line-clamp-2">{{ preview.descriptionPreview }}</p>
     <div class="flex items-center gap-3">
-      <p class="min-w-0 flex-1 text-[13px] moh-text-muted">{{ preview.memberCount.toLocaleString() }} {{ preview.memberCount === 1 ? 'member' : 'members' }} · {{ preview.joinPolicy === 'approval' ? 'Approval required' : 'Open group' }}</p>
+      <p class="min-w-0 flex-1 text-[13px] moh-text-muted">{{ formatCount(preview.memberCount) }} {{ preview.memberCount === 1 ? 'member' : 'members' }} · {{ preview.joinPolicy === 'approval' ? 'Approval required' : 'Open group' }}</p>
       <Button v-if="showJoin && preview.viewerPendingApproval" label="Request pending" severity="secondary" rounded disabled />
       <NuxtLink v-else-if="showJoin && preview.viewerMembership?.status === 'active'" :to="groupPath" class="inline-flex min-h-11 items-center rounded-full border moh-border px-4 text-sm font-semibold moh-focus" @click="onNavigate">View group</NuxtLink>
       <Button v-else-if="showJoin" :label="isVerifiedMember ? (preview.joinPolicy === 'approval' ? 'Request to join' : 'Join group') : 'Get verified'" rounded :loading="joinBusy" :disabled="joinBusy" class="!bg-[var(--moh-verified)] !border-[var(--moh-verified)] !text-white min-h-11" @click="isVerifiedMember ? $emit('join') : navigateTo('/tiers')" />
@@ -102,7 +102,7 @@
 
       <div class="mt-3 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
         <div class="tabular-nums">
-          <span class="font-semibold text-gray-900 dark:text-gray-50">{{ preview.memberCount.toLocaleString() }}</span>
+          <span class="font-semibold text-gray-900 dark:text-gray-50">{{ formatCount(preview.memberCount) }}</span>
           <span class="ml-1 text-gray-600 dark:text-gray-400">{{ preview.memberCount === 1 ? 'Member' : 'Members' }}</span>
         </div>
         <div v-if="preview.joinPolicy === 'approval'" class="inline-flex items-center gap-1 text-xs moh-text-muted">
@@ -115,6 +115,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupPreview } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 

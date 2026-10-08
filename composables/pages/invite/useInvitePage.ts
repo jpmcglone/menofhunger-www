@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { AffiliateSummary, Recruit, ReferralMe, FollowListUser } from '~/types/api'
 import type { ReferralCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -10,7 +11,6 @@ useHead({ title: 'Invite' })
 
 const { apiFetchData } = useApiClient()
 const { isVerified: isVerifiedBase, isPremium } = useAuth()
-const { addReferralCallback, removeReferralCallback } = usePresence()
 const { setReferralCode } = useReferralCode()
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -258,8 +258,8 @@ const referralCb: ReferralCallback = {
   },
 }
 
+usePresenceCallback('Referral', referralCb)
 onMounted(() => {
-  addReferralCallback(referralCb)
   void load()
 })
 
@@ -268,7 +268,6 @@ onActivated(() => {
 })
 
 onBeforeUnmount(() => {
-  removeReferralCallback(referralCb)
   if (copiedTimer) clearTimeout(copiedTimer)
 })
 const initialLoading = useInitialLoading(loading, false, error)

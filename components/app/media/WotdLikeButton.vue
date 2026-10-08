@@ -57,7 +57,7 @@
           <div v-if="breakdown" class="moh-count-breakdown-section">
             <div v-for="row in visibleRows" :key="row.key" class="moh-count-breakdown-row">
               <span class="moh-count-breakdown-label"><span class="moh-count-breakdown-dot" :class="row.dotClass" aria-hidden="true" />{{ row.label }}</span>
-              <span class="moh-count-breakdown-value">{{ row.count.toLocaleString('en-US') }}</span>
+              <span class="moh-count-breakdown-value">{{ formatCount(row.count) }}</span>
             </div>
           </div>
           <p v-else-if="breakdownLoading" class="moh-count-breakdown-status animate-pulse" role="status">Loading…</p>
@@ -69,6 +69,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { WotdLikeBreakdown, WotdLikeToggle, Websters1828WordOfDay } from '~/types/api'
 import { formatShortCount } from '~/utils/text'
 

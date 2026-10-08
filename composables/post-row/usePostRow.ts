@@ -1,3 +1,5 @@
+import { formatLocaleDateTime } from '~/utils/time-format'
+import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import type { PostRowEmits, PostRowProps } from './post-row-types'
 import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
@@ -394,7 +396,7 @@ export function usePostRow(props: PostRowProps, emit: PostRowEmits) {
   const createdAtShort = computed(() => formatShortDate(createdAtDate.value, nowMs.value))
   // Fixed locale for SSR: server and client must produce identical output.
   const createdAtTooltip = computed(() =>
-    tinyTooltip(createdAtDate.value.toLocaleString('en-US')),
+    tinyTooltip(formatLocaleDateTime(createdAtDate.value)),
   )
 
   function formatShortDate(d: Date, nowMs: number): string {
@@ -409,7 +411,7 @@ export function usePostRow(props: PostRowProps, emit: PostRowEmits) {
     if (diffDay < 7) return `${diffDay}d`
 
     const sameYear = new Date(nowMs).getFullYear() === d.getFullYear()
-    const month = d.toLocaleString('en-US', { month: 'short' })
+    const month = formatLocaleDateTime(d, { month: 'short' })
     const day = d.getDate()
     return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
   }

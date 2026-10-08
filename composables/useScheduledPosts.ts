@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { ScheduledPost } from '~/types/api'
 import type { ScheduledCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -64,8 +65,6 @@ export function useScheduledPosts() {
 
   // ─── Realtime subscriptions ───────────────────────────────────────────────
 
-  const { addScheduledCallback, removeScheduledCallback } = usePresence()
-
   const scheduledCb: ScheduledCallback = {
     onPublished: (payload) => {
       removeItem(payload.scheduledId)
@@ -88,17 +87,13 @@ export function useScheduledPosts() {
     },
   }
 
+  usePresenceCallback('Scheduled', scheduledCb)
   onMounted(() => {
-    addScheduledCallback(scheduledCb)
     fetchScheduled({ reset: true })
   })
 
   onActivated(() => {
     fetchScheduled({ reset: true })
-  })
-
-  onBeforeUnmount(() => {
-    removeScheduledCallback(scheduledCb)
   })
 
   return {

@@ -152,6 +152,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 const { pending: pendingVerifications } = useAdminVerificationCount()
 import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 import type catalog from '~/design/icon-catalog.json'
@@ -215,7 +216,7 @@ const currentUserPresenceStatus = computed(() => {
 })
 
 const coinCount = computed(() => Math.max(0, Math.floor(Number(user.value?.coins ?? 0))))
-const coinCountLabel = computed(() => coinCount.value.toLocaleString())
+const coinCountLabel = computed(() => formatCount(coinCount.value))
 const canUseCoins = computed(() => (user.value?.verifiedStatus ?? 'none') !== 'none')
 const displayName = computed(() => user.value?.name || user.value?.username || 'User')
 const showTopControls = computed(() => !props.compact && !props.hideMenu && isXlUp.value)

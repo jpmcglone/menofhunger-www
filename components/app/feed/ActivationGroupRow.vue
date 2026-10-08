@@ -16,6 +16,7 @@
   <p v-if="error" role="alert" class="text-xs moh-text-muted">{{ error }}</p>
 </template>
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupShell } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 import { applyCommunityGroupJoin, communityGroupJoinToast } from '~/utils/community-group-preview'
@@ -33,7 +34,7 @@ const joined = computed(() => local.value.viewerMembership?.status === 'active')
 const pending = computed(() => local.value.viewerPendingApproval)
 const imageUrl = computed(() => props.group.avatarImageUrl || props.group.coverImageUrl || null)
 const initials = computed(() => props.group.name.trim().split(/\s+/).slice(0, 2).map(part => part[0] ?? '').join('').toUpperCase())
-const memberLabel = computed(() => `${Number(props.group.memberCount ?? 0).toLocaleString()} ${props.group.memberCount === 1 ? 'member' : 'members'}`)
+const memberLabel = computed(() => `${formatCount(Number(props.group.memberCount ?? 0))} ${props.group.memberCount === 1 ? 'member' : 'members'}`)
 async function join() {
   if (busy.value || pending.value) return
   busy.value = true

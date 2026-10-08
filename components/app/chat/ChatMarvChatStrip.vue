@@ -36,6 +36,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { MarvinModeDto } from '~/types/api'
 
 const { me, preferredMode, credits, setPreferredMode } = useMarv()
@@ -58,7 +59,7 @@ async function onPickMode(mode: MarvinModeDto) {
 const creditsLabel = computed(() => {
   const c = credits.value
   if (!c) return null
-  return `${Math.floor(c.credits).toLocaleString()} credits`
+  return `${formatCount(Math.floor(c.credits))} credits`
 })
 
 /**
@@ -85,6 +86,6 @@ const refillEtaLabel = computed(() => {
 const refillTooltip = computed(() => {
   const c = credits.value
   if (!c) return ''
-  return `Up to ${c.maxCredits.toLocaleString()} credits • +${c.creditsPerDay.toLocaleString()} per day`
+  return `Up to ${formatCount(c.maxCredits)} credits • +${formatCount(c.creditsPerDay)} per day`
 })
 </script>

@@ -20,7 +20,7 @@
           </div>
         </div>
         <div class="text-xs text-gray-500 dark:text-gray-400">
-          {{ data.engagement.d30RetainedCount.toLocaleString() }} of {{ data.engagement.d30CohortSize.toLocaleString() }} users retained
+          {{ formatCount(data.engagement.d30RetainedCount) }} of {{ formatCount(data.engagement.d30CohortSize) }} users retained
         </div>
         <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
           Benchmark: top apps 25–40%+
@@ -42,7 +42,7 @@
           </div>
         </div>
         <div class="text-xs text-gray-500 dark:text-gray-400">
-          {{ data.engagement.activationCount.toLocaleString() }} of {{ data.engagement.activationEligibleCount.toLocaleString() }} users activated
+          {{ formatCount(data.engagement.activationCount) }} of {{ formatCount(data.engagement.activationEligibleCount) }} users activated
         </div>
         <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
           Benchmark: strong apps 50–70%+
@@ -64,7 +64,7 @@
           </div>
         </div>
         <div class="text-xs text-gray-500 dark:text-gray-400">
-          {{ data.engagement.creatorCount.toLocaleString() }} creators out of {{ data.engagement.creatorMauCount.toLocaleString() }} MAU
+          {{ formatCount(data.engagement.creatorCount) }} creators out of {{ formatCount(data.engagement.creatorMauCount) }} MAU
         </div>
         <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
           Benchmark: healthy communities 20–30%+
@@ -86,7 +86,7 @@
           </div>
         </div>
         <div class="text-xs text-gray-500 dark:text-gray-400">
-          {{ data.engagement.connectedUserCount.toLocaleString() }} connected &middot; avg {{ data.engagement.avgFollowersPerUser.toLocaleString() }} followers/user
+          {{ formatCount(data.engagement.connectedUserCount) }} connected &middot; avg {{ formatCount(data.engagement.avgFollowersPerUser) }} followers/user
         </div>
         <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
           Higher = stronger network effect
@@ -99,20 +99,20 @@
         <div class="text-xs text-gray-500 dark:text-gray-400 -mt-1">Signup → Verified → Premium</div>
         <div class="flex items-stretch gap-0 rounded-lg overflow-hidden border moh-border text-center text-sm">
           <div class="flex-1 px-3 py-3 bg-gray-50 dark:bg-zinc-900/50">
-            <div class="text-lg font-bold tabular-nums">{{ data.summary.totalUsers.toLocaleString() }}</div>
+            <div class="text-lg font-bold tabular-nums">{{ formatCount(data.summary.totalUsers) }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">All users</div>
           </div>
           <div class="flex items-center px-1 text-gray-300 dark:text-zinc-600 select-none">›</div>
           <div class="flex-1 px-3 py-3">
             <div class="text-lg font-bold tabular-nums" :class="engagementColor(verifiedConversionPct, 20, 50)">
-              {{ data.summary.verifiedUsers.toLocaleString() }}
+              {{ formatCount(data.summary.verifiedUsers) }}
             </div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Verified ({{ verifiedConversionPct }}%)</div>
           </div>
           <div class="flex items-center px-1 text-gray-300 dark:text-zinc-600 select-none">›</div>
           <div class="flex-1 px-3 py-3">
             <div class="text-lg font-bold tabular-nums" :class="engagementColor(premiumOfVerifiedPct, 10, 30)">
-              {{ data.summary.premiumUsers.toLocaleString() }}
+              {{ formatCount(data.summary.premiumUsers) }}
             </div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Premium ({{ premiumOfVerifiedPct }}% of verified)</div>
           </div>
@@ -142,9 +142,9 @@
       <tbody class="moh-divide">
         <tr v-for="row in retentionRows" :key="row.cohortWeek" class="hover:bg-gray-50 dark:hover:bg-zinc-900/50">
           <td class="px-4 py-3 font-mono text-xs">{{ row.cohortWeek }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ row.size.toLocaleString() }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(row.size) }}</td>
           <td class="px-4 py-3 text-right tabular-nums">
-            <span v-if="row.isW1Eligible">{{ row.w1.toLocaleString() }}</span>
+            <span v-if="row.isW1Eligible">{{ formatCount(row.w1) }}</span>
             <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
           </td>
           <td class="px-4 py-3 text-right tabular-nums">
@@ -152,7 +152,7 @@
             <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
           </td>
           <td class="px-4 py-3 text-right tabular-nums">
-            <span v-if="row.isW4Eligible">{{ row.w4.toLocaleString() }}</span>
+            <span v-if="row.isW4Eligible">{{ formatCount(row.w4) }}</span>
             <span v-else class="text-gray-500 dark:text-gray-400 font-medium">--</span>
           </td>
           <td class="px-4 py-3 text-right tabular-nums">
@@ -170,6 +170,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { AdminAnalytics } from '~/types/api'
 import { useAdminAnalyticsContext } from '~/composables/pages/admin/useAdminAnalyticsPage'
 

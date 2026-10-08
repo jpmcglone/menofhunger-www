@@ -13,7 +13,7 @@ import type { useChatPageState } from './useChatPage'
  * actions, the new-chat dialog, and presence interest.
  */
 export function useChatPageView(ctx: ReturnType<typeof useChatPageState>) {
-  const { apiFetch, apiFetchData, route, me, viewerCanStartChats, addInterest, removeInterest, addMessagesCallback, removeMessagesCallback, addCallsCallback, removeCallsCallback, suppressMessageUnreadBumpsForMs, marv, selectedConversationId, selectedChatKey, atBottom, stickToBottom, setAtBottomState, scrollEventHandler, conversationsApi, selectedConversation, patchConversation, removeConversationFromList, updateConversationParticipantRead, updateConversationUnread, updateConversationForMessage, markConversationReadIfVisible, getMessageTier, getDirectUser, getConversationLastMessageTier, lastVisibleMessageSnapshot, showCantStartChat, thread, messages, infoMessage, sendingMessageIds, setRemoteTyping, routeSync } = ctx
+  const { apiFetch, apiFetchData, route, me, viewerCanStartChats, addInterest, removeInterest, suppressMessageUnreadBumpsForMs, marv, selectedConversationId, selectedChatKey, atBottom, stickToBottom, setAtBottomState, scrollEventHandler, conversationsApi, selectedConversation, patchConversation, removeConversationFromList, updateConversationParticipantRead, updateConversationUnread, updateConversationForMessage, markConversationReadIfVisible, getMessageTier, getDirectUser, getConversationLastMessageTier, lastVisibleMessageSnapshot, showCantStartChat, thread, messages, infoMessage, sendingMessageIds, setRemoteTyping, routeSync } = ctx
 
   const { selectConversation, clearSelection, openDraftChatWithRecipients } = routeSync
 
@@ -235,10 +235,6 @@ export function useChatPageView(ctx: ReturnType<typeof useChatPageState>) {
     selectedConversationId,
     meId,
     atBottom,
-    addMessagesCallback,
-    removeMessagesCallback,
-    addCallsCallback,
-    removeCallsCallback,
     handlers: {
       onCallUpdated(convoId, call) {
         patchConversation(convoId, (c) => ({ ...c, activeCall: call }))

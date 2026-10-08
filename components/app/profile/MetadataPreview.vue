@@ -30,8 +30,8 @@ ref="card" role="dialog" :aria-label="`${title} preview`" tabindex="-1"
 v-if="xProfile.websiteUrl" :href="xProfile.websiteUrl" target="_blank" rel="noopener noreferrer nofollow"
             class="inline-block min-h-11 break-all text-sm text-[var(--moh-link)]">{{ displayHost(xProfile.websiteUrl) }}</a>
           <div class="flex flex-wrap gap-4 text-sm moh-text-muted">
-            <span v-if="xProfile.following !== null"><strong class="moh-text">{{ xProfile.following.toLocaleString() }}</strong> Following</span>
-            <span v-if="xProfile.followers !== null"><strong class="moh-text">{{ new Intl.NumberFormat(undefined, { notation: xProfile.followers >= 10000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(xProfile.followers) }}</strong> Followers</span>
+            <span v-if="xProfile.following !== null"><strong class="moh-text">{{ formatCount(xProfile.following) }}</strong> Following</span>
+            <span v-if="xProfile.followers !== null"><strong class="moh-text">{{ formatCompact(xProfile.followers, { compactFrom: 10000 }) }}</strong> Followers</span>
           </div>
         </div>
       </template>
@@ -41,7 +41,7 @@ v-if="xProfile.websiteUrl" :href="xProfile.websiteUrl" target="_blank" rel="noop
           <p class="font-semibold moh-text">{{ location?.location.stateDisplay ?? title }}</p>
           <p class="text-xs moh-text-muted">United States</p>
           <template v-if="location">
-            <p class="text-sm moh-text">{{ location.memberCount ? `${location.memberCount.toLocaleString()} members` : 'No members to show yet' }}</p>
+            <p class="text-sm moh-text">{{ location.memberCount ? `${formatCount(location.memberCount)} members` : 'No members to show yet' }}</p>
             <div class="flex items-center gap-1">
               <AppAvatarCircle v-for="member in members" :key="member.id" :src="member.avatarUrl" :name="member.name ?? member.username ?? 'Member'" size-class="h-7 w-7" />
               <span v-if="location.memberCount > members.length" class="ml-1 text-xs moh-text-muted">+{{ location.memberCount - members.length }}</span>
@@ -66,8 +66,8 @@ v-if="xProfile.websiteUrl" :href="xProfile.websiteUrl" target="_blank" rel="noop
             </div>
             <p v-if="metadata.description" class="line-clamp-5 whitespace-pre-line break-words text-sm text-[#a5a9b2]">{{ metadata.description }}</p>
             <div class="flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#a5a9b2]">
-              <span v-if="metadata.profile.followers !== null"><strong class="text-white">{{ metadata.profile.followers.toLocaleString() }}</strong> Followers</span>
-              <span v-if="metadata.profile.following !== null"><strong class="text-white">{{ metadata.profile.following.toLocaleString() }}</strong> Following</span>
+              <span v-if="metadata.profile.followers !== null"><strong class="text-white">{{ formatCount(metadata.profile.followers) }}</strong> Followers</span>
+              <span v-if="metadata.profile.following !== null"><strong class="text-white">{{ formatCount(metadata.profile.following) }}</strong> Following</span>
             </div>
           </div>
         </a>
@@ -99,6 +99,7 @@ v-if="xContext?.messageUrl" :href="xContext.messageUrl" target="_blank" rel="noo
 </template>
 
 <script setup lang="ts">
+import { formatCompact, formatCount } from '~/utils/number-format'
 import type { XProfilePreviewDto, XProfileContextDto } from '~/types/api-contracts.gen'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { isRecentTouch } from '~/utils/recent-touch'

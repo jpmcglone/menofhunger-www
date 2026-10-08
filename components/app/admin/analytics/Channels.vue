@@ -38,8 +38,8 @@
             <div class="relative z-[1] font-medium">{{ ch.isPrivate ? '🔒 ' : '# ' }}{{ ch.channelName }}</div>
             <div class="relative z-[1] text-xs text-gray-400 dark:text-gray-500">{{ ch.groupName }}</div>
           </td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ ch.messagesInRange.toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ ch.sendersInRange.toLocaleString() }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(ch.messagesInRange) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(ch.sendersInRange) }}</td>
         </tr>
         <tr v-if="!data.channels.topChannels.length">
           <td colspan="3" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">No channel messages in range</td>
@@ -51,6 +51,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { AdminAnalytics } from '~/types/api'
 import { useAdminAnalyticsContext } from '~/composables/pages/admin/useAdminAnalyticsPage'
 

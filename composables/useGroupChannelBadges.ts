@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { CommunityGroupShell, GroupChannel } from '~/types/api'
 import type { ChannelCallback } from '~/composables/presence/usePresenceDomains'
 
@@ -68,10 +69,9 @@ export function useGroupChannelBadgeSync() {
   watch(presence.isSocketConnected, connected => {
     if (connected) for (const groupId of Object.keys(badges.value)) schedule(groupId)
   })
-  onMounted(() => presence.addChannelCallback(onChannel))
+  usePresenceCallback('Channel', onChannel)
   onBeforeUnmount(() => {
     alive = false
-    presence.removeChannelCallback(onChannel)
     for (const timer of timers.values()) clearTimeout(timer)
   })
 }

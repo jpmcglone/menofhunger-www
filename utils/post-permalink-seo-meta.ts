@@ -1,3 +1,5 @@
+import { formatLocaleDateTime } from '~/utils/time-format'
+import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupPreview, FeedPost } from '~/types/api'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { siteConfig } from '~/config/site'
@@ -150,7 +152,7 @@ function pollMetaPublicFromPost(p: FeedPost | null, isPublicPost: boolean) {
     endsAt && !Number.isNaN(endsAt.getTime())
       ? ended
         ? 'Done'
-        : `Ends ${endsAt.toLocaleString('en-US')}`
+        : `Ends ${formatLocaleDateTime(endsAt)}`
       : null
   const firstOptionImage =
     ((poll as any).options as Array<{ imageUrl?: string | null }> | undefined)

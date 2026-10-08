@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { Ref } from 'vue'
 import type { ChannelCallback } from '~/composables/presence/usePresenceDomains'
 import type { TypingUserDisplay } from '~/composables/chat/useChatTyping'
@@ -59,8 +60,9 @@ export function useChannelTyping(groupId: Ref<string | null | undefined>) {
 
   watch(groupId, watch_)
   watch(presence.isSocketConnected, connected => { if (connected && watching) presence.subscribeChannels(watching) })
-  onMounted(() => { presence.addChannelCallback(callback); watch_() })
-  onBeforeUnmount(() => { presence.removeChannelCallback(callback); unwatch() })
+  usePresenceCallback('Channel', callback)
+  onMounted(() => { watch_() })
+  onBeforeUnmount(() => { unwatch() })
 
   /** `root` narrows to one thread (`null` = top level); omit for anywhere in the channel. */
   function typingUsers(channelId: string, root?: string | null): TypingUserDisplay[] {

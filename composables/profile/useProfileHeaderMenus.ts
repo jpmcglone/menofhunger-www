@@ -79,6 +79,7 @@ export function useProfileHeaderMenus(emit: ProfileHeaderEmits, ctx: ReturnType<
 
   const blockState = useBlockState()
   const toast = useAppToast()
+  const { run } = useAsyncAction()
   const { copyText } = useCopyToClipboard()
   const { origin: siteOrigin } = useRequestURL()
 
@@ -86,12 +87,10 @@ export function useProfileHeaderMenus(emit: ProfileHeaderEmits, ctx: ReturnType<
     const username = profile.value?.username
     if (!username) return
     const url = `${siteOrigin}/u/${encodeURIComponent(username)}/posts/feed.xml`
-    try {
+    await run(async () => {
       await copyText(url)
       toast.push({ title: 'RSS feed link copied', tone: 'success', durationMs: 1400 })
-    } catch {
-      toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-    }
+    }, { error: () => 'Copy failed', durationMs: 1800 })
   }
 
   const viewerHasBlockedProfile = computed(() =>

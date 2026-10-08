@@ -64,6 +64,8 @@
   </section>
 </template>
 <script setup lang="ts">
+import { formatLocaleDate } from '~/utils/time-format'
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import Dialog from 'primevue/dialog'
 import { formatShortCount } from '~/utils/text'
 import type { ConversationInsights } from '~/types/api'
@@ -76,7 +78,7 @@ const route = useRoute()
 const open = ref(Boolean(props.postId && route.query.insights === '1'))
 const data = ref<ConversationInsights | null>(null)
 const trackingNote = computed(() => data.value?.windowReach?.complete === false
-  ? `; tracking began ${new Date(data.value.windowReach.trackedSince).toLocaleDateString()}. Earlier views are unavailable.` : '')
+  ? `; tracking began ${formatLocaleDate(new Date(data.value.windowReach.trackedSince))}. Earlier views are unavailable.` : '')
 const entryLabel = computed(() => {
   if (error.value) return 'Last 7 days. Activity unavailable'
   const recap = data.value
@@ -177,11 +179,13 @@ watch(() => [user.value?.id, props.postId], () => {
   void load()
 })
 const userCallback = { onMeUpdated: refreshSoon }
+const postsRealtime = usePresenceCallback('Posts', callback, { manual: true })
+const usersRealtime = usePresenceCallback('Users', userCallback, { manual: true })
 function activate() {
   if (active || disposed) return
   active = true
-  presence.addPostsCallback(callback)
-  presence.addUsersCallback(userCallback)
+  postsRealtime.register()
+  usersRealtime.register()
   subscribed.value = data.value?.posts.map(post => post.id) ?? []
   presence.subscribePosts(subscribed.value)
   void load()
@@ -194,8 +198,8 @@ function deactivate() {
   refreshPending = false
   if (timer) clearTimeout(timer)
   timer = undefined
-  presence.removePostsCallback(callback)
-  presence.removeUsersCallback(userCallback)
+  postsRealtime.unregister()
+  usersRealtime.unregister()
   presence.unsubscribePosts(subscribed.value)
   subscribed.value = []
 }

@@ -1,3 +1,5 @@
+import { formatCount } from '~/utils/number-format'
+import { formatLocaleDate, formatLocaleDateTime } from '~/utils/time-format'
 import type { FollowListUser, CoinTransferItem, TransferCoinsResponse  } from '~/types/api'
 
 export function useCoinsPage() {
@@ -117,8 +119,7 @@ onMounted(() => {
 })
 
 // --- Formatting ---
-const intlFmt = new Intl.NumberFormat('en-US')
-function fmt(n: number) { return intlFmt.format(n) }
+function fmt(n: number) { return formatCount(n) }
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -130,12 +131,12 @@ function relativeTime(iso: string): string {
   if (h < 24) return `${h}h ago`
   const d = Math.floor(h / 24)
   if (d < 30) return `${d}d ago`
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return formatLocaleDate(new Date(iso), { month: 'short', day: 'numeric' })
 }
 
 function shortDateTime(iso: string): string {
   const d = new Date(iso)
-  return d.toLocaleString('en-US', {
+  return formatLocaleDateTime(d, {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',

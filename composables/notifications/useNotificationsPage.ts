@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { userActionColor } from '~/utils/user-tier'
 import { notificationFilterCategory } from '~/utils/notification-category'
 import type { Notification, NotificationKind } from '~/types/api'
@@ -81,10 +82,6 @@ async function onChipSelect(kind: NotificationKind | 'other' | 'board' | null) {
 const {
   addInterest,
   removeInterest,
-  addCrewCallback,
-  removeCrewCallback,
-  addGroupInviteCallback,
-  removeGroupInviteCallback,
 } = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
@@ -196,8 +193,7 @@ const crewCb = {
     if (mutated) notifications.value = next
   },
 }
-onMounted(() => addCrewCallback(crewCb))
-onBeforeUnmount(() => removeCrewCallback(crewCb))
+usePresenceCallback('Crew', crewCb)
 
 // Realtime: same pattern for community group invites — keep the row's terminal
 // state in sync when the invite is accepted / declined / cancelled / expired
@@ -223,8 +219,7 @@ const groupInviteCb = {
     if (mutated) notifications.value = next
   },
 }
-onMounted(() => addGroupInviteCallback(groupInviteCb))
-onBeforeUnmount(() => removeGroupInviteCallback(groupInviteCb))
+usePresenceCallback('GroupInvite', groupInviteCb)
 
 const notificationReadToast = useAppToast()
 async function onMarkAllRead() {
@@ -543,10 +538,6 @@ watch(notificationUndeliveredCount, (newVal, oldVal) => {
     itemHref,
     addInterest,
     removeInterest,
-    addCrewCallback,
-    removeCrewCallback,
-    addGroupInviteCallback,
-    removeGroupInviteCallback,
     notificationViewer,
     notificationUndeliveredCount,
     VOICE,

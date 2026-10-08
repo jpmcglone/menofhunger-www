@@ -1,3 +1,4 @@
+import { formatCount } from '~/utils/number-format'
 /**
  * Copy for the profile's social-proof line: "Followed by Marv, Erika and 24 others you follow".
  * The named accounts come from the same ordered preview the count is taken from, so the sentence
@@ -13,7 +14,7 @@ export function followedByLabel(people: FollowedByPerson[], total: number): stri
 
   const others = Math.max(0, total - names.length)
   if (others > 0) {
-    return `Followed by ${joinNames(names)} and ${others.toLocaleString()} ${others === 1 ? 'other' : 'others'} you follow`
+    return `Followed by ${joinNames(names)} and ${formatCount(others)} ${others === 1 ? 'other' : 'others'} you follow`
   }
   return `Followed by ${joinNames(names)}`
 }

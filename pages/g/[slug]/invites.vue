@@ -110,6 +110,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type {
   CommunityGroupInvite,
   CommunityGroupInviteStatus,
@@ -128,10 +129,6 @@ const { confirm } = useAppConfirm()
 const { push: pushToast } = useAppToast()
 const { user: authUser } = useAuth()
 const groupInvitesApi = useGroupInvites()
-const {
-  addGroupInviteCallback,
-  removeGroupInviteCallback,
-} = usePresence()
 
 const viewerUserId = computed(() => authUser.value?.id ?? null)
 
@@ -278,8 +275,7 @@ onMounted(async () => {
     if ((e as { statusCode?: number })?.statusCode === 404) throw e
     error.value = getApiErrorMessage(e) || 'Could not load this page.'
   }
-  addGroupInviteCallback(inviteCb)
 })
-onBeforeUnmount(() => removeGroupInviteCallback(inviteCb))
+usePresenceCallback('GroupInvite', inviteCb)
 const showInitialLoader = useInitialLoading(loading, () => invites.value.length > 0, error)
 </script>

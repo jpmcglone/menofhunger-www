@@ -15,6 +15,7 @@ export type WebShareParams = {
 
 export function useWebShare() {
   const toast = useAppToast()
+  const { run } = useAsyncAction()
   const { copyText } = useCopyToClipboard()
 
   const isSupported = computed(() => {
@@ -42,14 +43,12 @@ export function useWebShare() {
     }
 
     // Clipboard fallback
-    try {
+    const copied = await run(async () => {
       await copyText(params.url)
       toast.push({ title: 'Link copied', tone: 'success', durationMs: 1600 })
       return true
-    } catch {
-      toast.push({ title: 'Could not copy link', tone: 'error', durationMs: 1800 })
-      return false
-    }
+    }, { error: () => 'Could not copy link', durationMs: 1800 })
+    return copied ?? false
   }
 
   return { share, isSupported }

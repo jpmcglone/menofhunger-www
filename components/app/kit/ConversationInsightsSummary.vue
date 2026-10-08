@@ -58,16 +58,18 @@
       </template>
     </dl>
     <p v-if="weekly" class="text-[11px] moh-text-muted">Other people who replied, boosted or reposted. You are excluded.</p>
-    <p v-if="weekly && data.windowReach?.complete === false" class="text-[11px] moh-text-muted">* View tracking began {{ new Date(data.windowReach.trackedSince).toLocaleDateString() }}. Earlier views are unavailable.</p>
+    <p v-if="weekly && data.windowReach?.complete === false" class="text-[11px] moh-text-muted">* View tracking began {{ formatLocaleDate(new Date(data.windowReach.trackedSince)) }}. Earlier views are unavailable.</p>
     <p v-if="!weekly && data.reach?.scope === 'lifetime'" class="text-[11px] moh-text-muted">
       Lifetime totals on these posts. People counted once; guest reach is estimated.
     </p>
   </div>
 </template>
 <script setup lang="ts">
+import { formatLocaleDate } from '~/utils/time-format'
+import { formatCount } from '~/utils/number-format'
 import type { ConversationInsights } from '~/types/api'
 const props = defineProps<{ data: ConversationInsights; weekly: boolean }>()
-const number = (value: number) => value.toLocaleString('en-US')
+const number = (value: number) => formatCount(value)
 const participantNoun = computed(() => props.data.participantCount === 1 ? 'Participant' : 'Participants')
 const participantLabel = computed(() => {
   const n = props.data.newParticipantCount

@@ -258,6 +258,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { siteConfig } from '~/config/site'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 import { userColorTier, userTierTextClass } from '~/utils/user-tier'
@@ -339,7 +340,6 @@ const { scheduleFromNextPublishAt: scheduleRightRailRefresh } = usePublishBounda
 })
 
 // Also refresh instantly when the server broadcasts a publish event via websocket.
-const { addDailyContentCallback, removeDailyContentCallback } = usePresence()
 const dailyContentCb = {
   onPublished: (_item: 'word' | 'quote') => {
     if (isPageAccount.value) return
@@ -353,8 +353,7 @@ if (import.meta.client) {
     (nextPublishAt) => scheduleRightRailRefresh(nextPublishAt),
     { immediate: true },
   )
-  onMounted(() => addDailyContentCallback(dailyContentCb))
-  onBeforeUnmount(() => removeDailyContentCallback(dailyContentCb))
+  usePresenceCallback('DailyContent', dailyContentCb)
 }
 
 const {

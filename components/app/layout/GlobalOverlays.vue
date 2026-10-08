@@ -32,6 +32,7 @@
   <AppAuthActionModal />
   <AppPremiumMediaModal />
   <AppSchedulePremiumModal />
+  <AppExternalLinkDialog />
   <AppUnsavedDraftPromptModal />
   <AppReplyModal />
   <AppMarvCatchUpModal />

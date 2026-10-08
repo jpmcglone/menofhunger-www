@@ -271,6 +271,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCompact } from '~/utils/number-format'
 import { siteConfig } from '~/config/site'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
 import {
@@ -565,7 +566,7 @@ const routeHeaderDefaults = computed(() => {
 
 function formatCompactNumber(n: number): string {
   try {
-    return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+    return formatCompact(n)
   } catch {
     return String(n)
   }

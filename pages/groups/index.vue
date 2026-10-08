@@ -194,7 +194,7 @@
                 {{ g.description }}
               </p>
               <div class="mt-1 text-xs moh-text-muted tabular-nums">
-                {{ g.memberCount.toLocaleString() }} members
+                {{ formatCount(g.memberCount) }} members
               </div>
             </div>
             <Icon
@@ -225,6 +225,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { CommunityGroupInvite, CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
@@ -244,7 +246,7 @@ usePageSeo({
 })
 
 const { user, isAuthed } = useAuth()
-const { groupsUnread, addGroupInviteCallback, removeGroupInviteCallback } = usePresence()
+const { groupsUnread } = usePresence()
 const { clearLockScreen } = useNotifications()
 const { groups: sharedMyGroups, load: loadMyGroups } = useMyGroups()
 const groupInvitesApi = useGroupInvites()
@@ -389,8 +391,8 @@ watch(
   { immediate: true },
 )
 
+usePresenceCallback('GroupInvite', inviteCallback)
 onMounted(() => {
-  addGroupInviteCallback(inviteCallback)
   if (isAuthed.value) { void clearLockScreen('groups'); void loadMyGroups(); void loadInbox() }
 })
 onActivated(() => {
@@ -401,7 +403,6 @@ onActivated(() => {
 })
 watch(isAuthed, signedIn => { if (signedIn) { void loadMyGroups(); void loadInbox() } else inboxInvites.value = [] })
 onBeforeUnmount(() => {
-  removeGroupInviteCallback(inviteCallback)
   if (debounceHandle) clearTimeout(debounceHandle)
 })
 const metaInitialLoading = useInitialLoading(metaLoading, () => discoverRows.value.length > 0, metaError)

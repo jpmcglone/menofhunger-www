@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { SpaceYouTubePlayerProps } from './space-youtube-player-types'
 import { loadYouTubeAPI } from '~/utils/media/youtube'
 import { mediaFocus } from '~/utils/mediaFocus'
@@ -171,6 +172,8 @@ export function useSpaceYouTubePlayerLifecycle(props: SpaceYouTubePlayerProps, c
     },
   }
 
+  const replacedRealtime = usePresenceCallback('Spaces', replacedCb, { manual: true })
+
   onMounted(async () => {
     playerSync.soundTimer = setInterval(() => {
       if (!playerReady.value || !playerSync.ytPlayer || mediaFocus.currentId !== 'video:watch-party' || Date.now() < playerSync.soundEchoUntil) return
@@ -197,7 +200,7 @@ export function useSpaceYouTubePlayerLifecycle(props: SpaceYouTubePlayerProps, c
     subscribe(props.space.id)
 
     if (isOwner.value) {
-      presence.addSpacesCallback(replacedCb as any)
+      replacedRealtime.register()
       pendingOwnerRestore.value = true
     }
     // Fire a state request immediately so the response races the YouTube API
@@ -252,7 +255,7 @@ export function useSpaceYouTubePlayerLifecycle(props: SpaceYouTubePlayerProps, c
       clearTimeout(playerSync.ownerSyncChipDelayTimer)
       playerSync.ownerSyncChipDelayTimer = null
     }
-    presence.removeSpacesCallback(replacedCb as any)
+    replacedRealtime.unregister()
     unsubscribe()
     if (playerSync.ytPlayer?.destroy) {
       try { playerSync.ytPlayer.destroy() } catch { /* ignore */ }

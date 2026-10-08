@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { WatchPartyState } from '~/types/api'
 
 const WP_STATE_KEY = 'watch-party-state'
@@ -24,17 +25,19 @@ export function useWatchParty() {
     },
   }
 
+  const wpRealtime = usePresenceCallback('Spaces', wpCb, { manual: true })
+
   function subscribe(spaceId: string) {
     // Only wipe buffered state when switching to a different space.
     if (watchPartySpaceId.value !== spaceId) {
       watchPartyState.value = null
     }
     watchPartySpaceId.value = spaceId
-    presence.addSpacesCallback(wpCb as any)
+    wpRealtime.register()
   }
 
   function unsubscribe() {
-    presence.removeSpacesCallback(wpCb as any)
+    wpRealtime.unregister()
     watchPartyState.value = null
     watchPartySpaceId.value = null
   }

@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between gap-2">
         <div class="text-sm font-semibold text-gray-900 dark:text-gray-50">AI connections</div>
         <div v-if="state?.usage" class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-          {{ state.usage.used.toLocaleString() }} of {{ state.usage.limit.toLocaleString() }} member calls today
+          {{ formatCount(state.usage.used) }} of {{ formatCount(state.usage.limit) }} member calls today
         </div>
       </div>
       <div v-if="loading && !state" class="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
@@ -28,6 +28,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { AdminMcpConnectionsDto, McpConnectionItemDto } from '~/types/api-contracts.gen'
 
 const props = defineProps<{ userId: string }>()

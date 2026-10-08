@@ -235,3 +235,28 @@ export function formatFutureRelative(iso: string | null | undefined, nowMs?: num
   if (days === 1) return 'in 1 day'
   return `in ${days} days`
 }
+
+/** Clock time only (e.g. `3:05 PM`), fixed en-US for SSR parity. */
+export function formatClockTime(iso: string | null | undefined, fallback = ''): string {
+  const d = toDate(iso)
+  if (!d) return fallback
+  return d.toLocaleTimeString(SSR_LOCALE, { hour: 'numeric', minute: '2-digit' })
+}
+
+type DateInput = Date | string | number
+type LocaleDateOptions = Intl.DateTimeFormatOptions
+
+/** `toLocaleDateString` with the fixed SSR locale. Same output as the inline calls it replaced. */
+export function formatLocaleDate(input: DateInput, options?: LocaleDateOptions): string {
+  return new Date(input).toLocaleDateString(SSR_LOCALE, options)
+}
+
+/** `toLocaleString` (date + time) with the fixed SSR locale. */
+export function formatLocaleDateTime(input: DateInput, options?: LocaleDateOptions): string {
+  return new Date(input).toLocaleString(SSR_LOCALE, options)
+}
+
+/** `toLocaleTimeString` with the fixed SSR locale. */
+export function formatLocaleTime(input: DateInput, options?: LocaleDateOptions): string {
+  return new Date(input).toLocaleTimeString(SSR_LOCALE, options)
+}

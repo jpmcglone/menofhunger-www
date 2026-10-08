@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { MaybeRefOrGetter } from 'vue'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
@@ -34,11 +35,11 @@ export function usePrivateApiData<T>(path: MaybeRefOrGetter<string>, query: Mayb
   const adminCallback = { onUpdated: () => { if (toValue(path).startsWith('/admin/')) schedule() } }
   const marvCallback = { onActionsUpdated: () => { if (toValue(path) === '/marvin/actions') schedule() } }
   const visible = () => { if (document.visibilityState === 'visible') schedule() }
+  usePresenceCallback('Admin', adminCallback)
+  usePresenceCallback('Marv', marvCallback)
   onMounted(() => {
     mounted = true
     void refresh()
-    presence.addAdminCallback(adminCallback)
-    presence.addMarvCallback(marvCallback)
     window.addEventListener('focus', schedule)
     document.addEventListener('visibilitychange', visible)
   })
@@ -47,8 +48,6 @@ export function usePrivateApiData<T>(path: MaybeRefOrGetter<string>, query: Mayb
     mounted = false
     ++generation
     if (timer) clearTimeout(timer)
-    presence.removeAdminCallback(adminCallback)
-    presence.removeMarvCallback(marvCallback)
     window.removeEventListener('focus', schedule)
     document.removeEventListener('visibilitychange', visible)
   })

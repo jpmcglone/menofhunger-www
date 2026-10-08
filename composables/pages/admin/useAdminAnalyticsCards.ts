@@ -1,3 +1,5 @@
+import { formatCount } from '~/utils/number-format'
+import { formatLocaleDate, formatLocaleDateTime } from '~/utils/time-format'
 import type { useAdminAnalyticsState, useAdminAnalyticsActions } from './useAdminAnalyticsPage'
 
 /**
@@ -13,10 +15,10 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
     const c = data.value.coins
     const r = rangeLabel.value
     return [
-      { label: 'Total in Economy', value: c.totalInEconomy.toLocaleString(), sub: 'all users, all time', color: 'text-amber-600 dark:text-amber-400' },
-      { label: 'Minted from Streaks', value: c.mintedInRange.toLocaleString(), sub: r },
-      { label: 'Sent Peer-to-Peer', value: c.transferredInRange.toLocaleString(), sub: r },
-      { label: 'Unique Earners', value: c.uniqueEarnersInRange.toLocaleString(), sub: `earned in ${r}` },
+      { label: 'Total in Economy', value: formatCount(c.totalInEconomy), sub: 'all users, all time', color: 'text-amber-600 dark:text-amber-400' },
+      { label: 'Minted from Streaks', value: formatCount(c.mintedInRange), sub: r },
+      { label: 'Sent Peer-to-Peer', value: formatCount(c.transferredInRange), sub: r },
+      { label: 'Unique Earners', value: formatCount(c.uniqueEarnersInRange), sub: `earned in ${r}` },
     ]
   })
 
@@ -82,13 +84,13 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
     const k = data.value.articles.kpis
     const r = rangeLabel.value
     return [
-      { label: 'Published', value: k.totalPublished.toLocaleString(), sub: r },
-      { label: 'Authors', value: k.uniqueAuthors.toLocaleString(), sub: `published in ${r}` },
-      { label: 'People', value: (k.uniqueViewsInRange ?? k.totalViewsInRange).toLocaleString(), sub: `first-time viewers · ${r}` },
-      { label: 'Views', value: Math.max(k.uniqueViewsInRange ?? 0, k.totalViewsInRange).toLocaleString(), sub: `total · ${r}` },
-      { label: 'Boosts', value: k.totalBoostsInRange.toLocaleString(), sub: r },
-      { label: 'Reactions', value: k.totalReactionsInRange.toLocaleString(), sub: r },
-      { label: 'Replies', value: k.totalCommentsInRange.toLocaleString(), sub: r },
+      { label: 'Published', value: formatCount(k.totalPublished), sub: r },
+      { label: 'Authors', value: formatCount(k.uniqueAuthors), sub: `published in ${r}` },
+      { label: 'People', value: formatCount(k.uniqueViewsInRange ?? k.totalViewsInRange), sub: `first-time viewers · ${r}` },
+      { label: 'Views', value: formatCount(Math.max(k.uniqueViewsInRange ?? 0, k.totalViewsInRange)), sub: `total · ${r}` },
+      { label: 'Boosts', value: formatCount(k.totalBoostsInRange), sub: r },
+      { label: 'Reactions', value: formatCount(k.totalReactionsInRange), sub: r },
+      { label: 'Replies', value: formatCount(k.totalCommentsInRange), sub: r },
     ]
   })
 
@@ -97,10 +99,10 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
     const b = data.value.board
     const r = rangeLabel.value
     return [
-      { label: 'Posts', value: b.threadsInRange.toLocaleString(), sub: `${b.totalThreads.toLocaleString()} all time` },
-      { label: 'Comments', value: b.commentsInRange.toLocaleString(), sub: `${b.totalComments.toLocaleString()} all time` },
-      { label: 'People', value: b.participantsInRange.toLocaleString(), sub: `started or commented · ${r}` },
-      { label: 'Boosts', value: b.boostsInRange.toLocaleString(), sub: r },
+      { label: 'Posts', value: formatCount(b.threadsInRange), sub: `${formatCount(b.totalThreads)} all time` },
+      { label: 'Comments', value: formatCount(b.commentsInRange), sub: `${formatCount(b.totalComments)} all time` },
+      { label: 'People', value: formatCount(b.participantsInRange), sub: `started or commented · ${r}` },
+      { label: 'Boosts', value: formatCount(b.boostsInRange), sub: r },
       {
         label: 'Answered in 24h',
         value: b.pctThreadsWithCommentWithin24h == null ? '—' : `${b.pctThreadsWithCommentWithin24h}%`,
@@ -123,7 +125,7 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
 
   function articleAge(iso: string) {
     const d = new Date(iso)
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+    return formatLocaleDate(d, { month: 'short', day: 'numeric', year: '2-digit' })
   }
 
   const groupKpiCards = computed(() => {
@@ -132,18 +134,18 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
     return [
       {
         label: 'Users in ≥1 group',
-        value: g.usersInAnyGroup.toLocaleString(),
+        value: formatCount(g.usersInAnyGroup),
         sub: g.pctUsersInAnyGroup != null ? `${g.pctUsersInAnyGroup}% of all users` : undefined,
       },
-      { label: 'Active groups', value: g.activeGroups.toLocaleString(), sub: 'not deleted' },
+      { label: 'Active groups', value: formatCount(g.activeGroups), sub: 'not deleted' },
       {
         label: 'New memberships',
-        value: g.newActiveMembershipsInRange.toLocaleString(),
+        value: formatCount(g.newActiveMembershipsInRange),
         sub: 'active joins in range',
       },
-      { label: 'Pending approvals', value: g.pendingApprovals.toLocaleString(), sub: 'current backlog' },
-      { label: 'Group root posts', value: g.groupRootPostsInRange.toLocaleString(), sub: 'in range' },
-      { label: 'Group replies', value: g.groupRepliesInRange.toLocaleString(), sub: 'in range' },
+      { label: 'Pending approvals', value: formatCount(g.pendingApprovals), sub: 'current backlog' },
+      { label: 'Group root posts', value: formatCount(g.groupRootPostsInRange), sub: 'in range' },
+      { label: 'Group replies', value: formatCount(g.groupRepliesInRange), sub: 'in range' },
       {
         label: 'Roots w/ reply in 24h',
         value: g.pctGroupRootsWithReplyWithin24h !== null ? `${g.pctGroupRootsWithReplyWithin24h}%` : '—',
@@ -156,12 +158,12 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
     const c = data.value?.channels
     if (!c) return []
     return [
-      { label: 'Messages', value: c.messagesInRange.toLocaleString(), sub: `${c.threadRepliesInRange.toLocaleString()} thread replies` },
-      { label: 'People talking', value: c.sendersInRange.toLocaleString(), sub: `${c.readersInRange.toLocaleString()} people reading` },
-      { label: 'Active channels', value: c.channelsWithActivityInRange.toLocaleString(), sub: `of ${c.activeChannels.toLocaleString()} (${c.privateChannels.toLocaleString()} private)` },
-      { label: 'Groups with channels', value: c.groupsWithChannels.toLocaleString() },
-      { label: 'Mentions', value: c.mentionsInRange.toLocaleString(), sub: 'in range' },
-      { label: 'Uploads', value: c.uploadsInRange.toLocaleString(), sub: `${c.marvRepliesInRange.toLocaleString()} @marv replies` },
+      { label: 'Messages', value: formatCount(c.messagesInRange), sub: `${formatCount(c.threadRepliesInRange)} thread replies` },
+      { label: 'People talking', value: formatCount(c.sendersInRange), sub: `${formatCount(c.readersInRange)} people reading` },
+      { label: 'Active channels', value: formatCount(c.channelsWithActivityInRange), sub: `of ${formatCount(c.activeChannels)} (${formatCount(c.privateChannels)} private)` },
+      { label: 'Groups with channels', value: formatCount(c.groupsWithChannels) },
+      { label: 'Mentions', value: formatCount(c.mentionsInRange), sub: 'in range' },
+      { label: 'Uploads', value: formatCount(c.uploadsInRange), sub: `${formatCount(c.marvRepliesInRange)} @marv replies` },
     ]
   })
 
@@ -169,16 +171,16 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
     if (!data.value?.spaces) return []
     const s = data.value.spaces
     return [
-      { label: 'Live now', value: s.activeSpaces.toLocaleString(), sub: 'currently on' },
-      { label: 'Went live', value: s.wentLiveInRange.toLocaleString(), sub: rangeLabel.value },
-      { label: 'Scheduled', value: s.scheduledSpaces.toLocaleString(), sub: 'upcoming' },
+      { label: 'Live now', value: formatCount(s.activeSpaces), sub: 'currently on' },
+      { label: 'Went live', value: formatCount(s.wentLiveInRange), sub: rangeLabel.value },
+      { label: 'Scheduled', value: formatCount(s.scheduledSpaces), sub: 'upcoming' },
       {
         label: 'Notify me',
-        value: s.notifyMeSubscribersInRange.toLocaleString(),
-        sub: `${s.notifyMeSubscribers.toLocaleString()} all time`,
+        value: formatCount(s.notifyMeSubscribersInRange),
+        sub: `${formatCount(s.notifyMeSubscribers)} all time`,
       },
-      { label: 'Spaces', value: s.totalSpaces.toLocaleString(), sub: 'all time' },
-      { label: 'Created', value: s.spacesCreatedInRange.toLocaleString(), sub: rangeLabel.value },
+      { label: 'Spaces', value: formatCount(s.totalSpaces), sub: 'all time' },
+      { label: 'Created', value: formatCount(s.spacesCreatedInRange), sub: rangeLabel.value },
     ]
   })
 
@@ -187,10 +189,10 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
     const ai = data.value.ai
     const r = rangeLabel.value
     return [
-      { label: 'Total Interactions', value: ai.totalInteractionsInRange.toLocaleString(), sub: r },
-      { label: 'Successful', value: ai.successfulInteractionsInRange.toLocaleString(), sub: 'AI responses delivered' },
-      { label: 'Unique Users', value: ai.uniqueUsersInRange.toLocaleString(), sub: `used M.A.R.V. in ${r}` },
-      { label: 'Credits Spent', value: Math.round(ai.creditsSpentInRange).toLocaleString(), sub: r },
+      { label: 'Total Interactions', value: formatCount(ai.totalInteractionsInRange), sub: r },
+      { label: 'Successful', value: formatCount(ai.successfulInteractionsInRange), sub: 'AI responses delivered' },
+      { label: 'Unique Users', value: formatCount(ai.uniqueUsersInRange), sub: `used M.A.R.V. in ${r}` },
+      { label: 'Credits Spent', value: formatCount(Math.round(ai.creditsSpentInRange)), sub: r },
       {
         label: 'Est. Cost (USD)',
         value: ai.estimatedCostUsdInRange != null ? `$${ai.estimatedCostUsdInRange.toFixed(4)}` : '—',
@@ -198,7 +200,7 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
       },
       {
         label: 'Avg Latency',
-        value: ai.avgLatencyMsInRange != null ? `${ai.avgLatencyMsInRange.toLocaleString()} ms` : '—',
+        value: ai.avgLatencyMsInRange != null ? `${formatCount(ai.avgLatencyMsInRange)} ms` : '—',
         sub: 'successful replies',
       },
     ]
@@ -267,13 +269,13 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
       : 0
     const paying = data.value.monetization.payingPremium + data.value.monetization.payingPremiumPlus
     return [
-      { label: 'Users', value: summary.totalUsers.toLocaleString(), sub: undefined },
-      { label: 'Verified', value: summary.verifiedUsers.toLocaleString(), sub: `${verifiedPct}% of users` },
-      { label: 'DAU', value: summary.dau.toLocaleString(), sub: `${rangeLabel.value} avg` },
-      { label: 'MAU', value: summary.mau.toLocaleString(), sub: '30-day window' },
+      { label: 'Users', value: formatCount(summary.totalUsers), sub: undefined },
+      { label: 'Verified', value: formatCount(summary.verifiedUsers), sub: `${verifiedPct}% of users` },
+      { label: 'DAU', value: formatCount(summary.dau), sub: `${rangeLabel.value} avg` },
+      { label: 'MAU', value: formatCount(summary.mau), sub: '30-day window' },
       { label: 'DAU/MAU', value: dauMauPct + '%', sub: 'Stickiness' },
-      { label: 'Premium', value: summary.premiumUsers.toLocaleString(), sub: `incl. ${summary.premiumPlusUsers} Premium+` },
-      { label: 'Paying', value: paying.toLocaleString(), sub: 'Stripe, all time' },
+      { label: 'Premium', value: formatCount(summary.premiumUsers), sub: `incl. ${summary.premiumPlusUsers} Premium+` },
+      { label: 'Paying', value: formatCount(paying), sub: 'Stripe, all time' },
     ]
   })
 
@@ -384,7 +386,7 @@ export function useAdminAnalyticsCards(ctx: ReturnType<typeof useAdminAnalyticsS
 
   const asOfDisplay = computed(() => {
     if (!data.value) return ''
-    return new Date(data.value.asOf).toLocaleString()
+    return formatLocaleDateTime(new Date(data.value.asOf))
   })
 
   onMounted(load)

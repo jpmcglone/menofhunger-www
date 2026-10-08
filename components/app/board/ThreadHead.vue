@@ -170,6 +170,7 @@ const emit = defineEmits<{ updated: [thread: BoardThread]; deleted: [] }>()
 
 const api = useBoardApi()
 const toast = useAppToast()
+const { run } = useAsyncAction()
 const { user, isAuthed, isVerifiedMember, isPremium } = useAuth()
 const { gateCopy } = useBoardAccess()
 const { copyText } = useCopyToClipboard()
@@ -258,12 +259,10 @@ const shareItems = computed<BoardMenuItem[]>(() => {
     label: 'Copy link',
     iconName: 'tabler:link',
     command: async () => {
-      try {
+      await run(async () => {
         await copyText(await shareUrl())
         toast.push({ title: 'Post link copied', tone: 'success', durationMs: 1400 })
-      } catch {
-        toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-      }
+      }, { error: () => 'Copy failed', durationMs: 1800 })
     },
   })
   if (nativeShareSupported.value) {
@@ -284,13 +283,10 @@ const shareItems = computed<BoardMenuItem[]>(() => {
 async function toggleHide() {
   const next = !hidden.value
   hidden.value = next
-  try {
+  await run(async () => {
     await api.setHidden(props.thread.id, next)
     toast.push({ title: next ? 'Hidden from your Board' : 'Back on your Board', tone: 'success', durationMs: 1400 })
-  } catch (e) {
-    hidden.value = !next
-    toast.push({ title: getApiErrorMessage(e) || 'Couldn’t update.', tone: 'error', durationMs: 2000 })
-  }
+  }, { error: 'Couldn’t update.', durationMs: 2000, rollback: () => { hidden.value = !next } })
 }
 
 async function onDelete() {
@@ -301,12 +297,10 @@ async function onDelete() {
     confirmSeverity: 'danger',
   })
   if (!ok) return
-  try {
+  await run(async () => {
     await api.deleteThread(props.thread.id)
     emit('deleted')
-  } catch (e) {
-    toast.push({ title: getApiErrorMessage(e) || 'Couldn’t delete the thread.', tone: 'error', durationMs: 2200 })
-  }
+  }, { error: 'Couldn’t delete the thread.', durationMs: 2200 })
 }
 
 const editing = ref(false)

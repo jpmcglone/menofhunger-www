@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { CommunityGroupShell, FeedPost, Topic } from '~/types/api'
 import { applyCommunityGroupJoin, communityGroupJoinToast } from '~/utils/community-group-preview'
 import type { PostsCallback } from '~/composables/usePresence'
@@ -14,7 +15,7 @@ import type { useExplorePageCheckin } from './useExplorePageCheckin'
  * composer gates that read the window follow it.
  */
 export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscover> & ReturnType<typeof useExplorePageCheckin>) {
-  const { route, router, apiFetchData, invalidateMyGroups, isAuthed, canAccessCheckins, toast, openComposer, searchInputRef, hydrated, onGlobalKeyDown, addOnlineFeedCallback, removeOnlineFeedCallback, subscribeOnlineFeed, unsubscribeOnlineFeed, addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts, onlineFeedCb, normalizeQueryParam, getRouteQ, searchQuery, searchQueryTrimmed, isSearching, searchActive, searchTab, activeTopic, activeCategory, featuredPosts, categories, trendingPosts, exploreGroups, refreshDiscover, joinExploreGroupId, checkinState, hasCheckedInToday, checkinAllowedVisibilities, onVisibilityChange, createCheckinViaComposer, topicLabelByValue } = ctx
+  const { route, router, apiFetchData, invalidateMyGroups, isAuthed, canAccessCheckins, toast, openComposer, searchInputRef, hydrated, onGlobalKeyDown, subscribeOnlineFeed, unsubscribeOnlineFeed, subscribePosts, unsubscribePosts, onlineFeedCb, normalizeQueryParam, getRouteQ, searchQuery, searchQueryTrimmed, isSearching, searchActive, searchTab, activeTopic, activeCategory, featuredPosts, categories, trendingPosts, exploreGroups, refreshDiscover, joinExploreGroupId, checkinState, hasCheckedInToday, checkinAllowedVisibilities, onVisibilityChange, createCheckinViaComposer, topicLabelByValue } = ctx
 
   const DEBOUNCE_MS = 400
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -362,18 +363,16 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
     hydrated.value = true
     window.addEventListener('keydown', onGlobalKeyDown)
     document.addEventListener('visibilitychange', onVisibilityChange)
-    addOnlineFeedCallback(onlineFeedCb)
     subscribeOnlineFeed()
-    addPostsCallback(explorePostsCb)
     syncExplorePostSubscriptions()
   })
 
+  usePresenceCallback('OnlineFeed', onlineFeedCb)
+  usePresenceCallback('Posts', explorePostsCb)
   onBeforeUnmount(() => {
     window.removeEventListener('keydown', onGlobalKeyDown)
     document.removeEventListener('visibilitychange', onVisibilityChange)
-    removeOnlineFeedCallback(onlineFeedCb)
     unsubscribeOnlineFeed()
-    removePostsCallback(explorePostsCb)
     if (exploreSubscribedPostIds.value.length) unsubscribePosts(exploreSubscribedPostIds.value)
     exploreSearch.cancel()
     if (debounceTimer != null) {

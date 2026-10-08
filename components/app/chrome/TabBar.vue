@@ -89,7 +89,7 @@
               @click.stop
             >
               <Icon name="tabler:coin" size="13" aria-hidden="true" />
-              {{ moreUser.coins!.toLocaleString() }} coins
+              {{ formatCount(moreUser.coins!) }} coins
             </NuxtLink>
             <!-- Personal streak in header: quiet meta, not orange chrome. -->
             <span v-if="!isPageAccount && viewerCrewMembership && moreCrewStreakDays !== null" class="flex items-center gap-1 tabular-nums moh-meta">
@@ -245,6 +245,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { AppNavItem } from '~/composables/useAppNav'
 import { boardNavPopAction, shouldInterceptSameNavClick } from '~/config/routes'
 const props = defineProps<{

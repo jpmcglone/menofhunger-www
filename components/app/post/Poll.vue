@@ -119,6 +119,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDateTime } from '~/utils/time-format'
+import { formatCount } from '~/utils/number-format'
 type PostVisibility = import('~/types/api').PostVisibility
 
 type PostPollOption = {
@@ -155,7 +157,6 @@ const emit = defineEmits<{
 
 const { apiFetchData } = useApiClient()
 const viewer = useImageLightbox()
-const toast = useAppToast()
 const route = useRoute()
 const { user, isAuthed, isVerified: viewerIsVerified } = useAuth()
 const { show: showAuthActionModal } = useAuthActionModal()
@@ -245,8 +246,8 @@ const endedNow = computed(() => Boolean(pollView.value.ended || endedForce.value
 const showResults = computed(() =>
   Boolean(endedNow.value || pollView.value.viewerHasVoted || (isAuthed.value && !viewerIsVerified.value)),
 )
-const voting = ref(false)
-const skipping = ref(false)
+const { run: runVote, pending: voting } = useAsyncAction()
+const { run: runSkip, pending: skipping } = useAsyncAction()
 
 const voteDisabled = computed(() => {
   if (voting.value) return true
@@ -261,7 +262,7 @@ const pollHeader = computed(() => (showResults.value ? 'Poll results' : 'Poll'))
 const endsLabel = computed(() => {
   const endsAt = new Date(pollView.value.endsAt)
   if (Number.isNaN(endsAt.getTime())) return ''
-  return endedNow.value ? 'Done' : `Ends ${endsAt.toLocaleString('en-US')}`
+  return endedNow.value ? 'Done' : `Ends ${formatLocaleDateTime(endsAt)}`
 })
 
 function optionAriaLabel(opt: PostPollOption) {
@@ -305,8 +306,7 @@ async function onVote(optionId: string) {
     return
   }
 
-  voting.value = true
-  try {
+  await runVote(async () => {
     const res = await apiFetchData<{ poll: PostPoll }>(`/posts/${encodeURIComponent(props.postId)}/poll/vote`, {
       method: 'POST',
       body: { optionId },
@@ -315,11 +315,7 @@ async function onVote(optionId: string) {
       pollView.value = res.poll
       emit('updated', res.poll)
     }
-  } catch (e: unknown) {
-    toast.push({ title: 'Failed to vote', tone: 'error', durationMs: 2200 })
-  } finally {
-    voting.value = false
-  }
+  }, { error: () => 'Failed to vote', durationMs: 2200 })
 }
 
 async function onSkip() {
@@ -332,8 +328,7 @@ async function onSkip() {
     return navigateTo(`/login?redirect=${redirect}`)
   }
 
-  skipping.value = true
-  try {
+  await runSkip(async () => {
     const res = await apiFetchData<{ poll: PostPoll }>(`/posts/${encodeURIComponent(props.postId)}/poll/skip`, {
       method: 'POST',
     })
@@ -341,11 +336,7 @@ async function onSkip() {
       pollView.value = res.poll
       emit('updated', res.poll)
     }
-  } catch (e: unknown) {
-    toast.push({ title: 'Failed to skip', tone: 'error', durationMs: 2200 })
-  } finally {
-    skipping.value = false
-  }
+  }, { error: () => 'Failed to skip', durationMs: 2200 })
 }
 </script>
 

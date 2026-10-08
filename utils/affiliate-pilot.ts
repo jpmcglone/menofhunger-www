@@ -1,3 +1,4 @@
+import { formatCurrency } from '~/utils/number-format'
 /**
  * Referral Pilot cash rates — keep in sync with
  * menofhunger-api `AFFILIATE_RATES_CENTS` / min / cap in affiliate.service.ts.
@@ -22,7 +23,5 @@ export const AFFILIATE_PILOT = {
 } as const
 
 export function formatAffiliateCents(cents: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(
-    cents / 100,
-  )
+  return formatCurrency(cents / 100, { maximumFractionDigits: 0 })
 }

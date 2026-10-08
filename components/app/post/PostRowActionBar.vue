@@ -168,6 +168,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { FeedPost } from '~/types/api'
 import { formatShortCount } from '~/utils/text'
 import { usePostRowInteractions } from '~/composables/post-row/usePostRowInteractions'
@@ -270,7 +271,6 @@ const replyPromptLabel = computed(() => {
   return prompt === 'question' ? 'Answer this question' : 'Join the discussion'
 })
 
-const { addPostsCallback: addPostsCallbackForPill, removePostsCallback: removePostsCallbackForPill } = usePresence()
 const newRepliesCb = {
   onCommentAdded(p: { parentPostId: string; comment: { author?: { id?: string } } }) {
     if (p.parentPostId !== postView.value.id) return
@@ -285,12 +285,8 @@ const newRepliesCb = {
   },
 }
 
-onMounted(() => {
-  if (!import.meta.client) return
-  addPostsCallbackForPill(newRepliesCb as any)
-})
+usePresenceCallback('Posts', newRepliesCb)
 onBeforeUnmount(() => {
-  removePostsCallbackForPill(newRepliesCb as any)
   if (newRepliesPillTimer) { clearTimeout(newRepliesPillTimer); newRepliesPillTimer = null }
 })
 </script>

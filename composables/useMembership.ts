@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { useEventListener } from '@vueuse/core'
 import type { BillingMe } from '~/types/api'
 import type { UsersCallback } from '~/composables/usePresence'
@@ -7,7 +8,6 @@ import { membershipTier } from '~/utils/membership'
 export function useMembership() {
   const { user } = useAuth()
   const { apiFetchData } = useApiClient()
-  const { addUsersCallback, removeUsersCallback } = usePresence()
   const billing = ref<BillingMe | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -51,10 +51,11 @@ export function useMembership() {
   }
   const callbacks: UsersCallback = { onMeUpdated: invalidate }
   watch(() => [user.value?.id, user.value?.premium, user.value?.premiumPlus, user.value?.verifiedStatus], invalidate)
-  onMounted(() => { active = true; addUsersCallback(callbacks); void refresh() })
+  usePresenceCallback('Users', callbacks)
+  onMounted(() => { active = true; void refresh() })
   onActivated(() => { active = true; void refresh() })
   onDeactivated(() => { active = false; version += 1; request = null; loading.value = false })
-  onBeforeUnmount(() => { active = false; version += 1; removeUsersCallback(callbacks) })
+  onBeforeUnmount(() => { active = false; version += 1 })
   useEventListener(import.meta.client ? document : undefined, 'visibilitychange', () => {
     if (document.visibilityState === 'visible') void refresh()
   })

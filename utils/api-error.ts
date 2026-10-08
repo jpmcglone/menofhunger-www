@@ -49,6 +49,13 @@ function isLikelyTechnicalErrorMessage(msg: string | null | undefined): boolean 
   return technicalPatterns.some((re) => re.test(s))
 }
 
+/** True when the API error envelope carries this machine-readable `reason` (e.g. `references_changed`). */
+export function hasApiErrorReason(e: unknown, reason: string): boolean {
+  const maybe = e as MaybeFetchError | null | undefined
+  const data = (maybe?.data as ApiErrorEnvelope | undefined) ?? (maybe?.response?._data as ApiErrorEnvelope | undefined)
+  return data?.meta?.errors?.some(item => item.reason === reason) === true
+}
+
 export function getApiErrorMessage(e: unknown): string | null {
   const maybe = e as MaybeFetchError | null | undefined
   const data =

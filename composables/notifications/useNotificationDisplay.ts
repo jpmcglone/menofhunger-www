@@ -1,3 +1,4 @@
+import { formatLocaleDate, formatLocaleTime } from '~/utils/time-format'
 import type { Notification, NotificationFeedItem, NotificationGroup } from '~/types/api'
 import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-tier'
 import type { NotificationsContext } from './useNotificationsState'
@@ -378,7 +379,7 @@ export function useNotificationDisplay(c: NotificationsContext) {
       return `${Math.max(1, diffH)}h`
     }
     const sameYear = d.getFullYear() === now.getFullYear()
-    return d.toLocaleDateString('en-US', {
+    return formatLocaleDate(d, {
       month: 'short',
       day: 'numeric',
       year: sameYear ? undefined : 'numeric',
@@ -388,13 +389,13 @@ export function useNotificationDisplay(c: NotificationsContext) {
   function formatWhenFull(createdAt: string): string {
     const d = new Date(createdAt)
     if (Number.isNaN(d.getTime())) return ''
-    const rawTime = d.toLocaleTimeString('en-US', {
+    const rawTime = formatLocaleTime(d, {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
     })
     const time = rawTime.replace(/\s/g, '').toLowerCase()
-    const date = d.toLocaleDateString('en-US', {
+    const date = formatLocaleDate(d, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',

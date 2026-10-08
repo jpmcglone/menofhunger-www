@@ -78,6 +78,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { ArticleViewBreakdown, PostViewBreakdown } from '~/types/api'
 import { formatShortCount } from '~/utils/text'
 
@@ -99,7 +100,7 @@ const emit = defineEmits<{
 }>()
 
 const formatChipCount = (n: number) => n === 0 ? ' ' : formatShortCount(n)
-const formatExactCount = (n: number) => Math.max(0, Math.floor(n)).toLocaleString('en-US')
+const formatExactCount = (n: number) => formatCount(Math.max(0, Math.floor(n)))
 
 const chipTotal = computed(() => Math.max(props.viewerCount, props.totalViewCount))
 
@@ -107,7 +108,7 @@ const ariaLabel = computed(() => {
   if (props.viewerCount <= 0) return 'Views'
   const people = `${props.viewerCount} ${props.viewerCount === 1 ? 'person' : 'people'} ${props.peopleVerb}`
   const seen = props.hasViewed ? 'You viewed this — ' : ''
-  return `${seen}${people}, ${chipTotal.value.toLocaleString('en-US')} total views`
+  return `${seen}${people}, ${formatCount(chipTotal.value)} total views`
 })
 
 const justViewed = ref(false)

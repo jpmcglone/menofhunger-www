@@ -1,3 +1,4 @@
+import { formatLocaleDate } from '~/utils/time-format'
 import { Chart } from 'chart.js'
 import type { Ref } from 'vue'
 import type { AdminAnalytics, AnalyticsGranularity, AnalyticsRange } from '~/types/api'
@@ -29,12 +30,12 @@ export function useAnalyticsCharts(data: Ref<AdminAnalytics | null>, selectedRan
   function formatBucket(bucket: string, granularity: AnalyticsGranularity) {
     const d = new Date(bucket + 'T00:00:00Z')
     if (granularity === 'month') {
-      return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })
+      return formatLocaleDate(d, { month: 'short', year: '2-digit', timeZone: 'UTC' })
     }
     if (granularity === 'week') {
-      return 'Wk ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+      return 'Wk ' + formatLocaleDate(d, { month: 'short', day: 'numeric', timeZone: 'UTC' })
     }
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    return formatLocaleDate(d, { month: 'short', day: 'numeric', timeZone: 'UTC' })
   }
 
   /**

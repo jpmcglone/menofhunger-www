@@ -80,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { WotdLikeToggle } from '~/types/api'
 import { siteConfig } from '~/config/site'
 
@@ -90,7 +91,6 @@ definePageMeta({
 
 const { user: authUser } = useAuth()
 const { markReadByKind } = useNotifications()
-const { addNotificationsCallback, removeNotificationsCallback, addDailyContentCallback, removeDailyContentCallback } = usePresence()
 
 const { data, refresh: refreshWord } = await useWebsters1828Wotd()
 
@@ -175,18 +175,14 @@ const dailyContentCb = {
   },
 }
 
+usePresenceCallback('Notifications', notificationsCb)
+usePresenceCallback('DailyContent', dailyContentCb)
 if (import.meta.client) {
   onMounted(() => {
-    addNotificationsCallback(notificationsCb as any)
-    addDailyContentCallback(dailyContentCb)
     clearWordNotification()
   })
   onActivated(() => {
     clearWordNotification()
-  })
-  onBeforeUnmount(() => {
-    removeNotificationsCallback(notificationsCb as any)
-    removeDailyContentCallback(dailyContentCb)
   })
 }
 

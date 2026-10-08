@@ -16,6 +16,14 @@
       </div>
     </div>
 
+    <section v-if="activationPending" class="space-y-3 rounded-xl border moh-border p-4 moh-surface text-sm" aria-labelledby="activation-pending-title" data-testid="activation-pending">
+      <p class="moh-meta uppercase">Your membership</p>
+      <h3 id="activation-pending-title" class="text-xl font-semibold leading-7" style="color: var(--moh-premium)">Activation pending</h3>
+      <p class="moh-text-muted">Your payment went through, but activation has not finished yet. Check again in a moment; do not pay again.</p>
+      <p v-if="activationError" class="text-red-600" role="alert">{{ activationError }}</p>
+      <Button label="Check again" class="w-full" :loading="activationChecking" @click="checkActivationAgain" />
+    </section>
+
     <div class="rounded-xl border moh-border p-4 moh-surface space-y-4 text-sm">
       <div class="flex items-center justify-between gap-3">
         <div class="moh-text-muted">Verified</div>
@@ -346,6 +354,10 @@ const {
   devResetPremium,
   checkoutSuccessModal,
   checkoutSuccessTier,
+  activationPending,
+  activationChecking,
+  activationError,
+  checkActivationAgain,
   recruiterCodeDraft,
   recruiterSaving,
   recruiterError,

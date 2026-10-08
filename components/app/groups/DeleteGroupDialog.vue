@@ -14,7 +14,7 @@
     <div class="space-y-3">
       <h3 class="text-lg font-bold moh-text">Delete {{ shell?.name }}?</h3>
       <p class="text-sm moh-text-muted">
-        This removes the group, its channels and messages for all {{ (shell?.memberCount ?? 0).toLocaleString() }}
+        This removes the group, its channels and messages for all {{ formatCount(shell?.memberCount ?? 0) }}
         {{ shell?.memberCount === 1 ? 'member' : 'members' }}. It cannot be undone, and the group address stays reserved.
       </p>
       <AppFormField :label="`Type ${shell?.name ?? 'the group name'} to confirm`">
@@ -26,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupShell } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 

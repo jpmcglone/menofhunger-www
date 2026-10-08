@@ -73,6 +73,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { Ref } from 'vue'
 import type { FeedPost, WsPostsLiveUpdatedPayload, WsArticlesLiveUpdatedPayload } from '~/types/api'
 import type { RailContext } from '~/composables/useRailContext'
@@ -178,9 +179,9 @@ function syncSubscriptions(wanted: string[], current: Ref<string[]>, sub: (ids: 
   current.value = [...next]
 }
 
+usePresenceCallback('Posts', postsCb)
+usePresenceCallback('Articles', articlesCb)
 onMounted(() => {
-  presence.addPostsCallback(postsCb as never)
-  presence.addArticlesCallback(articlesCb as never)
   if (isAuthed.value) void loadBlocks()
   watch(
     wantedPostIds,
@@ -195,8 +196,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  presence.removePostsCallback(postsCb as never)
-  presence.removeArticlesCallback(articlesCb as never)
   if (subscribedPosts.value.length) presence.unsubscribePosts(subscribedPosts.value)
   if (subscribedArticles.value.length) presence.unsubscribeArticles(subscribedArticles.value)
   subscribedPosts.value = []

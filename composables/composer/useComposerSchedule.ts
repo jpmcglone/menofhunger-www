@@ -1,3 +1,4 @@
+import { formatLocaleDateTime } from '~/utils/time-format'
 import type { ComputedRef, Ref } from 'vue'
 import type { PostVisibility, ScheduledPost } from '~/types/api'
 import type { ComposerPollPayload, CreateMediaPayload } from './types'
@@ -46,7 +47,7 @@ export function useComposerSchedule(opts: {
 
   function formatScheduledAt(d: Date | null): string {
     if (!d) return ''
-    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+    return formatLocaleDateTime(d, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
   }
 
   const scheduledAtDisplay = computed(() => formatScheduledAt(scheduledAt.value))

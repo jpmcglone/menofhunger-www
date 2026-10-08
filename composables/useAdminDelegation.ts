@@ -1,10 +1,11 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { DelegationWorkspaceDto, DelegationJobDto } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 export function useAdminDelegation(jobId: Ref<string | undefined>) {
   const { apiFetchData } = useApiClient()
   const { user } = useAuth()
-  const { addAdminCallback, removeAdminCallback, isSocketConnected } = usePresence()
+  const { isSocketConnected } = usePresence()
   const workspace = ref<DelegationWorkspaceDto | null>(null)
   const job = ref<DelegationJobDto | null>(null)
   const error = ref<string | null>(null)
@@ -61,15 +62,16 @@ export function useAdminDelegation(jobId: Ref<string | undefined>) {
   function scheduleRefresh() { if (!active) return; clearTimeout(timer); timer = setTimeout(() => { void refresh() }, 200) }
   const callback = { onUpdated: ({ kind }: { kind: string }) => { if (kind === 'assistant') scheduleRefresh() } }
   const visible = () => { if (document.visibilityState === 'visible') scheduleRefresh() }
+  const adminRealtime = usePresenceCallback('Admin', callback, { manual: true })
   function activate() {
     if (active) return
-    active = true; addAdminCallback(callback)
+    active = true; adminRealtime.register()
     window.addEventListener('online', scheduleRefresh); window.addEventListener('focus', scheduleRefresh); document.addEventListener('visibilitychange', visible)
     void refresh()
   }
   function deactivate() {
     if (!active) return
-    active = false; ++generation; clearTimeout(timer); removeAdminCallback(callback)
+    active = false; ++generation; clearTimeout(timer); adminRealtime.unregister()
     window.removeEventListener('online', scheduleRefresh); window.removeEventListener('focus', scheduleRefresh); document.removeEventListener('visibilitychange', visible)
   }
   onMounted(activate); onActivated(activate); onDeactivated(deactivate); onBeforeUnmount(deactivate)

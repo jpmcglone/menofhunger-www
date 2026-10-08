@@ -9,6 +9,7 @@ import type { useFitnessPageState } from './useFitnessPage'
  */
 export function useFitnessPageCharts(ctx: ReturnType<typeof useFitnessPageState>) {
   const { apiFetchData, toast, fitnessPage, showLogWeight, logWeightInput, savingWeight, showSetGoal, goalTargetInput, savingGoal, shareDialog, shareBody, shareVisibility, sharingPost, loadPage } = ctx
+  const { run } = useAsyncAction()
 
   // ─── Weight ──────────────────────────────────────────────────────────────────
 
@@ -59,18 +60,15 @@ export function useFitnessPageCharts(ctx: ReturnType<typeof useFitnessPageState>
     const page = fitnessPage.value
     const weightKg = page?.units === 'us' ? raw / 2.20462 : raw
     savingWeight.value = true
-    try {
+    await run(async () => {
       await apiFetchData<unknown>('/fitness/weight', { method: 'POST', body: { weightKg } })
       void actionSounds.play('save')
       toast.push({ title: 'Weight logged.', tone: 'success' })
       showLogWeight.value = false
       logWeightInput.value = ''
       await loadPage()
-    } catch {
-      toast.push({ title: 'Failed to save weight.', tone: 'error' })
-    } finally {
-      savingWeight.value = false
-    }
+    }, { error: () => 'Failed to save weight.' })
+    savingWeight.value = false
   }
 
   // ─── Weight sparkline ─────────────────────────────────────────────────────────
@@ -194,18 +192,15 @@ export function useFitnessPageCharts(ctx: ReturnType<typeof useFitnessPageState>
     const targetKg = page?.units === 'us' ? raw / 2.20462 : raw
     const startKg = page?.activeGoal?.startKg ?? page?.latestWeight?.weightKg ?? page?.weightHistory.at(-1)?.weightKg
     savingGoal.value = true
-    try {
+    await run(async () => {
       await apiFetchData<unknown>('/fitness/goals', { method: 'PUT', body: { kind: 'weight', targetKg, startKg } })
       void actionSounds.play('save')
       toast.push({ title: 'Goal saved.', tone: 'success' })
       showSetGoal.value = false
       goalTargetInput.value = ''
       await loadPage()
-    } catch {
-      toast.push({ title: 'Failed to save goal.', tone: 'error' })
-    } finally {
-      savingGoal.value = false
-    }
+    }, { error: () => 'Failed to save goal.' })
+    savingGoal.value = false
   }
 
   // ─── Share ────────────────────────────────────────────────────────────────────
@@ -325,7 +320,7 @@ export function useFitnessPageCharts(ctx: ReturnType<typeof useFitnessPageState>
     const dialog = shareDialog.value
     if (!dialog) return
     sharingPost.value = true
-    try {
+    await run(async () => {
       const body: Record<string, unknown> = {
         shareType: dialog.type,
         body: shareBody.value,
@@ -338,11 +333,8 @@ export function useFitnessPageCharts(ctx: ReturnType<typeof useFitnessPageState>
       const result = await apiFetchData<{ post: { id: string } }>('/fitness/share', { method: 'POST', body })
       shareDialog.value = null
       toast.push({ title: 'Posted!', to: `/p/${result.post.id}`, tone: 'success', durationMs: 6000 })
-    } catch {
-      toast.push({ title: 'Failed to share.', tone: 'error' })
-    } finally {
-      sharingPost.value = false
-    }
+    }, { error: () => 'Failed to share.' })
+    sharingPost.value = false
   }
 
   return {

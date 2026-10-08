@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { Ref } from 'vue'
 import type { FeedPost } from '~/types/api'
 import type { PostsCallback } from '~/composables/usePresence'
@@ -14,7 +15,7 @@ export function usePostsFeedRealtime(ctx: {
   forgetLocalInsertsForDeletedPost: (postId: string) => void
 }) {
   const { posts, middleScrollerEl, forgetLocalInsertsForDeletedPost } = ctx
-  const { addPostsCallback, removePostsCallback, subscribePosts, unsubscribePosts } = usePresence()
+  const { subscribePosts, unsubscribePosts } = usePresence()
 
   // Realtime: patch post interaction counts in-place for visible feeds.
   const visiblePostIds = ref<Set<string>>(new Set())
@@ -166,10 +167,7 @@ export function usePostsFeedRealtime(ctx: {
       }
     },
   }
-  if (import.meta.client) {
-    onMounted(() => addPostsCallback(postsCb))
-    onBeforeUnmount(() => removePostsCallback(postsCb))
-  }
+  usePresenceCallback('Posts', postsCb)
 
   // Viewport subscriptions: subscribe while a post row is on-screen (with buffer).
   if (import.meta.client) {

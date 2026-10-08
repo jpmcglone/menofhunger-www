@@ -1,3 +1,4 @@
+import { formatLocaleTime } from '~/utils/time-format'
 import type { Article, ArticleTag, PostVisibility  } from '~/types/api'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -189,7 +190,7 @@ export function useArticleEditor(initialArticle: Ref<Article | null>, options: A
 
   const lastSavedLabel = computed(() => {
     if (!lastSavedAt.value) return null
-    return `Saved at ${lastSavedAt.value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    return `Saved at ${formatLocaleTime(lastSavedAt.value, { hour: '2-digit', minute: '2-digit' })}`
   })
 
   /** Persist pending edits now, skipping the debounce. Safe to call repeatedly. */

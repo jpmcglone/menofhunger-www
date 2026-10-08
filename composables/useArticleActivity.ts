@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { useApiClient } from '~/composables/useApiClient'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 import { useAuth } from '~/composables/useAuth'
@@ -120,10 +121,11 @@ export function useArticleActivity() {
   }
 
   const callback = { onNew: scheduleRefresh, onUpdated: scheduleRefresh, onDeleted: scheduleRefresh }
+  const notificationsRealtime = usePresenceCallback('Notifications', callback, { manual: true })
   function activate() {
     if (active) return
     active = true
-    presence.addNotificationsCallback(callback)
+    notificationsRealtime.register()
     void load()
   }
   function deactivate() {
@@ -131,7 +133,7 @@ export function useArticleActivity() {
     resetVisit()
     revision += 1
     clearTimeout(timer)
-    presence.removeNotificationsCallback(callback)
+    notificationsRealtime.unregister()
   }
   onMounted(activate)
   onActivated(activate)

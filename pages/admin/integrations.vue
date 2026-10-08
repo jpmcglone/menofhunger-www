@@ -26,7 +26,7 @@
         </form>
         <section class="space-y-3">
           <h2 class="moh-h2">Usage this month</h2>
-          <p class="moh-meta moh-text-muted">{{ new Date(spending.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }) }}</p>
+          <p class="moh-meta moh-text-muted">{{ formatLocaleDate(new Date(spending.month), { month: 'long', year: 'numeric', timeZone: 'UTC' }) }}</p>
           <p v-if="!spending.groups.length">No recorded usage</p>
           <div class="moh-divide">
             <div v-for="(group, index) in spending.groups" :key="index" class="py-3">
@@ -49,7 +49,7 @@
         <section class="space-y-3">
           <h2 class="moh-h2">Recent changes</h2>
           <div v-for="change in operations.changes" :key="change.id">
-            <p>{{ change.reason }}</p><p class="moh-meta moh-text-muted">{{ new Date(change.createdAt).toLocaleString() }}</p>
+            <p>{{ change.reason }}</p><p class="moh-meta moh-text-muted">{{ formatLocaleDateTime(new Date(change.createdAt)) }}</p>
           </div>
         </section>
       </template>
@@ -74,6 +74,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDate, formatLocaleDateTime } from '~/utils/time-format'
+import { formatCount } from '~/utils/number-format'
 import type { IntegrationSpendDiagnosticsDto, IntegrationOperationsDto } from '~/types/api-contracts.gen'
 import { integrationMicros, integrationDollars as money } from '~/utils/integration-money'
 import { getApiErrorMessage } from '~/utils/api-error'

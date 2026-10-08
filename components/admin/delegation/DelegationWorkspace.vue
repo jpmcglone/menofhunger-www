@@ -31,6 +31,8 @@
   </section>
 </template>
 <script setup lang="ts">
+import { formatLocaleDateTime } from '~/utils/time-format'
+import { formatCount } from '~/utils/number-format'
 import type { DelegationJobDto } from '~/types/api'
 import { delegationStatus as status, delegationSchedule as schedule, delegationNeedsReview as needsReview } from '~/utils/admin-delegation'
 const props = defineProps<{ jobId?: string }>()
@@ -38,7 +40,7 @@ const { workspace, job, error, loading, busy, refresh, mutate, older } = useAdmi
 const editing = ref(false), filter = ref('all'), resumeAt = ref('')
 const filters = [{ id: 'all', label: 'All jobs' }, { id: 'review', label: 'Needs review' }, { id: 'scheduled', label: 'Scheduled' }, { id: 'complete', label: 'Completed' }]
 const filtered = computed(() => (workspace.value?.jobs ?? []).filter(j => filter.value === 'all' || (filter.value === 'review' ? needsReview(j) : filter.value === 'scheduled' ? j.status === 'active' && Boolean(j.nextRunAt) : j.runs[0]?.status === 'complete')))
-const date = (value: string) => new Date(value).toLocaleString()
+const date = (value: string) => formatLocaleDateTime(new Date(value))
 watch(() => workspace.value === null, cleared => { if (cleared) editing.value = false })
 async function save(input: Record<string, unknown>) {
   const result = await mutate<DelegationJobDto>(job.value ? `jobs/${job.value.id}` : 'jobs', input, job.value ? 'PATCH' : 'POST')

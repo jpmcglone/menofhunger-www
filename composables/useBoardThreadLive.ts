@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { Ref } from 'vue'
 import type { BoardComment, FeedPost, WsPostsCommentAddedPayload, WsPostsLiveUpdatedPayload } from '~/types/api'
 import type { ReplyAuthorPreview } from '~/utils/thread-reply-authors'
@@ -47,7 +48,6 @@ export function useBoardThreadLive(options: {
   onThreadPatch?: (payload: WsPostsLiveUpdatedPayload) => void
 }) {
   const { user } = useAuth()
-  const { addPostsCallback, removePostsCallback } = usePresence()
   const typing = usePostTyping(options.threadId)
 
   const pending = ref<BoardComment[]>([])
@@ -118,10 +118,9 @@ export function useBoardThreadLive(options: {
     },
   }
 
-  onMounted(() => addPostsCallback(postsCb as never))
+  usePresenceCallback('Posts', postsCb)
   watch(options.threadId, clearPending)
   onBeforeUnmount(() => {
-    removePostsCallback(postsCb as never)
     if (freshTimer) clearTimeout(freshTimer)
   })
 

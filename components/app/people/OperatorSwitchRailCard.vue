@@ -59,7 +59,7 @@ const {
   refreshAccounts,
   switchToOperator,
 } = usePersonAccountGate()
-const toast = useAppToast()
+const { run } = useAsyncAction()
 const { confirm } = useAppConfirm()
 
 const busy = computed(() => Boolean(switchingId.value))
@@ -83,13 +83,6 @@ async function onSwitch() {
     confirmSeverity: 'primary',
   })
   if (ok !== true) return
-  try {
-    await switchToOperator()
-  } catch (e) {
-    toast.push({
-      title: getSafeUserErrorMessage(e, 'Could not switch accounts.'),
-      tone: 'error',
-    })
-  }
+  await run(switchToOperator, { error: 'Could not switch accounts.' })
 }
 </script>

@@ -7,7 +7,7 @@
     :rel="internalPath ? undefined : 'noopener noreferrer'"
     class="block overflow-hidden rounded-2xl moh-popover moh-card-matte moh-focus text-left"
     :aria-label="internalPath ? 'Open page' : 'Open link'"
-    @click.stop
+    @click.stop="!internalPath && confirmExternal($event, url)"
   >
     <div
       v-if="imageUrl"
@@ -50,6 +50,7 @@
 </template>
 
 <script setup lang="ts">
+const { onClick: confirmExternal } = useExternalLinkConfirm()
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { isMohUrl, mohUrlPath, safeUrlDisplay, safeUrlHostname } from '~/utils/link-utils'
 

@@ -139,6 +139,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { formatNumericDate } from '~/utils/time-format'
 import type { CrewBySlugViewerMembership, CrewInvite, CrewMemberListItem, CrewPublic } from '~/types/api'
 import type { CrewMemberActionTarget } from '~/components/app/crew/CrewMemberActionMenu.vue'
@@ -163,7 +164,6 @@ const viewerMembership = ref<CrewBySlugViewerMembership | null>(null)
 const pendingInvitees = ref<CrewInvite[]>([])
 
 const crewApi = useCrew()
-const { addCrewCallback, removeCrewCallback } = usePresence()
 const { markReadBySubject } = useNotifications()
 const { user: meUser } = useAuth()
 const toast = useAppToast()
@@ -365,8 +365,7 @@ const realtimeCb = {
     if (isMember.value) void refreshPendingInvitees(crew.value?.id ?? null)
   },
 }
-onMounted(() => addCrewCallback(realtimeCb))
-onBeforeUnmount(() => removeCrewCallback(realtimeCb))
+usePresenceCallback('Crew', realtimeCb)
 
 void load()
 </script>

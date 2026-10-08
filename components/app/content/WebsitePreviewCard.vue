@@ -6,7 +6,7 @@
     :rel="linkHref ? 'noopener noreferrer' : undefined"
     class="group block w-full max-w-full text-left moh-focus"
     :aria-label="linkHref ? 'Open link' : undefined"
-    @click.stop
+    @click.stop="confirmExternal($event, linkHref)"
   >
     <div v-if="showImage" class="relative overflow-hidden rounded-xl border moh-border">
       <div
@@ -81,6 +81,7 @@
 </template>
 
 <script setup lang="ts">
+const { onClick: confirmExternal } = useExternalLinkConfirm()
 import { isPortraitPreviewImage, previewDescription } from '~/utils/link-utils'
 
 const props = defineProps<{

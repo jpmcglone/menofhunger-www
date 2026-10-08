@@ -40,8 +40,8 @@
             <div class="relative z-[1] font-medium">{{ g.name }}</div>
             <div class="relative z-[1] text-xs text-gray-400 dark:text-gray-500 font-mono">{{ g.slug }}</div>
           </td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ g.memberCount.toLocaleString() }}</td>
-          <td class="px-4 py-3 text-right tabular-nums">{{ g.rootPostsInRange.toLocaleString() }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(g.memberCount) }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(g.rootPostsInRange) }}</td>
           <td class="px-4 py-3 text-right tabular-nums">
             <span v-if="g.replyRate24hPct !== null">{{ g.replyRate24hPct }}%</span>
             <span v-else class="text-gray-400">—</span>
@@ -59,6 +59,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { AdminAnalytics } from '~/types/api'
 import { useAdminAnalyticsContext } from '~/composables/pages/admin/useAdminAnalyticsPage'
 

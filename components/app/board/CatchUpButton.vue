@@ -23,7 +23,7 @@ const props = defineProps<{ postId: string }>()
 
 const { isAuthed } = useAuth()
 const { apiFetchData } = useApiClient()
-const toast = useAppToast()
+const { run } = useAsyncAction()
 const { show, post: catchUpPost, result } = useMarvCatchUp()
 
 // localStorage is client-only; read after mount so SSR and hydration render the same icon.
@@ -38,13 +38,10 @@ const opening = ref(false)
 async function open() {
   if (opening.value) return
   opening.value = true
-  try {
+  await run(async () => {
     const post = await apiFetchData<GetPostData>(`/posts/${encodeURIComponent(props.postId)}`, { method: 'GET' })
     show(post)
-  } catch (e) {
-    toast.push({ title: getApiErrorMessage(e) || 'Couldn’t open catch me up.', tone: 'error', durationMs: 2000 })
-  } finally {
-    opening.value = false
-  }
+  }, { error: 'Couldn’t open catch me up.', durationMs: 2000 })
+  opening.value = false
 }
 </script>

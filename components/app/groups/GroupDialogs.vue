@@ -23,7 +23,7 @@
         <AppGroupsGroupAvatar :name="shell.name" :src="shell.avatarImageUrl" :size="56" />
         <div class="min-w-0 flex-1">
           <h3 class="truncate text-base font-semibold moh-text">{{ shell.name }}</h3>
-          <p class="text-sm moh-text-muted">{{ shell.memberCount.toLocaleString() }} members · {{ shell.joinPolicy === 'open' ? 'Open to verified members' : 'Approval required' }}</p>
+          <p class="text-sm moh-text-muted">{{ formatCount(shell.memberCount) }} members · {{ shell.joinPolicy === 'open' ? 'Open to verified members' : 'Approval required' }}</p>
           <p v-if="shell.description" class="mt-1 text-sm moh-text">{{ shell.description }}</p>
         </div>
       </section>
@@ -41,7 +41,7 @@
       <section aria-label="People">
         <h3 class="mb-1 text-sm font-semibold moh-text">People</h3>
         <ul class="moh-divide rounded-xl border moh-border moh-surface">
-          <li><NuxtLink :to="`/g/${slug}/members`" class="moh-focus flex min-h-11 items-center justify-between px-3 text-sm" @click="dialog.close()">Members<span class="moh-text-muted">{{ shell.memberCount.toLocaleString() }}</span></NuxtLink></li>
+          <li><NuxtLink :to="`/g/${slug}/members`" class="moh-focus flex min-h-11 items-center justify-between px-3 text-sm" @click="dialog.close()">Members<span class="moh-text-muted">{{ formatCount(shell.memberCount) }}</span></NuxtLink></li>
           <li v-if="isLeader && shell.joinPolicy === 'approval'">
             <NuxtLink :to="dialog.to('pending')" replace class="moh-focus flex min-h-11 items-center justify-between px-3 text-sm">
               Join requests
@@ -129,6 +129,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { CommunityGroupPendingMember, CommunityGroupShell } from '~/types/api'
 import type { GroupFeedCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -142,7 +144,7 @@ const toast = useAppToast()
 const { invalidate: invalidateMyGroups } = useMyGroups()
 const { markReadBySubject } = useNotifications()
 const groupTabs = useGroupTabs()
-const { addGroupFeedCallback, removeGroupFeedCallback, subscribeGroups, unsubscribeGroups } = usePresence()
+const { subscribeGroups, unsubscribeGroups } = usePresence()
 const { header: appHeader } = useAppHeader()
 
 const shell = ref<CommunityGroupShell>(props.group)
@@ -269,8 +271,9 @@ const feedCallback: GroupFeedCallback = {
     shell.value = { ...s, marv: { ...s.marv, isMember: payload.isMember } }
   },
 }
-onMounted(() => { addGroupFeedCallback(feedCallback); subscribeGroups([props.group.id]) })
-onBeforeUnmount(() => { removeGroupFeedCallback(feedCallback); unsubscribeGroups([props.group.id]) })
+usePresenceCallback('GroupFeed', feedCallback)
+onMounted(() => { subscribeGroups([props.group.id]) })
+onBeforeUnmount(() => { unsubscribeGroups([props.group.id]) })
 
 function onShellUpdated(next: CommunityGroupShell) { adopt(next); void refreshShell() }
 </script>

@@ -182,6 +182,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDate } from '~/utils/time-format'
 import { formatShortCount } from '~/utils/text'
 import type { Article } from '~/types/api'
 import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/article-visibility'
@@ -202,7 +203,7 @@ const isGated = computed(() => props.article.viewerCanAccess === false)
 
 const dateLabel = computed(() => {
   const date = new Date(props.article.publishedAt ?? props.article.lastSavedAt ?? props.article.createdAt)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return formatLocaleDate(date, { month: 'short', day: 'numeric' })
 })
 
 const savedLabel = computed(() => {
@@ -213,7 +214,7 @@ const savedLabel = computed(() => {
   if (minutes < 60) return `${minutes}m ago`
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h ago`
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return formatLocaleDate(date, { month: 'short', day: 'numeric' })
 })
 
 const visibilityBarClass = computed(() => articleVisibilityBarClass(props.article.visibility))

@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { formatFutureRelative } from '~/utils/time-format'
 import type { CrewInvite, CrewUserSummary, FollowListUser, OpenCrewMember } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -8,7 +9,6 @@ const { isVerified, user: authUser } = useAuth()
 const router = useRouter()
 const crewApi = useCrew()
 const viewerCrew = useViewerCrew()
-const { addCrewCallback, removeCrewCallback } = usePresence()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -226,8 +226,7 @@ const crewRealtimeCb = {
     void load()
   },
 }
-onMounted(() => addCrewCallback(crewRealtimeCb))
-onBeforeUnmount(() => removeCrewCallback(crewRealtimeCb))
+usePresenceCallback('Crew', crewRealtimeCb)
 
 void load()
 const initialLoading = useInitialLoading(loading, false, error)
@@ -268,7 +267,5 @@ const initialLoading = useInitialLoading(loading, false, error)
     getApiErrorMessage,
     isVerified,
     authUser,
-    addCrewCallback,
-    removeCrewCallback,
   }
 }

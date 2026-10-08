@@ -44,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { FollowedOnlineCallback } from '~/composables/presence/types'
 import type { PresenceFollowedOnlinePayloadDto } from '~/types/api-contracts.gen'
 
@@ -58,7 +60,6 @@ type FollowOnlineToast = {
 }
 
 const route = useRoute()
-const { addFollowedOnlineCallback, removeFollowedOnlineCallback } = usePresence()
 const chimes = usePresenceChimes()
 
 const toast = ref<FollowOnlineToast | null>(null)
@@ -84,7 +85,7 @@ function show(payload: PresenceFollowedOnlinePayloadDto) {
   const first = users[0]!
   const others = Math.max(0, (payload.total ?? users.length) - 1)
   const title = others > 0
-    ? `${displayName(first)} and ${others.toLocaleString('en-US')} ${others === 1 ? 'other' : 'others'} are online`
+    ? `${displayName(first)} and ${formatCount(others)} ${others === 1 ? 'other' : 'others'} are online`
     : `${displayName(first)} is online`
 
   seq += 1
@@ -103,9 +104,8 @@ function show(payload: PresenceFollowedOnlinePayloadDto) {
 
 const callback: FollowedOnlineCallback = { onFollowedOnline: show }
 
-onMounted(() => addFollowedOnlineCallback(callback))
+usePresenceCallback('FollowedOnline', callback)
 onBeforeUnmount(() => {
-  removeFollowedOnlineCallback(callback)
   if (hideTimer) clearTimeout(hideTimer)
 })
 </script>

@@ -190,7 +190,7 @@ const allowedVisibilities = computed<ArticleVisibility[]>(() => {
   return tierAllowed.filter(v => (VISIBILITY_RANK[v] ?? 0) >= originalRank)
 })
 const { apiFetchData } = useApiClient()
-const toast = useAppToast()
+const { run } = useAsyncAction()
 const { assetUrl } = useAssets()
 
 const initialArticleRef = ref<Article | null>(props.article ? { ...props.article } : null)
@@ -203,7 +203,7 @@ const thumbnailInputEl = ref<HTMLInputElement | null>(null)
 // Bug 7 fix: direct ref to the title textarea
 const titleEl = ref<HTMLTextAreaElement | null>(null)
 const thumbnailSectionEl = ref<HTMLElement | null>(null)
-const thumbnailUploading = ref(false)
+const { run: runThumbnail, pending: thumbnailUploading } = useAsyncAction()
 const cropDialogOpen = ref(false)
 const pendingThumbnailFile = ref<File | null>(null)
 const { keyboardHeight } = useKeyboardHeight()
@@ -321,17 +321,12 @@ function onTitleInput() {
 }
 
 async function handlePublish(options?: { postToBoard: boolean; shareToFeed: boolean; crosspost?: import('~/utils/crosspost').CrosspostPayload }) {
-  try {
+  await run(async () => {
     const published = await editor.publish(options)
     if (published) {
       justPublished.value = published
     }
-  } catch (e: unknown) {
-    const msg = (e as any)?.data?.meta?.errors?.[0]?.message
-      ?? (e as any)?.message
-      ?? 'Could not publish. Please try again.'
-    toast.push({ title: msg, tone: 'error' })
-  }
+  }, { error: 'Could not publish. Please try again.' })
 }
 
 function triggerThumbnailUpload() {
@@ -356,8 +351,7 @@ function onThumbnailFileSelected(event: Event) {
 }
 
 async function uploadCroppedThumbnail(file: File) {
-  thumbnailUploading.value = true
-  try {
+  await runThumbnail(async () => {
     const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string> }>(
       '/uploads/article-thumbnail/init',
       { method: 'POST', body: { contentType: file.type } },
@@ -379,12 +373,8 @@ async function uploadCroppedThumbnail(file: File) {
       editor.thumbnailDirty.value = true
       editor.markDirty()
     }
-  } catch (e: any) {
-    toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Thumbnail upload failed.', tone: 'error' })
-  } finally {
-    thumbnailUploading.value = false
-    pendingThumbnailFile.value = null
-  }
+  }, { error: 'Thumbnail upload failed.' })
+  pendingThumbnailFile.value = null
 }
 
 // New articles start from the last article audience this tab used (independent of posts/Board).

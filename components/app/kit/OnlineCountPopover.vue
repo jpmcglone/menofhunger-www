@@ -22,7 +22,7 @@
       >
         <header class="moh-count-breakdown-header">
           <div>
-            <h2 :id="titleId">{{ total.toLocaleString('en-US') }} online</h2>
+            <h2 :id="titleId">{{ formatCount(total) }} online</h2>
             <p>Members online now</p>
           </div>
           <button type="button" class="moh-count-breakdown-close moh-tap" aria-label="Close breakdown" @click="pop.close()"><Icon name="tabler:x" aria-hidden="true" /></button>
@@ -30,7 +30,7 @@
         <div class="moh-count-breakdown-section">
           <div v-for="r in rows" :key="r.key" class="moh-count-breakdown-row">
             <span class="moh-count-breakdown-label"><span class="moh-count-breakdown-dot" :class="dotClass(r.tone)" aria-hidden="true" />{{ r.label }}</span>
-            <span class="moh-count-breakdown-value">{{ r.count.toLocaleString('en-US') }}</span>
+            <span class="moh-count-breakdown-value">{{ formatCount(r.count) }}</span>
           </div>
         </div>
       </div>
@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { OnlineCountRow } from '~/composables/useOnlineCountPopover'
 
 const pop = useOnlineCountPopover()

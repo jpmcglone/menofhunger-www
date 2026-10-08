@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { notificationPresentation, notificationShowsActor, notificationGlyph } from '../utils/notification-presentation'
+import { notificationPresentation, notificationScriptureReference, notificationShowsActor, notificationGlyph } from '../utils/notification-presentation'
 
 describe('notification presentation', () => {
   it('distinguishes boosts, reposts, and follows by event meaning', () => {
@@ -48,5 +48,17 @@ describe('shared notification glyphs', () => {
     expect(notificationPresentation('premium_ended').icon).toBe('tabler:crown-off')
     expect(notificationGlyph('mention')).toBeNull()
     expect(notificationPresentation('mention').icon).toBe('tabler:at')
+  })
+})
+
+describe('notification scripture preview', () => {
+  it('previews the single passage in a quote-of-the-day notification', () => {
+    expect(notificationScriptureReference({ kind: 'quote_of_the_day', body: 'Be strong. Joshua 1:9' })).toBe('Joshua 1:9')
+  })
+  it('stays plain text for other kinds, no passage, or several passages', () => {
+    expect(notificationScriptureReference({ kind: 'comment', body: 'John 3:16' })).toBeNull()
+    expect(notificationScriptureReference({ kind: 'quote_of_the_day', body: 'Open to read today’s quote.' })).toBeNull()
+    expect(notificationScriptureReference({ kind: 'quote_of_the_day', body: 'John 3:16 and Romans 8:1' })).toBeNull()
+    expect(notificationScriptureReference({ kind: 'quote_of_the_day', body: null })).toBeNull()
   })
 })

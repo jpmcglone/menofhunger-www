@@ -178,6 +178,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 const formatBadge = (n: number) => (n > 99 ? '99+' : String(n))
@@ -210,7 +211,7 @@ const initials = computed(() => {
 
 const memberCountLabel = computed(() => {
   const n = Number(props.group.memberCount ?? 0)
-  return Number.isFinite(n) ? n.toLocaleString() : '0'
+  return Number.isFinite(n) ? formatCount(n) : '0'
 })
 
 const isOwner = computed(() => props.group.viewerMembership?.role === 'owner')

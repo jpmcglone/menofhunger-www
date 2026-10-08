@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { FollowsCallback, PostsCallback } from '~/composables/usePresence'
 import type { FollowSummaryResponse, PublicProfile } from '~/types/api'
 import { mergeWelcomeProgress, parseWelcomeProgress, recordWelcomeProgress, welcomeProgressKey, WELCOME_PROGRESS_EVENT, type WelcomeProgress } from '~/utils/welcome-progress'
@@ -75,10 +76,10 @@ export function useWelcomeCard() {
     window.addEventListener(WELCOME_PROGRESS_EVENT, onProgress)
     window.addEventListener('storage', onStorage)
     document.addEventListener('visibilitychange', onVisible)
-    presence.addFollowsCallback(follows)
-    presence.addPostsCallback(posts)
     void sync()
   })
+  usePresenceCallback('Follows', follows)
+  usePresenceCallback('Posts', posts)
   onActivated(() => { void sync() })
   watch(() => user.value?.id, () => { if (ready.value) { restore(); void sync() } })
   watch(presence.connectionBarJustConnected, connected => { if (connected) void sync() })
@@ -86,8 +87,6 @@ export function useWelcomeCard() {
     window.removeEventListener(WELCOME_PROGRESS_EVENT, onProgress)
     window.removeEventListener('storage', onStorage)
     document.removeEventListener('visibilitychange', onVisible)
-    presence.removeFollowsCallback(follows)
-    presence.removePostsCallback(posts)
   })
   return { dismissed, progress, completedCount, syncError, sync, record, dismiss: () => record({ dismissed: true }) }
 }

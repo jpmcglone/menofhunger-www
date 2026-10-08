@@ -95,9 +95,8 @@ const emit = defineEmits<{
 
 const { apiFetchData } = useApiClient()
 const { assetUrl } = useAssets()
-const toast = useAppToast()
+const { run, pending: uploading } = useAsyncAction()
 const imageInputEl = ref<HTMLInputElement | null>(null)
-const uploading = ref(false)
 const linkDialogVisible = ref(false)
 const linkDialogUrl = ref('')
 
@@ -205,8 +204,7 @@ function triggerImageUpload() {
 
 async function uploadAndInsertImage(file: File) {
   if (props.disabled) return
-  uploading.value = true
-  try {
+  await run(async () => {
     file = await prepareUploadImage(file)
     const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string> }>(
       '/uploads/article-media/init',
@@ -225,11 +223,7 @@ async function uploadAndInsertImage(file: File) {
     const imageUrl = assetUrl(commit.key)
     if (!imageUrl) throw new Error('Missing public assets base URL.')
     editor.value?.chain().focus().setImage({ src: imageUrl }).run()
-  } catch (e) {
-    toast.push({ title: getSafeUserErrorMessage(e, 'Image upload failed.'), tone: 'error' })
-  } finally {
-    uploading.value = false
-  }
+  }, { error: 'Image upload failed.' })
 }
 
 async function onImageFileChange(event: Event) {

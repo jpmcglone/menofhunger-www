@@ -146,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDateTime } from '~/utils/time-format'
 import type { NewsletterAdmin, NewsletterAudienceCount, NewsletterAudienceFilter, NewsletterPreview } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 import { summarizeAudienceFilters } from '~/utils/newsletter-audience'
@@ -221,7 +222,7 @@ function formatWhen(iso: string | null) {
   if (!iso) return ''
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return formatLocaleDateTime(date, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 function toLocalInput(iso: string | null) {

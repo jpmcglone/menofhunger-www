@@ -97,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDate } from '~/utils/time-format'
 import type {
   CommunityGroupInvitableUser,
   CommunityGroupInvitableUserStatus,
@@ -206,7 +207,7 @@ function rowClass(row: CommunityGroupInvitableUser): string {
 function formatCooldown(iso: string): string {
   try {
     const d = new Date(iso)
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return formatLocaleDate(d, { month: 'short', day: 'numeric' })
   } catch {
     return 'soon'
   }

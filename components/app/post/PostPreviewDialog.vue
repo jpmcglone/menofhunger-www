@@ -29,10 +29,13 @@
       <p v-if="scheduledLabel" class="mb-3 text-sm moh-text-muted">
         Publishes {{ scheduledLabel }}
       </p>
+      <p v-if="scheduledLabel && !destinations?.length" class="text-sm moh-text-muted" data-testid="schedule-no-destinations">
+        No destinations connected. Connect Pickax or X in Settings to post there too. Men of Hunger still publishes this post at the scheduled time.
+      </p>
 
-      <AppPostCrosspostDestinations :destinations="destinations ?? []" :initial-selection="initialSelection" @change="crosspost = $event" />
+      <AppPostCrosspostDestinations :destinations="destinations ?? []" :initial-selection="initialSelection" :scheduled="Boolean(scheduledLabel)" @change="crosspost = $event" />
 
-      <div class="flex justify-end gap-2" :class="{ 'mt-5': Boolean(destinations?.length) }">
+      <div class="flex justify-end gap-2" :class="{ 'mt-5': Boolean(destinations?.length) || Boolean(scheduledLabel) }">
         <button
           type="button"
           class="moh-tap min-h-11 px-4 text-sm moh-text-muted hover:text-[var(--moh-text)]"

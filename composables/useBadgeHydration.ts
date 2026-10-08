@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { getAuthGeneration } from '~/composables/auth/authState'
 
 const badgeRefreshByApp = new WeakMap<object, { userId: string; generation: number; promise: Promise<void> }>()
@@ -17,10 +18,6 @@ export function useBadgeHydration() {
   const groupInvites = useGroupInvitesBadge()
   const {
     isSocketConnected,
-    addCrewCallback,
-    removeCrewCallback,
-    addGroupInviteCallback,
-    removeGroupInviteCallback,
     setNotificationUndeliveredCount,
     setNotificationUnreadCommentCount,
     setMessageUnreadCounts,
@@ -163,17 +160,15 @@ export function useBadgeHydration() {
   }
 
   if (getCurrentInstance()) {
+    usePresenceCallback('Crew', crewCallback)
+    usePresenceCallback('GroupInvite', groupInviteCallback)
     onMounted(() => {
       mounted = true
       void refresh()
-      addCrewCallback(crewCallback)
-      addGroupInviteCallback(groupInviteCallback)
       document.addEventListener('visibilitychange', onVisibilityChange)
     })
     onBeforeUnmount(() => {
       mounted = false
-      removeCrewCallback(crewCallback)
-      removeGroupInviteCallback(groupInviteCallback)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     })
   }

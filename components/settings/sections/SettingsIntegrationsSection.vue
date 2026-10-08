@@ -119,12 +119,12 @@
           <Button label="Disconnect" severity="secondary" size="small" class="shrink-0" :loading="xBusy" @click="onDisconnectX" />
         </div>
         <div v-if="xStatus.integrationAllowance" class="space-y-2 text-sm moh-text">
-          <p>Regular actions: {{ (xStatus.integrationAllowance.regular.remainingMicros / 1000000).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }} remaining</p>
-          <p v-if="xStatus.integrationAllowance.expensive.limitMicros">High-cost actions: {{ (xStatus.integrationAllowance.expensive.remainingMicros / 1000000).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }} remaining</p>
+          <p>Regular actions: {{ formatCurrency(xStatus.integrationAllowance.regular.remainingMicros / 1000000) }} remaining</p>
+          <p v-if="xStatus.integrationAllowance.expensive.limitMicros">High-cost actions: {{ formatCurrency(xStatus.integrationAllowance.expensive.remainingMicros / 1000000) }} remaining</p>
           <p class="text-xs moh-text-muted">Shared across connected platforms. Pending requests count toward your allowance.</p>
         </div>
         <p v-if="xStatus.allowance.resetsAt" class="text-xs moh-text-muted">
-          Resets {{ new Date(xStatus.allowance.resetsAt).toLocaleString() }}
+          Resets {{ formatLocaleDateTime(new Date(xStatus.allowance.resetsAt)) }}
         </p>
         <Button label="Reconnect X" severity="secondary" :loading="xBusy" @click="onConnectX" />
         <p v-if="xStatus.needsAttention" role="alert" class="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3 text-sm dark:border-amber-500/30 dark:bg-amber-500/10">
@@ -144,6 +144,8 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleDateTime } from '~/utils/time-format'
+import { formatCount, formatCurrency } from '~/utils/number-format'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 const { status, refresh, connect, reconnect, disconnect } = usePickaxIntegration()

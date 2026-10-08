@@ -40,7 +40,7 @@
             {{ g.name }}
           </div>
           <div class="text-xs moh-text-muted tabular-nums">
-            {{ g.memberCount.toLocaleString() }} members
+            {{ formatCount(g.memberCount) }} members
           </div>
         </div>
         <Icon name="tabler:chevron-right" class="text-base shrink-0 opacity-40" aria-hidden="true" />
@@ -63,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 

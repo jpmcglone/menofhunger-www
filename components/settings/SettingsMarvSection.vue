@@ -63,7 +63,7 @@
           <div>
             <div class="text-2xl font-bold tabular-nums">{{ creditsLabel }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              of {{ credits.maxCredits.toLocaleString() }} credits · +{{ credits.creditsPerDay.toLocaleString() }} per day
+              of {{ formatCount(credits.maxCredits) }} credits · +{{ formatCount(credits.creditsPerDay) }} per day
             </div>
           </div>
           <div class="text-right text-xs text-gray-500 dark:text-gray-400">
@@ -173,6 +173,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import { formatAgoShort } from '~/utils/time-format'
 import type { MarvinContextCardDto, MarvinSourceDto, MarvinUsageEventDto } from '~/types/api'
 import { onActivated, onMounted } from 'vue'
@@ -225,7 +226,7 @@ function sourceLabel(s: MarvinSourceDto): string {
 const creditsLabel = computed(() => {
   const c = credits.value
   if (!c) return '—'
-  return Math.floor(c.credits).toLocaleString()
+  return formatCount(Math.floor(c.credits))
 })
 
 const refillEtaLabel = computed(() => {

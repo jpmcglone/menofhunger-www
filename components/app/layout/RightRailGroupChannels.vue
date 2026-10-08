@@ -28,6 +28,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { ChannelMessage, CommunityGroupShell, GroupChannel } from '~/types/api'
 import type { ChannelCallback } from '~/composables/presence/usePresenceDomains'
 import { channelLink, channelTitle, mergeChannel } from '~/utils/channels/reducer'
@@ -73,8 +74,9 @@ const onChannel: ChannelCallback = event => {
     live.value = { ...live.value, [event.payload.channel.id]: { id: latest.id, who: own ? 'You' : (latest.sender.name ?? latest.sender.username ?? 'Someone'), text: describe(latest) } }
   }
 }
-onMounted(() => { presence.addChannelCallback(onChannel); void load() })
-onBeforeUnmount(() => { request++; presence.removeChannelCallback(onChannel) })
+usePresenceCallback('Channel', onChannel)
+onMounted(() => { void load() })
+onBeforeUnmount(() => { request++ })
 watch(() => props.group.id, () => { channels.value = []; live.value = {}; loaded.value = false; void load() })
 watch(presence.isSocketConnected, connected => { if (connected) void load() })
 </script>

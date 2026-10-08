@@ -23,7 +23,7 @@
               v-if="hereCount(row.space) > 0"
               class="text-xs moh-text-muted tabular-nums"
             >
-              {{ hereCount(row.space).toLocaleString() }} here
+              {{ formatCount(hereCount(row.space)) }} here
             </div>
           </div>
         </NuxtLink>
@@ -40,6 +40,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { Space } from '~/types/api'
 import { spaceDisplayTitle } from '~/utils/space-display'
 

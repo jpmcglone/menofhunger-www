@@ -229,7 +229,7 @@ const shareButtonClass = computed(() => {
 })
 
 const sharing = ref(false)
-const copying = ref(false)
+const { run: runCopy, pending: copying } = useAsyncAction()
 
 async function resolveShareUrl() {
   await ensureReferralCode()
@@ -255,17 +255,12 @@ async function onShare() {
 
 async function onCopy() {
   if (copying.value) return
-  copying.value = true
-  try {
+  await runCopy(async () => {
     const url = await resolveShareUrl()
     await copyText(url)
     toast.push({ title: 'Link copied', tone: 'success', durationMs: 1600 })
     close()
-  } catch {
-    toast.push({ title: 'Could not copy link', tone: 'error', durationMs: 1800 })
-  } finally {
-    copying.value = false
-  }
+  }, { error: () => 'Could not copy link', durationMs: 1800 })
 }
 
 const open = toRef(props, 'open')
@@ -298,13 +293,11 @@ async function maybeShowInviteCard() {
 
 async function onInviteCopy() {
   if (!referralCode.value) return
-  try {
-    await copyText(inviteShareUrl(referralCode.value, siteConfig.url))
+  await runCopy(async () => {
+    await copyText(inviteShareUrl(referralCode.value!, siteConfig.url))
     capture('invite_link_copied', { surface: 'checkin' })
     toast.push({ title: 'Link copied', tone: 'success', durationMs: 1600 })
-  } catch {
-    toast.push({ title: 'Could not copy link', tone: 'error', durationMs: 1800 })
-  }
+  }, { error: () => 'Could not copy link', durationMs: 1800 })
 }
 
 function close() {

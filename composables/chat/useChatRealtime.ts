@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { Ref, ComputedRef } from 'vue'
 import type { CallSession, Message } from '~/types/api'
 import type { CallsCallback, MessagesCallback } from '~/composables/usePresence'
@@ -22,18 +23,14 @@ export interface UseChatRealtimeOptions {
   meId: ComputedRef<string | null> | Ref<string | null>
   atBottom: Ref<boolean>
   handlers: ChatRealtimeHandlers
-  addMessagesCallback: (cb: MessagesCallback) => void
-  removeMessagesCallback: (cb: MessagesCallback) => void
-  addCallsCallback?: (cb: CallsCallback) => void
-  removeCallsCallback?: (cb: CallsCallback) => void
 }
 
 /**
  * Encapsulates all socket event → handler routing for the chat screen.
- * Register with `addMessagesCallback` and clean up with `teardown`.
+ * Register with `register()` and clean up with `teardown`.
  */
 export function useChatRealtime(opts: UseChatRealtimeOptions) {
-  const { selectedConversationId, meId, atBottom, handlers, addMessagesCallback, removeMessagesCallback, addCallsCallback, removeCallsCallback } = opts
+  const { selectedConversationId, meId, atBottom, handlers } = opts
 
   const callsCallback: CallsCallback = {
     onUpdated(payload) {
@@ -89,14 +86,17 @@ export function useChatRealtime(opts: UseChatRealtimeOptions) {
     },
   }
 
+  const messagesRealtime = usePresenceCallback('Messages', callback, { manual: true })
+  const callsRealtime = usePresenceCallback('Calls', callsCallback, { manual: true })
+
   function register() {
-    addMessagesCallback(callback)
-    addCallsCallback?.(callsCallback)
+    messagesRealtime.register()
+    callsRealtime.register()
   }
 
   function teardown() {
-    removeMessagesCallback(callback)
-    removeCallsCallback?.(callsCallback)
+    messagesRealtime.unregister()
+    callsRealtime.unregister()
   }
 
   return { register, teardown, callback, callsCallback }

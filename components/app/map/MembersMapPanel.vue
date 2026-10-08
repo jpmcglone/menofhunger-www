@@ -113,11 +113,11 @@
       </div>
 
       <div v-if="!membersVisible" class="moh-gutter-x border-t moh-border pb-6 pt-5">
-        <p class="text-3xl font-bold tabular-nums tracking-tight moh-text">{{ bucketCounts.members.toLocaleString('en-US') }}</p>
+        <p class="text-3xl font-bold tabular-nums tracking-tight moh-text">{{ formatCount(bucketCounts.members) }}</p>
         <p class="mt-0.5 text-sm moh-text-muted">{{ bucketCounts.members === 1 ? 'man' : 'men' }}<template v-if="bucket !== 'none'"> live here</template></p>
         <p class="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--moh-online)]">
           <span class="h-1.5 w-1.5 rounded-full bg-[var(--moh-online)]" aria-hidden="true" />
-          {{ bucketCounts.online.toLocaleString('en-US') }} online right now
+          {{ formatCount(bucketCounts.online) }} online right now
         </p>
         <AppMembersLockedCta class="mt-6" compact title="See who they are" />
       </div>
@@ -146,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { FollowListUser, FollowRelationship, MembersMapState, MembersMapUser } from '~/types/api'
 import type { MembersMapBucket } from '~/composables/useMembersMap'
 
@@ -193,7 +194,7 @@ function asRowUser(u: MembersMapUser): FollowListUser {
 }
 
 function menLabel(n: number) {
-  return `${n.toLocaleString('en-US')} ${n === 1 ? 'man' : 'men'}`
+  return `${formatCount(n)} ${n === 1 ? 'man' : 'men'}`
 }
 
 const sentinelEl = ref<HTMLElement | null>(null)

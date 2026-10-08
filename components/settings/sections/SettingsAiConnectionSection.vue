@@ -73,9 +73,9 @@
         <div class="text-sm font-semibold moh-text">Today’s requests</div>
         <div class="flex items-center justify-between rounded-xl border moh-border px-4 py-3">
           <div>
-            <div class="text-2xl font-bold tabular-nums">{{ connection.usage.remaining.toLocaleString() }}</div>
+            <div class="text-2xl font-bold tabular-nums">{{ formatCount(connection.usage.remaining) }}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              of {{ connection.usage.limit.toLocaleString() }} left today
+              of {{ formatCount(connection.usage.limit) }} left today
             </div>
           </div>
           <div class="text-right text-xs text-gray-500 dark:text-gray-400">Resets at midnight UTC</div>
@@ -96,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { McpConnectionDto, McpConnectionItemDto } from '~/types/api-contracts.gen'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 

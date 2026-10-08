@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { MembersMapState, MembersMapSummary, MembersMapUser } from '~/types/api'
 import type { MembersMapCallback, OnlineFeedCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -42,12 +43,8 @@ export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {})
   const {
     subscribeOnlineFeed,
     unsubscribeOnlineFeed,
-    addOnlineFeedCallback,
-    removeOnlineFeedCallback,
     addOnlineIdsFromRest,
     whenSocketConnected,
-    addMembersMapCallback,
-    removeMembersMapCallback,
     subscribeMembersMap,
     unsubscribeMembersMap,
     isSocketConnected,
@@ -314,12 +311,14 @@ export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {})
     },
   }
 
+  const feedRealtime = usePresenceCallback('OnlineFeed', feedCallback, { manual: true })
+  const membersMapRealtime = usePresenceCallback('MembersMap', membersMapCallback, { manual: true })
   let subscribed = false
   async function start() {
     mounted = true
     seedPresence()
-    addOnlineFeedCallback(feedCallback)
-    addMembersMapCallback(membersMapCallback)
+    feedRealtime.register()
+    membersMapRealtime.register()
     subscribeMembersMap()
     document.addEventListener('visibilitychange', onVisibility)
     beginResync()
@@ -337,9 +336,9 @@ export function useMembersMap(opts: { initial?: MembersMapSummary | null } = {})
     if (resyncTimer) clearTimeout(resyncTimer)
     settler.dispose()
     document.removeEventListener('visibilitychange', onVisibility)
-    removeMembersMapCallback(membersMapCallback)
+    membersMapRealtime.unregister()
     unsubscribeMembersMap()
-    removeOnlineFeedCallback(feedCallback)
+    feedRealtime.unregister()
     if (subscribed) unsubscribeOnlineFeed()
     subscribed = false
   }

@@ -1,6 +1,6 @@
 ---
-description: Watch Party sync model for SpaceYouTubePlayer and related composables. Read when working on Spaces, watch-party playback, applyState, owner/viewer sync, or useWatchParty/usePresence for watch party events.
-globs: "components/SpaceYouTubePlayer.vue,composables/useWatchParty.ts,composables/usePresence.ts,utils/watchPartyMath.ts,pages/s/**"
+description: Watch Party sync model. Read when working on Spaces playback, applyState, owner/viewer sync, or watch-party presence events.
+globs: "components/SpaceYouTubePlayer.vue,composables/spaces/useSpaceYouTubePlayer*.ts,composables/useWatchParty.ts,composables/usePresence.ts,utils/watchPartyMath.ts,pages/s/**"
 alwaysApply: false
 ---
 
@@ -13,10 +13,12 @@ alwaysApply: false
 
 The active primary tab is: `isOwner && !isReplacedOwner`.
 
-## `applyState` gate (SpaceYouTubePlayer.vue)
+## `applyState` gate
+
+`applyState` lives in `composables/spaces/useSpaceYouTubePlayerSync.ts`. `SpaceYouTubePlayer.vue` renders the player; it does not own this decision.
 
 ```typescript
-if (!ytPlayer) return
+if (!playerSync.ytPlayer) return
 if (isOwner.value && !isReplacedOwner.value) return  // primary drives; never self-seeks
 // replaced owner tabs and viewers both reach here
 ```
@@ -26,11 +28,11 @@ NEVER gate on `isOwner` alone — that silences replaced-owner tabs and breaks o
 ## Video swap — `pendingApply`
 
 After `loadVideoById`, the player isn't ready to seek/play yet.  
-Store the desired state in `pendingApply` and re-apply it in `onStateChange` when the player reports `CUED` (5) or `BUFFERING` (3).
+Store the desired state in `playerSync.pendingApply` and re-apply it in `onStateChange` when the player reports `CUED` (5) or `BUFFERING` (3).
 
 ```typescript
-if (stateVideoId && loadNewVideoIfNeeded(stateVideoId)) {
-  pendingApply = state   // applied in onStateChange
+if (stateVideoId && loadNewVideoIfNeeded(stateVideoId, adjusted)) {
+  playerSync.pendingApply = state   // applied in onStateChange
   return
 }
 ```

@@ -107,6 +107,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatLocaleTime } from '~/utils/time-format'
 import type { AdminServiceLevel, AdminServiceStatusDto, AdminServiceStatusItemDto } from '~/types/api-contracts.gen'
 import { getApiErrorMessage } from '~/utils/api-error'
 
@@ -173,7 +174,7 @@ async function load(refresh = false) {
   try {
     const data = await apiFetchData<AdminServiceStatusDto>('/admin/services', { query: refresh ? { refresh: 'true' } : undefined })
     report.value = data
-    checkedAt.value = new Date(data.asOf).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    checkedAt.value = formatLocaleTime(new Date(data.asOf), { hour: 'numeric', minute: '2-digit' })
     error.value = ''
   } catch (e) {
     error.value = getApiErrorMessage(e) || 'Could not load service status.'

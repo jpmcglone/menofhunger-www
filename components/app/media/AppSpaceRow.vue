@@ -176,6 +176,7 @@ const { upsertSpace } = useSpaces()
 const { confirm } = useAppConfirm()
 
 const toast = useAppToast()
+const { run } = useAsyncAction()
 
 const liveListenerCount = computed(() => lobbyCountForSpace(props.space.id))
 const { copyText: copyToClipboard } = useCopyToClipboard()
@@ -298,12 +299,10 @@ const shareItems = computed<MenuItemWithIcon[]>(() => [
       const url = props.space.owner?.username
         ? `${siteConfig.url}/s/${encodeURIComponent(props.space.owner.username)}`
         : `${siteConfig.url}/spaces`
-      try {
+      await run(async () => {
         await copyToClipboard(url)
         toast.push({ title: 'Space link copied', tone: 'public', durationMs: 1400 })
-      } catch {
-        toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-      }
+      }, { error: () => 'Copy failed', durationMs: 1800 })
     },
   },
 ])

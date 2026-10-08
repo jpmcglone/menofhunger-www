@@ -127,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { PropType } from 'vue'
 const formatBadge = (n: number) => (n > 99 ? '99+' : String(n))
 
@@ -189,7 +190,7 @@ const creditsLabel = computed(() => {
   const c = credits.value
   if (!c) return null
   const n = Math.floor(c.credits)
-  return `${n.toLocaleString()} credits`
+  return `${formatCount(n)} credits`
 })
 
 function onClick(event: MouseEvent) {

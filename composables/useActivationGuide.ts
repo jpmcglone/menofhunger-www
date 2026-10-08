@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { ActivationCompletionDto, ActivationDto } from '~/types/api'
 import type { FollowsCallback, PostsCallback, UsersCallback } from '~/composables/usePresence'
 import { WELCOME_PROGRESS_EVENT } from '~/utils/welcome-progress'
@@ -85,6 +86,9 @@ export function useActivationGuide() {
     onFeedNewPost: p => { if (p.post.author.id === user.value?.id) void sync() },
     onCommentAdded: p => { if (p.comment.author.id === user.value?.id) void sync() },
   }
+  usePresenceCallback('Users', users)
+  usePresenceCallback('Follows', follows)
+  usePresenceCallback('Posts', posts)
   function refresh() { void sync() }
   function onVisible() { if (document.visibilityState === 'visible') refresh() }
   function onStorage(e: StorageEvent) { if (e.key === key.value) { restore(); refresh() } }
@@ -93,9 +97,6 @@ export function useActivationGuide() {
     window.addEventListener(WELCOME_PROGRESS_EVENT, refresh)
     window.addEventListener('storage', onStorage)
     document.addEventListener('visibilitychange', onVisible)
-    presence.addUsersCallback(users)
-    presence.addFollowsCallback(follows)
-    presence.addPostsCallback(posts)
     refresh()
   })
   onActivated(refresh)
@@ -106,9 +107,6 @@ export function useActivationGuide() {
     window.removeEventListener(WELCOME_PROGRESS_EVENT, refresh)
     window.removeEventListener('storage', onStorage)
     document.removeEventListener('visibilitychange', onVisible)
-    presence.removeUsersCallback(users)
-    presence.removeFollowsCallback(follows)
-    presence.removePostsCallback(posts)
   })
   return { progress, phase, dismissed, completedCount, syncError, sync, dismiss, track, claimCompletion }
 }

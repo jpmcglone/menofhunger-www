@@ -8,7 +8,7 @@ let refreshInFlight: Promise<void> | null = null
 
 export function useAccountSwitcher() {
   const { listSwitchableAccounts, switchAccount, isImpersonating, isAuthed, user } = useAuth()
-  const toast = useAppToast()
+  const { run } = useAsyncAction()
 
   const accounts = useState<SwitchableAccount[]>('switchable-accounts', () => [])
   const pendingBadges = useState<Record<string, Partial<Pick<SwitchableAccount, 'unreadBadgeCount' | 'hasUnreadNotifications' | 'hasUnreadBoard'>>>>('switchable-accounts-pending-badges', () => ({}))
@@ -80,22 +80,15 @@ export function useAccountSwitcher() {
     const target = accounts.value.find((a) => a.id === userId)
     if (!target || target.isCurrent || switchingId.value) return
 
-    try {
-      await switchAccount(userId, {
-        ...opts,
-        label: target.name || target.username || 'your account',
-        name: target.name,
-        username: target.username,
-        avatarUrl: target.avatarUrl,
-        avatarVideo: target.avatarVideo,
-        isOrganization: target.isOrganization,
-      })
-    } catch (e) {
-      toast.push({
-        title: getSafeUserErrorMessage(e, 'Could not switch accounts.'),
-        tone: 'error',
-      })
-    }
+    await run(() => switchAccount(userId, {
+      ...opts,
+      label: target.name || target.username || 'your account',
+      name: target.name,
+      username: target.username,
+      avatarUrl: target.avatarUrl,
+      avatarVideo: target.avatarVideo,
+      isOrganization: target.isOrganization,
+    }), { error: 'Could not switch accounts.' })
   }
 
   if (import.meta.client && !listening.value) {

@@ -44,7 +44,7 @@
         class="text-[11px] font-semibold transition-colors"
         style="color: #85c742;"
         aria-label="Open on Rumble"
-        @click.stop
+        @click.stop="confirmExternal($event, previewLink)"
       >
         Open on Rumble
       </a>
@@ -166,6 +166,7 @@
 </template>
 
 <script setup lang="ts">
+const { onClick: confirmExternal } = useExternalLinkConfirm()
 import { extractLinksFromText, getYouTubeEmbedUrl, getYouTubePosterUrls, parseYouTubeUrl, isRumbleShortsUrl, isRumbleUrl, pausedRumbleEmbedUrl, portraitEmbedFrameStyle, sameNormalizedUrl, safeUrlHostname, isMohUrl, mohUrlPath, extractMohPostId, extractMohArticleId, extractMohSpaceId, extractMohSpaceUsername, isMohSpaceLink, extractMohUsername, isXPostUrl, isSubstackPostUrl } from '~/utils/link-utils'
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { getLinkMetadata, peekLinkMetadata } from '~/utils/link-metadata'

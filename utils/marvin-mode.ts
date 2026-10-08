@@ -1,3 +1,4 @@
+import { formatCount } from '~/utils/number-format'
 import type { MarvinCostsDto, MarvinModeDto } from '~/types/api'
 
 export const MARVIN_MODE_ORDER = ['auto', 'fast', 'regular', 'smart'] as const
@@ -21,7 +22,7 @@ function costFor(mode: Exclude<MarvinModeDto, 'auto'>, costs?: ModeCosts | null)
 }
 
 function compactCost(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toLocaleString()
+  return Number.isInteger(n) ? String(n) : formatCount(n)
 }
 
 function creditPhrase(n: number): string {

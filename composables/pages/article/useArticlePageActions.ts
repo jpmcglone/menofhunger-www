@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { surfaceMenuItems } from '~/utils/surface-actions'
 import type { ArticleSharePreview } from '~/types/api'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
@@ -169,9 +170,9 @@ export function useArticlePageActions(ctx: ReturnType<typeof useArticlePageConte
 
   const closeTipPopover = () => { tipOpen.value = false }
 
+  usePresenceCallback('Articles', articlesCallback)
   onMounted(() => {
     isHydrated.value = true
-    presence.addArticlesCallback(articlesCallback)
     document.addEventListener('click', closeTipPopover)
 
     // Comment deep-link polling is started by the article watcher below,
@@ -267,7 +268,6 @@ export function useArticlePageActions(ctx: ReturnType<typeof useArticlePageConte
   )
 
   onUnmounted(() => {
-    presence.removeArticlesCallback(articlesCallback)
     if (article.value?.id) presence.unsubscribeArticles([article.value.id])
     stopObservingView?.()
     stopObservingView = null
@@ -301,13 +301,14 @@ export function useArticlePageActions(ctx: ReturnType<typeof useArticlePageConte
 
   // Share menu — using the same PrimeVue Menu popup pattern as PostRowShareMenu
   const toast = useAppToast()
+  const { run } = useAsyncAction()
 
   async function sendTip() {
     const amt = tipAmount.value
     const username = article.value?.author?.username
     if (!amt || amt < 1 || !username || tipLoading.value) return
     tipLoading.value = true
-    try {
+    await run(async () => {
       const title = (article.value?.title ?? '').trim()
       const note = title ? `Tip on "${title}"` : 'Tip from article'
       await apiFetchData('/coins/transfer', {
@@ -323,26 +324,19 @@ export function useArticlePageActions(ctx: ReturnType<typeof useArticlePageConte
         to: '/coins',
         durationMs: 3000,
       })
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Failed to send tip.'
-      toast.push({ title: msg, tone: 'error', durationMs: 2500 })
-    } finally {
-      tipLoading.value = false
-    }
+    }, { error: (e) => (e instanceof Error ? e.message : 'Failed to send tip.'), durationMs: 2500 })
+    tipLoading.value = false
   }
   const confirmingArticleDelete = ref(false)
   const deletingArticle = ref(false)
   async function deleteArticle() {
     if (deletingArticle.value) return
     deletingArticle.value = true
-    try {
+    await run(async () => {
       await apiFetchData(`/articles/${id.value}`, { method: 'DELETE' })
       toast.push({ title: 'Article deleted', tone: 'success' })
       await navigateTo('/articles')
-    } catch (e: any) {
-      toast.push({ title: e?.data?.meta?.errors?.[0]?.message ?? 'Could not delete the article.', tone: 'error', durationMs: 3000 })
-      deletingArticle.value = false
-    }
+    }, { error: 'Could not delete the article.', durationMs: 3000, onError: () => { deletingArticle.value = false } })
   }
   const showArticleReport = ref(false)
   const sharing = ref(false)
@@ -362,31 +356,26 @@ export function useArticlePageActions(ctx: ReturnType<typeof useArticlePageConte
   const { ensureReferralCode } = useEnsureReferralCode()
 
   async function onCopyLink() {
-    try {
+    await run(async () => {
       const articleId = article.value?.id
       const ref = await ensureReferralCode()
       await navigator.clipboard.writeText(articleId ? articleShareUrl(articleId, ref) : window.location.href)
       toast.push({ title: 'Link copied!', tone: 'success' })
-    } catch {
-      toast.push({ title: 'Could not copy link', tone: 'error' })
-    }
+    }, { error: () => 'Could not copy link' })
   }
 
   async function onShareToFeed() {
     if (!article.value) return
     sharing.value = true
-    try {
-      const articleUrl = `${siteConfig.url}/a/${article.value.id}`
+    await run(async () => {
+      const articleUrl = `${siteConfig.url}/a/${article.value!.id}`
       await apiFetchData('/posts', {
         method: 'POST',
         body: { body: articleUrl, visibility: 'public' },
       })
       toast.push({ title: 'Shared to your feed!', tone: 'success' })
-    } catch {
-      toast.push({ title: 'Could not share article.', tone: 'error' })
-    } finally {
-      sharing.value = false
-    }
+    }, { error: () => 'Could not share article.' })
+    sharing.value = false
   }
 
   function onShareWithComment() {
@@ -397,8 +386,8 @@ export function useArticlePageActions(ctx: ReturnType<typeof useArticlePageConte
   async function onSubmitShareWithComment() {
     if (!article.value) return
     sharing.value = true
-    try {
-      const articleUrl = `${siteConfig.url}/a/${article.value.id}`
+    await run(async () => {
+      const articleUrl = `${siteConfig.url}/a/${article.value!.id}`
       const comment = shareCommentText.value.trim()
       const body = comment ? `${comment}\n\n${articleUrl}` : articleUrl
       await apiFetchData('/posts', {
@@ -407,11 +396,8 @@ export function useArticlePageActions(ctx: ReturnType<typeof useArticlePageConte
       })
       shareCommentModalOpen.value = false
       toast.push({ title: 'Shared to your feed!', tone: 'success' })
-    } catch {
-      toast.push({ title: 'Could not share article.', tone: 'error' })
-    } finally {
-      sharing.value = false
-    }
+    }, { error: () => 'Could not share article.' })
+    sharing.value = false
   }
 
   // Share preview (for the modal)

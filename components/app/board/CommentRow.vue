@@ -13,49 +13,38 @@
         aria-hidden="true"
       />
       <div class="min-w-0 flex-1">
-        <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
-          <template v-if="comment.deleted">
-            <span class="moh-text-soft">[deleted]</span>
-          </template>
-          <template v-else-if="isTopLevel">
+        <AppCommentRowChrome
+          :author="comment.author"
+          :name-text="nameText"
+          :profile-href="comment.deleted ? null : profileHref"
+          :name-class="nameClass"
+          :name-style="comment.deleted || isTopLevel ? undefined : { color: authorColor }"
+          :show-badge="showFullAuthor"
+          :preview="comment.deleted ? null : preview"
+          :age="age"
+          :time-title="createdTitle"
+          :time-to="permalink"
+          line-class="text-xs"
+        >
+          <template v-if="showFullAuthor" #leading>
             <NuxtLink :to="profileHref" class="shrink-0" :aria-label="`View @${comment.author.username} profile`">
               <AppUserAvatar :user="comment.author" size-class="h-7 w-7" :show-status="false" />
             </NuxtLink>
-            <NuxtLink
-              :to="profileHref"
-              class="text-sm font-semibold moh-text hover:underline"
-              @mouseenter="preview.onEnter"
-              @mousemove="preview.onMove"
-              @mouseleave="preview.onLeave"
-            >{{ comment.author.name || comment.author.username }}</NuxtLink>
-            <AppVerifiedBadge
-              :status="comment.author.verifiedStatus"
-              :premium="comment.author.premium"
-              :premium-plus="comment.author.premiumPlus"
-              :is-organization="comment.author.isOrganization"
-            />
-            <span v-if="showHandle" class="moh-text-soft">@{{ comment.author.username }}</span>
           </template>
-          <NuxtLink
-            v-else
-            :to="profileHref"
-            class="font-semibold hover:underline"
-            :style="{ color: authorColor }"
-            @mouseenter="preview.onEnter"
-            @mousemove="preview.onMove"
-            @mouseleave="preview.onLeave"
-          >{{ comment.author.username }}</NuxtLink>
-          <span class="moh-text-soft" aria-hidden="true">·</span>
-          <NuxtLink :to="permalink" class="moh-text-soft hover:underline" :title="createdTitle">{{ age }}</NuxtLink>
-          <span v-if="isNewSinceVisit" class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" :class="activityBadgeTone" aria-label="New since your last visit">New</span>
-          <button
-            type="button"
-            class="moh-focus rounded px-0.5 moh-text-soft hover:text-[var(--moh-text)]"
-            :aria-expanded="!collapsed"
-            :aria-label="collapsed ? 'Expand comment' : 'Collapse comment'"
-            @click="collapsed = !collapsed"
-          >{{ collapsed ? `[+${hiddenCount}]` : '[–]' }}</button>
-        </div>
+          <template v-if="showFullAuthor && showHandle" #after-badge>
+            <span class="moh-text-soft">@{{ comment.author.username }}</span>
+          </template>
+          <template #trailing>
+            <span v-if="isNewSinceVisit" class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold" :class="activityBadgeTone" aria-label="New since your last visit">New</span>
+            <button
+              type="button"
+              class="moh-focus rounded px-0.5 moh-text-soft hover:text-[var(--moh-text)]"
+              :aria-expanded="!collapsed"
+              :aria-label="collapsed ? 'Expand comment' : 'Collapse comment'"
+              @click="collapsed = !collapsed"
+            >{{ collapsed ? `[+${hiddenCount}]` : '[–]' }}</button>
+          </template>
+        </AppCommentRowChrome>
 
         <template v-if="!collapsed">
           <AppPostRowBody v-if="!comment.deleted" :body="comment.body" :mentions="comment.mentions" :has-media="true" class="mt-1 text-sm leading-relaxed" />
@@ -144,13 +133,11 @@
 
 <script setup lang="ts">
 const activityBadgeTone = useActivityBadgeTone()
-import type { MenuItem } from 'primevue/menuitem'
 import type { BoardComment } from '~/types/api'
 import { formatListTime, formatDateTime } from '~/utils/time-format'
 import { userActionColor } from '~/utils/user-tier'
-import { getApiErrorMessage } from '~/utils/api-error'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
-import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
+import { useCommentRowActions } from '~/composables/useCommentRowActions'
 
 const props = defineProps<{ comment: BoardComment; depth: number }>()
 
@@ -158,7 +145,6 @@ const ctx = inject(BOARD_COMMENT_TREE_KEY, null)
 const { user, isAuthed } = useAuth()
 const { requireMember } = useBoardAccess()
 const api = useBoardApi()
-const toast = useAppToast()
 const preview = useUserPreviewTrigger({ username: computed(() => props.comment.author.username ?? '') })
 
 const collapsed = ref(false)
@@ -178,42 +164,41 @@ const profileHref = computed(() => `/u/${encodeURIComponent(props.comment.author
 const showHandle = computed(() => authorHasDistinctName(props.comment.author))
 const age = computed(() => formatListTime(props.comment.createdAt))
 const createdTitle = computed(() => formatDateTime(props.comment.createdAt))
+const showFullAuthor = computed(() => !props.comment.deleted && isTopLevel.value)
+const nameText = computed(() => {
+  if (props.comment.deleted) return '[deleted]'
+  return isTopLevel.value ? props.comment.author.name || props.comment.author.username || '' : props.comment.author.username || ''
+})
+const nameClass = computed(() => {
+  if (props.comment.deleted) return 'moh-text-soft'
+  return isTopLevel.value ? 'text-sm font-semibold moh-text hover:underline' : 'font-semibold hover:underline'
+})
 const authorColor = computed(() => userActionColor(props.comment.author))
 
-const { confirm } = useAppConfirm()
-const { copyText } = useCopyToClipboard()
 const { mounted: menuMounted, menuRef, toggle: toggleMenu } = useAutoToggleMenu()
-type BoardMenuItem = MenuItem & { iconName?: string }
-const menuItems = computed<BoardMenuItem[]>(() => {
-  const items: BoardMenuItem[] = [{ label: 'Copy link', iconName: 'tabler:link', command: () => void copyLink() }]
-  if (isAuthed.value && !isOwn.value) {
-    items.push({ label: 'Report comment', iconName: 'tabler:flag', command: openReport })
-  }
-  if (isOwn.value) {
-    items.push({
-      label: 'Delete comment',
-      iconName: 'tabler:trash',
-      class: 'text-red-600 dark:text-red-400',
-      command: () => void onDelete(),
-    })
-  }
-  return items
+const { buildMenuItems } = useCommentRowActions({
+  linkUrl: () => `${window.location.origin}${permalink.value}`,
+  deleteConfirm: () => ({
+    header: 'Delete comment?',
+    message: props.comment.replies.length ? 'Replies stay under a [deleted] placeholder.' : 'This can’t be undone.',
+    confirmLabel: 'Delete',
+    confirmSeverity: 'danger',
+  }),
+  performDelete: async () => {
+    await api.deleteComment(props.comment.id)
+    ctx?.remove(props.comment.id)
+  },
 })
+const menuItems = computed(() => buildMenuItems({
+  onReport: isAuthed.value && !isOwn.value ? openReport : null,
+  canDelete: isOwn.value,
+}))
 
 const reportMounted = ref(false)
 const reportOpen = ref(false)
 function openReport() {
   reportMounted.value = true
   reportOpen.value = true
-}
-
-async function copyLink() {
-  try {
-    await copyText(`${window.location.origin}${permalink.value}`)
-    toast.push({ title: 'Link copied', tone: 'success', durationMs: 1400 })
-  } catch {
-    toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-  }
 }
 
 function onReplyClick() {
@@ -224,21 +209,5 @@ function onReplyClick() {
 function onReplied(created: BoardComment) {
   replying.value = false
   ctx?.add(created)
-}
-
-async function onDelete() {
-  const ok = await confirm({
-    header: 'Delete comment?',
-    message: props.comment.replies.length ? 'Replies stay under a [deleted] placeholder.' : 'This can’t be undone.',
-    confirmLabel: 'Delete',
-    confirmSeverity: 'danger',
-  })
-  if (!ok) return
-  try {
-    await api.deleteComment(props.comment.id)
-    ctx?.remove(props.comment.id)
-  } catch (e) {
-    toast.push({ title: getApiErrorMessage(e) || 'Couldn’t delete the comment.', tone: 'error', durationMs: 2200 })
-  }
 }
 </script>

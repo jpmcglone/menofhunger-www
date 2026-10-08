@@ -23,10 +23,10 @@
           </div>
         </div>
         <div class="text-xs text-gray-500 dark:text-gray-400">
-          {{ data.landing.men.contributors.toLocaleString() }} of {{ data.landing.men.total.toLocaleString() }} verified men
+          {{ formatCount(data.landing.men.contributors) }} of {{ formatCount(data.landing.men.total) }} verified men
         </div>
         <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
-          {{ data.landing.men.originalAuthors.toLocaleString() }} wrote at least one original post
+          {{ formatCount(data.landing.men.originalAuthors) }} wrote at least one original post
         </div>
       </div>
 
@@ -58,23 +58,23 @@
           </div>
           <div class="text-right shrink-0">
             <div class="text-2xl font-bold tabular-nums">
-              {{ data.landing.men.medianPostsPerContributor.toLocaleString() }}
+              {{ formatCount(data.landing.men.medianPostsPerContributor) }}
             </div>
           </div>
         </div>
         <div class="text-xs text-gray-500 dark:text-gray-400">
-          {{ data.landing.posts.total.toLocaleString() }} eligible items
-          ({{ data.landing.posts.original.toLocaleString() }} original · {{ data.landing.posts.replies.toLocaleString() }} replies)
+          {{ formatCount(data.landing.posts.total) }} eligible items
+          ({{ formatCount(data.landing.posts.original) }} original · {{ formatCount(data.landing.posts.replies) }} replies)
         </div>
         <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
-          {{ data.landing.views.total.toLocaleString() }} total post views
+          {{ formatCount(data.landing.views.total) }} total post views
           <template v-if="data.landing.views.unique != null">
-            · {{ data.landing.views.unique.toLocaleString() }} people
+            · {{ formatCount(data.landing.views.unique) }} people
           </template>
           ·
-          {{ data.landing.posts.public.toLocaleString() }} public /
-          {{ data.landing.posts.verified.toLocaleString() }} verified /
-          {{ data.landing.posts.premium.toLocaleString() }} premium
+          {{ formatCount(data.landing.posts.public) }} public /
+          {{ formatCount(data.landing.posts.verified) }} verified /
+          {{ formatCount(data.landing.posts.premium) }} premium
         </div>
       </div>
 
@@ -85,20 +85,20 @@
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Published landing-eligible articles (same author filters)</div>
           </div>
           <div class="text-2xl font-bold tabular-nums">
-            {{ data.landing.articles.total.toLocaleString() }}
+            {{ formatCount(data.landing.articles.total) }}
           </div>
         </div>
         <div class="text-xs text-gray-500 dark:text-gray-400">
-          {{ data.landing.articles.authors.toLocaleString() }} authors ·
-          {{ data.landing.articles.views.toLocaleString() }} total views
+          {{ formatCount(data.landing.articles.authors) }} authors ·
+          {{ formatCount(data.landing.articles.views) }} total views
           <template v-if="data.landing.articles.unique != null">
-            · {{ data.landing.articles.unique.toLocaleString() }} people
+            · {{ formatCount(data.landing.articles.unique) }} people
           </template>
         </div>
         <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
-          {{ data.landing.articles.public.toLocaleString() }} public /
-          {{ data.landing.articles.verified.toLocaleString() }} verified /
-          {{ data.landing.articles.premium.toLocaleString() }} premium
+          {{ formatCount(data.landing.articles.public) }} public /
+          {{ formatCount(data.landing.articles.verified) }} verified /
+          {{ formatCount(data.landing.articles.premium) }} premium
         </div>
       </div>
 
@@ -109,19 +109,19 @@
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Landing-eligible Board posts (article posts excluded); not counted in Posts</div>
           </div>
           <div class="text-2xl font-bold tabular-nums">
-            {{ data.landing.board.total.toLocaleString() }}
+            {{ formatCount(data.landing.board.total) }}
           </div>
         </div>
         <div class="text-xs text-gray-500 dark:text-gray-400">
-          {{ data.landing.board.comments.toLocaleString() }} comments ·
-          {{ data.landing.board.threadsThisWeek.toLocaleString() }} threads in the last 7 days ·
-          {{ data.landing.board.authors.toLocaleString() }} people ·
-          {{ data.landing.board.views.toLocaleString() }} total views
+          {{ formatCount(data.landing.board.comments) }} comments ·
+          {{ formatCount(data.landing.board.threadsThisWeek) }} threads in the last 7 days ·
+          {{ formatCount(data.landing.board.authors) }} people ·
+          {{ formatCount(data.landing.board.views) }} total views
         </div>
         <div class="text-xs text-gray-400 dark:text-gray-500 border-t moh-border pt-2">
-          {{ data.landing.board.public.toLocaleString() }} public /
-          {{ data.landing.board.verified.toLocaleString() }} verified /
-          {{ data.landing.board.premium.toLocaleString() }} premium
+          {{ formatCount(data.landing.board.public) }} public /
+          {{ formatCount(data.landing.board.verified) }} verified /
+          {{ formatCount(data.landing.board.premium) }} premium
         </div>
       </div>
     </div>
@@ -130,6 +130,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import type { AdminAnalytics } from '~/types/api'
 import { useAdminAnalyticsContext } from '~/composables/pages/admin/useAdminAnalyticsPage'
 

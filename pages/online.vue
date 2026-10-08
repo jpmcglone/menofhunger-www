@@ -29,10 +29,10 @@
     <!-- Signed-out and unverified viewers: the numbers, never names or faces. -->
     <section v-if="!membersVisible" class="border-t moh-border">
       <div class="moh-gutter-x py-8 text-center sm:text-left">
-        <p class="text-6xl font-bold tabular-nums tracking-tight moh-text">{{ (displayTotal ?? 0).toLocaleString('en-US') }}</p>
+        <p class="text-6xl font-bold tabular-nums tracking-tight moh-text">{{ formatCount(displayTotal ?? 0) }}</p>
         <p class="mt-1 text-base font-medium moh-text-muted">{{ displayTotal === 1 ? 'man is' : 'men are' }} online right now</p>
         <p v-if="displayGuests > 0" class="mt-3 text-sm moh-text-soft">
-          Plus {{ displayGuests.toLocaleString('en-US') }} {{ displayGuests === 1 ? 'guest' : 'guests' }} browsing.
+          Plus {{ formatCount(displayGuests) }} {{ displayGuests === 1 ? 'guest' : 'guests' }} browsing.
         </p>
       </div>
       <div class="moh-gutter-x border-t moh-border bg-[rgba(var(--moh-brass-rgb),0.05)] py-5">
@@ -176,6 +176,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 import { useOnlinePage } from '~/composables/pages/useOnlinePage'
 
 definePageMeta({

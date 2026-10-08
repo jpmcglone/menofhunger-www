@@ -163,6 +163,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { ReferralMe, AffiliateSummary } from '~/types/api'
 import type { ReferralCallback } from '~/composables/presence/types'
 import { getApiErrorMessage } from '~/utils/api-error'
@@ -179,7 +180,6 @@ const onInvitePage = computed(() =>
 
 const { user, isAuthed, isVerified, isPageAccount } = useAuth()
 const { apiFetchData } = useApiClient()
-const { addReferralCallback, removeReferralCallback } = usePresence()
 const { referralCode: sharedCode, setReferralCode } = useReferralCode()
 
 const referralData = ref<ReferralMe | null>(null)
@@ -338,9 +338,8 @@ watch(showCard, (show) => {
   if (show && !referralData.value) void refresh()
 }, { immediate: true })
 
-onMounted(() => { addReferralCallback(referralCb) })
+usePresenceCallback('Referral', referralCb)
 onBeforeUnmount(() => {
-  removeReferralCallback(referralCb)
   if (copiedTimer) clearTimeout(copiedTimer)
 })
 </script>

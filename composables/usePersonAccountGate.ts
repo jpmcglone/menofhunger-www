@@ -3,7 +3,7 @@ import { getSafeUserErrorMessage } from '~/utils/api-error'
 export function usePersonAccountGate() {
   const { user, isPageAccount, switchAccount } = useAuth()
   const { accounts, switchingId, switchTo, refresh } = useAccountSwitcher()
-  const toast = useAppToast()
+  const { run } = useAsyncAction()
 
   const operatorFromSession = computed(() => user.value?.accountSwitch ?? null)
 
@@ -48,22 +48,15 @@ export function usePersonAccountGate() {
       await switchTo(operatorUserId, { then })
       return
     }
-    try {
-      await switchAccount(operatorUserId, {
-        then,
-        label: operatorLabel.value,
-        name: operatorUser.value?.name,
-        username: operatorUser.value?.username,
-        avatarUrl: operatorUser.value?.avatarUrl,
-        avatarVideo: operatorUser.value?.avatarVideo,
-        isOrganization: false,
-      })
-    } catch (e) {
-      toast.push({
-        title: getSafeUserErrorMessage(e, 'Could not switch accounts.'),
-        tone: 'error',
-      })
-    }
+    await run(() => switchAccount(operatorUserId, {
+      then,
+      label: operatorLabel.value,
+      name: operatorUser.value?.name,
+      username: operatorUser.value?.username,
+      avatarUrl: operatorUser.value?.avatarUrl,
+      avatarVideo: operatorUser.value?.avatarVideo,
+      isOrganization: false,
+    }), { error: 'Could not switch accounts.' })
   }
 
   return {

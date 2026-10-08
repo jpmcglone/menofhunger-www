@@ -1,3 +1,4 @@
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { FeedPost } from '~/types/api'
 import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
@@ -176,7 +177,7 @@ export function useGroupPageActions(ctx: ReturnType<typeof useGroupPageRoute> & 
   // ─── Realtime: live group posts over websocket ────────────────────────────────
   // The 12s soft-refresh above is the backstop; sockets make new posts/reposts appear
   // instantly. HTTP fetch on mount/activate is the on-load sync (per realtime-first).
-  const { addGroupFeedCallback, removeGroupFeedCallback, subscribeGroups, unsubscribeGroups } = usePresence()
+  const { subscribeGroups, unsubscribeGroups } = usePresence()
 
   function prependLiveGroupPost(post: FeedPost) {
     if (!post?.id) return
@@ -217,17 +218,18 @@ export function useGroupPageActions(ctx: ReturnType<typeof useGroupPageRoute> & 
     if (gid) subscribeGroups([gid])
   }
 
+  const groupFeedRealtime = usePresenceCallback('GroupFeed', groupFeedCb, { manual: true })
   function startGroupRealtime() {
     if (!import.meta.client) return
     groupRealtimeActive = true
-    addGroupFeedCallback(groupFeedCb)
+    groupFeedRealtime.register()
     syncGroupRealtimeSubscription()
   }
 
   function stopGroupRealtime() {
     if (!import.meta.client) return
     groupRealtimeActive = false
-    removeGroupFeedCallback(groupFeedCb)
+    groupFeedRealtime.unregister()
     if (subscribedGroupId) {
       unsubscribeGroups([subscribedGroupId])
       subscribedGroupId = null

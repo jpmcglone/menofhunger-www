@@ -37,6 +37,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatCount } from '~/utils/number-format'
 export type BreakdownRow = {
   key: string
   label: string
@@ -77,7 +78,7 @@ const activeSections = computed(() => {
 
 function formatRowValue(row: BreakdownRow): string {
   if (row.format === 'percent') return `${Math.round(row.count)}%`
-  return row.count.toLocaleString('en-US')
+  return formatCount(row.count)
 }
 
 const panelId = `landing-stat-${useId()}`

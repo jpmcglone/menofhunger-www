@@ -208,6 +208,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { useElementSize } from '@vueuse/core'
 import type { MenuItem } from 'primevue/menuitem'
 import type { Space, SpaceMember } from '~/types/api'
@@ -262,12 +263,7 @@ const radioBarReactionsCb = {
   },
 }
 
-onMounted(() => {
-  presence.addSpacesCallback(radioBarReactionsCb as any)
-})
-onBeforeUnmount(() => {
-  presence.removeSpacesCallback(radioBarReactionsCb as any)
-})
+usePresenceCallback('Spaces', radioBarReactionsCb)
 const route = useRoute()
 const { isRightRailForcedHidden } = useLayoutRules(route)
 const isRightRailBreakpointUp = useHydratedMediaQuery('(min-width: 962px)')
@@ -357,6 +353,7 @@ const spaceShareUrl = computed(() => {
   return `${siteConfig.url}/s/${encodeURIComponent(displaySpace.value.owner.username)}`
 })
 const toast = useAppToast()
+const { run } = useAsyncAction()
 const { copyText: copyToClipboard } = useCopyToClipboard()
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 const shareTooltip = tinyTooltip('Share')
@@ -366,12 +363,11 @@ const shareMenuItems = computed<MenuItemWithIcon[]>(() => [
     iconName: 'tabler:link',
     command: async () => {
       if (!import.meta.client || !spaceShareUrl.value) return
-      try {
-        await copyToClipboard(spaceShareUrl.value)
+      const url = spaceShareUrl.value
+      await run(async () => {
+        await copyToClipboard(url)
         toast.push({ title: 'Space link copied', tone: 'public', durationMs: 1400 })
-      } catch {
-        toast.push({ title: 'Copy failed', tone: 'error', durationMs: 1800 })
-      }
+      }, { error: () => 'Copy failed', durationMs: 1800 })
     },
   },
 ])
