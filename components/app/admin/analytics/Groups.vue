@@ -49,7 +49,7 @@
         </tr>
         <tr v-if="!data.groups.topGroups.length">
           <td colspan="4" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
-            No groups yet
+            No group posts in this range
           </td>
         </tr>
       </tbody>
