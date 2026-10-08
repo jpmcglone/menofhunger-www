@@ -238,6 +238,12 @@ describe('usePostCache.ingest', () => {
 // ── applyLiveUpdatedPatch ──────────────────────────────────────────────────────
 
 describe('applyLiveUpdatedPatch', () => {
+  it('applies the reply nudge Jev finishes after a post is created', () => {
+    const post = makePost({ id: 'p1' })
+    expect(applyLiveUpdatedPatch(post, 'p1', { replyPrompt: 'question' }).replyPrompt).toBe('question')
+    expect(applyLiveUpdatedPatch(post, 'p1', {}).replyPrompt).toBeUndefined()
+  })
+
   it('returns the same reference when postId does not match', () => {
     const post = makePost({ id: 'p1' })
     const result = applyLiveUpdatedPatch(post, 'other', { body: 'changed' })

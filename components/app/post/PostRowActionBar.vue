@@ -153,6 +153,18 @@
 
     <slot name="end" />
   </div>
+
+  <!-- Reply nudge: Jev read this root post as a question or an open discussion. -->
+  <div v-if="replyPromptLabel" class="mt-1 pb-1" @click.stop>
+    <button
+      type="button"
+      class="moh-tap moh-pressable moh-focus inline-flex min-h-9 items-center gap-1.5 rounded-full border moh-border px-3 text-[13px] font-medium moh-text transition-colors hover:bg-gray-50 dark:hover:bg-zinc-900"
+      @click.stop="onCommentClick"
+    >
+      <AppIconGlyph name="reply" :size="16" />
+      {{ replyPromptLabel }}
+    </button>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -245,6 +257,18 @@ const newRepliesSinceMount = ref(0)
 let newRepliesPillTimer: ReturnType<typeof setTimeout> | null = null
 
 const isOnPermalink = computed(() => route.path === postPermalink.value)
+
+const REPLY_PROMPT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+const replyPromptLabel = computed(() => {
+  const post = postView.value
+  const prompt = post.replyPrompt
+  if (props.variant !== 'post' || !prompt || post.parentId) return null
+  if (isDeletedPost.value || isOnlyMe.value || isPendingRow.value || isOnPermalink.value) return null
+  if (!props.viewerCanInteract || props.isGatedPost) return null
+  if (post.viewerHasCommented === true || (user.value?.id && user.value.id === props.author?.id)) return null
+  if (Date.now() - new Date(post.createdAt).getTime() > REPLY_PROMPT_MAX_AGE_MS) return null
+  return prompt === 'question' ? 'Answer this question' : 'Join the discussion'
+})
 
 const { addPostsCallback: addPostsCallbackForPill, removePostsCallback: removePostsCallbackForPill } = usePresence()
 const newRepliesCb = {

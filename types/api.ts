@@ -764,6 +764,8 @@ export type FeedPost = {
   /** Author-only: why X rejected the last cross-post attempt. */
   xError?: string | null
   topics?: string[]
+  /** Root posts: Jev's read that the post asks a question or invites discussion (drives the reply nudge). */
+  replyPrompt?: 'question' | 'discussion' | null
   /** User-created hashtags parsed from body text (lowercase, without '#'). */
   hashtags?: string[]
   /** Validated cashtag symbols parsed from body text (uppercase, without '$', e.g. "SPY"). */
@@ -1978,6 +1980,7 @@ export type WsPostsLiveUpdatedPayload = {
     bookmarkCount: number
     repostCount: number
     poll: PostPoll | null
+    replyPrompt: 'question' | 'discussion' | null
     pickaxUrl: string | null
     xUrl: string | null
     pickaxError: string | null

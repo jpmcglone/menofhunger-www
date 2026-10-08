@@ -80,6 +80,7 @@ export function applyLiveUpdatedPatch(
   if (typeof patch.boostCount === 'number') next.boostCount = Math.max(0, Math.floor(patch.boostCount))
   if (typeof patch.bookmarkCount === 'number') next.bookmarkCount = Math.max(0, Math.floor(patch.bookmarkCount))
   if (typeof patch.repostCount === 'number') next.repostCount = Math.max(0, Math.floor(patch.repostCount))
+  if (patch.replyPrompt !== undefined) next.replyPrompt = patch.replyPrompt
   if (typeof patch.pickaxUrl === 'string') {
     next.pickaxUrl = patch.pickaxUrl
     next.pickaxError = null

@@ -55,6 +55,7 @@ export default defineNuxtPlugin(() => {
       if (typeof patch.repostCount === 'number') {
         delta.repostCount = Math.max(0, Math.floor(patch.repostCount))
       }
+      if (patch.replyPrompt !== undefined) delta.replyPrompt = patch.replyPrompt
       if (typeof patch.pickaxUrl === 'string') {
         delta.pickaxUrl = patch.pickaxUrl
         delta.pickaxError = null

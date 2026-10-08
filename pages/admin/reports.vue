@@ -22,6 +22,15 @@
         class="w-[10rem]"
       />
       <Select
+        v-model="sortMode"
+        :options="sortOptions"
+        option-label="label"
+        option-value="value"
+        placeholder="Sort"
+        class="w-[12.5rem]"
+        aria-label="Sort reports"
+      />
+      <Select
         v-model="targetFilter"
         :options="targetOptions"
         option-label="label"
@@ -81,6 +90,12 @@
               </div>
               <Tag :value="statusLabel(item.status)" :severity="statusSeverity(item.status)" class="!text-xs" />
               <Tag :value="reasonLabel(item.reason)" severity="secondary" class="!text-xs" />
+              <Tag
+                v-if="jevBadge(item)"
+                :value="jevBadge(item)!.label"
+                :severity="jevBadge(item)!.severity"
+                class="!text-xs"
+              />
             </div>
             <div class="text-xs moh-text-muted">
               {{ formatDateTime(item.createdAt) }}
@@ -141,6 +156,12 @@
         <div class="flex items-center justify-between gap-2">
           <div class="moh-text-muted">Status</div>
           <div>{{ statusLabel(selected.status) }}</div>
+        </div>
+        <div v-if="selected.jevOpinion" class="flex items-center justify-between gap-2">
+          <div class="moh-text-muted">Jev's first opinion</div>
+          <div class="text-right">
+            {{ jevSummary(selected) }}
+          </div>
         </div>
         <div class="flex items-center justify-between gap-2">
           <div class="moh-text-muted">Submitted</div>
@@ -264,6 +285,12 @@ const reasonOptions = [
   { label: 'Other', value: 'other' as const },
 ]
 
+const sortOptions = [
+  { label: 'Most likely real first', value: 'likely' as const },
+  { label: 'Newest first', value: 'newest' as const },
+]
+
+const sortMode = ref<typeof sortOptions[number]['value']>('likely')
 const statusFilter = ref<typeof statusOptions[number]['value']>('all')
 const targetFilter = ref<typeof targetOptions[number]['value']>('all')
 const reasonFilter = ref<typeof reasonOptions[number]['value']>('all')
@@ -280,6 +307,7 @@ const { items, nextCursor, loading, loadingMore, initialLoading, error, refresh,
       status: statusFilter.value === 'all' ? undefined : statusFilter.value,
       targetType: targetFilter.value === 'all' ? undefined : targetFilter.value,
       reason: reasonFilter.value === 'all' ? undefined : reasonFilter.value,
+      sort: sortMode.value,
     },
   }),
   defaultErrorMessage: 'Failed to load reports.',
@@ -314,7 +342,7 @@ onBeforeUnmount(() => {
   removeAdminCallback(adminCb)
 })
 
-watch([statusFilter, targetFilter, reasonFilter], () => void refresh())
+watch([statusFilter, targetFilter, reasonFilter, sortMode], () => void refresh())
 
 function openDetails(item: AdminReportItem) {
   selected.value = item
@@ -346,6 +374,25 @@ const { submit: saveDetails, submitting: saving } = useFormSubmit(
     },
   },
 )
+
+/** Jev's first opinion is a hint for queue order; a reporter's words can still be wrong either way. */
+function jevBadge(item: AdminReportItem): { label: string; severity: 'danger' | 'warn' | 'secondary' } | null {
+  const opinion = item.jevOpinion
+  if (!opinion || item.status !== 'pending') return null
+  if ((opinion.harmScore ?? 0) >= 0.6) return { label: 'Possible serious harm', severity: 'danger' }
+  if ((opinion.validScore ?? 0) >= 0.7) return { label: 'Likely real', severity: 'warn' }
+  if (opinion.validScore !== null && opinion.validScore < 0.3) return { label: 'Likely not a violation', severity: 'secondary' }
+  return null
+}
+
+function jevSummary(item: AdminReportItem): string {
+  const o = item.jevOpinion
+  if (!o) return ''
+  if (o.validScore === null) return 'Not enough text to judge'
+  const pct = (n: number | null) => `${Math.round((n ?? 0) * 100)}%`
+  const category = o.category ? `${o.category} · ` : ''
+  return `${category}${pct(o.validScore)} likely a violation, ${pct(o.harmScore)} serious harm`
+}
 
 function statusLabel(status: ReportStatus) {
   if (status === 'dismissed') return 'Dismissed'
