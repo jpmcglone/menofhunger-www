@@ -2376,6 +2376,8 @@ export type PartnerConnection = {
 
 export type GroupChannel = Contracts.GroupChannelDto
 export type ChannelMessage = Contracts.GroupChannelMessageDto
+export type ChannelReference = Contracts.GroupChannelReferenceDto
+export type ChannelMember = Contracts.GroupChannelMemberDto
 export type ChannelAttention = Contracts.GroupChannelAttentionDto
 export type ChannelChangedEvent = Contracts.GroupChannelChangedPayloadDto
 export type ChannelMessagesEvent = Contracts.GroupChannelMessagesPayloadDto

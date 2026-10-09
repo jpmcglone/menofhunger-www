@@ -59,7 +59,7 @@ export function useStyledTextareaTags(ctx: ReturnType<typeof useStyledTextareaMe
     items: [],
     highlightedIndex: 0,
     anchor: null,
-    listboxId: 'moh-tiptap-hashtag-listbox',
+    listboxId: useId(),
   })
 
   let hashtagCmd: SuggestionProps<HashtagResult>['command'] | null = null
@@ -182,7 +182,7 @@ export function useStyledTextareaTags(ctx: ReturnType<typeof useStyledTextareaMe
     items: [],
     highlightedIndex: 0,
     anchor: null,
-    listboxId: 'moh-tiptap-cashtag-listbox',
+    listboxId: useId(),
     loading: false,
   })
 

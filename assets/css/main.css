@@ -1587,3 +1587,17 @@ html.dark .moh-avatar-initial {
     animation: none;
   }
 }
+
+/* Shared channel-reference chips, in editors and rendered messages. */
+.moh-channel-reference {
+  display: inline-flex; align-items: center; gap: 4px; vertical-align: text-bottom; max-width: min(100%, 18rem);
+  border-radius: 6px; padding: 1px 6px; background: var(--moh-surface-2);
+  color: var(--moh-text); font-weight: 600; line-height: 1.35; white-space: nowrap;
+}
+.moh-channel-reference-lock {
+  display: inline-block; width: 0.9em; height: 0.9em; background: currentColor;
+  mask: url('/images/channel-reference-lock.svg') center / contain no-repeat;
+}
+
+.moh-channel-reference-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.moh-channel-reference-hash, .moh-channel-reference-lock { flex-shrink: 0; }

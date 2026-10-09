@@ -1,4 +1,5 @@
 import type { FollowListUser } from '~/types/api'
+import type { ChannelReferenceScope } from '~/utils/channels/references'
 
 export interface StyledTextareaProps {
     modelValue: string
@@ -7,6 +8,9 @@ export interface StyledTextareaProps {
     autoFocus?: boolean
     priorityUsers?: FollowListUser[] | null
     prioritySectionTitle?: string
+    /** Replaces hashtag autocomplete only inside this group's channel editor. */
+    channelScope?: ChannelReferenceScope
+    mentionSearch?: (query: string) => Promise<FollowListUser[]>
     /** CSS color value for hashtag nodes (defaults to primary color). */
     hashtagColor?: string
     /**
@@ -21,6 +25,8 @@ export interface StyledTextareaEmits {
   'update:modelValue': [value: string]
   send: []
   'media-files': [files: File[]]
+  blur: []
+  escape: []
 }
 
 /** Props inside `AppStyledTextarea` after `withDefaults` fills the defaulted keys. */

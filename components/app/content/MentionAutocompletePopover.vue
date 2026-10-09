@@ -49,7 +49,7 @@
               </div>
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-1.5 min-w-0">
-                  <div class="font-semibold text-sm text-gray-900 dark:text-gray-50 truncate">
+                  <div class="font-semibold text-sm truncate" :style="{ color: userTierColorVar(userColorTier(u)) ?? 'var(--moh-text)' }">
                     {{ u.name?.trim() || (u.username ? `@${u.username}` : 'User') }}
                   </div>
                   <AppVerifiedBadge
@@ -61,7 +61,7 @@
                     size="xs"
                   />
                 </div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <div class="text-xs truncate" :style="{ color: userTierColorVar(userColorTier(u)) ?? 'var(--moh-text-muted)' }">
                   <span v-if="u.username">@{{ u.username }}</span>
                 </div>
               </div>
@@ -93,6 +93,7 @@
 
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
+import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 import type { MentionSection } from '~/composables/useMentionAutocomplete'
 import { useUsersStore } from '~/composables/useUsersStore'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'

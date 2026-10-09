@@ -8,13 +8,18 @@ import { insertMentionAtCaret } from '~/utils/mention-autocomplete'
 import { clipboardHasPlainText, collectMediaFiles, dataTransferHasMedia } from '~/composables/composer/types'
 import type { useStyledTextareaMentions } from './useStyledTextarea'
 import type { useStyledTextareaTags } from './useStyledTextareaTags'
+import type { useStyledTextareaChannels } from './useStyledTextareaChannels'
+import { ChannelReferenceNode, channelEditorDocument } from '~/utils/channels/editor'
+import { channelReferenceToken, channelReferencePlainText, channelReferenceFromScope } from '~/utils/channels/references'
 
 /**
  * Enter-to-send, the Tiptap editor, model sync, caret scrolling, and the exposed
  * focus, insert, and clear helpers.
  */
-export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit: EmitFn<StyledTextareaEmits>, ctx: ReturnType<typeof useStyledTextareaMentions> & ReturnType<typeof useStyledTextareaTags>) {
+export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit: EmitFn<StyledTextareaEmits>, ctx: ReturnType<typeof useStyledTextareaMentions> & ReturnType<typeof useStyledTextareaTags> & ReturnType<typeof useStyledTextareaChannels>) {
   const { validSet, tierMap, validateMentionsInBody, MentionWithColor, mentionPopover, mentionSuggestion, hashtagPopover, HashtagNode, hashtagSuggestion, cashtagPopover, CashtagNode, cashtagSuggestion } = ctx
+
+  const { ChannelSuggestions, channelPopover, refreshChannelNodes } = ctx
 
   // ─── Enter-to-send ────────────────────────────────────────────
 
@@ -28,7 +33,7 @@ export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit
     addKeyboardShortcuts(): Record<string, KeyboardShortcutCommand> {
       if (props.submitTrigger === 'cmd-enter') {
         const send = () => {
-          if (mentionPopover.open || hashtagPopover.open || cashtagPopover.open) return false
+          if (mentionPopover.open || hashtagPopover.open || cashtagPopover.open || channelPopover.open) return false
           emit('send')
           return true
         }
@@ -44,13 +49,21 @@ export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit
       // Default DM mode: Enter sends, Shift/Alt/Ctrl-Enter insert newline.
       return {
         Enter: () => {
-          if (mentionPopover.open || hashtagPopover.open || cashtagPopover.open) return false
+          if (mentionPopover.open || hashtagPopover.open || cashtagPopover.open || channelPopover.open) return false
+          if (props.channelScope && !window.matchMedia('(pointer:fine)').matches) return insertNewline({ editor: this.editor })
           emit('send')
           return true
         },
+        'Mod-Enter': () => { if (mentionPopover.open || channelPopover.open) return false; emit('send'); return true },
+        Escape: () => { if (mentionPopover.open || hashtagPopover.open || cashtagPopover.open || channelPopover.open) return false; emit('escape'); return true },
         'Shift-Enter': insertNewline,
         'Alt-Enter': insertNewline,
-        'Ctrl-Enter': insertNewline,
+        'Ctrl-Enter': () => {
+          if (!props.channelScope) return insertNewline({ editor: this.editor })
+          if (mentionPopover.open || channelPopover.open) return false
+          emit('send')
+          return true
+        },
       }
     },
   })
@@ -59,6 +72,10 @@ export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit
 
   function escapeHtml(text: string): string {
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')
+  }
+
+  function contentForText(text: string) {
+    return props.channelScope ? channelEditorDocument(text, props.channelScope) : `<p>${escapeHtml(text)}</p>`
   }
 
   function getPlainText(ed: CoreEditor): string {
@@ -74,16 +91,37 @@ export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit
       composerStarterKit,
       Placeholder.configure({ placeholder: props.placeholder }),
       MentionWithColor.configure({ suggestion: mentionSuggestion }),
-      HashtagNode.configure({ suggestion: hashtagSuggestion }),
+      ...(props.channelScope ? [ChannelReferenceNode.configure({ scope: () => props.channelScope }), ChannelSuggestions] : [HashtagNode.configure({ suggestion: hashtagSuggestion })]),
       CashtagNode.configure({ suggestion: cashtagSuggestion }),
       SendOnEnter,
     ],
     editorProps: {
+      clipboardTextSerializer(slice) {
+        return slice.content.textBetween(0, slice.content.size, '\n', node => {
+          if (node.type.name === 'hardBreak') return '\n'
+          if (node.type.name === 'channelReference') {
+            const token = channelReferenceToken(node.attrs.id)
+            return channelReferencePlainText(token, [channelReferenceFromScope(token, props.channelScope)])
+          }
+          if (node.type.name === 'mention') return `@${node.attrs.label ?? node.attrs.id}`
+          if (node.type.name === 'hashtag') return `#${node.attrs.label ?? node.attrs.id}`
+          if (node.type.name === 'cashtag') return `$${node.attrs.label ?? node.attrs.id}`
+          return ''
+        })
+      },
       attributes: {
         class: 'moh-styled-textarea-editor',
         'aria-label': props.placeholder,
+        role: 'textbox',
+        'aria-multiline': 'true',
+        'aria-autocomplete': 'list',
       },
       handlePaste(_view, event) {
+        if (props.channelScope && event.clipboardData?.getData('text/plain').includes('<#')) {
+          event.preventDefault()
+          editor.value?.commands.insertContent(channelEditorDocument(event.clipboardData.getData('text/plain'), props.channelScope).content ?? [])
+          return true
+        }
         if (clipboardHasPlainText(event.clipboardData)) return false
         const files = collectMediaFiles(event.clipboardData)
         if (!files.length) return false
@@ -106,6 +144,7 @@ export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit
       },
       handleDOMEvents: {
         compositionend: () => {
+          setTimeout(() => { const ed = editor.value; if (isEditorAlive(ed)) refreshChannelNodes(ed) }, 0)
           if (!pendingDecorationRefresh) return false
           pendingDecorationRefresh = false
           // Defer past ProseMirror's own post-composition flush so `view.composing`
@@ -123,7 +162,8 @@ export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit
       },
     },
     editable: !props.disabled,
-    content: props.modelValue ? `<p>${escapeHtml(props.modelValue)}</p>` : '',
+    content: contentForText(props.modelValue ?? ''),
+    onBlur: () => emit('blur'),
     onUpdate: ({ editor: ed }) => {
       const text = getPlainText(ed)
       lastEmittedText = text
@@ -163,11 +203,30 @@ export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit
       if (!incoming) {
         if (isEditorAlive(editor.value)) editor.value.commands.clearContent(true)
       } else if (isEditorAlive(editor.value)) {
-        editor.value.commands.setContent(`<p>${escapeHtml(incoming)}</p>`)
+        editor.value.commands.setContent(contentForText(incoming))
         validateMentionsInBody(incoming, validSet.value)
       }
     },
   )
+
+  watch(() => props.channelScope, () => {
+    const ed = editor.value
+    if (isEditorAlive(ed)) refreshChannelNodes(ed)
+  }, { deep: true })
+  watch(() => [channelPopover.open, channelPopover.highlightedIndex, channelPopover.items.length, mentionPopover.open, mentionPopover.highlightedIndex, mentionPopover.items.length, hashtagPopover.open, hashtagPopover.highlightedIndex, cashtagPopover.open, cashtagPopover.highlightedIndex], () => {
+    const ed = editor.value
+    if (!isEditorAlive(ed)) return
+    const active = [channelPopover, mentionPopover, hashtagPopover, cashtagPopover].find(popover => popover.open)
+    ed.view.dom.setAttribute('aria-expanded', String(!!active))
+    if (active) {
+      ed.view.dom.setAttribute('aria-controls', active.listboxId)
+      if (active.items.length) ed.view.dom.setAttribute('aria-activedescendant', `${active.listboxId}-opt-${active.highlightedIndex}`)
+      else ed.view.dom.removeAttribute('aria-activedescendant')
+    } else {
+      ed.view.dom.removeAttribute('aria-controls')
+      ed.view.dom.removeAttribute('aria-activedescendant')
+    }
+  })
 
   watch(() => props.disabled, (d) => {
     const ed = editor.value
@@ -217,7 +276,7 @@ export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit
     lastEmittedText = next.text
     emit('update:modelValue', next.text)
     if (next.text) {
-      ed.commands.setContent(`<p>${escapeHtml(next.text)}</p>`)
+      ed.commands.setContent(contentForText(next.text))
     } else {
       ed.commands.clearContent(true)
     }

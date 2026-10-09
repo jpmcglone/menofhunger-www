@@ -13,10 +13,10 @@
       </div>
       <p v-if="files.length" class="text-xs moh-text-muted">{{ files.length }} of {{ CHANNEL_MAX_ATTACHMENTS }}</p>
     </div>
-    <div v-if="suggestions.length" role="listbox" aria-label="Mention suggestions" class="mb-2 max-h-40 overflow-y-auto rounded-lg border moh-border"><button v-for="(member, index) in suggestions" :key="member.user.id" type="button" role="option" :aria-selected="index === mentionIndex" class="moh-focus block min-h-11 w-full px-3 text-left text-sm" :class="index === mentionIndex ? 'bg-[var(--moh-surface-2)]' : ''" @click="mention(member)">{{ member.user.name ?? member.user.username }} <span class="moh-text-muted">@{{ member.user.username }}</span></button></div>
+
     <div v-if="voice.recording.value" class="flex min-h-11 items-center gap-3"><AppChatVoiceLevel :level="voice.level.value" /><span class="text-sm tabular-nums">Recording · {{ Math.floor(voice.elapsed.value) }}s</span><button type="button" class="moh-focus min-h-11 px-2" @click="voice.cancel">Discard</button><button type="button" class="moh-focus min-h-11 px-2 font-semibold" @click="stopVoice">Done</button></div>
     <div v-else class="rounded-xl border moh-border">
-      <textarea ref="input" v-model="text" rows="2" maxlength="2000" class="moh-focus block w-full resize-none bg-transparent px-3 pt-3 text-[15px]" :placeholder="rootId ? 'Reply in thread' : `Message ${channelTitle(channel)}`" :aria-label="rootId ? 'Reply in thread' : `Message #${channel.name}`" :disabled="!ready || !channel.capabilities.canSend" @input="changed(); searchMentions(); notifyTyping()" @blur="stopTyping" @keydown="keyDown" />
+      <AppChannelsMessageEditor ref="input" v-model="text" :group-id="group.id" :channel="channel" :placeholder="rootId ? 'Reply in thread' : `Message ${channelTitle(channel)}`" :disabled="!ready || !channel.capabilities.canSend" @update:model-value="changed(); notifyTyping()" @escape="replyTo && emit('clear-reply')" @send="send" @blur="stopTyping" @media-files="attachAll" />
       <div class="flex items-center px-1">
         <button type="button" class="moh-focus size-11" aria-label="Attach image, video, or audio" :disabled="files.length >= CHANNEL_MAX_ATTACHMENTS || !!gif || !ready" @click="picker?.click()"><Icon name="tabler:plus" /></button>
         <button type="button" class="moh-focus size-11 text-sm font-semibold" aria-label="Add GIF" :disabled="files.length > 0 || !!gif || !ready" @click="gifOpen = true; searchGIF()">GIF</button>
@@ -30,13 +30,12 @@
 </template>
 <script setup lang="ts">
 import type { ChannelMessage, CommunityGroupShell, GroupChannel, GiphyItem } from '~/types/api'
-import { channelPath, channelTitle } from '~/utils/channels/reducer'
+import { channelTitle } from '~/utils/channels/reducer'
 import { CHANNEL_MAX_ATTACHMENTS, destinationDraftKey, loadChannelDraft, saveChannelDraft } from '~/utils/channels/drafts'
 import { useChannelOutbox } from '~/composables/channels/useChannelOutbox'
 import { useVoiceRecorder } from '~/composables/chat/useVoiceRecorder'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 import { formatBytes } from '~/utils/number-format'
-type Mention = { user: { id: string; username: string | null; name: string | null } }
 const props = defineProps<{ group: CommunityGroupShell; channel: GroupChannel; rootId?: string; replyTo?: ChannelMessage | null }>()
 const emit = defineEmits<{ 'clear-reply': [] }>()
 const { user } = useAuth()
@@ -45,11 +44,10 @@ const outbox = useChannelOutbox()
 const voice = useVoiceRecorder()
 const text = ref(''), files = shallowRef<File[]>([]), gif = ref<GiphyItem>()
 const ready = ref(false), error = ref<string | null>(null)
-const input = ref<HTMLTextAreaElement | null>(null), picker = ref<HTMLInputElement | null>(null)
+const input = ref<{ focus: () => void } | null>(null), picker = ref<HTMLInputElement | null>(null)
 const gifOpen = ref(false), gifQuery = ref(''), gifLoading = ref(false), gifError = ref<string | null>(null), gifs = ref<GiphyItem[]>([])
-const suggestions = ref<Mention[]>([]), mentionIndex = ref(0)
 let sending = false
-let identity = '', key = '', revision = '', requestId = '', closed = false, mentionRequest = 0
+let identity = '', key = '', revision = '', requestId = '', closed = false
 function snapshot() { return { text: text.value, files: files.value, gif: gif.value, revision, requestId } }
 async function persist() {
   if (!ready.value || !key) return
@@ -77,6 +75,7 @@ async function send() {
   stopTyping()
   const submitted = snapshot()
   if (!submitted.text.trim() && !submitted.files.length && !submitted.gif) return
+  if (submitted.text.length > 2000) { error.value = 'Keep messages to 2,000 characters.'; return }
   const destination = { identity, groupId: props.group.id, channelId: props.channel.id, rootId: props.rootId, draftKey: key }
   sending = true
   await persist()
@@ -84,7 +83,7 @@ async function send() {
   if (closed || user.value?.id !== destination.identity) return
   outbox.enqueue({ id: submitted.requestId, ...destination, input: { body: submitted.text.trim(), clientRequestId: submitted.requestId, threadRootId: destination.rootId, ...(props.replyTo && !destination.rootId ? { replyToId: props.replyTo.id } : {}), giphy: submitted.gif ? { url: submitted.gif.url, ...(submitted.gif.mp4Url ? { mp4Url: submitted.gif.mp4Url } : {}), ...(submitted.gif.width ? { width: submitted.gif.width } : {}), ...(submitted.gif.height ? { height: submitted.gif.height } : {}) } : undefined }, files: submitted.files.length ? submitted.files : undefined, status: 'sending', draftRevision: submitted.revision, queuedAt: new Date().toISOString() })
   if (revision !== submitted.revision) return
-  text.value = ''; files.value = []; gif.value = undefined; suggestions.value = []
+  text.value = ''; files.value = []; gif.value = undefined
   if (props.replyTo) emit('clear-reply')
   revision = crypto.randomUUID(); requestId = crypto.randomUUID()
   input.value?.focus()
@@ -108,39 +107,6 @@ function selectGIF(value: GiphyItem) { gif.value = value; gifOpen.value = false;
 async function searchGIF() { gifLoading.value = true; try { gifs.value = await apiFetchData<GiphyItem[]>(gifQuery.value ? '/giphy/search' : '/giphy/trending', { query: { q: gifQuery.value || undefined } }); gifError.value = null } catch (cause) { gifError.value = getSafeUserErrorMessage(cause) } finally { gifLoading.value = false } }
 async function startVoice() { try { await voice.start() } catch (cause) { error.value = getSafeUserErrorMessage(cause, 'Microphone unavailable.') } }
 async function stopVoice() { const recording = await voice.stop(); if (recording) attachAll([recording.file]) }
-// Leaders can notify the whole channel; for everyone else the token stays plain text.
-const BROADCASTS = [
-  { id: 'broadcast:everyone', username: 'everyone', name: 'Notify everyone in this channel' },
-  { id: 'broadcast:here', username: 'here', name: 'Notify members online now' },
-]
-function broadcastSuggestions(query: string): Mention[] {
-  if (!props.channel.capabilities.canModerate) return []
-  return BROADCASTS.filter(item => item.username.startsWith(query.toLowerCase())).map(item => ({ user: item }))
-}
-async function searchMentions() {
-  const query = text.value.slice(0, input.value?.selectionStart ?? text.value.length).match(/(?:^|\s)@([a-zA-Z0-9_]*)$/)?.[1]
-  const request = ++mentionRequest
-  if (query === undefined) { suggestions.value = []; return }
-  try {
-    const results = await apiFetchData<Mention[]>(`${channelPath(props.group.id, props.channel.id)}/members`, { query: { q: query } })
-    if (request === mentionRequest && !closed && identity === user.value?.id) { suggestions.value = [...broadcastSuggestions(query), ...results.filter(item => item.user.username)].slice(0, 8); mentionIndex.value = 0 }
-  } catch { if (request === mentionRequest) suggestions.value = [] }
-}
-function mention(value: Mention) {
-  const caret = input.value?.selectionStart ?? text.value.length
-  text.value = text.value.slice(0, caret).replace(/@[a-zA-Z0-9_]*$/, `@${value.user.username} `) + text.value.slice(caret)
-  suggestions.value = []; changed(); input.value?.focus()
-}
-function keyDown(event: KeyboardEvent) {
-  if (event.isComposing) return
-  if (event.key === 'Escape' && props.replyTo && !suggestions.value.length) { event.preventDefault(); emit('clear-reply'); return }
-  if (suggestions.value.length && ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) {
-    event.preventDefault()
-    if (event.key === 'Escape') suggestions.value = []
-    else if (event.key === 'Enter') mention(suggestions.value[mentionIndex.value]!)
-    else mentionIndex.value = (mentionIndex.value + (event.key === 'ArrowDown' ? 1 : -1) + suggestions.value.length) % suggestions.value.length
-  } else if (event.key === 'Enter' && !event.shiftKey && (event.metaKey || event.ctrlKey || matchMedia('(pointer:fine)').matches)) { event.preventDefault(); void send() }
-}
 onMounted(async () => {
   identity = user.value?.id ?? ''
   key = destinationDraftKey({ identity, surface: 'channel', destination: props.channel.id, root: props.rootId })
@@ -153,6 +119,6 @@ onMounted(async () => {
   } catch (cause) { error.value = getSafeUserErrorMessage(cause, 'Draft storage unavailable. Keep this page open until your message sends.') }
   ready.value = true
 })
-watch(() => user.value?.id, () => { ready.value = false; mentionRequest++; suggestions.value = []; voice.cancel(); files.value = []; gif.value = undefined; text.value = '' })
+watch(() => user.value?.id, () => { ready.value = false; voice.cancel(); files.value = []; gif.value = undefined; text.value = '' })
 onBeforeUnmount(() => { closed = true; stopTyping(); voice.cancel() })
 </script>

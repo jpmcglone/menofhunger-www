@@ -29,12 +29,13 @@
     <Dialog v-model:visible="attentionOpen" modal header="For you" class="w-full max-w-xl">
       <p v-if="!state.attention.value.length" class="moh-text-muted">You’re caught up.</p>
       <div class="moh-divide">
-        <NuxtLink v-for="item in state.attention.value" :key="item.messageId" :to="channelLink(group!.slug, item.channelId, item.message)" class="moh-focus block min-h-11 py-3" @click="attentionOpen = false; channelAnalytics.capture('channel_attention_opened')"><strong>{{ item.mentioned ? 'Mentioned you' : 'Replied in a thread' }}</strong><p class="mt-1 line-clamp-3 text-sm">{{ item.message.body || 'Attachment' }}</p></NuxtLink>
+        <NuxtLink v-for="item in state.attention.value" :key="item.messageId" :to="channelLink(group!.slug, item.channelId, item.message)" class="moh-focus block min-h-11 py-3" @click="attentionOpen = false; channelAnalytics.capture('channel_attention_opened')"><strong>{{ item.mentioned ? 'Mentioned you' : 'Replied in a thread' }}</strong><p class="mt-1 line-clamp-3 text-sm">{{ channelReferencePlainText(item.message.body, visibleChannelReferences(item.message.body, { groupId: group?.id ?? '', channels: state.channels.value })) || 'Attachment' }}</p></NuxtLink>
       </div>
     </Dialog>
   </div>
 </template>
 <script setup lang="ts">
+import { channelReferencePlainText, visibleChannelReferences } from '~/utils/channels/references'
 import type { MenuItem } from 'primevue/menuitem'
 import type { CommunityGroupShell, GroupChannel } from '~/types/api'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'

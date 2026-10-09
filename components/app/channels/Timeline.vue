@@ -17,16 +17,16 @@
      <div>
       <button v-if="state.cursors.value[key]" type="button" class="moh-focus min-h-11 w-full text-sm" :disabled="loading" @click="load(true)">{{ loading && rows.length ? 'Loading earlier messages…' : 'Load earlier messages' }}</button>
       <div v-if="loading && !rows.length" class="p-8" role="status"><AppLogoLoader /></div>
-      <div v-if="root" :data-message-id="root.id"><AppChannelsMessageRow :message="root" :permalink="permalink(root)" hide-replies :grouped="false" :can-react="channel.capabilities.canReact" :actions="actions(root)" :reactions="reactions" @react="react(root, $event)" @reply="openThread(root)" @hide-preview="hidePreview(root, $event)" /><div class="border-b moh-border" /></div>
+      <div v-if="root" :data-message-id="root.id"><AppChannelsMessageRow :group-id="group.id" :group-slug="group.slug" :message="root" :permalink="permalink(root)" hide-replies :grouped="false" :can-react="channel.capabilities.canReact" :actions="actions(root)" :reactions="reactions" @react="react(root, $event)" @reply="openThread(root)" @hide-preview="hidePreview(root, $event)" /><div class="border-b moh-border" /></div>
       <TransitionGroup tag="div" :name="loading ? 'channel-static' : 'channel-rows'">
       <div v-for="(message, index) in rows" :key="message.id">
         <div v-if="startsDay(index)" class="flex items-center gap-3 py-5 text-xs moh-text-muted"><span class="h-px flex-1 bg-[var(--moh-border)]" /><time :datetime="message.createdAt">{{ formatDayDividerLabel(message.createdAt) }}</time><span class="h-px flex-1 bg-[var(--moh-border)]" /></div>
         <button v-if="message.id === newMarkerId" type="button" class="moh-focus flex min-h-11 w-full items-center" aria-label="New messages. Dismiss marker" title="Dismiss (Esc)" @click="newDismissed = true"><AppNewSinceVisitDivider /></button>
-        <div :id="`channel-message-${message.id}`" :data-message-id="message.id" :class="targetId === message.id ? 'bg-[var(--moh-surface-2)]' : ''"><AppChannelsJoinRow v-if="isJoinRow(message)" :message="message" :busy="welcoming.has(message.id)" @welcome="welcome(message)" /><AppChannelsMessageRow v-else :message="message" :permalink="permalink(message)" :grouped="grouped(index)" :latest-own="message.id === latestOwnId && !pending.length" :fresh="freshlySent.has(message.id)" :can-react="channel.capabilities.canReact" :can-quote="canQuote(message)" :actions="actions(message)" :reactions="reactions" @react="react(message, $event)" @reply="openThread(message)" @quote="startQuote(message)" @quote-click="jumpTo" @hide-preview="hidePreview(message, $event)" /></div>
+        <div :id="`channel-message-${message.id}`" :data-message-id="message.id" :class="targetId === message.id ? 'bg-[var(--moh-surface-2)]' : ''"><AppChannelsJoinRow v-if="isJoinRow(message)" :message="message" :busy="welcoming.has(message.id)" @welcome="welcome(message)" /><AppChannelsMessageRow v-else :group-id="group.id" :group-slug="group.slug" :message="message" :permalink="permalink(message)" :grouped="grouped(index)" :latest-own="message.id === latestOwnId && !pending.length" :fresh="freshlySent.has(message.id)" :can-react="channel.capabilities.canReact" :can-quote="canQuote(message)" :actions="actions(message)" :reactions="reactions" @react="react(message, $event)" @reply="openThread(message)" @quote="startQuote(message)" @quote-click="jumpTo" @hide-preview="hidePreview(message, $event)" /></div>
       </div>
       </TransitionGroup>
       <p v-if="!loading && !rows.length" class="p-6 text-sm moh-text-muted">{{ rootId ? 'Start the conversation in this thread.' : `This is the beginning of ${channelTitle(channel)}.` }}</p>
-      <AppChannelsMessageRow v-for="(entry, index) in pending" :key="entry.id" :message="pendingMessage(entry)" :grouped="pendingGrouped(index)" :can-react="false" :actions="[]" :reactions="reactions" :status="entry.status === 'failed' ? 'failed' : 'sending'" :latest-own="index === pending.length - 1" hide-replies>
+      <AppChannelsMessageRow v-for="(entry, index) in pending" :key="entry.id" :group-id="group.id" :group-slug="group.slug" :message="pendingMessage(entry)" :grouped="pendingGrouped(index)" :can-react="false" :actions="[]" :reactions="reactions" :status="entry.status === 'failed' ? 'failed' : 'sending'" :latest-own="index === pending.length - 1" hide-replies>
         <template v-if="entry.files?.length || entry.input.giphy" #media><div class="my-2 flex flex-wrap gap-2"><AppChannelsAttachmentTile v-for="(item, tileIndex) in entry.files?.length ? entry.files : [undefined]" :key="tileIndex" :file="item" :image-url="entry.input.giphy?.url" :state="entry.status === 'failed' ? 'failed' : entry.status === 'uploading' ? 'uploading' : 'ready'" /></div></template>
         <template v-if="entry.status === 'failed'" #failed><p class="mt-1 text-sm text-red-600" role="alert">{{ entry.error }}</p><div class="flex gap-3"><button type="button" class="moh-focus min-h-11 text-sm font-semibold" @click="outbox.retry(entry)">Retry</button><button type="button" class="moh-focus min-h-11 text-sm moh-text-muted" @click="outbox.discard(entry.id)">Discard</button></div></template>
       </AppChannelsMessageRow>
@@ -39,13 +39,14 @@
     <p v-else class="border-t moh-border p-4 text-center text-sm moh-text-muted">{{ channel.archivedAt ? 'This channel is archived.' : 'Only group leaders can post here.' }}</p>
     <AppChannelsManagement v-model="manageOpen" :group="group" :channel="channel" @updated="state.load" />
     <AppChannelsSearch v-model="searchOpen" :group="group" :channel="channel" :start-on-pins="startOnPins" />
-    <Dialog v-model:visible="editOpen" modal header="Edit message" class="w-full max-w-lg"><form @submit.prevent="commitEdit"><textarea v-model="editText" class="moh-focus min-h-32 w-full rounded-lg border moh-border bg-transparent p-3" maxlength="2000" aria-label="Edit message" /><Button type="submit" label="Save" :disabled="!editText.trim()" /></form></Dialog>
+    <Dialog v-model:visible="editOpen" modal header="Edit message" class="w-full max-w-lg"><form @submit.prevent="commitEdit"><AppChannelsMessageEditor v-model="editText" :group-id="group.id" :channel="channel" placeholder="Edit message" submit-trigger="cmd-enter" @send="commitEdit" /><Button type="submit" label="Save" :disabled="!editText.trim()" /></form></Dialog>
     <Dialog v-model:visible="deleteOpen" modal header="Delete message?" class="w-full max-w-md"><p class="mb-4">This removes the message for everyone. Replies will remain.</p><Button label="Delete for everyone" severity="danger" @click="confirmDelete" /></Dialog>
     <Dialog v-model:visible="reportOpen" modal header="Report message" class="w-full max-w-md"><p class="mb-3 text-sm">A reviewer can see this reported message and its attachments.</p><label class="block text-sm">Reason<textarea v-model="reportText" class="moh-focus mt-2 min-h-24 w-full rounded-lg border moh-border bg-transparent p-3" maxlength="2000" /></label><Button label="Send report" @click="report" /></Dialog>
   </section>
 </template>
 <script setup lang="ts">
 import type { ChannelMessage, CommunityGroupShell, GroupChannel, MessageReaction } from '~/types/api'
+import { CHANNEL_REFERENCE_PATTERN, channelReferenceFromScope, channelReferencePlainText, visibleChannelReferences } from '~/utils/channels/references'
 import { groupChannelsKey } from '~/composables/channels/useGroupChannels'
 import { useChannelOutbox, type ChannelOutboxEntry } from '~/composables/channels/useChannelOutbox'
 import { channelArrivals, channelLink, channelPath, channelTitle } from '~/utils/channels/reducer'
@@ -90,7 +91,7 @@ const latestOwnId = computed(() => rows.value.findLast(message => message.sender
 const freshlySent = ref(new Set<string>())
 function pendingMessage(entry: ChannelOutboxEntry): ChannelMessage {
   const quoted = entry.input.replyToId ? state.messages.value[entry.input.replyToId] : undefined
-  return { id: `pending:${entry.id}`, body: entry.input.body, replyTo: quoted ? quoteSnippet(quoted) : null, createdAt: entry.queuedAt ?? new Date().toISOString(), sender: user.value, media: [], hiddenPreviews: [], reactions: [], deletedForAll: false, replyCount: 0, pinned: false, editedAt: null, receipt: null, kind: 'text', joinWelcome: null } as unknown as ChannelMessage
+  return { id: `pending:${entry.id}`, body: entry.input.body, channelReferences: [...entry.input.body.matchAll(CHANNEL_REFERENCE_PATTERN)].map(match => channelReferenceFromScope(match[0], { groupId: props.group.id, channels: state.channels.value })), replyTo: quoted ? quoteSnippet(quoted) : null, createdAt: entry.queuedAt ?? new Date().toISOString(), sender: user.value, media: [], hiddenPreviews: [], reactions: [], deletedForAll: false, replyCount: 0, pinned: false, editedAt: null, receipt: null, kind: 'text', joinWelcome: null } as unknown as ChannelMessage
 }
 function pendingGrouped(index: number) {
   const prior = index > 0 ? pending.value[index - 1] : undefined
@@ -104,15 +105,16 @@ async function action(work: () => Promise<unknown>) { try { await work(); error.
 async function load(older = false) {
   if (loading.value) return
   loading.value = true
+  const epoch = state.accessEpoch.value, references = state.referenceEpoch.value, identity = user.value?.id
   const height = scroller.value?.scrollHeight ?? 0, top = scroller.value?.scrollTop ?? 0
   try {
     await state.history(props.channel.id, props.rootId, older, props.targetId)
     if (props.rootId) {
       const context = await apiFetchData<{ messages: ChannelMessage[] }>(`${path.value}/messages/${props.rootId}/context`)
-      if (!closed) context.messages.forEach(state.mergeMessage)
+      if (!closed && epoch === state.accessEpoch.value && references === state.referenceEpoch.value && identity === user.value?.id) context.messages.forEach(state.mergeMessage)
     }
     await nextTick()
-    if (closed) return
+    if (closed || epoch !== state.accessEpoch.value || references !== state.referenceEpoch.value || identity !== user.value?.id) return
     if (older && scroller.value) scroller.value.scrollTop = top + scroller.value.scrollHeight - height
     else if (props.targetId) { list.releasePin(); list.atBottom.value = false; document.getElementById(`channel-message-${props.targetId}`)?.scrollIntoView({ block: 'center' }) }
     else if (atBottom.value || !opened) followLatest()
@@ -129,7 +131,7 @@ function permalink(message: ChannelMessage) { return { path: channelLink(props.g
 const quoteTarget = ref<ChannelMessage | null>(null)
 function canQuote(message: ChannelMessage) { return !props.rootId && props.channel.capabilities.canSend && !props.channel.archivedAt && !message.deletedForAll }
 function startQuote(message: ChannelMessage) { if (canQuote(message)) quoteTarget.value = message }
-function quoteSnippet(message: ChannelMessage) { return { id: message.id, senderUsername: message.sender.username ?? null, bodyPreview: message.body.slice(0, 200), mediaThumbnailUrl: message.media?.[0]?.thumbnailUrl ?? message.media?.[0]?.url ?? null } }
+function quoteSnippet(message: ChannelMessage) { return { id: message.id, senderUsername: message.sender.username ?? null, bodyPreview: channelReferencePlainText(message.body, visibleChannelReferences(message.body, { groupId: props.group.id, channels: state.channels.value })).slice(0, 200), mediaThumbnailUrl: message.media?.[0]?.thumbnailUrl ?? message.media?.[0]?.url ?? null } }
 function jumpTo(id: string) {
   const element = document.getElementById(`channel-message-${id}`)
   if (element) element.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
@@ -158,14 +160,14 @@ function actions(message: ChannelMessage): SurfaceAction[] {
     { id: 'follow', label: message.following ? 'Unfollow thread' : 'Follow thread', icon: 'tabler:bell', section: 'conversation', run: () => action(() => apiFetchData(`${path.value}/threads/${rootId}/follow`, { method: 'PUT', body: { following: !message.following } })) },
     { id: 'unread', label: 'Mark unread', icon: 'tabler:mail', section: 'conversation', run: () => action(() => apiFetchData(`${path.value}/unread`, { method: 'POST', body: { messageId: message.id } })) },
     { id: 'link', label: 'Copy link', icon: 'tabler:link', section: 'copy', run: () => action(() => navigator.clipboard.writeText(new URL(channelLink(props.group.slug, props.channel.id, message), location.origin).href)) },
-    { id: 'copy', label: 'Copy message', icon: 'tabler:copy', section: 'copy', available: !message.deletedForAll, run: () => action(() => navigator.clipboard.writeText(message.body)) },
+    { id: 'copy', label: 'Copy message', icon: 'tabler:copy', section: 'copy', available: !message.deletedForAll, run: () => action(() => navigator.clipboard.writeText(channelReferencePlainText(message.body, visibleChannelReferences(message.body, { groupId: props.group.id, channels: state.channels.value })))) },
     { id: 'pin', label: message.pinned ? 'Unpin message' : 'Pin message', icon: 'tabler:pin', section: 'organize', available: props.channel.capabilities.canManage && !props.channel.archivedAt && !message.deletedForAll, run: () => action(() => apiFetchData(`${path.value}/messages/${message.id}/pin`, { method: message.pinned ? 'DELETE' : 'PUT', body: {} })) },
     { id: 'edit', label: 'Edit message', icon: 'tabler:pencil', section: 'manage', available: message.canEdit, run: () => { target.value = message; editText.value = message.body; editOpen.value = true } },
     { id: 'report', label: 'Report message', icon: 'tabler:flag', section: 'manage', available: !message.deletedForAll, run: () => { target.value = message; reportOpen.value = true } },
     { id: 'delete', label: 'Delete message', icon: 'tabler:trash', section: 'delete', destructive: true, available: message.canDelete, run: () => { target.value = message; deleteOpen.value = true } },
   ]
 }
-async function commitEdit() { if (target.value) await action(async () => { await apiFetchData(`${path.value}/messages/${target.value!.id}`, { method: 'PATCH', body: { body: editText.value } }); editOpen.value = false }) }
+async function commitEdit() { if (editText.value.length > 2000) { error.value = 'Keep messages to 2,000 characters.'; return } if (target.value) await action(async () => { await apiFetchData(`${path.value}/messages/${target.value!.id}`, { method: 'PATCH', body: { body: editText.value } }); editOpen.value = false }) }
 async function confirmDelete() { if (target.value) await action(async () => { await apiFetchData(`${path.value}/messages/${target.value!.id}`, { method: 'DELETE' }); deleteOpen.value = false }) }
 async function report() { if (target.value) await action(async () => { await apiFetchData('/reports', { method: 'POST', body: { targetType: 'message', subjectMessageId: target.value!.id, reason: 'other', details: reportText.value.trim() || null } }); reportOpen.value = false }) }
 function observe() { scroller.value?.querySelectorAll('[data-message-id]').forEach(element => observer?.observe(element)) }

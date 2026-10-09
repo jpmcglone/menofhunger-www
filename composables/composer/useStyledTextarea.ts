@@ -13,6 +13,7 @@ import { userTierColorVar } from '~/utils/user-tier'
 import { tierFromMentionUser } from '~/composables/useMentionAutocomplete'
 import { useStyledTextareaTags } from './useStyledTextareaTags'
 import { useStyledTextareaEditor } from './useStyledTextareaEditor'
+import { useStyledTextareaChannels } from './useStyledTextareaChannels'
 
 /**
  * Script state for `AppStyledTextarea`.
@@ -20,8 +21,9 @@ import { useStyledTextareaEditor } from './useStyledTextareaEditor'
 export function useStyledTextarea(props: StyledTextareaResolvedProps, emit: EmitFn<StyledTextareaEmits>) {
   const mentions = useStyledTextareaMentions(props)
   const tags = useStyledTextareaTags(mentions)
-  const editorState = useStyledTextareaEditor(props, emit, { ...mentions, ...tags })
-  return { ...mentions, ...tags, ...editorState }
+  const channels = useStyledTextareaChannels(props)
+  const editorState = useStyledTextareaEditor(props, emit, { ...mentions, ...tags, ...channels })
+  return { ...mentions, ...tags, ...channels, ...editorState }
 }
 
 /**
@@ -70,7 +72,7 @@ export function useStyledTextareaMentions(props: StyledTextareaResolvedProps) {
             if (!validSet.value.has(username)) continue
             const colorVar = userTierColorVar(tierForUsername(username))
             const attrs: Record<string, string> = { class: 'moh-mention' }
-            if (colorVar) attrs.style = `color: ${colorVar}`
+            attrs.style = `color: ${colorVar ?? 'var(--moh-text)'}`
             decos.push(Decoration.inline(pos + m.index, pos + m.index + m[0].length, attrs))
           }
         })
@@ -132,6 +134,7 @@ export function useStyledTextareaMentions(props: StyledTextareaResolvedProps) {
   }
 
   async function fetchMentionUsers(query: string): Promise<FollowListUser[]> {
+    if (props.mentionSearch) return props.mentionSearch(query)
     const qn = norm(query)
     const now = Date.now()
 
@@ -175,7 +178,7 @@ export function useStyledTextareaMentions(props: StyledTextareaResolvedProps) {
     items: [],
     highlightedIndex: 0,
     anchor: null,
-    listboxId: 'moh-tiptap-mention-listbox',
+    listboxId: useId(),
     sections: [],
   })
 
@@ -196,7 +199,7 @@ export function useStyledTextareaMentions(props: StyledTextareaResolvedProps) {
 
   function mentionColorForUser(u: FollowListUser): string {
     const tier = tierFromMentionUser(u)
-    return userTierColorVar(tier) ?? 'var(--p-primary-color)'
+    return userTierColorVar(tier) ?? 'var(--moh-text)'
   }
 
   const mentionSuggestion = {
@@ -229,6 +232,7 @@ export function useStyledTextareaMentions(props: StyledTextareaResolvedProps) {
         computeMentionSections()
       },
       onKeyDown: ({ event }: SuggestionKeyDownProps) => {
+        if (event.isComposing) return false
         const n = mentionPopover.items.length
         if (event.key === 'ArrowDown') { event.preventDefault(); if (n) mentionPopover.highlightedIndex = (mentionPopover.highlightedIndex + 1) % n; return true }
         if (event.key === 'ArrowUp') { event.preventDefault(); if (n) mentionPopover.highlightedIndex = (mentionPopover.highlightedIndex - 1 + n) % n; return true }

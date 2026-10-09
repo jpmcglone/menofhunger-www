@@ -7,7 +7,9 @@
       @highlight="onMentionHighlight"
       @request-close="onMentionClose"
     />
+    <AppChannelsReferenceAutocomplete v-if="channelScope" v-bind="channelPopover" @select="onChannelSelect" @highlight="channelPopover.highlightedIndex = $event" @request-close="onChannelClose" />
     <AppHashtagAutocompletePopover
+v-else
       v-bind="hashtagPopover"
       @select="onHashtagSelect"
       @highlight="onHashtagHighlight"
@@ -45,6 +47,9 @@ const props = withDefaults(
 const emit = defineEmits<StyledTextareaEmits>()
 
 const {
+  channelPopover,
+  onChannelSelect,
+  onChannelClose,
   mentionPopover,
   onMentionSelect,
   onMentionHighlight,
@@ -108,7 +113,8 @@ defineExpose({ focus, insertAtCursor, insertMention, clear, editor })
 }
 
 .moh-styled-textarea-editor .moh-mention {
-  color: var(--p-primary-color);
+  color: var(--moh-text);
+  font-weight: 600;
 }
 
 .moh-styled-textarea-editor .moh-hashtag {

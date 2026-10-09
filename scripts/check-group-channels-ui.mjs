@@ -42,12 +42,12 @@ const group = {
   channelsAvailable: true,
   channelPersonalCount: 1,
 };
-const channels = ["announcements", "general", "random"].map((name, index) => ({
+const channels = ["announcements", "general", "random", "leaders"].map((name, index) => ({
   id: name,
   groupId: group.id,
   name,
   topic: name === "general" ? "Plans, progress, and showing up." : "",
-  privacy: "normal",
+  privacy: name === "leaders" ? "private" : "normal",
   defaultPurpose: name,
   archivedAt: null,
   revision: 1,
@@ -79,7 +79,7 @@ let rows = [
       orgAffiliations: [],
     },
     createdAt: "2026-10-06T11:30:00Z",
-    body: "Anyone up for a walk before work tomorrow?",
+    body: "Ask @Thomas in <#random>, <#leaders> or <#restricted>. #ordinary stays plain.",
     kind: "text",
     media: [],
     reactions: [],
@@ -90,7 +90,7 @@ let rows = [
     lastReplyAt: null,
     following: false,
     pinned: false,
-    canEdit: false,
+    canEdit: true,
     canDelete: true,
     deletedForAll: false,
     deletedForMe: false,
@@ -118,6 +118,12 @@ let rows = [
     deletedForMe: false,
   },
 ];
+const thomas = { ...me, id: 'thomas', username: 'Thomas', name: 'Thomas', premium: false, verifiedStatus: 'manual' };
+const references = body => [...body.matchAll(/<#([A-Za-z0-9_-]+)>/g)].map(match => {
+  const target = channels.find(channel => channel.id === match[1]);
+  return { token: match[0], channelId: target?.id ?? null, name: target?.name ?? null, displayName: null, privacy: target?.privacy ?? 'private', accessible: !!target };
+});
+rows = rows.map(row => ({ ...row, channelReferences: references(row.body) }));
 const api = createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -135,10 +141,12 @@ const api = createServer(async (req, res) => {
   }
   const u = new URL(req.url, "http://fixture");
   const p = u.pathname.replace(/^\/v1/, "");
-  console.log("API", req.method, p);
+  console.warn("API", req.method, p);
+  if (p === '/avatar.svg') { res.setHeader('Content-Type', 'image/svg+xml'); res.end('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" fill="#526779"/><text x="24" y="32" text-anchor="middle" fill="white" font-size="30">T</text></svg>'); return; }
   let data = [];
   let pagination = { nextCursor: null };
-  if (p === "/announcements/pending") data = null;
+  if (p === "/checkins/leaderboard") data = { users: [], viewerRank: null, generatedAt: "2026-10-09T00:00:00Z" };
+  else if (p === "/announcements/pending") data = null;
   else if (p === "/auth/me") data = me;
   else if (p.includes("switchable"))
     data = [{ ...me, isCurrent: true, unreadBadgeCount: 1 }];
@@ -152,7 +160,8 @@ const api = createServer(async (req, res) => {
       { id: "raised_hands", emoji: "🙌", label: "Raised hands" },
     ];
   else if (p.includes("/channels/") && p.endsWith("/members"))
-    data = [{ role: "owner", user: me }];
+    data = [{ role: "owner", user: me }, { role: "member", user: thomas }];
+  else if (p === "/users/preview/batch") data = { results: [thomas, me] };
   else if (p.endsWith("/context"))
     data = {
       messages: rows.filter((r) => r.id === "root"),
@@ -168,7 +177,7 @@ const api = createServer(async (req, res) => {
         ...rows[0],
         id: "sent-" + rows.length,
         sender: { ...me, orgAffiliations: [] },
-        body: input.body,
+        body: input.body, channelReferences: references(input.body),
         channelId: p.split("/")[4],
         clientRequestId: input.clientRequestId,
         sequence: rows.length + 1,
@@ -191,6 +200,7 @@ const api = createServer(async (req, res) => {
 });
 await new Promise((r) => api.listen(0, "127.0.0.1", r));
 const apiBase = "http://127.0.0.1:" + api.address().port + "/v1";
+thomas.avatarUrl = apiBase + '/avatar.svg';
 const portProbe = createServer();
 await new Promise((resolve) => portProbe.listen(0, "127.0.0.1", resolve));
 const port = portProbe.address().port;
@@ -229,6 +239,7 @@ try {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
   });
+  await context.addInitScript(() => localStorage.setItem('nuxt-color-mode', 'dark'));
   await context.addCookies([
     {
       name: "moh_session",
@@ -240,12 +251,12 @@ try {
   const errors = [];
   page.on("pageerror", (e) => {
     errors.push(e.message);
-    console.log("PAGEERROR", e.message);
+    console.warn("PAGEERROR", e.message);
   });
   page.on("console", (m) => {
     if (["error", "warning"].includes(m.type()))
-      console.log("CONSOLE", m.text());
-    if (/hydration|Vue warn/.test(m.text())) errors.push(m.text());
+      console.warn("CONSOLE", m.text());
+    if (/hydration|Vue warn|TypeError|ReferenceError/.test(m.text())) errors.push(m.text());
   });
   await page.route("**/*", (route) =>
     new URL(route.request().url()).hostname === "127.0.0.1"
@@ -257,9 +268,33 @@ try {
     { waitUntil: "domcontentloaded" },
   );
   await page
-    .getByRole("textbox", { name: "Message #general", exact: true })
+    .getByRole("textbox", { name: "Message general", exact: true })
     .waitFor({ timeout: 25000 });
-  await page.screenshot({ path: "/tmp/moh-channel-web-desktop.png" });
+  const editor = page.getByRole('textbox', { name: 'Message general', exact: true });
+  const rootMessage = page.locator('.channel-message').first();
+  await rootMessage.locator('a.moh-channel-reference').first().waitFor();
+  if (await rootMessage.locator('a.moh-channel-reference').count() !== 2) throw Error('Public/private member channel links missing');
+  if (await rootMessage.locator('span.moh-channel-reference').filter({ hasText: 'Private' }).count() !== 1) throw Error('Restricted channel is not a disabled Private pill');
+  if (await rootMessage.locator('a[href*="explore"]').count()) throw Error('Channel hashtag navigates to feed search');
+  await editor.fill('#ra');
+  await page.getByRole('listbox', { name: 'Channels in this group' }).getByRole('option', { name: 'random' }).waitFor();
+  await page.screenshot({ animations: "disabled", path: '/tmp/moh-channel-web-channel-autocomplete.png' });
+  await editor.press('Enter');
+  if (!(await editor.locator('[data-channel-reference]').textContent()).includes('random')) throw Error('Channel autocomplete did not insert pill');
+  await editor.pressSequentially('@th');
+  const mentionList = page.getByRole('listbox', { name: 'Mention suggestions' });
+  await mentionList.getByRole('option').filter({ hasText: '@Thomas' }).waitFor();
+  if (await mentionList.getByRole('option').filter({ hasText: '@Thomas' }).locator('img').count() !== 1) throw Error('Mention avatar missing');
+  await page.screenshot({ animations: "disabled", path: '/tmp/moh-channel-web-mention-autocomplete.png' });
+  await editor.press('Enter');
+  const color = await editor.locator('.moh-mention').evaluate(el => getComputedStyle(el).color);
+  const verifiedColor = await page.evaluate(() => { const el=document.createElement('span'); el.style.color='var(--moh-verified)'; document.body.append(el); const color=getComputedStyle(el).color; el.remove(); return color });
+  if (color !== verifiedColor) throw Error('Mention tier color lost');
+  await page.screenshot({ animations: "disabled", path: '/tmp/moh-channel-web-desktop.png' });
+  await editor.press('Enter');
+  await page.waitForFunction(() => document.querySelectorAll('.channel-message').length > 1);
+  if (!rows.some(row => row.body.includes('<#random>') && row.body.includes('@Thomas'))) throw Error('Sent body lost stable channel reference or mention');
+
   const toolbar = page.locator(".message-toolbar").first();
   await page.mouse.move(0, 0);
   if ((await toolbar.evaluate((el) => getComputedStyle(el).opacity)) !== "0")
@@ -270,14 +305,14 @@ try {
   await page.locator(".channel-message").first().focus();
   if ((await toolbar.evaluate((el) => getComputedStyle(el).opacity)) !== "1")
     throw Error("Toolbar missing on keyboard focus");
-  console.log("UI loaded", await page.title(), errors);
-  console.log("TEXT", (await page.locator("body").innerText()).slice(0, 2000));
+  console.warn("UI loaded", await page.title(), errors);
+  console.warn("TEXT", (await page.locator("body").innerText()).slice(0, 2000));
   await page
-    .getByRole("textbox", { name: "Message #general", exact: true })
+    .getByRole("textbox", { name: "Message general", exact: true })
     .fill("Saved draft for general");
-  await page.getByRole("link", { name: "random", exact: true }).click();
+  await rootMessage.locator('a.moh-channel-reference').filter({ hasText: 'random' }).click();
   await page
-    .getByRole("textbox", { name: "Message #random", exact: true })
+    .getByRole("textbox", { name: "Message random", exact: true })
     .waitFor();
   await page
     .getByRole("link", { name: /^general/ })
@@ -285,8 +320,8 @@ try {
     .click();
   await page.waitForFunction(
     () =>
-      document.querySelector('textarea[aria-label="Message #general"]')
-        ?.value === "Saved draft for general",
+      document.querySelector('[contenteditable="true"][aria-label="Message general"]')
+        ?.textContent === "Saved draft for general",
     {},
     { timeout: 5000 },
   );
@@ -294,7 +329,12 @@ try {
   await page
     .getByRole("textbox", { name: "Reply in thread", exact: true })
     .waitFor();
-  await page.screenshot({ path: "/tmp/moh-channel-web-thread.png" });
+  await page.screenshot({ animations: "disabled", path: "/tmp/moh-channel-web-thread.png" });
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('Control+Shift+Period');
+  await page.waitForFunction(() => document.documentElement.classList.contains('light'));
+  await page.screenshot({ animations: "disabled", path: '/tmp/moh-channel-web-light.png' });
   const mobile = await browser.newContext({
     viewport: { width: 390, height: 844 },
     isMobile: true,
@@ -320,14 +360,19 @@ try {
   await touch
     .getByRole("textbox", { name: "Reply in thread", exact: true })
     .waitFor();
-  await touch.screenshot({ path: "/tmp/moh-channel-web-mobile.png" });
-  await touch.locator(".touch-message-more").first().tap();
+  const mobileEditor = touch.getByRole('textbox', { name: 'Reply in thread', exact: true });
+  await mobileEditor.fill('First line');
+  await mobileEditor.press('Enter');
+  await mobileEditor.pressSequentially('Second line');
+  if (!/First line\n+Second line/.test(await mobileEditor.innerText())) throw Error('Mobile Return did not insert newline: ' + JSON.stringify(await mobileEditor.innerText()));
+  await touch.screenshot({ animations: "disabled", path: "/tmp/moh-channel-web-mobile.png" });
+  await touch.locator(".touch-message-more:visible").first().tap();
   await touch
     .getByRole("dialog", { name: "Message actions", exact: true })
     .waitFor();
   await touch.getByRole("button", { name: "Close", exact: true }).last().tap();
-  console.log(
-    "PASS desktop hover/focus, destination drafts, thread navigation and touch actions; errors:",
+  console.warn(
+    "PASS channel pills/privacy, autocomplete/avatar/tier/keyboard/send, desktop hover/focus, destination drafts, thread navigation and touch actions; errors:",
     errors,
   );
   if (errors.length) throw Error(errors.join("\n"));
@@ -342,7 +387,7 @@ try {
       console.error(
         (await pages[0].locator("body").innerText()).slice(0, 3000),
       );
-      await pages[0].screenshot({ path: "/tmp/moh-channel-web-failure.png" });
+      await pages[0].screenshot({ animations: "disabled", path: "/tmp/moh-channel-web-failure.png" });
     }
   }
   process.exitCode = 1;

@@ -7,6 +7,7 @@ import { useAuthIdentity } from '~/composables/useAuthIdentity'
 import type { Impersonation } from '~/types/api'
 import { forgetSessionIdentity, rememberSessionIdentity } from '~/utils/session-identity-preview'
 import { getErrorStatus } from '~/utils/api-error'
+import { getSafeAuthErrorDetails } from '~/utils/auth-error-log'
 
 export type { AuthUser }
 
@@ -133,9 +134,9 @@ export function useAuth() {
     } catch (e: unknown) {
       if (import.meta.dev) {
         if (isNuxtComposableContextError(e)) {
-          console.error('[auth] Nuxt composable context error in /auth/me flow. Keep useState/useRoute/useRequest* at setup scope only.', e)
+          console.error('[auth] Nuxt composable context error in /auth/me flow. Keep useState/useRoute/useRequest* at setup scope only.', getSafeAuthErrorDetails(e))
         }
-        console.warn('[auth] /auth/me failed', e)
+        console.warn('[auth] /auth/me failed', getSafeAuthErrorDetails(e))
       }
       // Keep an existing authenticated user on transient/non-auth failures (mobile
       // background/wake network flaps are common). A 401 is handled by api client

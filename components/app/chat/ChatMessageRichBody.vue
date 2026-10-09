@@ -5,8 +5,9 @@
   >
     <p v-if="hasDisplayText" class="whitespace-pre-wrap break-words">
       <template v-for="(seg, idx) in displayBodySegments" :key="bodySegmentKey(seg, idx)">
+        <AppChannelsReferencePill v-if="seg.kind === 'channel'" :reference="seg.reference" :group-slug="channelGroupSlug" />
         <a
-          v-if="seg.kind === 'link'"
+          v-else-if="seg.kind === 'link'"
           :href="seg.href"
           target="_blank"
           rel="noopener noreferrer"
@@ -19,7 +20,7 @@
           v-else-if="seg.kind === 'mention' && seg.isKnown"
           :to="`/u/${seg.username}`"
           class="font-bold hover:underline"
-          :style="{ color: userTierColorVar(tierForUsername(seg.username!)) ?? 'var(--p-primary-color)' }"
+          :style="{ color: userTierColorVar(tierForUsername(seg.username!)) ?? 'var(--moh-text)' }"
           @mouseenter="(e: MouseEvent) => onMentionEnter(e, seg.username!)"
           @mousemove="onMentionMove"
           @mouseleave="onMentionLeave"
@@ -161,12 +162,14 @@ import { HASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/hashtag-autocomplete'
 import { CASHTAG_IN_TEXT_DISPLAY_RE } from '~/utils/cashtag-autocomplete'
 import { userTierColorVar } from '~/utils/user-tier'
 import type { UserColorTier } from '~/utils/user-tier'
-import type { ArticleSharePreview } from '~/types/api'
+import type { ArticleSharePreview, ChannelReference } from '~/types/api'
+import { CHANNEL_REFERENCE_PATTERN, unavailableChannelReference } from '~/utils/channels/references'
 
 // Stable public paths (not `~/assets` imports) so the URL is identical on
 // server and client — avoids the Vite dev `?t=<timestamp>` hydration mismatch.
 
 type TextSegment =
+  | { kind: 'channel'; text: string; reference: ChannelReference }
   | { kind: 'text'; text: string }
   | { kind: 'link'; text: string; href: string }
   | { kind: 'mention'; text: string; username: string; isKnown: boolean }
@@ -179,6 +182,9 @@ const MENTION_RE = /@([a-zA-Z0-9_]+)/g
 
 const props = defineProps<{
   body: string
+  /** Presence opts into group channel semantics; no feed hashtag navigation. */
+  channelReferences?: ChannelReference[]
+  channelGroupSlug?: string
   /** Sender's tier — hashtags are colored to match the sender. */
   senderTier?: UserColorTier
   /** Link URLs whose rich previews the author removed. */
@@ -397,6 +403,12 @@ const displayBodySegments = computed<TextSegment[]>(() => {
   const allMatches: RangedMatch[] = []
 
   // Link matches
+  if (props.channelReferences) {
+    const references = new Map(props.channelReferences.map(reference => [reference.token, reference]))
+    for (const match of input.matchAll(CHANNEL_REFERENCE_PATTERN)) {
+      allMatches.push({ start: match.index!, end: match.index! + match[0].length, seg: { kind: 'channel', text: match[0], reference: references.get(match[0]) ?? unavailableChannelReference(match[0]) } })
+    }
+  }
   const linkMatches = _linkify.match(input) ?? []
   for (const m of linkMatches) {
     const start = typeof m.index === 'number' ? m.index : -1
@@ -404,7 +416,7 @@ const displayBodySegments = computed<TextSegment[]>(() => {
     if (start < 0 || end <= start) continue
     const text = input.slice(start, end)
     const href = (m.url ?? '').trim()
-    if (href && /^https?:\/\//i.test(href)) {
+    if (href && /^https?:\/\//i.test(href) && !allMatches.some(item => start < item.end && end > item.start)) {
       allMatches.push({ start, end, seg: { kind: 'link', text, href } })
     }
   }
@@ -432,7 +444,7 @@ const displayBodySegments = computed<TextSegment[]>(() => {
 
   // Hashtag matches (skip ranges already claimed)
   const hashRe = new RegExp(HASHTAG_IN_TEXT_DISPLAY_RE.source, 'g')
-  for (const m of input.matchAll(hashRe)) {
+  for (const m of props.channelReferences ? [] : input.matchAll(hashRe)) {
     const start = m.index!
     const end = start + m[0].length
     const tag = m[1]!

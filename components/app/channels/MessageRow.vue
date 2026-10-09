@@ -1,5 +1,5 @@
 <template>
-  <article ref="row" :aria-busy="status === 'sending'" class="channel-message group relative px-4 hover:bg-[var(--moh-surface-1)] focus-within:bg-[var(--moh-surface-1)]" :class="grouped ? 'py-1' : 'pt-4 pb-2'" tabindex="0" :aria-label="`${message.sender.name ?? message.sender.username ?? 'Member'}: ${message.deletedForAll ? 'Message deleted' : message.body}`" @contextmenu.prevent="showActions" @keydown.shift.f10.prevent="showActions" @pointerdown="startPress" @pointerup="cancelPress" @pointercancel="cancelPress" @pointermove="cancelMoved">
+  <article ref="row" :aria-busy="status === 'sending'" class="channel-message group relative px-4 hover:bg-[var(--moh-surface-1)] focus-within:bg-[var(--moh-surface-1)]" :class="grouped ? 'py-1' : 'pt-4 pb-2'" tabindex="0" :aria-label="`${message.sender.name ?? message.sender.username ?? 'Member'}: ${message.deletedForAll ? 'Message deleted' : readableBody}`" @contextmenu.prevent="showActions" @keydown.shift.f10.prevent="showActions" @pointerdown="startPress" @pointerup="cancelPress" @pointercancel="cancelPress" @pointermove="cancelMoved">
     <button v-if="message.replyTo && !deleted" type="button" class="moh-focus relative ml-11 mb-1 flex min-h-6 max-w-[calc(100%-2.75rem)] items-center gap-1.5 text-left text-xs moh-text-muted hover:underline" :class="grouped ? 'mt-1' : ''" :aria-label="`Replying to ${message.replyTo.senderUsername ? '@' + message.replyTo.senderUsername : 'a message'}: ${message.replyTo.bodyPreview}`" data-testid="channel-quoted-reply" @click="emit('quote-click', message.replyTo.id)"><Icon name="tabler:corner-up-right" class="size-3 shrink-0" aria-hidden="true" /><strong class="shrink-0 font-semibold">{{ message.replyTo.senderUsername ? `@${message.replyTo.senderUsername}` : 'Unknown' }}</strong><span class="truncate">{{ message.replyTo.bodyPreview }}</span><img v-if="message.replyTo.mediaThumbnailUrl" :src="message.replyTo.mediaThumbnailUrl" class="size-5 shrink-0 rounded object-cover" alt=""></button>
     <div class="flex items-start gap-3">
       <div class="relative w-8 shrink-0">
@@ -10,7 +10,7 @@
       <div class="min-w-0 flex-1">
         <div v-if="!grouped && !deleted" class="mb-1 flex items-baseline gap-2"><NuxtLink v-if="message.sender.username" :to="`/u/${message.sender.username}`" class="font-semibold hover:underline" :style="senderColor ? { color: senderColor } : undefined" @mouseenter="preview.onEnter(message.sender.username, $event)" @mousemove="preview.onMove" @mouseleave="preview.onLeave">{{ message.sender.name ?? message.sender.username }}</NuxtLink><strong v-else>Member</strong><NuxtLink v-if="permalink" :to="permalink" class="moh-focus text-xs moh-text-muted hover:underline" :aria-label="`Link to message sent at ${time}`"><time :datetime="message.createdAt">{{ time }}</time></NuxtLink><time v-else class="text-xs moh-text-muted" :datetime="message.createdAt">{{ time }}</time><Icon v-if="message.pinned" name="tabler:pin" aria-label="Pinned" /></div>
         <div v-if="deleted" class="py-0.5"><p class="text-[15px] font-medium moh-text-muted">Message deleted</p><p v-if="message.replyCount" class="text-xs moh-text-soft">The {{ message.replyCount === 1 ? 'reply' : 'replies' }} below {{ message.replyCount === 1 ? 'is' : 'are' }} still here.</p></div>
-        <template v-else><div class="transition-opacity duration-700 ease-out motion-reduce:transition-none" :class="dimmed ? 'opacity-60' : ''"><AppChatMessageRichBody v-if="message.body" :body="message.body" :sender-tier="senderTier" :hidden-previews="message.hiddenPreviews" :dismissible-previews="isOwn && !status" class="break-words text-[15px] leading-relaxed" @dismiss-preview="emit('hide-preview', $event)" /><slot name="media" /><div v-if="message.media?.length" class="mt-1 grid max-w-xl gap-2" :class="message.media.length > 1 ? 'grid-cols-2' : ''"><AppChannelsProtectedMedia v-for="media in message.media" :key="media.id" :media="media" /></div></div><span v-if="message.editedAt" class="text-xs moh-text-muted">Edited</span>
+        <template v-else><div class="transition-opacity duration-700 ease-out motion-reduce:transition-none" :class="dimmed ? 'opacity-60' : ''"><AppChatMessageRichBody v-if="message.body" :body="message.body" :channel-references="references" :channel-group-slug="groupSlug" :sender-tier="senderTier" :hidden-previews="message.hiddenPreviews" :dismissible-previews="isOwn && !status" class="break-words text-[15px] leading-relaxed" @dismiss-preview="emit('hide-preview', $event)" /><slot name="media" /><div v-if="message.media?.length" class="mt-1 grid max-w-xl gap-2" :class="message.media.length > 1 ? 'grid-cols-2' : ''"><AppChannelsProtectedMedia v-for="media in message.media" :key="media.id" :media="media" /></div></div><span v-if="message.editedAt" class="text-xs moh-text-muted">Edited</span>
           <div v-if="message.reactions?.length" class="mt-1 flex flex-wrap gap-1"><button v-for="reaction in message.reactions" :key="reaction.reactionId" type="button" class="moh-focus inline-flex min-h-8 items-center gap-1 rounded-full border moh-border px-2 text-sm leading-none tabular-nums" :class="reaction.reactedByMe ? 'bg-[var(--moh-surface-2)]' : ''" :aria-pressed="reaction.reactedByMe" :disabled="!canReact" @click="emit('react', reaction.reactionId)"><span aria-hidden="true">{{ reaction.emoji }}</span>{{ reaction.count }}</button></div>
         </template>
         <slot name="failed" />
@@ -28,7 +28,7 @@
     <Popover ref="menu" @hide="restoreFocus"><AppInteractionsActionList :actions="actions.filter(action => action.id !== 'reply' && action.id !== 'quote')" @select="menu?.hide()" /></Popover>
     <AppChatReactionPicker ref="reactionPicker" :reactions="reactions" :active-reaction-ids="new Set(message.reactions?.filter(item => item.reactedByMe).map(item => item.reactionId))" @select="emit('react', $event)" />
     <Dialog v-model:visible="touchOpen" modal header="Message actions" class="w-full max-w-lg" @hide="restoreFocus">
-      <blockquote class="mb-3 rounded-lg border moh-border p-3 text-sm"><strong>{{ message.sender.name ?? message.sender.username }}</strong><p class="mt-1 line-clamp-5 whitespace-pre-wrap">{{ message.deletedForAll ? 'Message deleted' : message.body }}</p></blockquote>
+      <blockquote class="mb-3 rounded-lg border moh-border p-3 text-sm"><strong>{{ message.sender.name ?? message.sender.username }}</strong><p class="mt-1 line-clamp-5 whitespace-pre-wrap">{{ message.deletedForAll ? 'Message deleted' : readableBody }}</p></blockquote>
       <div v-if="canReact && !message.deletedForAll" class="flex flex-wrap border-b moh-border pb-2"><button v-for="reaction in reactions" :key="reaction.id" class="moh-focus size-11 text-xl" type="button" :aria-label="reaction.label" @click="emit('react', reaction.id); touchOpen = false">{{ reaction.emoji }}</button></div>
       <AppInteractionsActionList :actions="actions" @select="touchOpen = false" />
     </Dialog>
@@ -36,11 +36,15 @@
 </template>
 <script setup lang="ts">
 import { formatLocaleTime } from '~/utils/time-format'
+import { channelReferencePlainText, visibleChannelReferences } from '~/utils/channels/references'
+import { groupChannelsKey } from '~/composables/channels/useGroupChannels'
 import type { ChannelMessage, MessageReaction } from '~/types/api'
 import type { SurfaceAction } from '~/utils/surface-actions'
 import type { RouteLocationRaw } from 'vue-router'
 import { userColorTier, userTierColorVar } from '~/utils/user-tier'
 const props = defineProps<{
+  groupId?: string
+  groupSlug?: string
   message: ChannelMessage; hideReplies?: boolean; grouped: boolean; canReact: boolean; actions: SurfaceAction[]; reactions: MessageReaction[]
   /** An unconfirmed own message. It renders exactly like a delivered one; only the receipt and a slight fade differ. */
   status?: 'sending' | 'failed'
@@ -55,6 +59,9 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ react: [id: string]; reply: []; quote: []; 'quote-click': [id: string]; 'hide-preview': [url: string] }>()
 const { user: viewer } = useAuth()
+const channels = inject(groupChannelsKey, null)
+const references = computed(() => visibleChannelReferences(props.message.body, { groupId: props.groupId ?? '', channels: channels?.channels.value ?? [] }))
+const readableBody = computed(() => channelReferencePlainText(props.message.body, references.value))
 const isOwn = computed(() => !!viewer.value && props.message.sender.id === viewer.value.id)
 // A just-delivered own message eases from "sending" to "sent" instead of snapping, so the handoff is readable.
 const SETTLE_MS = 900
