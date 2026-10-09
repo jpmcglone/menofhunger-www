@@ -1,8 +1,10 @@
 <template>
-  <template v-if="isOpen">
+  <template v-if="isOpen || showClosed">
+  <CheckinClosedNotice v-if="showClosed && !isOpen" />
+  <CheckinUnavailableNotice v-else-if="loadError" :message="loadError" :on-retry="onRetry" />
   <!-- Verify-to-check-in: authed-but-unverified. No fetch / realtime in this mode. -->
   <section
-    v-if="verifyCta"
+    v-else-if="verifyCta"
     class="moh-checkin-row relative w-full border-b moh-border"
     aria-labelledby="moh-checkin-hero-verify-title"
   >
@@ -168,6 +170,8 @@
 </template>
 
 <script setup lang="ts">
+import CheckinClosedNotice from './CheckinClosedNotice.vue'
+import CheckinUnavailableNotice from './CheckinUnavailableNotice.vue'
 import { isInteractiveTarget } from '~/utils/interactive-target'
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type {
@@ -180,7 +184,12 @@ import type { WsCrewStreakAdvancedPayload, WsCrewStreakBrokenPayload } from '~/c
 import { deriveWeeklyMission } from '~/config/milestones'
 
 const props = defineProps<{
-  /** When provided, the hero uses this for the prompt text + answered state instead of fetching. */
+  /** Home keeps the schedule row visible while check-ins are closed. */
+  showClosed?: boolean
+  /** Home fetch recovery; other shared contexts keep their existing behavior. */
+  loadError?: string | null
+  onRetry?: () => void | Promise<void>
+  /** When provided, use this prompt text instead of deriving it from state. */
   prompt?: string
   state?: {
     dayKey?: string

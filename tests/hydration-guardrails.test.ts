@@ -191,8 +191,9 @@ describe('hydration guardrails (structural)', () => {
     const composerSource = readFromRepo('components/app/content/PostComposer.vue')
     expect(composerSource).not.toMatch(/collapseUntilFocus/)
     expect(composerSource).not.toMatch(/showCollapsedComposer/)
-    // heroResolved itself must require both `hydrated` AND a known checkin state (or unauth viewer).
-    expect(home).toMatch(/const heroResolved = computed\(\(\) => {[\s\S]*?if \(!hydrated\.value\) return false[\s\S]*?if \(!isAuthed\.value\) return true[\s\S]*?return checkinState\.value !== null/)
+    // Resolve only after hydration. Personal schedules and settled failures also resolve,
+    // while page accounts never render this area. Behavioral states are tested separately.
+    expect(home).toMatch(/const heroResolved = computed\(\(\) => {[\s\S]*?if \(!hydrated\.value \|\| isPageAccount\.value\) return false[\s\S]*?if \(!isAuthed\.value\) return true[\s\S]*?return checkinState\.value !== null/)
     // Check-in (answered or not) stays above the composer.
     const answeredHero = home.indexOf('v-if="heroResolved && hasCheckedInToday"')
     const homeComposer = home.indexOf('ref="homeComposerEl"')
@@ -215,7 +216,7 @@ describe('hydration guardrails (structural)', () => {
     // (which would cause a hydration mismatch when the client replaces it with the real hero).
     // It is also gated on `canAccessCheckins` so unverified users (who never fetch
     // /checkins/today) see the verify-CTA hero instead of a skeleton that never resolves.
-    expect(home).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && canAccessCheckins && !heroResolved"[\s\S]*?<\/ClientOnly>/)
+    expect(home).toMatch(/<ClientOnly>[\s\S]*?v-if="isAuthed && !isPageAccount && canAccessCheckins && !heroResolved"[\s\S]*?<\/ClientOnly>/)
   })
 
   it('shows the verify-to-check-in CTA only client-side for unverified users', () => {

@@ -24,6 +24,9 @@
     <AppFeedDailyCheckinHero
       v-if="heroResolved && !hasCheckedInToday"
       :state="checkinState"
+      :show-closed="isAuthed && !isPageAccount"
+      :load-error="checkinError"
+      :on-retry="retryCheckin"
       :prompt="checkinHeroPrompt"
       :my-checkin-body="lastCheckinBody"
       :can-answer="canAnswerCheckin"
@@ -36,6 +39,9 @@
     <AppFeedDailyCheckinHero
       v-if="heroResolved && hasCheckedInToday"
       :state="checkinState"
+      :show-closed="isAuthed && !isPageAccount"
+      :load-error="checkinError"
+      :on-retry="retryCheckin"
       :prompt="checkinHeroPrompt"
       :my-checkin-body="lastCheckinBody"
       :can-answer="canAnswerCheckin"
@@ -52,6 +58,7 @@
       <AppFeedDailyCheckinHero
         v-if="didAttempt && isAuthed && !isPageAccount && !canAccessCheckins"
         :prompt="checkinHeroPrompt"
+        show-closed
         verify-cta
       />
     </ClientOnly>
@@ -61,7 +68,7 @@
          The min-h matches the full hero so the page doesn't jump on resolve. -->
     <ClientOnly>
       <div
-        v-if="isAuthed && canAccessCheckins && !heroResolved"
+        v-if="isAuthed && !isPageAccount && canAccessCheckins && !heroResolved"
         class="animate-pulse border-b moh-border"
         aria-hidden="true"
       >
@@ -328,6 +335,8 @@ const {
   showGroupsOnboardingNudge,
   dismissGroupsNudge,
   checkinState,
+  checkinError,
+  retryCheckin,
   hasCheckedInToday,
   heroResolved,
   showCheckinPromptBar,

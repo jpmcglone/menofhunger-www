@@ -19,7 +19,7 @@ export function useHomeCheckin(deps: {
 
   const { dayKey: etDayKey } = useEasternMidnightRollover()
 
-  const { state: checkinState, loading: checkinLoading, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
+  const { state: checkinState, loading: checkinLoading, error: checkinError, refresh: refreshCheckin, create: createCheckin } = useDailyCheckin()
   const { isOpen: checkinWindowOpen } = useCheckinWindow()
 
   const checkinAllowedVisibilities = computed<CheckinAllowedVisibility[]>(() => {
@@ -47,29 +47,21 @@ export function useHomeCheckin(deps: {
     return Boolean(checkinState.value?.hasCheckedInToday)
   })
 
-  // Gates whether either daily-check-in row (unanswered or answered) is allowed to render.
-  // Goal: avoid a SSR/CSR flash where the unanswered row shows for a moment, then
-  // collapses into the quiet line once the auth + check-in state finally resolves.
-  //
-  // Truthy when:
-  //   - SSR has finished and the client has mounted (hydrated), AND
-  //   - Either the user is unauthenticated (full hero is the obvious answer), OR
-  //     the check-in state has loaded (success), OR
-  //     the initial fetch has settled (even on error) — so the page is never
-  //     left blank when the API is slow or fails. In the error case we show the
-  //     unanswered row in a degraded "no crew / no streak" mode; that's always better
-  //     than showing nothing.
-  //
-  // While false (still fetching), both <AppFeedDailyCheckinHero> instances are
-  // v-if'd off so SSR produces nothing and there is no wrong-variant flash.
+  // Home always keeps the schedule visible for personal accounts. During the
+  // open window, wait for the first fetch; a settled failure exposes Retry.
   const heroResolved = computed(() => {
-    if (!hydrated.value) return false
-    if (isPageAccount.value) return false
+    if (!hydrated.value || isPageAccount.value) return false
     if (!isAuthed.value) return true
-    // Stay hidden while the initial fetch is in-flight to avoid flashing the wrong variant.
+    if (!canAccessCheckins.value || isPageAccount.value) return false
+    if (!checkinWindowOpen.value) return true
     if (checkinLoading.value) return false
-    return checkinState.value !== null
+    return checkinState.value !== null || Boolean(checkinError.value)
   })
+
+  function retryCheckin() {
+    if (!isAuthed.value || isPageAccount.value || !canAccessCheckins.value || checkinLoading.value) return
+    return refreshCheckin()
+  }
 
   // Show the check-in prompt when user is eligible and hasn't posted today.
   const showCheckinPromptBar = computed(() => {
@@ -94,11 +86,11 @@ export function useHomeCheckin(deps: {
   const displayCheckinStreak = computed(() => (hydrated.value ? (checkinState.value?.checkinStreakDays ?? 0) : 0))
 
   watch(
-    [isAuthed, canAccessCheckins, etDayKey],
-    ([authed, canAccess]) => {
+    [isAuthed, canAccessCheckins, isPageAccount, etDayKey],
+    ([authed, canAccess, pageAccount]) => {
       // Unverified users never hit /checkins/today (it 403s); they see the
       // verify-CTA hero instead.
-      if (!authed || !canAccess) {
+      if (!authed || !canAccess || pageAccount) {
         checkinState.value = null
         return
       }
@@ -109,7 +101,7 @@ export function useHomeCheckin(deps: {
 
   // When the ET day rolls over, refresh check-in state so the hero shows today's prompt.
   watch(etDayKey, () => {
-    if (canAccessCheckins.value) void refreshCheckin()
+    if (canAccessCheckins.value && !isPageAccount.value) void refreshCheckin()
   })
 
   /**
@@ -137,7 +129,8 @@ export function useHomeCheckin(deps: {
   }
 
   /** Eligibility gate for the hero's primary action — verified users only (or premium). */
-  const canAnswerCheckin = computed(() => checkinWindowOpen.value && effectiveCheckinAllowedVisibilities.value.length > 0)
+  const canAnswerCheckin = computed(() => !isPageAccount.value && canAccessCheckins.value && checkinWindowOpen.value
+    && Boolean(checkinState.value?.prompt?.trim()) && effectiveCheckinAllowedVisibilities.value.length > 0)
 
   /** Hero prompt — falls back to a generic phrasing during SSR / initial load. */
   const checkinHeroPrompt = computed(() => displayCheckinPromptText.value)
@@ -151,7 +144,7 @@ export function useHomeCheckin(deps: {
     if (!current?.prompt) return
     const snapshot = { prompt: current.prompt, dayKey: current.dayKey }
     if (!checkinWindowOpen.value) return
-    if (!canAccessCheckins.value) return
+    if (!canAccessCheckins.value || isPageAccount.value) return
     if (!openComposer) return
     if (!effectiveCheckinAllowedVisibilities.value.length) return
     openComposer({
@@ -164,6 +157,8 @@ export function useHomeCheckin(deps: {
 
   return {
     checkinState,
+    checkinError,
+    retryCheckin,
     hasCheckedInToday,
     heroResolved,
     showCheckinPromptBar,

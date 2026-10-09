@@ -1,10 +1,10 @@
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VueWrapper } from '@vue/test-utils'
 import Hero from '~/components/app/feed/DailyCheckinHero.vue'
 
-const state = vi.hoisted(() => ({ window: null as any }))
+const state = vi.hoisted(() => ({ window: null as Ref<boolean> | null }))
 mockNuxtImport('useCheckinWindow', () => () => ({ isOpen: state.window }))
 mockNuxtImport('useAuth', () => () => ({ isAuthed: ref(true) }))
 mockNuxtImport('useEasternMidnightRollover', () => () => ({ dayKey: ref('2026-10-09') }))
@@ -20,17 +20,50 @@ async function render(props: Record<string, unknown> = {}) {
 
 describe('Home check-in hero', () => {
   it('hides outside the window and returns the Answer action when the window opens', async () => {
-    state.window.value = false
+    state.window!.value = false
     const page = await render()
     expect(page.find('section').exists()).toBe(false)
     expect(page.text()).not.toContain('Check-ins open at')
-    state.window.value = true
+    state.window!.value = true
     await page.vm.$nextTick()
     expect(page.text()).toContain('What did you learn today?')
     expect(page.findAll('button').some(button => button.text() === 'Answer')).toBe(true)
-    state.window.value = false
+    state.window!.value = false
     await page.vm.$nextTick()
     expect(page.find('section').exists()).toBe(false)
+  })
+
+  it('keeps the Home schedule visible while preserving the answer time gate', async () => {
+    state.window!.value = false
+    const page = await render({ showClosed: true })
+    expect(page.get('[aria-label="Check-in hours"]').text()).toContain('Check-ins open at 5pm ET')
+    expect(page.findAll('button').some(button => button.text() === 'Answer')).toBe(false)
+    state.window!.value = true
+    await page.vm.$nextTick()
+    expect(page.find('[aria-label="Check-in hours"]').exists()).toBe(false)
+    expect(page.findAll('button').some(button => button.text() === 'Answer')).toBe(true)
+    state.window!.value = false
+    await page.vm.$nextTick()
+    expect(page.find('[aria-label="Check-in hours"]').exists()).toBe(true)
+  })
+
+  it('retries a failed Home fetch and returns to the answer state after recovery', async () => {
+    const retry = vi.fn()
+    const page = await render({ showClosed: true, loadError: 'Failed to load check-in.', onRetry: retry })
+    expect(page.get('[role="alert"]').text()).toBe('Failed to load check-in.')
+    expect(page.findAll('button').some(button => button.text() === 'Answer')).toBe(false)
+    await page.get('button').trigger('click')
+    expect(retry).toHaveBeenCalledOnce()
+    await page.setProps({ loadError: null })
+    expect(page.find('[role="alert"]').exists()).toBe(false)
+    expect(page.findAll('button').some(button => button.text() === 'Answer')).toBe(true)
+  })
+
+  it('shows the schedule instead of verification or retry controls outside the window', async () => {
+    state.window!.value = false
+    const page = await render({ showClosed: true, verifyCta: true, loadError: 'Failed to load check-in.' })
+    expect(page.text()).toBe('Check-ins open at 5pm ET')
+    expect(page.find('button').exists()).toBe(false)
   })
 
   it('preserves the answered snippet, streak and weekly mission', async () => {

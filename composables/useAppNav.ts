@@ -35,7 +35,7 @@ export type AppNavItem = {
 }
 
 /** Phone tab floor. The left rail shows as many ordered items as fit; overflow uses More. */
-export const APP_NAV_FLOOR_KEYS = ['home', 'groups', 'board', 'notifications', 'messages'] as const
+export const APP_NAV_FLOOR_KEYS = ['home', 'explore', 'groups', 'notifications', 'messages'] as const
 
 export function isAppNavFloorKey(key: string): boolean {
   return (APP_NAV_FLOOR_KEYS as readonly string[]).includes(key)
@@ -152,6 +152,7 @@ export function useAppNav() {
     const floor = APP_NAV_FLOOR_KEYS
       .map((key) => items.find((item) => item.key === key))
       .filter((item): item is AppNavItem => Boolean(item))
+      .map((item) => item.key === 'explore' ? { ...item, label: 'Search' } : item)
     const behindMore = items.some((item) => !isAppNavFloorKey(item.key))
     return behindMore ? [...floor, moreItem.value] : floor
   })

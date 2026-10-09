@@ -287,7 +287,7 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
   opacity: 0.98;
 }
 
-.moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) {
+:deep(.moh-composer-styled-textarea .moh-styled-textarea-editor) {
   min-height: 3.5rem;
   max-height: min(15rem, 40dvh);
   overflow-y: auto;
@@ -297,11 +297,11 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
 }
 
 .moh-home-composer { padding-top: 12px; }
-.moh-home-composer .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) { min-height: 44px; }
+.moh-home-composer :deep(.moh-composer-styled-textarea .moh-styled-textarea-editor) { min-height: 44px; }
 .moh-home-composer :deep(.composer-tools .iconify) { width: 22px; height: 22px; font-size: 22px; }
 
 .moh-edit-composer { padding: 20px 24px; }
-.moh-edit-composer .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) {
+.moh-edit-composer :deep(.moh-composer-styled-textarea .moh-styled-textarea-editor) {
   min-height: 0;
   max-height: min(24rem, 50dvh);
   padding-block: 4px;
@@ -314,7 +314,7 @@ defineExpose({ hasUnsavedContent, hasEditChanges, submitting, draftSnapshot, cle
 .moh-prompt-composer {
   padding: 16px 24px 20px;
 }
-.moh-prompt-composer .moh-composer-styled-textarea :deep(.moh-styled-textarea-editor) {
+.moh-prompt-composer :deep(.moh-composer-styled-textarea .moh-styled-textarea-editor) {
   min-height: 120px;
   padding-top: 0;
   font-size: 18px;
