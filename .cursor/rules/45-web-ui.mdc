@@ -1,0 +1,21 @@
+---
+description: MOH web links, SSR, surfaces and nested popup behavior
+globs: "components/**/*.vue,pages/**/*.vue,layouts/**/*.vue,composables/**/*.ts,assets/**/*.css"
+alwaysApply: false
+---
+
+# Web UI
+
+Read [clickable rows](../../.agents/skills/clickable-rows/SKILL.md) for row navigation and
+[SSR/hydration](../../.agents/skills/ssr-hydration/SKILL.md) for rendered state.
+
+Use one page header, `AppPageContent`, `moh-gutter-x`, and `moh-divide` for list separators.
+Avoid a card around the entire route; individual composer/CTA cards and centered auth forms
+remain appropriate. `divide-y` inherits text color and creates bright dark-mode separators.
+
+For nested PrimeVue popups, reuse `utils/overlay-layers.ts`, explicit portal destinations,
+and appropriate `baseZIndex`. A local z-index cannot escape an ancestor stacking context.
+Do not fix clipping with `appendTo="self"` or arbitrary global overrides. Test the actual
+popup inside its desktop account menu/mobile sheet: hit testing, clipping, keyboard,
+Escape, dismissal and focus return. A stubbed popup or closed-trigger screenshot proves
+none of those behaviors.

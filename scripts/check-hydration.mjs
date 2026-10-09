@@ -215,7 +215,7 @@ async function main() {
   const failed = results.filter((r) => !r.ok)
   if (failed.length > 0) {
     console.error(`\n[check-hydration] FAILED — ${failed.length}/${results.length} route(s) had hydration issues.`)
-    console.error(`See the 'runtime-hydration-check' and 'ssr-hydration' skills for how to fix.`)
+    console.error(`See the 'ssr-hydration' skill for diagnosis and runtime checks.`)
     process.exit(1)
   }
 

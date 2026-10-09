@@ -60,20 +60,19 @@ The dev server auto-reloads. Do not start long-running dev servers from tooling/
 
 ## When you change an API response
 
-Per `.cursor/rules/00-project-overview.mdc`:
-
-1. Update DTOs in `menofhunger-api/src/common/dto/**`
-2. Update types in `menofhunger-www/types/api.ts`
-3. Run `npx nuxi typecheck` and `node scripts/validate-api-types.mjs`
+Use [API contract sync](.agents/skills/api-contract-sync/SKILL.md) for the owning DTO,
+web types and any affected iOS decoding.
 
 ## Build / deploy
 
 ```bash
-npm run build        # runs prebuild gate: typecheck + validate-api-types + tests
+npm run build        # stamps the SW version and builds Nuxt
 npm run preview      # serve .output locally
 ```
 
-`prebuild` is a quality gate: it bumps the service-worker version, runs `nuxi typecheck`, validates API type drift against the API repo, and runs the test suite. If any of these fail, the build fails.
+`prebuild` only stamps the service-worker version; build does not run lint, types or tests.
+Choose verification from the [validation matrix](docs/engineering-policy.md#validation-matrix).
+`npm run check` is the explicit combined quality gate.
 
 Deploy: see `DEPLOYMENT.md`. In short: Render, `npm ci && npm run build`, with env vars set per `render.yaml`.
 

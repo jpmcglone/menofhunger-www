@@ -100,12 +100,12 @@ Run focused Vitest tests while iterating. Before finishing substantive work:
 
 ```sh
 npm run lint
-npx nuxi typecheck
+npm run typecheck
 npm run validate-api-types
 npm test
 ```
 
-For a production build, `npm run build` runs a prebuild gate (typecheck, contract validation, tests) and bumps the service-worker version. Review that generated change. For rendering work, also run the relevant browser checks described by [check-hydration.mjs](../scripts/check-hydration.mjs) and inspect the affected routes in the browser. See [deployment](../DEPLOYMENT.md) for publishing and [observability](observability.md) for diagnostics.
+For a production build, `npm run build` stamps the service-worker version and builds Nuxt; it does not run lint, types or tests. Review the generated version change and choose checks from the [validation matrix](engineering-policy.md#validation-matrix). For rendering work, also run the relevant browser checks described by [check-hydration.mjs](../scripts/check-hydration.mjs) and inspect the affected routes in the browser. See [deployment](../DEPLOYMENT.md) for publishing and [observability](observability.md) for diagnostics.
 
 ## If setup fails
 

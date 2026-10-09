@@ -1,65 +1,32 @@
 ---
 name: ssr-hydration
-description: Write SSR-safe Nuxt and Vue components, choose route rendering, and diagnose hydration mismatches caused by browser state, auth, markup, or lifecycle timing.
+description: Implement SSR-safe MOH web rendering and verify hydration with the existing Playwright harness.
 ---
 
 # SSR and hydration
 
-This is the authoritative rendering policy. Follow the installed Nuxt/Vue versions and
-[Vue SSR guidance](https://vuejs.org/guide/scaling-up/ssr.html#hydration-mismatch) and
-[Nuxt rendering modes](https://learn.nuxt.com/en/concepts/rendering-modes).
+Server HTML and the first client render must agree, including attributes and valid HTML
+nesting. A deterministic value changed in `onMounted` is safe; browser storage, viewport,
+random values and local time must not choose the initial rendered markup. Use `useId`
+for instance IDs and request-isolated, payload-backed state for server data.
 
-## Initial render is the invariant
+Use CSS breakpoints for presentation and `useHydratedMediaQuery` for behavior with a stable
+initial value. `v-show` still renders children on the server; it cannot hide browser-only
+code or mismatched attributes. Use `ClientOnly` or a client component for dependencies
+that cannot render on the server, with a stable-size fallback when needed. Prefer `v-if`
+for conditional mounting; preserve DOM/state with `v-show` when that is the desired behavior.
 
-The server HTML and the first client render must agree, including attributes and valid HTML
-nesting. State changing after hydration is normal. A ref initialized to false on both sides and
-set true in `onMounted` is safe with `v-if`:
+`nuxt.config.ts` routeRules owns rendering; `definePageMeta({ ssr: false })` does not.
+Keep useful public/shareable HTML and previews. Auth-aware SSR requires request isolation,
+visibility checks and private/no-store caching; auth alone is not a reason to disable SSR.
+Fix the mismatch rather than hiding it by changing the route's rendering mode.
 
-```vue
-<script setup lang="ts">
-const mounted = ref(false)
-onMounted(() => { mounted.value = true })
-</script>
+Diagnose a hard navigation using the warning/component trace. Check invalid nesting,
+unstable IDs/state, stale data and third-party DOM mutations. `TransitionGroup` supports
+SSR with stable keys and valid wrappers; do not duplicate lists without a reproduced bug.
 
-<template>
-  <ClientWidget v-if="mounted" />
-</template>
-```
-
-Choose `v-if` for conditional mounting, especially expensive or rarely used content. Choose
-`v-show` for frequently toggled content whose DOM/state should remain alive. `v-show` still
-renders children on the server: it cannot make browser-only code or differing text/attributes
-safe. Use Nuxt `ClientOnly` or a client component for dependencies that cannot render on a server;
-provide a dimensionally stable fallback when layout requires it.
-
-Use CSS breakpoints for presentation. For behavior that needs a media query, use
-`useHydratedMediaQuery` with a stable initial value; don't create two expensive hidden widgets.
-Read browser globals in client lifecycle hooks or guarded client-only functions. Initialize
-rendered state deterministically, not from localStorage, viewport size, random values, or local
-time during setup. Use `useId` for instance IDs and payload-backed state for shared server data.
-SSR auth can read request cookies; never share user state across server requests. Client-only
-session state needs a stable hydration boundary, not a blanket ban on auth-aware SSR.
-
-`TransitionGroup` supports SSR. Use stable unique keys and valid, consistent wrapper markup.
-Do not add duplicate static lists or mounted swaps without a reproduced version-specific bug.
-Avoid `appear` for routine initial content and respect reduced motion.
-
-## Route rendering
-
-`nuxt.config.ts` routeRules owns route rendering. `definePageMeta({ ssr: false })` is not a
-rendering switch; do not put rendering flags in page metadata. Keep public/shareable pages SSR
-for useful HTML and link previews. Choose CSR for browser-dependent private tools when server
-rendering offers no useful content. Auth alone does not require CSR; preserve request isolation,
-visibility checks, and private/no-store caching. Do not disable SSR merely to hide a mismatch.
-
-## Investigate and verify
-
-1. Reproduce a hard navigation; record the warning and component trace.
-2. Compare server output with client state before mounted hooks. Check invalid nesting,
-   unstable IDs/times, request-isolated state, third-party DOM mutations, and mismatched data.
-3. Fix that cause with the smallest boundary. Preserve loading/empty/error behavior and layout.
-4. Test actual server rendering plus hydration for a regression where practical; source-pattern
-   tests are only appropriate for an invariant that really is structural.
-5. Use the [validation matrix](../../../docs/engineering-policy.md#validation-matrix).
-   Record authenticated and anonymous coverage separately; anonymous route checks cannot prove
-   an authenticated screen renders correctly.
+`npm run check:hydration` visits `scripts/hydration-routes.json` and fails on hydration
+warnings or uncaught errors. `HYDRATION_BASE_URL` reuses a running server; otherwise the
+harness owns a bounded production preview. Preserve cleanup on setup failure/interruption.
+Add affected public routes and report anonymous/authenticated coverage separately.
+Use the [validation matrix](../../../docs/engineering-policy.md#validation-matrix) to choose checks.

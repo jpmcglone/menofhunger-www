@@ -1,9 +1,0 @@
----
-description: Correct stacking, portals, hit testing, and focus for menus, dropdowns, sheets, dialogs, and popovers.
-globs: "components/**/*.vue,composables/*Overlay*.ts,utils/overlay-layers.ts"
-alwaysApply: false
----
-
-# Overlay stacking
-
-Read the canonical [overlay stacking guidance](../../.agents/skills/make-interfaces-feel-better/surfaces.md#overlay-stacking-and-nested-controls) before changing an overlay. Verify the nested control from inside its real parent surface, including desktop and mobile variants; a stubbed popup does not verify stacking.

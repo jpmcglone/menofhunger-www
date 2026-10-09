@@ -1,21 +1,15 @@
 ---
-description: Preserve in-page layout for tab and filter URL changes
-globs: "pages/**/*.vue,composables/useUrlFeedFilters.ts,composables/useFeedFilters.ts,composables/useAppNav.ts"
+description: Preserve MOH tab/filter state and scroll while updating URLs
+globs: "pages/**/*.vue,composables/useUrlFeedFilters.ts,composables/useAppNav.ts"
 alwaysApply: false
 ---
 
-# In-Place Route State (No Remount)
+# In-page navigation
 
-For tab/modals/filter changes that should update URL without reloading/remounting:
+Keep tabs and filters in one page when they share state; use route aliases instead of stub
+pages that remount it. Preserve query parameters and the custom scroller's position.
 
-- Prefer one page component + `definePageMeta({ alias: [...] })` for subroutes.
-- Do not create separate stub pages for alias subroutes if content should stay in place.
-- Preserve existing query params when switching profile/home/article subpaths.
-- If Vue Router dedupes alias navigation (same route name/params), use `history.pushState` for path changes and track pathname locally.
-- When path is history-driven, query state composables must support history-backed mode:
-  - read query from `location.search`
-  - write with `history.replaceState`
-  - react to back/forward via `popstate`
-- Keep custom scroller position stable; do not rely on window-only scroll behavior.
-
-Cheap default: URL changes that only affect in-page state should be in-place updates, not route-record swaps.
+Existing history-backed profile tabs bypass Vue Router alias deduplication. Their query
+state must read `location.search`, write with `history.replaceState`, and react to `popstate`.
+Inspect `useUrlFeedFilters({ historyBacked: true })` before extending that path; do not
+introduce history-driven navigation where normal router navigation already preserves state.
