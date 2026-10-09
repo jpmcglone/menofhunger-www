@@ -34,6 +34,7 @@ const TYPE_LABELS: Record<AdminImageReviewBelongsTo, string> = {
   article_inline: 'Article',
   announcement: 'Announcement',
   newsletter: 'Newsletter',
+  email_delivery: 'Email',
   channel_upload: 'Channel upload',
   orphan: 'Unused',
 }
@@ -57,6 +58,9 @@ export function describeMediaItem(item: AdminImageReviewListItem): MediaReviewDe
 
   if (type === 'orphan') {
     return { label: 'Unused', tone: 'orphan', title: 'Not used anywhere', subtitle: null, protectedMedia: false }
+  }
+  if (type === 'email_delivery') {
+    return { label: 'Email', tone: 'content', title: 'Used in email', subtitle: 'Kept for queued and delivered messages', protectedMedia: true }
   }
   if (inChannel && (type === 'message' || type === 'message_thumbnail' || type === 'channel_upload')) {
     const sent = type === 'channel_upload' ? 'Uploading' : 'by'

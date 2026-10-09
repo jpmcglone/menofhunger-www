@@ -187,7 +187,7 @@
               <label class="flex min-h-11 items-center justify-between gap-4 py-2">
                 <span class="flex min-w-0 items-center gap-3">
                   <AppIconGlyph name="messages" :size="20" class="text-[var(--moh-text-muted)]" />
-                  <span class="font-medium">Instant emails</span>
+                  <span class="font-medium">Messages, mentions and replies</span>
                 </span>
                 <Checkbox v-model="notifPrefs.emailInstantHighSignal" binary :disabled="notifPrefsSaving || !emailIsVerified" />
               </label>

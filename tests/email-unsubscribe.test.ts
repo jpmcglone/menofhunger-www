@@ -7,8 +7,8 @@ describe('email unsubscribe page', () => {
 
   it('asks before unsubscribing and does not fire on mount', () => {
     expect(page).not.toMatch(/onMounted/)
-    expect(page).toMatch(/label="Unsubscribe from newsletters"/)
+    expect(page).toMatch(/label="Unsubscribe from these emails"/)
     expect(page).toMatch(/to="\/settings\/notifications"/)
-    expect(page).toMatch(/Weekly digest and other emails stay on/)
+    expect(page).toMatch(/Your other email preferences stay the same/)
   })
 })

@@ -7,6 +7,13 @@
       <div class="text-xs moh-text-muted">{{ item.status }} · {{ item.isInline ? 'Body image' : 'Cover image' }}</div>
     </NuxtLink>
   </div>
+  <div v-if="references.emailDeliveries?.length" class="pt-2 border-t moh-border">
+    <div class="font-semibold">Emails</div>
+    <div v-for="item in references.emailDeliveries" :key="item.id" class="mt-1 rounded-lg border moh-border px-2 py-2">
+      <div class="font-semibold">{{ item.title || 'Email' }}</div>
+      <div class="text-xs moh-text-muted">{{ item.status }} · Kept for email delivery</div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">

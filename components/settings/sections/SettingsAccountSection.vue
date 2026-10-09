@@ -71,7 +71,7 @@
         class="!text-xs"
       />
       <div v-if="!authUser.emailVerifiedAt" class="moh-text-muted">
-        Please verify your email to receive the daily digest.
+        Please verify your email to receive the weekly digest.
       </div>
       <Button
         v-if="!authUser.emailVerifiedAt && emailVerificationUiReady"

@@ -18,7 +18,7 @@
           <h1 class="text-2xl font-bold moh-text">{{ title }}</h1>
           <p v-if="subtitle" class="mt-1 text-sm moh-text-muted">{{ subtitle }}</p>
         </div>
-        <Button label="Delete from storage" severity="danger" :disabled="Boolean(data?.asset.deletedAt) || loading || !data" @click="openDelete = true">
+        <Button label="Delete from storage" severity="danger" :disabled="Boolean(data?.asset.deletedAt) || loading || !data || hasPublications" @click="openDelete = true">
           <template #icon><Icon name="tabler:trash" aria-hidden="true" /></template>
         </Button>
       </div>
@@ -176,7 +176,7 @@ type UsageRow = { key: string; label: string; value: string; detail?: string; to
 
 const refs = computed(() => data.value?.references ?? null)
 const isProtected = computed(() => Boolean(refs.value?.messages.some((m) => m.channelId) || refs.value?.channelUploads?.length))
-const hasPublications = computed(() => Boolean(refs.value?.announcements?.length || refs.value?.newsletters?.length))
+const hasPublications = computed(() => Boolean(refs.value?.announcements?.length || refs.value?.newsletters?.length || refs.value?.emailDeliveries?.length))
 
 const context = computed(() => {
   const message = refs.value?.messages.find((m) => m.channelId && m.groupSlug)
@@ -217,6 +217,9 @@ const status = computed(() => {
   }
   if (d.asset.primaryType === 'channel_upload') {
     return { label: 'Pending', text: 'Uploaded to a channel but not sent yet. It is kept until the upload expires.', class: 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100' }
+  }
+  if (hasPublications.value) {
+    return { label: 'In use', text: 'Kept for published content or queued and delivered email. It cannot be deleted from storage here.', class: 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100' }
   }
   const count = usage.value.length + (refs.value?.announcements?.length ?? 0) + (refs.value?.newsletters?.length ?? 0)
   return { label: 'In use', text: `Used in ${count} place${count === 1 ? '' : 's'}. Deleting it leaves a removed placeholder there.`, class: 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100' }

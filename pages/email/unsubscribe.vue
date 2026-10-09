@@ -1,17 +1,17 @@
 <template>
   <div class="mx-auto w-full max-w-md px-5 py-12 space-y-4">
-    <h1 class="text-xl font-semibold moh-text">Newsletters</h1>
+    <h1 class="text-xl font-semibold moh-text">Email preferences</h1>
     <div class="rounded-xl border moh-border moh-surface p-4 space-y-3">
       <template v-if="status === 'ask'">
         <p class="text-sm moh-text">
-          This stops occasional notes from us. Weekly digest and other emails stay on.
+          Stop this type of email. Your other email preferences stay the same.
         </p>
         <Button
-          label="Unsubscribe from newsletters"
+          label="Unsubscribe from these emails"
           rounded
           :loading="submitting"
           :disabled="submitting"
-          @click="unsubscribeNewsletters"
+          @click="unsubscribeEmails"
         />
         <div>
           <NuxtLink
@@ -23,9 +23,9 @@
         </div>
       </template>
       <template v-else-if="status === 'ok'">
-        <p class="text-sm moh-text">You’re unsubscribed from newsletters.</p>
+        <p class="text-sm moh-text">You’re unsubscribed from these emails.</p>
         <p class="text-sm moh-text-muted">
-          Weekly digest and other emails stay on unless you change them.
+          Your other email preferences haven’t changed.
         </p>
         <div>
           <NuxtLink
@@ -59,7 +59,7 @@ definePageMeta({
 
 usePageSeo({
   title: 'Unsubscribe',
-  description: 'Unsubscribe from Men of Hunger newsletters.',
+  description: 'Manage your Men of Hunger email preferences.',
   canonicalPath: '/email/unsubscribe',
   noindex: true,
 })
@@ -74,7 +74,7 @@ const status = ref<Status>(alreadyDone.value ? 'ok' : token.value ? 'ask' : 'err
 const submitting = ref(false)
 const errorMessage = ref('Unsubscribe link is invalid or expired.')
 
-async function unsubscribeNewsletters() {
+async function unsubscribeEmails() {
   if (!token.value || submitting.value) return
   submitting.value = true
   try {

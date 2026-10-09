@@ -704,6 +704,7 @@ export type AdminImageReviewBelongsTo =
   | 'article_inline'
   | 'announcement'
   | 'newsletter'
+  | 'email_delivery'
   | 'channel_upload'
   | 'orphan'
 
@@ -891,6 +892,7 @@ export type AdminImageReviewDetailResponse = {
     }>
     announcements?: Array<{ id: string; title: string; status: string; isInline: boolean }>
     newsletters?: Array<{ id: string; title: string; status: string; isInline: boolean }>
+    emailDeliveries?: Array<{ id: string; title: string; status: string; isInline: boolean }>
     articles: Array<{
       articleId: string
       slug: string
