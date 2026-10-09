@@ -3,7 +3,9 @@ import type { PublicProfile } from '~/types/api'
 import { formatDateTime, formatListTime } from '~/utils/time-format'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
+import type { OverlayPanelHandle } from '~/types/overlay-ref'
 import type { useProfileHeaderProfile, MenuItemWithIcon } from './useProfileHeader'
+import { usePresenceInterest } from '~/composables/presence/usePresenceInterest'
 
 export type AvatarMenuItem = MenuItemWithIcon
 
@@ -14,19 +16,21 @@ export type AvatarMenuItem = MenuItemWithIcon
 export function useProfileHeaderMenus(emit: ProfileHeaderEmits, ctx: ReturnType<typeof useProfileHeaderProfile>) {
   const { profile, profileAvatarUrl, isSelf, authUser, isAuthed, canSetStatus, viewerIsVerified } = ctx
 
+  // Visitors get report/mute/block; your own profile gets sharing shortcuts.
   const canOpenMenu = computed(() => {
     if (!isAuthed.value) return false
-    if (isSelf.value) return false
     return Boolean(profile.value?.id)
   })
 
+  const shareLinksOpen = ref(false)
+
   const reportOpen = ref(false)
-  const menuRef = ref()
+  const menuRef = ref<OverlayPanelHandle | null>(null)
   const avatarWrapperRef = ref<HTMLElement | null>(null)
 
   // Avatar context menu (for own profile: Go to space and/or View photo).
   const { selectedSpaceId, currentSpace: currentSpaceForNav } = useSpaceLobby()
-  const avatarMenuRef = ref()
+  const avatarMenuRef = ref<OverlayPanelHandle | null>(null)
 
   const avatarMenuItems = computed<AvatarMenuItem[]>(() => {
     const items: AvatarMenuItem[] = []
@@ -63,7 +67,7 @@ export function useProfileHeaderMenus(emit: ProfileHeaderEmits, ctx: ReturnType<
     const inSpace = Boolean(selectedSpaceId.value) && !route.path.startsWith('/spaces') && !route.path.startsWith('/s/')
     if (isSelf.value && inSpace) {
      
-      ;(avatarMenuRef.value as any)?.toggle(event)
+      avatarMenuRef.value?.toggle(event)
       return
     }
     if (profileAvatarUrl.value) {
@@ -107,7 +111,7 @@ export function useProfileHeaderMenus(emit: ProfileHeaderEmits, ctx: ReturnType<
     initialMuted: computed(() => profile.value?.viewerHasMutedUser),
   })
 
-  const blockingProfile = ref(false)
+  const { run: runBlock, pending: blockingProfile } = useAsyncAction()
   const { confirm } = useAppConfirm()
 
   async function openBlockConfirm() {
@@ -121,20 +125,16 @@ export function useProfileHeaderMenus(emit: ProfileHeaderEmits, ctx: ReturnType<
       confirmSeverity: isBlocked ? 'primary' : 'danger',
     })
     if (!ok || blockingProfile.value || !profile.value?.id) return
-    blockingProfile.value = true
-    try {
+    const profileId = profile.value.id
+    await runBlock(async () => {
       if (isBlocked) {
-        await blockState.unblockUser(profile.value.id)
+        await blockState.unblockUser(profileId)
         toast.push({ title: `${profileBlockHandle.value} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
       } else {
-        await blockState.blockUser(profile.value.id)
+        await blockState.blockUser(profileId)
         toast.push({ title: `${profileBlockHandle.value} blocked`, message: "They can still see your posts but can't engage with them.", tone: 'success', durationMs: 3000 })
       }
-    } catch (e: unknown) {
-      toast.pushError(e, isBlocked ? 'Failed to unblock.' : 'Failed to block.')
-    } finally {
-      blockingProfile.value = false
-    }
+    }, { error: isBlocked ? 'Failed to unblock.' : 'Failed to block.' })
   }
 
   const viewerCrew = useViewerCrew()
@@ -179,6 +179,26 @@ export function useProfileHeaderMenus(emit: ProfileHeaderEmits, ctx: ReturnType<
     if (!canOpenMenu.value) return []
     const items: MenuItemWithIcon[] = []
 
+    if (isSelf.value) {
+      if (profile.value?.username) {
+        items.push(
+          {
+            label: 'Share links page',
+            iconName: 'tabler:qrcode',
+            command: () => {
+              shareLinksOpen.value = true
+            },
+          },
+          {
+            label: 'Copy RSS feed link',
+            iconName: 'tabler:rss',
+            command: () => void copyProfileRssFeed(),
+          },
+        )
+      }
+      return items
+    }
+
     if (canInviteToCrew.value) {
       items.push({
         label: inviteToCrewLabel.value,
@@ -221,30 +241,15 @@ export function useProfileHeaderMenus(emit: ProfileHeaderEmits, ctx: ReturnType<
   function toggleMenu(event: Event) {
     // PrimeVue Menu expects the click event to position the popup.
    
-    ;(menuRef.value as any)?.toggle(event)
+    menuRef.value?.toggle(event)
   }
 
   function onReportSubmitted() {
     // toast + close handled in dialog
   }
 
-  const { addInterest, removeInterest, getPresenceStatus, getUserStatus, setMyStatus, editMyStatus, clearMyStatus, isPresenceKnown } = usePresence()
-  const lastProfileId = ref<string | null>(null)
-  watch(
-    () => profile.value?.id ?? null,
-    (profileId) => {
-      if (!import.meta.client) return
-      const prev = lastProfileId.value
-      if (prev && prev !== profileId) removeInterest([prev])
-      lastProfileId.value = profileId ?? null
-      if (profileId) addInterest([profileId])
-    },
-    { immediate: true },
-  )
-  onBeforeUnmount(() => {
-    const id = lastProfileId.value
-    if (id) removeInterest([id])
-  })
+  const { getPresenceStatus, getUserStatus, setMyStatus, editMyStatus, clearMyStatus, isPresenceKnown } = usePresence()
+  usePresenceInterest(() => profile.value?.id)
 
   const presenceStatus = computed(() => {
     const id = profile.value?.id
@@ -357,6 +362,7 @@ export function useProfileHeaderMenus(emit: ProfileHeaderEmits, ctx: ReturnType<
 
   return {
     canOpenMenu,
+    shareLinksOpen,
     reportOpen,
     menuRef,
     avatarWrapperRef,

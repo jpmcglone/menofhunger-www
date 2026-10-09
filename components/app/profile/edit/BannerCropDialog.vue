@@ -46,6 +46,7 @@
 
 <script setup lang="ts">
 import { Cropper } from 'vue-advanced-cropper'
+import { centeredCropPosition, maxCenteredCrop, type CropperChangeEvent, type CropperHandle, type CropperState } from '~/utils/cropper'
 
 const props = defineProps<{
   modelValue: boolean
@@ -66,10 +67,10 @@ const cropSrc = ref<string | null>(null)
 const cropHasSelection = ref(false)
 const cropperReady = ref(false)
 const cropApplyError = ref<string | null>(null)
-const cropperRef = ref<any>(null)
+const cropperRef = ref<CropperHandle | null>(null)
 const maxOnOpen = ref(true)
 
-const bannerDefaultSize = ({ imageSize }: any) => {
+const bannerDefaultSize = ({ imageSize }: Pick<CropperState, 'imageSize'>) => {
   const width = Number(imageSize?.width ?? 0)
   const height = Number(imageSize?.height ?? 0)
   if (!width || !height) return { width: 0, height: 0 }
@@ -77,12 +78,7 @@ const bannerDefaultSize = ({ imageSize }: any) => {
   const h = Math.floor(w / 3)
   return { width: w, height: h }
 }
-const bannerDefaultPosition = ({ coordinates, imageSize }: any) => {
-  return {
-    left: Math.round(imageSize.width / 2 - coordinates.width / 2),
-    top: Math.round(imageSize.height / 2 - coordinates.height / 2),
-  }
-}
+const bannerDefaultPosition = centeredCropPosition
 
 function clearInternalState() {
   cropHasSelection.value = false
@@ -116,7 +112,7 @@ onBeforeUnmount(() => {
   clearInternalState()
 })
 
-function onCropChange(e: any) {
+function onCropChange(e: CropperChangeEvent) {
   const canvas: HTMLCanvasElement | null = e?.canvas ?? null
   cropHasSelection.value = Boolean(canvas)
 }
@@ -128,20 +124,7 @@ async function onCropperReady() {
   const cropper = cropperRef.value
   if (!cropper?.setCoordinates) return
 
-  cropper.setCoordinates(({ imageSize, coordinates }: any) => {
-    const width = Number(imageSize?.width ?? 0)
-    const height = Number(imageSize?.height ?? 0)
-    if (!width || !height) return coordinates
-
-    const w = Math.floor(Math.min(width, height * 3))
-    const h = Math.floor(w / 3)
-    return {
-      width: w,
-      height: h,
-      left: Math.round(width / 2 - w / 2),
-      top: Math.round(height / 2 - h / 2),
-    }
-  })
+  cropper.setCoordinates((state) => maxCenteredCrop(state, 3))
 }
 
 function cancelCrop() {

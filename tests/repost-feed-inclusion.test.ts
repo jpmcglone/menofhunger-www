@@ -22,7 +22,7 @@ describe('repost feed inclusion', () => {
   })
 
   it('places top-level repost rows in both profile sections', () => {
-    const profile = readSurfaceSource('pages/u/[username].vue')
+    const profile = readSurfaceSource('pages/u/[username]/index.vue')
     expect(profile).toContain('postsOnlyPrependPost(post)')
     expect(profile).toContain('profilePrependPost(post)')
   })

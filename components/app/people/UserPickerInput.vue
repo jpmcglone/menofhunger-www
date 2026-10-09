@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isAbortError } from '~/utils/api-error'
 import type { FollowListUser } from '~/types/api'
 
 const props = withDefaults(defineProps<{
@@ -102,7 +103,7 @@ async function fetchUsers(q: string) {
     open.value = results.value.length > 0
     highlightedIndex.value = firstSelectableIndex()
   } catch (e: unknown) {
-    if ((e as any)?.name === 'AbortError') return
+    if (isAbortError(e)) return
     results.value = []
   } finally {
     if (inflight === controller) {
@@ -264,7 +265,7 @@ function relationshipLabel(u: FollowListUser): string {
         @input="onInput"
         @keydown="onKeydown"
         @blur="onBlur"
-      />
+      >
     </div>
 
     <Teleport to="body">

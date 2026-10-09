@@ -44,7 +44,7 @@ export function useChatTyping({
       const u = p?.user
       const username = (u?.username ?? '').trim()
       if (!username) continue
-      const tier: TypingUserDisplay['tier'] = userColorTier(u as any)
+      const tier: TypingUserDisplay['tier'] = userColorTier(u)
       const entry = typingMap.get(uid)
       const status = entry?.status
       result.push({ userId: uid, username, tier, status })

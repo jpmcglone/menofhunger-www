@@ -172,6 +172,7 @@
 </template>
 
 <script setup lang="ts">
+import { isInteractiveTarget } from '~/utils/interactive-target'
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
 import type { FeedThreadDisplayPost } from '~/utils/merge-feed-threads-for-display'
 import { buildThreadDisplayChain, hiddenThreadGapLabel, postAfterGapInDisplayChain, threadGapRailMarks } from '~/utils/feed-thread-display-chain'
@@ -333,19 +334,9 @@ function gapPermalink(displayIndex: number): string | null {
   return post ? `/p/${encodeURIComponent(post.id)}` : null
 }
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null
-  if (!el) return false
-  return Boolean(
-    el.closest(
-      ['a', 'button', 'iframe', 'input', 'textarea', 'select', '[role="menu"]', '[role="menuitem"]', '[data-pc-section]'].join(','),
-    ),
-  )
-}
-
 function onGapRowClick(displayIndex: number, e: MouseEvent) {
   const href = gapPermalink(displayIndex)
-  if (!href || isInteractiveTarget(e.target)) return
+  if (!href || isInteractiveTarget(e.target, 'basic')) return
   if (e.metaKey || e.ctrlKey) {
     window.open(href, '_blank')
     return
@@ -355,7 +346,7 @@ function onGapRowClick(displayIndex: number, e: MouseEvent) {
 
 function onGapRowAuxClick(displayIndex: number, e: MouseEvent) {
   const href = gapPermalink(displayIndex)
-  if (!href || e.button !== 1 || isInteractiveTarget(e.target)) return
+  if (!href || e.button !== 1 || isInteractiveTarget(e.target, 'basic')) return
   e.preventDefault()
   window.open(href, '_blank')
 }

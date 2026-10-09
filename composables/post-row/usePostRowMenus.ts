@@ -34,6 +34,7 @@ export function usePostRowMenus(opts: {
   const followState = useFollowState()
   const { fetchUserPreview } = useUserPreview()
   const toast = useAppToast()
+  const { run } = useAsyncAction()
   const { confirm } = useAppConfirm()
   const { nowMs } = useNowTicker({ everyMs: 15_000 })
   const route = useRoute()
@@ -98,7 +99,7 @@ export function usePostRowMenus(opts: {
   // ── Edit / report / delete ─────────────────────────────────────────────────
   const editOpen = ref(false)
   const reportOpen = ref(false)
-  const deleting = ref(false)
+  const { run: runDelete, pending: deleting } = useAsyncAction()
 
   const canEditPost = computed(() => {
     if (!isSelf.value) return false
@@ -129,16 +130,11 @@ export function usePostRowMenus(opts: {
 
   async function deletePost() {
     if (deleting.value) return
-    deleting.value = true
-    try {
+    await runDelete(async () => {
       await apiFetchData<{ success: true }>('/posts/' + encodeURIComponent(postView.value.id), { method: 'DELETE' })
       opts.onDeleted(postView.value.id)
       toast.push({ title: 'Post deleted', tone: postView.value.visibility, durationMs: 1400 })
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to delete post.')
-    } finally {
-      deleting.value = false
-    }
+    }, { error: 'Failed to delete post.' })
   }
 
   // ── Pin to profile / group ─────────────────────────────────────────────────
@@ -147,53 +143,45 @@ export function usePostRowMenus(opts: {
       toast.push({ title: 'Only-me posts cannot be pinned', tone: 'error', durationMs: 2200 })
       return
     }
-    try {
+    await run(async () => {
       await apiFetchData<{ pinnedPostId: string }>('/users/me/pinned-post', {
         method: 'PUT',
         body: { postId: postView.value.id },
       })
       await refetchMe()
       toast.push({ title: 'Pinned to profile', tone: 'success', durationMs: 1400 })
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to pin.')
-    }
+    }, { error: 'Failed to pin.' })
   }
 
   async function unpinFromProfile() {
-    try {
+    await run(async () => {
       await apiFetchData<{ pinnedPostId: null }>('/users/me/pinned-post', { method: 'DELETE' })
       await refetchMe()
       toast.push({ title: 'Unpinned from profile', tone: 'success', durationMs: 1400 })
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to unpin.')
-    }
+    }, { error: 'Failed to unpin.' })
   }
 
   async function pinGroupWall() {
     const gw = opts.groupWall()
     if (!gw) return
-    try {
+    await run(async () => {
       await apiFetchData(`/groups/${encodeURIComponent(gw.groupId)}/pin/${encodeURIComponent(postView.value.id)}`, {
         method: 'POST',
         body: {},
       })
       toast.push({ title: 'Pinned to group', tone: 'success', durationMs: 1400 })
       opts.onGroupPinChanged()
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to pin.')
-    }
+    }, { error: 'Failed to pin.' })
   }
 
   async function unpinGroupWall() {
     const gw = opts.groupWall()
     if (!gw) return
-    try {
+    await run(async () => {
       await apiFetchData(`/groups/${encodeURIComponent(gw.groupId)}/pin`, { method: 'DELETE' })
       toast.push({ title: 'Unpinned from group', tone: 'success', durationMs: 1400 })
       opts.onGroupPinChanged()
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to unpin.')
-    }
+    }, { error: 'Failed to unpin.' })
   }
 
   // ── Follow / block ─────────────────────────────────────────────────────────
@@ -209,40 +197,32 @@ export function usePostRowMenus(opts: {
         confirmSeverity: 'danger',
       })
       if (!ok) return
-      try {
+      await run(async () => {
         await followState.unfollow({ userId, username })
         toast.push({ title: `Unfollowed @${username}`, tone: 'success', durationMs: 1400 })
-      } catch (e: unknown) {
-        toast.pushError(e, 'Failed to unfollow.')
-      }
+      }, { error: 'Failed to unfollow.' })
     } else {
-      try {
+      await run(async () => {
         await followState.follow({ userId, username })
         toast.push({ title: `Following @${username}`, tone: 'success', durationMs: 1400 })
-      } catch (e: unknown) {
-        toast.pushError(e, 'Failed to follow.')
-      }
+      }, { error: 'Failed to follow.' })
     }
   }
 
   async function handleBlockUser(userId: string) {
-    try {
+    await run(async () => {
       await blockState.blockUser(userId)
       const handle = author.value?.username ? `@${author.value.username}` : 'User'
       toast.push({ title: `${handle} blocked`, message: 'They can still see your posts but can\'t engage with them.', tone: 'success', durationMs: 3000 })
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to block user.')
-    }
+    }, { error: 'Failed to block user.' })
   }
 
   async function handleUnblockUser(userId: string) {
-    try {
+    await run(async () => {
       await blockState.unblockUser(userId)
       const handle = author.value?.username ? `@${author.value.username}` : 'User'
       toast.push({ title: `${handle} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to unblock user.')
-    }
+    }, { error: 'Failed to unblock user.' })
   }
 
   // ── More menu ──────────────────────────────────────────────────────────────

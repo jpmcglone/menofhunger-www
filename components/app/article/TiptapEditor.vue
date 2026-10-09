@@ -36,7 +36,7 @@
         <Icon v-if="uploading" name="tabler:loader-2" class="text-[16px] animate-spin" />
         <Icon v-else name="tabler:photo" class="text-[16px]" />
       </button>
-      <input ref="imageInputEl" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="onImageFileChange" />
+      <input ref="imageInputEl" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="onImageFileChange" >
     </div>
 
     <EditorContent :editor="editor" class="tiptap-editor-content px-4 sm:px-6 lg:px-8" />
@@ -93,6 +93,7 @@ import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import Youtube from '@tiptap/extension-youtube'
 import { Callout } from '~/utils/tiptap-callout'
+import { presignedUpload } from '~/utils/put-presigned-file'
 
 const props = defineProps<{
   modelValue: string
@@ -286,19 +287,23 @@ function onSubmitLinkDialog() {
   const url = linkDialogUrl.value.trim()
   if (!url) return
   if (linkDialogMode.value === 'youtube') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(e as any).chain().focus().setYoutubeVideo({ src: url }).run()
+    ;(e.chain().focus() as unknown as ExtensionCommands).setYoutubeVideo({ src: url }).run()
   } else {
     e.chain().focus().setLink({ href: url }).run()
   }
   onCloseLinkDialog(false)
 }
 
+/** Chain commands added by the YouTube and callout extensions, which tiptap's core chain type does not know about. */
+type ExtensionCommands = {
+  setYoutubeVideo: (attrs: { src: string }) => { run: () => boolean }
+  toggleCallout: (attrs: { type: string }) => { run: () => boolean }
+}
+
 function toggleCallout(type: 'info' | 'tip' | 'warning') {
   const e = editor.value
   if (!e) return
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(e as any).chain().focus().toggleCallout({ type }).run()
+  ;(e.chain().focus() as unknown as ExtensionCommands).toggleCallout({ type }).run()
 }
 
 function triggerImageUpload() {
@@ -306,25 +311,9 @@ function triggerImageUpload() {
 }
 
 async function uploadAndInsertImage(file: File) {
-  uploading.value = true
-  try {
+  await run(async () => {
     file = await prepareUploadImage(file)
-    const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string> }>(
-      '/uploads/article-media/init',
-      { method: 'POST', body: { contentType: file.type } },
-    )
-    const uploadRes = await fetch(init.uploadUrl, {
-      method: 'PUT',
-      body: file,
-      headers: init.headers ?? {},
-    })
-    if (!uploadRes.ok) {
-      throw new Error('Image upload failed during transfer.')
-    }
-    const commit = await apiFetchData<{ key: string }>('/uploads/article-media/commit', {
-      method: 'POST',
-      body: { key: init.key },
-    })
+    const commit = await presignedUpload(apiFetchData, 'article-media', file)
     if (commit.key) {
       const imageUrl = assetUrl(commit.key)
       if (!imageUrl) {

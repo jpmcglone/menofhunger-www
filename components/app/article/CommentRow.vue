@@ -74,10 +74,10 @@
           <!-- Comments -->
           <button
             v-if="canComment"
+            v-tooltip.bottom="replyTooltip"
             type="button"
             class="inline-flex items-center gap-1"
             aria-label="Reply"
-            v-tooltip.bottom="replyTooltip"
             @click="emit('reply', isReply ? (parentId ?? comment.id) : comment.id, comment.author.username ?? undefined)"
           >
             <span class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]">
@@ -100,10 +100,10 @@
             <div v-if="isAuthed" class="relative hidden sm:block">
               <button
                 ref="reactButtonDesktopRef"
+                v-tooltip.bottom="reactTooltip"
                 type="button"
                 class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]"
                 aria-label="Add reaction"
-                v-tooltip.bottom="reactTooltip"
                 @click="toggleReactionPicker(reactButtonDesktopRef)"
               >
                 <Icon name="tabler:mood-smile" size="15" />
@@ -114,10 +114,10 @@
           <div class="ml-auto flex shrink-0 items-center gap-1">
             <!-- Share -->
             <button
+              v-tooltip.bottom="shareTooltip"
               type="button"
               class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]"
               aria-label="Share reply"
-              v-tooltip.bottom="shareTooltip"
               @click="toggleShareMenu($event)"
             >
               <svg viewBox="0 0 24 24" class="h-[15px] w-[15px]" aria-hidden="true">

@@ -1,86 +1,16 @@
 import type { UsersCallback } from '~/composables/usePresence'
 import { useUsersStore } from '~/composables/useUsersStore'
-import { bumpAuthGeneration, bumpIdentityVersion, clearAuthClientState, getAuthGeneration } from '~/composables/auth/authState'
+import { bumpAuthGeneration, clearAuthClientState, getAuthGeneration } from '~/composables/auth/authState'
 import { clearMohCacheAll } from '~/composables/useApiClient'
-import type { AccountKind, AccountSwitch, Impersonation, SwitchableAccount } from '~/types/api'
-import { isSafeRedirect } from '~/utils/url'
+import type { AuthUser } from '~/composables/auth/authUser'
+import { useAuthIdentity } from '~/composables/useAuthIdentity'
+import type { Impersonation } from '~/types/api'
 import { forgetSessionIdentity, rememberSessionIdentity } from '~/utils/session-identity-preview'
+import { getErrorStatus } from '~/utils/api-error'
 
-export type AuthUser = {
-  id: string
-  createdAt?: string
-  phone: string | null
-  accountKind?: AccountKind
-  email?: string | null
-  emailVerifiedAt?: string | null
-  emailVerificationRequestedAt?: string | null
-  username?: string | null
-  usernameIsSet?: boolean
-  name?: string | null
-  bio?: string | null
-  website?: string | null
-  xUsername?: string | null
-  pickaxUsername?: string | null
-  rumbleUrl?: string | null
-  linkedinUrl?: string | null
-  youtubeUrl?: string | null
-  locationInput?: string | null
-  locationDisplay?: string | null
-  locationZip?: string | null
-  locationCity?: string | null
-  locationCounty?: string | null
-  locationState?: string | null
-  locationCountry?: string | null
-  locationPromptSkipped?: boolean
-  birthdate?: string | null
-  interests?: string[]
-  menOnlyConfirmed?: boolean
-  heardAboutUs?: import('~/types/api').HeardAboutUs | null
-  heardAboutUsOther?: string | null
-  hasRecruiter?: boolean
-  siteAdmin?: boolean
-  featureToggles?: string[]
-  premium?: boolean
-  premiumPlus?: boolean
-  isOrganization?: boolean
-  followVisibility?: 'all' | 'verified' | 'premium' | 'none'
-  birthdayVisibility?: 'none' | 'monthDay' | 'full'
-  verifiedStatus?: 'none' | 'identity' | 'manual'
-  verifiedAt?: string | null
-  unverifiedAt?: string | null
-  avatarUrl?: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-  bannerUrl?: string | null
-  pinnedPostId?: string | null
-  coins?: number
-  checkinStreakDays?: number
-  lastCheckinDayKey?: string | null
-  longestStreakDays?: number
-  openToCrew?: boolean
-  notificationUndeliveredCount?: number
-  messageUnreadCounts?: { primary: number; requests: number }
-  notificationUnreadCommentCount?: number
-  groupsUnread?: { total: number; byGroupId: Record<string, number> }
-  crewInviteInboxCount?: number
-  groupInviteInboxCount?: number
-  postCount?: number | null
-  articleCount?: number | null
-  /** Non-null only while a site admin is impersonating this user. */
-  impersonation?: Impersonation | null
-  accountSwitch?: AccountSwitch | null
-}
+export type { AuthUser }
 
 let clientMePromise: Promise<AuthUser | null> | null = null
-
-function getErrorStatus(e: unknown): number | null {
-  const anyErr = e as any
-  const status =
-    (typeof anyErr?.status === 'number' ? anyErr.status : null) ??
-    (typeof anyErr?.statusCode === 'number' ? anyErr.statusCode : null) ??
-    (typeof anyErr?.response?.status === 'number' ? anyErr.response.status : null) ??
-    (typeof anyErr?.data?.meta?.status === 'number' ? anyErr.data.meta.status : null)
-  return typeof status === 'number' ? status : null
-}
 
 function isNuxtComposableContextError(e: unknown): boolean {
   const message = String((e as { message?: unknown } | null | undefined)?.message ?? '')
@@ -91,11 +21,11 @@ function isNuxtComposableContextError(e: unknown): boolean {
 }
 
 export function useAuth() {
-  const { apiFetch, apiFetchData } = useApiClient()
+  const { apiFetch } = useApiClient()
   const usersStore = useUsersStore()
 
   const user = useState<AuthUser | null>('auth-user', () => null)
-  const { transition: accountSwitchTransition, switchingId } = useAccountSwitchState()
+  const { switchingId } = useAccountSwitchState()
   const didAttempt = useState<boolean>('auth-did-attempt', () => false)
   const initDone = useState<boolean>('auth-init-done', () => false)
   // True when the last /auth/me failed due to a network/server error (not a 401).
@@ -120,7 +50,7 @@ export function useAuth() {
         onSelfUpdated: (payload: { user?: import('~/types/api').PublicProfile }) => {
           const u = payload?.user ?? null
           if (!u?.id) return
-          usersStore.upsert(u as any)
+          usersStore.upsert(u)
           if (u.username) invalidateUserPreviewCache(u.username)
 
           // If this update is about *me*, patch my auth user object.
@@ -133,6 +63,8 @@ export function useAuth() {
               name: u.name,
               bio: u.bio,
               website: u.website,
+              // Omitted means unchanged: older payloads carry no `links`.
+              ...(Array.isArray(u.links) ? { links: u.links } : {}),
               locationDisplay: u.locationDisplay,
               locationCity: u.locationCity,
               locationCounty: u.locationCounty,
@@ -331,199 +263,16 @@ export function useAuth() {
     }
   }
 
-  function personOnlyLandingPath(pathname: string): string | null {
-    if (pathname === '/settings/billing' || pathname.startsWith('/settings/billing/')) return '/settings/account'
-    if (pathname === '/settings/fitness' || pathname.startsWith('/settings/fitness/')) return '/settings/account'
-    if (pathname === '/settings/verification' || pathname.startsWith('/settings/verification/')) {
-      return '/settings/account'
-    }
-    const personOnlyPrefixes = [
-      '/check-ins',
-      '/fitness',
-      '/invite',
-      '/referrals',
-      '/coins',
-      '/crew',
-      '/verification',
-      '/admin',
-      '/daily',
-    ]
-    if (personOnlyPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
-      return '/home'
-    }
-    return null
-  }
 
-  async function leavePersonOnlyRouteIfNeeded(next: AuthUser | null, then?: string) {
-    if (!import.meta.client) return
-    const dest = isSafeRedirect(then) ? then : null
-    const path = ((dest ?? useRoute().path).split(/[?#]/)[0]) || '/'
-    const landing = next?.accountKind === 'page' ? personOnlyLandingPath(path) : null
-    const target = landing || dest
-    if (!target) return
-    const route = useRoute()
-    if (target === route.fullPath || target === route.path) return
-    await navigateTo(target, { replace: true })
-  }
 
-  /**
-   * Swap client state over to a different identity after the server has already
-   * rotated the `moh_session` cookie. Used by impersonation and account switch.
-   *
-   * This is a full identity change: caches, content rooms, badge counts, KeepAlive
-   * pages, and the socket handshake all rebuild for `nextUser`. `emitLogout()` is
-   * deliberately NOT called — that would revoke the brand-new session server-side.
-   *
-   * Throws `'identity_not_swapped'` if the server confirmed a different user than `nextUser`
-   * — this means the session cookie was not updated (browser SameSite / CORS edge-case).
-   */
-  async function applyIdentitySwap(nextUser: AuthUser | null, opts?: { then?: string }) {
-    const expectedId = nextUser?.id ?? null
-
-    bumpAuthGeneration()
-    clientMePromise = null
-
-    const { disconnect, connect } = usePresence()
-    disconnect()
-
-    clearMohCacheAll()
-    clearAuthClientState({ resetViewerCaches: true })
-
-    user.value = nextUser
-    didAttempt.value = true
-    apiUnreachable.value = false
-
-    // Re-read from the server so badge counts and impersonation metadata are authoritative.
-    // Must call me() directly — ensureLoaded() early-returns when didAttempt is true.
-    await me().catch(() => undefined)
-
-    // Guard: if me() returned a DIFFERENT user than expected, the browser's session cookie
-    // was not updated (e.g. SameSite/CORS issue silently prevented the Set-Cookie from
-    // being applied). Restore the pre-swap state and throw so callers can surface an error.
-    if (expectedId && user.value?.id !== expectedId) {
-      throw new Error('identity_not_swapped')
-    }
-
-    await leavePersonOnlyRouteIfNeeded(user.value, opts?.then)
-    // Bust KeepAlive so the current page remounts and fetches as the new identity.
-    bumpIdentityVersion()
-
-    // Tear down any mid-swap reconnect (user-id watch) and handshake as this user.
-    disconnect()
-    connect()
-    void useBadgeHydration().refresh({ force: true }).catch(() => undefined)
-    if (import.meta.client) {
-      void usePushNotifications().ensureSubscribedWhenGranted()
-    }
-  }
-
-  /**
-   * Site admin only: begin acting as `username`. The API validates admin rights and
-   * rotates this client's session cookie to a session owned by the target user.
-   */
-  async function startImpersonation(username: string) {
-    const cleaned = String(username ?? '').trim().replace(/^@/, '')
-    if (!cleaned) throw new Error('Enter a username.')
-
-    const result = await apiFetchData<{ user: AuthUser }>('/admin/impersonate', {
-      method: 'POST',
-      body: { username: cleaned },
-    })
-
-    try {
-      await applyIdentitySwap(result?.user ?? null)
-    } catch (e) {
-      if ((e as Error)?.message === 'identity_not_swapped') {
-        throw new Error(
-          'Impersonation started on the server but your browser did not receive the new session. ' +
-          'Please reload the page and try again.',
-        )
-      }
-      throw e
-    }
-    return result?.user ?? null
-  }
-
-  /** Exit impersonation and return to the admin's own account. */
-  async function stopImpersonation() {
-    const result = await apiFetchData<{ user: AuthUser | null; signedOut: boolean }>(
-      '/auth/impersonate/stop',
-      { method: 'POST' },
-    )
-
-    if (result?.signedOut || !result?.user) {
-      // The admin account is gone or banned — the server cleared the cookie.
-      handleUnauthorized()
-      const { disconnect } = usePresence()
-      disconnect()
-      if (import.meta.client) await navigateTo('/login', { replace: true })
-      return null
-    }
-
-    await applyIdentitySwap(result.user)
-    return result.user
-  }
-
-  async function listSwitchableAccounts(): Promise<SwitchableAccount[]> {
-    return await apiFetchData<SwitchableAccount[]>('/auth/accounts', { method: 'GET' })
-  }
-
-  async function switchAccount(userId: string, opts?: {
-    then?: string
-    label?: string
-    name?: string | null
-    username?: string | null
-    avatarUrl?: string | null
-    avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-    isOrganization?: boolean
-  }) {
-    if (switchingId.value || userId === user.value?.id) return null
-    accountSwitchTransition.value = {
-      userId,
-      label: opts?.label || 'your account',
-      name: opts?.name,
-      username: opts?.username,
-      avatarUrl: opts?.avatarUrl,
-      avatarVideo: opts?.avatarVideo,
-      isOrganization: opts?.isOrganization,
-    }
-    // Responses from the old session must not overwrite or sign out the new one.
-    bumpAuthGeneration()
-    clientMePromise = null
-    try {
-      let next: AuthUser | null = null
-      try {
-        const result = await apiFetchData<{ user: AuthUser }>('/auth/switch', {
-          method: 'POST',
-          body: { userId },
-          retry: 0,
-          mohUnauthorized: 'ignore',
-        })
-        next = result?.user ?? null
-      } catch (error) {
-        const status = getErrorStatus(error)
-        if (status !== null && status < 500) throw error
-        // The cookie may have rotated before the response was interrupted.
-        next = await apiFetchData<AuthUser | null>('/auth/me', {
-          method: 'GET', mohDedupe: false, mohRetry: false,
-          mohUnauthorized: 'ignore', timeout: 5_000,
-        }).catch(() => null)
-        if (!next) {
-          if (import.meta.client) window.location.reload()
-          return null
-        }
-        if (next.id !== userId) throw error
-      }
-      if (next?.id !== userId) throw new Error('Could not confirm the account switch. Please try again.')
-      await applyIdentitySwap(next, { then: opts?.then })
-      accountSwitchTransition.value = null
-      return user.value
-    } catch (error) {
-      bumpAuthGeneration()
-      accountSwitchTransition.value = null
-      throw error
-    }
-  }
+  const identity = useAuthIdentity({
+    user,
+    didAttempt,
+    apiUnreachable,
+    me,
+    handleUnauthorized,
+    resetMePromise: () => { clientMePromise = null },
+  })
 
   const isAuthed = computed(() => Boolean(user.value?.id))
   /** The admin driving this session, or null when this is an ordinary session. */
@@ -540,5 +289,5 @@ export function useAuth() {
   /** Daily check-in / streak loop. Pages cannot participate, so callers should hide the chrome. */
   const canAccessCheckins = computed(() => !isPageAccount.value && isVerifiedMember.value)
 
-  return { user, didAttempt, patchUser, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, isPageAccount, canAccessCheckins, apiUnreachable, impersonation, isImpersonating, startImpersonation, stopImpersonation, listSwitchableAccounts, switchAccount }
+  return { user, didAttempt, patchUser, me, ensureLoaded, initAuth, logout, logoutEverywhere, handleUnauthorized, isAuthed, isVerified, isPremium, isPremiumPlus, isVerifiedMember, isPageAccount, canAccessCheckins, apiUnreachable, impersonation, isImpersonating, ...identity }
 }

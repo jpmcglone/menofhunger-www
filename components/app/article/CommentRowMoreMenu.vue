@@ -1,10 +1,10 @@
 <template>
   <div ref="wrapRef">
     <button
+      v-tooltip.bottom="tooltip"
       type="button"
       class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]"
       aria-label="More options"
-      v-tooltip.bottom="tooltip"
       @click="onMoreClick"
     >
       <Icon name="tabler:dots" size="15" />
@@ -14,7 +14,7 @@
         <div
           v-if="open"
           ref="menuEl"
-          class="fixed z-[var(--moh-z-menu)] w-36 overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
+          class="fixed z-[var(--moh-z-menu)] w-36 moh-card-frame moh-border moh-surface shadow-lg"
           :style="menuStyle"
         >
           <button

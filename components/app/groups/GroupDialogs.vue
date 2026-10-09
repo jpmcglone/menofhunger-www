@@ -257,11 +257,13 @@ async function leave() {
   finally { busy.value = null }
 }
 
-async function copyInvite() {
-  try {
-    await navigator.clipboard.writeText(`${window.location.origin}/g/${slug.value}`)
-    toast.push({ title: 'Invite link copied', tone: 'success', durationMs: 1400 })
-  } catch { toast.push({ title: 'Couldn’t copy the link', tone: 'error', durationMs: 1800 }) }
+const { run: runCopy } = useAsyncAction()
+function copyInvite() {
+  return runCopy(() => navigator.clipboard.writeText(`${window.location.origin}/g/${slug.value}`), {
+    error: () => 'Couldn’t copy the link',
+    durationMs: 1800,
+    onSuccess: () => toast.push({ title: 'Invite link copied', tone: 'success', durationMs: 1400 }),
+  })
 }
 
 const feedCallback: GroupFeedCallback = {

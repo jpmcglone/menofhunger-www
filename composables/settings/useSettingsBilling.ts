@@ -1,3 +1,4 @@
+import type { LocationQueryRaw } from 'vue-router'
 import type {
   BillingMe,
   BillingPortalSession,
@@ -118,7 +119,7 @@ export function useSettingsBilling() {
   const checkoutSuccessTier = ref<'premium' | 'premiumPlus'>('premium')
 
   function stripCheckoutQuery() {
-    const nextQuery = { ...(route.query as Record<string, any>) }
+    const nextQuery = { ...route.query } as LocationQueryRaw
     delete nextQuery.checkout
     delete nextQuery.session_id
     void navigateTo({ path: route.path, query: nextQuery }, { replace: true })

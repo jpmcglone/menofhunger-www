@@ -1,5 +1,4 @@
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
-import { formatMonthYear } from '~/utils/time-format'
 import type { CrewBySlugViewerMembership, CrewInvite, CrewMemberListItem, CrewPrivate, CrewPublic, FeedPost } from '~/types/api'
 import type { CrewMemberActionTarget } from '~/components/app/crew/CrewMemberActionMenu.vue'
 import { useLoadMoreObserver } from '~/composables/useLoadMoreObserver'
@@ -9,7 +8,6 @@ import { getApiErrorMessage } from '~/utils/api-error'
 import { crewAvatarRoundClass } from '~/utils/avatar-rounding'
 import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import type { FeedVisibilityFilter } from '~/composables/useFeedFilters'
-import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 export function useCrewSlugPage() {
 const crewAvatarRound = crewAvatarRoundClass()

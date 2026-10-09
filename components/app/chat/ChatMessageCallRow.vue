@@ -54,7 +54,7 @@
           :src="voicemail.thumbnailUrl"
           class="block max-h-[320px] w-full object-contain"
           alt=""
-        />
+        >
         <div v-else class="flex h-36 items-center justify-center text-xs text-gray-500">Video message</div>
       </button>
       <p v-if="!isMine" class="px-3 py-1.5 text-[11px] text-gray-500 dark:text-zinc-400">Left you a video message</p>

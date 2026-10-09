@@ -1,3 +1,4 @@
+import { isRecord } from '~/utils/primitives'
 import type { Socket } from 'socket.io-client'
 import { suppressSoundsFor } from '~/utils/sound-policy'
 
@@ -6,10 +7,6 @@ const NOTIFICATIONS_UNREAD_COMMENT_COUNT_KEY = 'notifications-unread-comment-cou
 const MESSAGES_UNREAD_COUNTS_KEY = 'messages-unread-counts'
 const GROUPS_UNREAD_KEY = 'groups-unread'
 const NOTIFICATIONS_NAV_UNREAD_KEY = 'notifications-nav-unread'
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return Boolean(v && typeof v === 'object')
-}
 
 function getSenderIdFromMessageNewPayload(payload: unknown): string | null {
   if (!isRecord(payload)) return null

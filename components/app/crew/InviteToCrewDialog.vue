@@ -48,7 +48,6 @@
 </template>
 
 <script setup lang="ts">
-import { getApiErrorMessage } from '~/utils/api-error'
 
 const props = defineProps<{
   modelValue: boolean
@@ -75,34 +74,27 @@ const visible = computed({
 useOverlayDismiss(visible, () => (visible.value = false))
 
 const message = ref('')
-const sending = ref(false)
-const error = ref<string | null>(null)
 
 function close() {
   visible.value = false
 }
+
+const { submit: send, submitting: sending, submitError: error } = useFormSubmit(async () => {
+  await crewApi.sendInvite({
+    inviteeUserId: props.inviteeUserId!,
+    message: message.value.trim() || null,
+  })
+  pushToast({ title: 'Invite sent', tone: 'success' })
+  emit('invited')
+  close()
+}, { defaultError: 'Could not send that invite.' })
 
 function onHide() {
   message.value = ''
   error.value = null
 }
 
-async function submit() {
-  if (!props.inviteeUserId || sending.value) return
-  sending.value = true
-  error.value = null
-  try {
-    await crewApi.sendInvite({
-      inviteeUserId: props.inviteeUserId,
-      message: message.value.trim() || null,
-    })
-    pushToast({ title: 'Invite sent', tone: 'success' })
-    emit('invited')
-    close()
-  } catch (e) {
-    error.value = getApiErrorMessage(e) || 'Could not send that invite.'
-  } finally {
-    sending.value = false
-  }
+function submit() {
+  if (props.inviteeUserId) return send()
 }
 </script>

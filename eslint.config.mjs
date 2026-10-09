@@ -11,9 +11,8 @@ export default withNuxt(
       'no-debugger': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
 
-      // This codebase predates enforcing these strictly via CI lint.
-      // We'll tighten these over time (goal: fewer `any`s and unused vars).
-      '@typescript-eslint/no-explicit-any': 'off',
+      // `any` is an error in app code; tests may use it for deliberately partial fixtures and mocks.
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
@@ -32,5 +31,9 @@ export default withNuxt(
       // Vue 3 supports fragments; this rule is too strict for layouts.
       'vue/no-multiple-template-root': 'off',
     },
+  },
+  {
+    files: ['tests/**'],
+    rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
 )

@@ -96,7 +96,7 @@
 
 <script setup lang="ts">
 import { formatFitnessActivityDateTime, formatFitnessDistance, formatFitnessDuration, formatFitnessElevation, formatFitnessTimestamp } from '~/utils/fitness-format'
-import type { FitnessActivityDetail, FitnessActivityType, FitnessUnits } from '~/types/api'
+import type { FitnessActivityDetail, FitnessActivityType } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
@@ -181,11 +181,12 @@ async function load() {
   }
 }
 
+const { run } = useAsyncAction()
 async function submitShare() {
   const a = activity.value
   if (!a) return
   sharingPost.value = true
-  try {
+  await run(async () => {
     const result = await apiFetchData<{ post: { id: string } }>('/fitness/share', {
       method: 'POST',
       body: { shareType: 'activity', activityId: a.id, body: shareBody.value, visibility: 'public' },
@@ -193,11 +194,8 @@ async function submitShare() {
     showShare.value = false
     shareBody.value = ''
     toast.push({ title: 'Posted!', to: `/p/${result.post.id}`, tone: 'success', durationMs: 6000 })
-  } catch (e) {
-    toast.pushError(e, 'Failed to share.')
-  } finally {
-    sharingPost.value = false
-  }
+  }, { error: 'Failed to share.' })
+  sharingPost.value = false
 }
 
 function downloadRaw() {

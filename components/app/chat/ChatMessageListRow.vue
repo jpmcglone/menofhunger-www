@@ -34,39 +34,19 @@
     @mouseenter="emit('mouseenter', messageItem.message.id)"
     @mouseleave="emit('mouseleave', messageItem.message.id)"
   >
-
     <!-- Reply snippet + (action bar + bubble) + reactions, all stacked -->
     <div
       class="flex min-w-0 flex-col gap-1"
       :class="messageItem.message.sender.id === meId ? 'items-end' : 'items-start'"
       style="max-width: 85%;"
     >
-      <!-- Reply snippet -->
-      <div
+      <AppChatReplySnippet
         v-if="messageItem.message.replyTo"
-        :class="[
-          'flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-xs opacity-75 cursor-pointer w-full',
-          messageItem.message.sender.id === meId
-            ? 'bg-black/10 dark:bg-white/10 text-current'
-            : 'bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-400',
-          groupIncoming ? 'ml-[2.125rem]' : '',
-        ]"
+        :reply="messageItem.message.replyTo"
+        :outgoing="messageItem.message.sender.id === meId"
+        :indented="groupIncoming"
         @click="emit('reply-snippet-click', messageItem.message.replyTo.id)"
-      >
-        <Icon name="tabler:corner-up-right" size="12" class="shrink-0" aria-hidden="true" />
-        <div class="min-w-0 flex-1 overflow-hidden">
-          <span class="font-semibold mr-1">{{ messageItem.message.replyTo.senderUsername ? `@${messageItem.message.replyTo.senderUsername}` : 'Unknown' }}</span><span
-            class="break-words"
-            style="display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line;"
-          >{{ collapseBlankLines(messageItem.message.replyTo.bodyPreview) }}</span>
-        </div>
-        <img
-          v-if="messageItem.message.replyTo.mediaThumbnailUrl"
-          :src="messageItem.message.replyTo.mediaThumbnailUrl"
-          class="shrink-0 h-9 w-9 rounded-md object-cover"
-          aria-hidden="true"
-        />
-      </div>
+      />
 
       <div
         class="flex min-w-0 items-end gap-1.5"
@@ -136,7 +116,7 @@
               loading="lazy"
               aria-hidden="true"
               @load="loadedMediaIds.add(`thumb-${media.id}`)"
-            />
+            >
             <video
               v-else-if="media.url"
               :src="media.url"
@@ -166,7 +146,7 @@
               :class="{ 'opacity-0': chatHideThumbs || !loadedMediaIds.has(media.id) }"
               loading="lazy"
               @load="loadedMediaIds.add(media.id)"
-            />
+            >
           </button>
 
           <!-- Timestamp overlay — only when media-only (no text body) -->
@@ -178,54 +158,25 @@
             <time :datetime="messageItem.message.createdAt" :title="formatMessageTimeFull(messageItem.message.createdAt)">
               {{ formatMessageTime(messageItem.message.createdAt) }}
             </time>
-            <template v-if="messageItem.message.sender.id === meId">
-              <span
-                v-if="sendingMessageIds.has(messageItem.message.id)"
-                class="inline-block h-[10px] w-[10px] rounded-full border border-current border-t-transparent opacity-70 animate-spin"
-                aria-label="Sending"
-              />
-              <Icon
-                v-else-if="latestMyMessageId && messageItem.message.id === latestMyMessageId"
-                :name="isLatestMyMessageRead ? 'tabler:checks' : 'tabler:circle-check'"
-                size="10"
-                :class="['translate-y-[0.5px]', isLatestMyMessageRead ? 'text-blue-400 opacity-90' : 'opacity-60']"
-                :aria-label="isLatestMyMessageRead ? 'Read' : 'Sent'"
-                aria-hidden="true"
-              />
-            </template>
+            <AppChatDeliveryStatus
+              v-if="messageItem.message.sender.id === meId"
+              :sending="sendingMessageIds.has(messageItem.message.id)"
+              :latest="Boolean(latestMyMessageId) && messageItem.message.id === latestMyMessageId"
+              :read="isLatestMyMessageRead"
+            />
           </div>
         </div>
       </template>
-
       <!-- Bubble/action row -->
       <div v-if="showTextBubble" class="flex items-end gap-1">
         <!-- Action bar — LEFT (outgoing) -->
-        <div
+        <AppChatMessageActionBar
           v-if="messageItem.message.sender.id === meId"
-          :class="[
-            'flex shrink-0 items-center gap-0.5 transition-opacity duration-150',
-            hoveredId === messageItem.message.id ? 'opacity-100' : 'opacity-0 pointer-events-none',
-          ]"
-        >
-          <button
-            type="button"
-            title="More options"
-            aria-label="More options"
-            class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
-            @click.stop="emit('open-menu', $event, messageItem!.message)"
-          >
-            <Icon name="tabler:dots" size="14" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            title="React"
-            aria-label="Add reaction"
-            class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
-            @click.stop="emit('open-reaction-picker', $event, messageItem!.message)"
-          >
-            <Icon name="tabler:mood-smile" size="14" aria-hidden="true" />
-          </button>
-        </div>
+          outgoing
+          :visible="hoveredId === messageItem.message.id"
+          @menu="emit('open-menu', $event, messageItem!.message)"
+          @react="emit('open-reaction-picker', $event, messageItem!.message)"
+        />
 
         <!-- Anchor / actions align to text bubble -->
         <div
@@ -279,7 +230,7 @@
             <AppChatMessageRichBody
               v-else
               :body="messageItem.message.body"
-              :sender-tier="userColorTier(messageItem.message.sender as any)"
+              :sender-tier="userColorTier(messageItem.message.sender)"
             >
               <!--
                 Timestamp tail — floats to the right at the end of the last text line.
@@ -293,21 +244,12 @@
                     :datetime="messageItem.message.createdAt"
                     :title="formatMessageTimeFull(messageItem.message.createdAt)"
                   >{{ formatMessageTime(messageItem.message.createdAt) }}</time>
-                  <template v-if="messageItem.message.sender.id === meId">
-                    <span
-                      v-if="sendingMessageIds.has(messageItem.message.id)"
-                      class="inline-block h-[10px] w-[10px] rounded-full border border-current border-t-transparent opacity-70 animate-spin"
-                      aria-label="Sending"
-                    />
-                    <Icon
-                      v-else-if="latestMyMessageId && messageItem.message.id === latestMyMessageId"
-                      :name="isLatestMyMessageRead ? 'tabler:checks' : 'tabler:circle-check'"
-                      size="10"
-                      :class="['translate-y-[0.5px]', isLatestMyMessageRead ? 'text-blue-400 opacity-90' : 'opacity-60']"
-                      :aria-label="isLatestMyMessageRead ? 'Read' : 'Sent'"
-                      aria-hidden="true"
-                    />
-                  </template>
+                  <AppChatDeliveryStatus
+                    v-if="messageItem.message.sender.id === meId"
+                    :sending="sendingMessageIds.has(messageItem.message.id)"
+                    :latest="Boolean(latestMyMessageId) && messageItem.message.id === latestMyMessageId"
+                    :read="isLatestMyMessageRead"
+                  />
                 </span>
               </template>
             </AppChatMessageRichBody>
@@ -315,32 +257,12 @@
         </div>
 
         <!-- Action bar — RIGHT (incoming) -->
-        <div
+        <AppChatMessageActionBar
           v-if="messageItem.message.sender.id !== meId"
-          :class="[
-            'flex shrink-0 items-center gap-0.5 transition-opacity duration-150',
-            hoveredId === messageItem.message.id ? 'opacity-100' : 'opacity-0 pointer-events-none',
-          ]"
-        >
-          <button
-            type="button"
-            title="React"
-            aria-label="Add reaction"
-            class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
-            @click.stop="emit('open-reaction-picker', $event, messageItem!.message)"
-          >
-            <Icon name="tabler:mood-smile" size="14" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            title="More options"
-            aria-label="More options"
-            class="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:text-zinc-500 dark:hover:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
-            @click.stop="emit('open-menu', $event, messageItem!.message)"
-          >
-            <Icon name="tabler:dots" size="14" aria-hidden="true" />
-          </button>
-        </div>
+          :visible="hoveredId === messageItem.message.id"
+          @menu="emit('open-menu', $event, messageItem!.message)"
+          @react="emit('open-reaction-picker', $event, messageItem!.message)"
+        />
       </div>
         </div>
       </div>
@@ -501,19 +423,11 @@ const senderUsername = computed(() => {
   return username || null
 })
 
-function collapseBlankLines(text: string): string {
-  return text.split('\n').filter((line) => line.trim() !== '').join('\n')
-}
-
-function computeHasTextBubble(message: Message): boolean {
-  return Boolean(message.deletedForMe || message.deletedForAll || (message.body ?? '').trim())
-}
-
 // Computed once per render — referenced from multiple template branches
 // (timestamp overlay on media-only rows + the bubble itself).
 const showTextBubble = computed(() => {
-  const m = messageItem.value
-  return m ? computeHasTextBubble(m.message) : false
+  const m = messageItem.value?.message
+  return Boolean(m && (m.deletedForMe || m.deletedForAll || (m.body ?? '').trim()))
 })
 
 /**

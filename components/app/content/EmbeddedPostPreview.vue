@@ -5,7 +5,7 @@
   <a
     :href="permalink ?? undefined"
     :class="[
-      'mt-3 block overflow-hidden rounded-xl border moh-border moh-surface transition-colors moh-surface-hover',
+      'mt-3 block moh-card-frame moh-border moh-surface transition-colors moh-surface-hover',
       permalink ? 'cursor-pointer' : 'pointer-events-none',
     ]"
     role="group"
@@ -17,12 +17,12 @@
       <!-- Skeleton -->
       <div v-if="showSkeleton" class="space-y-2" aria-hidden="true">
         <div class="flex items-center gap-2">
-          <div class="h-5 w-5 rounded-full bg-gray-200 dark:bg-zinc-800 animate-pulse shrink-0" />
-          <div class="h-3 w-28 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
-          <div class="h-3 w-16 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
+          <AppSkeletonBar round class="h-5 w-5 shrink-0" />
+          <AppSkeletonBar class="h-3 w-28" />
+          <AppSkeletonBar class="h-3 w-16" />
         </div>
-        <div class="h-3 w-full rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
-        <div class="h-3 w-4/5 rounded bg-gray-200 dark:bg-zinc-800 animate-pulse" />
+        <AppSkeletonBar class="h-3 w-full" />
+        <AppSkeletonBar class="h-3 w-4/5" />
       </div>
 
       <div v-else-if="errorMessage" class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</div>
@@ -94,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceInterest } from '~/composables/presence/usePresenceInterest'
 import { formatLocaleDateTime } from '~/utils/time-format'
 import AppCheckinPromptContext from '~/components/app/dialogs/CheckinPromptContext.vue'
 import type { FeedPost, GetPostData } from '~/types/api'
@@ -241,21 +242,5 @@ watch(
   { immediate: true },
 )
 
-const { addInterest, removeInterest } = usePresence()
-const lastAuthorId = ref<string | null>(null)
-watch(
-  () => post.value?.author?.id ?? null,
-  (authorId) => {
-    if (!import.meta.client) return
-    const prev = lastAuthorId.value
-    if (prev && prev !== authorId) removeInterest([prev])
-    lastAuthorId.value = authorId ?? null
-    if (authorId) addInterest([authorId])
-  },
-  { immediate: true },
-)
-onBeforeUnmount(() => {
-  const id = lastAuthorId.value
-  if (id) removeInterest([id])
-})
+usePresenceInterest(() => post.value?.author?.id)
 </script>

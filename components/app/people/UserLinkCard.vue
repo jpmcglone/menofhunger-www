@@ -2,7 +2,7 @@
   <NuxtLink
     v-if="preview && username"
     :to="`/u/${encodeURIComponent(username)}`"
-    class="group mt-2 block overflow-hidden rounded-xl border moh-border moh-surface transition-colors moh-surface-hover moh-focus"
+    class="group mt-2 block moh-card-frame moh-border moh-surface transition-colors moh-surface-hover moh-focus"
     @click.stop
   >
     <!-- Banner -->
@@ -82,7 +82,7 @@
   <!-- Skeleton while loading -->
   <div
     v-else-if="loading"
-    class="mt-2 overflow-hidden rounded-xl border moh-border moh-surface animate-pulse"
+    class="mt-2 moh-card-frame moh-border moh-surface animate-pulse"
     aria-hidden="true"
   >
     <div class="aspect-[4/1] w-full bg-black/10 dark:bg-white/10" />
@@ -100,7 +100,7 @@
   <!-- Fallback when preview couldn't be loaded (profile private, fetch error, etc.) -->
   <div
     v-else-if="username"
-    class="mt-2 overflow-hidden rounded-xl border moh-border moh-surface"
+    class="mt-2 moh-card-frame moh-border moh-surface"
   >
     <div class="flex items-center gap-2 px-3 py-2 text-xs moh-text-muted">
       <Icon name="tabler:user" class="shrink-0 text-[13px]" aria-hidden="true" />
@@ -110,6 +110,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceInterest } from '~/composables/presence/usePresenceInterest'
 import type { UserPreview } from '~/types/api'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 import { formatListTime } from '~/utils/time-format'
@@ -168,25 +169,10 @@ watch(
 )
 
 // ── Presence / online status ──────────────────────────────────────────────────
-const { addInterest, removeInterest, getPresenceStatus, getUserStatus, isPresenceKnown } = usePresence()
+const { getPresenceStatus, getUserStatus, isPresenceKnown } = usePresence()
 const { user: authUser } = useAuth()
 
-const lastUserId = ref<string | null>(null)
-watch(
-  () => preview.value?.id ?? null,
-  (nextId) => {
-    if (!import.meta.client) return
-    const prev = lastUserId.value
-    if (prev && prev !== nextId) removeInterest([prev])
-    lastUserId.value = nextId ?? null
-    if (nextId) addInterest([nextId])
-  },
-  { immediate: true },
-)
-onBeforeUnmount(() => {
-  const id = lastUserId.value
-  if (id) removeInterest([id])
-})
+usePresenceInterest(() => preview.value?.id)
 
 const presenceStatus = computed(() => {
   const id = preview.value?.id

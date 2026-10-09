@@ -17,6 +17,10 @@ function first(value: unknown): string {
   return String(raw ?? '').trim().slice(0, 120)
 }
 
+/** Public links page: `/u/:username/links`. Visits there are attributed to it unless a campaign says otherwise. */
+const LINKS_PAGE_PATH = /^\/u\/[^/]+\/links\/?$/
+export const LINKS_PAGE_ATTRIBUTION_SRC = 'links_page'
+
 export function referrerHostFrom(referrer: string, ownHost: string): string {
   if (!referrer) return ''
   try {
@@ -35,7 +39,7 @@ export function readAttributionFromVisit(input: {
   ownHost: string
 }): SignupAttribution | null {
   const attribution: SignupAttribution = {
-    src: first(input.query.src) || undefined,
+    src: first(input.query.src) || (LINKS_PAGE_PATH.test(input.path) ? LINKS_PAGE_ATTRIBUTION_SRC : undefined),
     utmSource: first(input.query.utm_source) || undefined,
     utmMedium: first(input.query.utm_medium) || undefined,
     utmCampaign: first(input.query.utm_campaign) || undefined,

@@ -31,12 +31,13 @@
 <script setup lang="ts">
 import type { MenuItem } from 'primevue/menuitem'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
+import type { TinyTooltipConfig } from '~/utils/tiny-tooltip'
 
 const props = defineProps<{
   items: MenuItem[]
   // PrimeVue tooltip binding accepts objects; keep this flexible.
    
-  tooltip: any
+  tooltip: TinyTooltipConfig
   onBeforeOpen?: () => void | Promise<void>
 }>()
 

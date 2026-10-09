@@ -27,8 +27,8 @@
         @input="onSeek"
       >
       <div class="mt-0.5 flex items-center justify-between text-[11px] tabular-nums text-gray-500 dark:text-zinc-400">
-        <span>{{ formatClock(isThis ? currentTime : 0) }}</span>
-        <span>{{ formatClock(displayDuration) }}</span>
+        <span>{{ formatElapsedClock(isThis ? currentTime : 0) }}</span>
+        <span>{{ formatElapsedClock(displayDuration) }}</span>
       </div>
       <AppChatTranscript :media="media" />
     </div>
@@ -47,6 +47,7 @@
 <script setup lang="ts">
 import type { MessageMedia } from '~/types/api'
 import { useChatAudioPlayer } from '~/composables/chat/useChatAudioPlayer'
+import { formatElapsedClock } from '~/utils/time-format'
 
 const props = defineProps<{
   media: MessageMedia
@@ -67,13 +68,6 @@ const displayDuration = computed(() => {
 function onSeek(e: Event) {
   const value = Number((e.target as HTMLInputElement).value)
   player.seek(props.media.id, value)
-}
-
-function formatClock(total: number) {
-  const s = Math.max(0, Math.floor(total))
-  const m = Math.floor(s / 60)
-  const r = s % 60
-  return `${m}:${r.toString().padStart(2, '0')}`
 }
 </script>
 

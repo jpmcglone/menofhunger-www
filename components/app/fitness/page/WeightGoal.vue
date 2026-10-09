@@ -91,7 +91,7 @@
           :placeholder="fitnessPage.units === 'us' ? 'Weight (lbs)' : 'Weight (kg)'"
           class="flex-1 rounded-lg border moh-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
           @keydown.enter="submitLogWeight"
-        />
+        >
         <button
           class="px-3 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium disabled:opacity-50"
           :disabled="savingWeight || !logWeightInput"
@@ -171,7 +171,7 @@
           class="w-36 rounded-lg border moh-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2"
           :class="accentRing"
           @keydown.enter="submitSetGoal"
-        />
+        >
         <button
           class="px-3 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-50"
           :class="accentBg"

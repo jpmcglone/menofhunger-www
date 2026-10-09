@@ -21,7 +21,7 @@ import type * as Www from './api'
 /** Fails to compile unless `TApi` is assignable to `TWww`. */
 type Satisfies<TWww, TApi extends TWww> = TApi
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 
 // ─── Envelope ────────────────────────────────────────────────────────────────
 type _Pagination = Satisfies<Www.ApiPagination, { nextCursor: string | null }>

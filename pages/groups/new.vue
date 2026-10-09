@@ -107,7 +107,6 @@
 
 <script setup lang="ts">
 import type { CommunityGroupShell } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
 
 definePageMeta({
   layout: 'app',
@@ -132,8 +131,6 @@ const name = ref('')
 const description = ref('')
 const rules = ref('')
 const joinPolicy = ref<'open' | 'approval'>('open')
-const submitting = ref(false)
-const error = ref<string | null>(null)
 
 const canCreate = computed(() => {
   const u = user.value
@@ -151,29 +148,22 @@ onMounted(async () => {
   authReady.value = true
 })
 
-async function submit() {
-  if (!canCreate.value || submitting.value) return
-  const n = name.value.trim()
-  const d = description.value.trim()
-  if (!n || !d) return
-  submitting.value = true
-  error.value = null
-  try {
-    const created = await apiFetchData<CommunityGroupShell>('/groups', {
-      method: 'POST',
-      body: {
-        name: n,
-        description: d,
-        rules: rules.value.trim() || null,
-        joinPolicy: joinPolicy.value,
-      },
-    })
-    invalidateMyGroups()
-    await navigateTo(`/g/${encodeURIComponent(created.slug)}`)
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Could not create group.'
-  } finally {
-    submitting.value = false
-  }
+const { submit: submitGroup, submitting, submitError: error } = useFormSubmit(async () => {
+  const created = await apiFetchData<CommunityGroupShell>('/groups', {
+    method: 'POST',
+    body: {
+      name: name.value.trim(),
+      description: description.value.trim(),
+      rules: rules.value.trim() || null,
+      joinPolicy: joinPolicy.value,
+    },
+  })
+  invalidateMyGroups()
+  await navigateTo(`/g/${encodeURIComponent(created.slug)}`)
+}, { defaultError: 'Could not create group.' })
+
+function submit() {
+  if (!canCreate.value || !name.value.trim() || !description.value.trim()) return
+  return submitGroup()
 }
 </script>

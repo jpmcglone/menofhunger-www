@@ -43,13 +43,14 @@ describe('space layout', () => {
   it('widens the right rail only while live chat is showing', () => {
     const css = readFromRepo('assets/css/main.css')
     const rail = readFromRepo('components/app/layout/RightRail.vue')
-    const layout = readFromRepo('layouts/app.vue')
+    const layout = readFromRepo('components/app/layout/RightRailSearch.vue')
+    const shell = readFromRepo('layouts/app.vue')
 
     expect(css).toMatch(/--moh-right-rail-w:\s*20rem/)
     expect(css).toMatch(/--moh-right-rail-chat-w:\s*24rem/)
     expect(rail).toMatch(/showRadioChat \? 'w-\[var\(--moh-right-rail-chat-w\)\]' : 'w-\[var\(--moh-right-rail-w\)\]'/)
     expect(layout).toMatch(/showRadioChat \? 'w-\[var\(--moh-right-rail-chat-w\)\]' : 'w-\[var\(--moh-right-rail-w\)\]'/)
-    expect(layout).toMatch(/_navCompactModeBase\.value \|\| radioHasStation\.value/)
+    expect(shell).toMatch(/_navCompactModeBase\.value \|\| radioHasStation\.value/)
   })
 
   it('keeps live-chat hover actions on the text line and media left-aligned', () => {
@@ -123,7 +124,7 @@ describe('space layout', () => {
     expect(bar).not.toMatch(/sm:px-4 sm:py-2 relative overflow-hidden/)
     expect(bar).toMatch(/overflow-visible px-2 py-2 -mx-2 -my-2/)
     expect(layout).toMatch(/id="moh-radio-desktop"[\s\S]*?overflow-visible/)
-    expect(layout).toMatch(/isKeyboardOpen \? 'max-h-0 overflow-hidden' : 'max-h-36 overflow-visible'/)
+    expect(readFromRepo('components/app/layout/MobileBottomChrome.vue')).toMatch(/isKeyboardOpen \? 'max-h-0 overflow-hidden' : 'max-h-36 overflow-visible'/)
   })
 
   it('overlays expanded owner controls instead of pushing the player down', () => {

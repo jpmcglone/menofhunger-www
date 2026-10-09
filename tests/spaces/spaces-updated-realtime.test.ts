@@ -44,7 +44,7 @@ describe('spaces updated realtime wiring (structural)', () => {
   })
 
   it('subscribes to lobby counts from the app shell, not page unmount', async () => {
-    const layout = await read('layouts/app.vue')
+    const layout = (await read('layouts/app.vue')) + (await read('composables/layout/useAppLayoutRadio.ts'))
     const index = await read('pages/spaces/index.vue')
     const spacePage = (await read('pages/s/[username].vue')) + (await read('composables/pages/spaces/useSpaceUsernamePage.ts'))
     expect(layout).toMatch(/subscribeLobbyCounts\(/)

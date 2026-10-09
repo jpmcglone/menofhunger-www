@@ -1,8 +1,8 @@
 import type { Ref } from 'vue'
 import type { Socket } from 'socket.io-client'
+import { usePresenceStatuses } from './usePresenceStatuses'
 import { appConfig } from '~/config/app'
 import type {
-  GetPresenceStatusesData,
   UserStatus,
   WsPresenceStatusClearedPayload,
   WsPresenceStatusUpdatedPayload,
@@ -24,17 +24,12 @@ const PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY = 'presence-online-feed-subscribed'
 const PRESENCE_INTEREST_KEY = 'presence-interest-refs'
 const PRESENCE_KNOWN_IDS_KEY = 'presence-known-ids'
 const PRESENCE_USER_CURRENT_SPACE_KEY = 'presence-user-current-space-by-id'
-const PRESENCE_STATUS_BY_USER_ID_KEY = 'presence-status-by-user-id'
-const PRESENCE_STATUS_FETCHED_AT_KEY = 'presence-status-fetched-at'
-const STATUS_FETCH_TTL_MS = 60_000
 const INTEREST_BATCH_MS = 50
 const SOCKET_STATUS_FALLBACK_MS = 400
-let statusExpiryTimer: ReturnType<typeof setTimeout> | null = null
 let interestBatchTimer: ReturnType<typeof setTimeout> | null = null
 let socketStatusFallbackTimer: ReturnType<typeof setTimeout> | null = null
 const pendingInterestIds = new Set<string>()
 const socketStatusFallbackAtById = new Map<string, number>()
-const statusFetchInFlightIds = new Set<string>()
 
 /** Who-is-online state and `presence:*` socket handlers. */
 export function usePresenceOnline(socketRef: Ref<Socket | null>) {
@@ -45,13 +40,21 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
   const presenceKnownUserIds = useState<Set<string>>(PRESENCE_KNOWN_IDS_KEY, () => new Set())
   /** userId -> current spaceId (null if not in a space). Updated via users:spaceChanged. */
   const userCurrentSpaceById = useState<Record<string, string | null>>(PRESENCE_USER_CURRENT_SPACE_KEY, () => ({}))
-  const statusByUserId = useState<Record<string, UserStatus>>(PRESENCE_STATUS_BY_USER_ID_KEY, () => ({}))
-  const statusFetchedAtByUserId = useState<Record<string, number>>(PRESENCE_STATUS_FETCHED_AT_KEY, () => ({}))
   const onlineFeedCallbacks = useState<Set<OnlineFeedCallback>>('presence-online-feed-callbacks', () => new Set())
   const onlineFeedSubscribed = useState(PRESENCE_ONLINE_FEED_SUBSCRIBED_KEY, () => false)
 
   const { user } = useAuth()
-  const { apiFetchData } = useApiClient()
+  const {
+    statusByUserId,
+    applyUserStatus,
+    clearUserStatus,
+    getUserStatus,
+    addStatusesFromRest,
+    fetchStatusesForUsers,
+    setMyStatus,
+    editMyStatus,
+    clearMyStatus,
+  } = usePresenceStatuses()
 
   function isOnline(userId: string): boolean {
     return onlineUserIds.value.has(userId)
@@ -86,149 +89,6 @@ export function usePresenceOnline(socketRef: Ref<Socket | null>) {
 
   function isPresenceKnown(userId: string): boolean {
     return Boolean(userId && presenceKnownUserIds.value.has(userId))
-  }
-
-  function isStatusActive(status: UserStatus | null | undefined): status is UserStatus {
-    if (!status?.userId || !status.text) return false
-    const expiresAtMs = Date.parse(status.expiresAt)
-    return Number.isFinite(expiresAtMs) && expiresAtMs > Date.now()
-  }
-
-  function applyUserStatus(status: UserStatus | null | undefined) {
-    const uid = status?.userId
-    if (!uid) return
-    const next = { ...statusByUserId.value }
-    if (isStatusActive(status)) next[uid] = status
-    else delete next[uid]
-    statusByUserId.value = next
-    statusFetchedAtByUserId.value = {
-      ...statusFetchedAtByUserId.value,
-      [uid]: Date.now(),
-    }
-    scheduleStatusExpiryPrune()
-  }
-
-  function clearUserStatus(userId: string) {
-    const uid = String(userId ?? '').trim()
-    if (!uid) return
-    const next = { ...statusByUserId.value }
-    delete next[uid]
-    statusByUserId.value = next
-    statusFetchedAtByUserId.value = {
-      ...statusFetchedAtByUserId.value,
-      [uid]: Date.now(),
-    }
-    scheduleStatusExpiryPrune()
-  }
-
-  function getUserStatus(userId: string): UserStatus | null {
-    const uid = String(userId ?? '').trim()
-    if (!uid) return null
-    const status = statusByUserId.value[uid] ?? null
-    if (!isStatusActive(status)) return null
-    return status
-  }
-
-  function pruneExpiredStatuses() {
-    const next = { ...statusByUserId.value }
-    let changed = false
-    for (const [uid, status] of Object.entries(next)) {
-      if (!isStatusActive(status)) {
-        delete next[uid]
-        changed = true
-      }
-    }
-    if (changed) statusByUserId.value = next
-  }
-
-  function scheduleStatusExpiryPrune() {
-    if (!import.meta.client) return
-    if (statusExpiryTimer) {
-      clearTimeout(statusExpiryTimer)
-      statusExpiryTimer = null
-    }
-
-    const now = Date.now()
-    let nextExpiryMs = Number.POSITIVE_INFINITY
-    for (const status of Object.values(statusByUserId.value)) {
-      const expiresAtMs = Date.parse(status.expiresAt)
-      if (Number.isFinite(expiresAtMs) && expiresAtMs > now) {
-        nextExpiryMs = Math.min(nextExpiryMs, expiresAtMs)
-      }
-    }
-    if (!Number.isFinite(nextExpiryMs)) return
-
-    statusExpiryTimer = setTimeout(() => {
-      statusExpiryTimer = null
-      pruneExpiredStatuses()
-      scheduleStatusExpiryPrune()
-    }, Math.max(0, nextExpiryMs - now + 50))
-  }
-
-  function addStatusesFromRest(statuses: Array<UserStatus | null | undefined>) {
-    for (const status of statuses) {
-      if (status?.userId) applyUserStatus(status)
-    }
-  }
-
-  async function fetchStatusesForUsers(userIds: string[]) {
-    if (!import.meta.client) return
-    const now = Date.now()
-    const ids = Array.from(new Set((userIds ?? []).map((id) => String(id ?? '').trim()).filter(Boolean)))
-      .filter((id) => now - (statusFetchedAtByUserId.value[id] ?? 0) > STATUS_FETCH_TTL_MS)
-      .filter((id) => !statusFetchInFlightIds.has(id))
-      .slice(0, 100)
-    if (ids.length === 0) return
-    for (const id of ids) statusFetchInFlightIds.add(id)
-    try {
-      const statuses = await apiFetchData<GetPresenceStatusesData>('/presence/statuses', {
-        method: 'GET',
-        query: { userIds: ids.join(',') },
-        mohCache: false,
-      })
-      const returnedIds = new Set((statuses ?? []).map((status) => status.userId))
-      for (const status of statuses ?? []) applyUserStatus(status)
-      for (const id of ids) {
-        if (!returnedIds.has(id)) clearUserStatus(id)
-      }
-    } catch {
-      // Status bubbles are contextual; presence itself should not fail if this fetch does.
-    } finally {
-      for (const id of ids) statusFetchInFlightIds.delete(id)
-    }
-  }
-
-  async function setMyStatus(
-    text: string,
-    opts?: { durationHours?: 1 | 3 | 6 | 12 | 24; createsPost?: boolean },
-  ): Promise<UserStatus> {
-    const cleanText = String(text ?? '').trim()
-    const status = await apiFetchData<UserStatus>('/presence/status', {
-      method: 'PUT',
-      body: {
-        text: cleanText,
-        durationHours: opts?.durationHours ?? 24,
-        createsPost: opts?.createsPost ?? true,
-      },
-    })
-    applyUserStatus(status)
-    return status
-  }
-
-  async function editMyStatus(text: string): Promise<UserStatus> {
-    const cleanText = String(text ?? '').trim()
-    const status = await apiFetchData<UserStatus>('/presence/status', {
-      method: 'PATCH',
-      body: { text: cleanText },
-    })
-    applyUserStatus(status)
-    return status
-  }
-
-  async function clearMyStatus(): Promise<void> {
-    await apiFetchData<{ cleared: true }>('/presence/status', { method: 'DELETE' })
-    const id = user.value?.id
-    if (id) clearUserStatus(id)
   }
 
   function clearCurrentSpaceForUser(userId: string) {

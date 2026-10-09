@@ -21,7 +21,7 @@ function copyTextStyle(from: HTMLElement, to: HTMLElement) {
   to.style.boxSizing = s.boxSizing
   to.style.whiteSpace = 'pre-wrap'
   // textarea uses break-word wrapping.
-  ;(to.style as any).wordWrap = 'break-word'
+  to.style.wordWrap = 'break-word'
   to.style.overflow = 'auto'
   to.style.width = s.width
 }

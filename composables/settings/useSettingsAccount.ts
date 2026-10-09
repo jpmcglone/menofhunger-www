@@ -231,10 +231,9 @@ export function useSettingsAccount() {
     }
   }
 
-  // ─── Profile details (ZIP + website) ────────────────────────────────
+  // ─── Profile details (place; links live in Settings → Links) ────────────────────────────────
 
   const locationQueryInput = ref('')
-  const websiteInput = ref('')
   const profileDetailsHelperText = ref<string | null>(null)
 
   function savedLocationQuery(user: { locationZip?: string | null; locationCountry?: string | null; locationDisplay?: string | null } | null | undefined) {
@@ -252,24 +251,10 @@ export function useSettingsAccount() {
     { immediate: true },
   )
 
-  watch(
-    () => authUser.value?.website ?? null,
-    (v) => {
-      if (websiteInput.value.trim()) return
-      if (typeof v !== 'string' || !v.trim()) return
-      websiteInput.value = v
-    },
-    { immediate: true },
-  )
-
   const profileDetailsDirty = computed(() => {
     const currentLocation = savedLocationQuery(authUser.value).trim().toLowerCase()
     const desiredLocation = locationQueryInput.value.trim().toLowerCase()
-    if (currentLocation !== desiredLocation) return true
-
-    const currentWebsite = (authUser.value?.website ?? '').trim().toLowerCase()
-    const desiredWebsite = websiteInput.value.trim().toLowerCase()
-    return currentWebsite !== desiredWebsite
+    return currentLocation !== desiredLocation
   })
 
   const {
@@ -283,7 +268,6 @@ export function useSettingsAccount() {
         method: 'PATCH',
         body: {
           locationQuery: locationQueryInput.value.trim(),
-          website: websiteInput.value.trim(),
         },
       })
       patchUser(result.user)
@@ -385,7 +369,6 @@ export function useSettingsAccount() {
     resendEmailVerification,
     // profile details
     locationQueryInput,
-    websiteInput,
     profileDetailsHelperText,
     profileDetailsDirty,
     profileDetailsSaving,

@@ -28,3 +28,11 @@ export function formatCurrency(n: number, options?: { currency?: string; maximum
 export function formatPercent(ratio: number, digits = 0): string {
   return new Intl.NumberFormat(NUMBER_LOCALE, { style: 'percent', maximumFractionDigits: digits }).format(ratio)
 }
+
+/** Compact file size: "0 KB", "512 KB", "1.2 MB", "15 MB". */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB'
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  const megabytes = bytes / (1024 * 1024)
+  return `${megabytes < 10 ? megabytes.toFixed(1) : Math.round(megabytes)} MB`
+}

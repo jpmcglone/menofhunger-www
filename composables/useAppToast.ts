@@ -1,3 +1,4 @@
+import { clamp } from '~/utils/primitives'
 import { pickTextColorForBg } from '~/utils/color-contrast'
 import { PRIMARY_ONLYME_PURPLE, PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
@@ -49,10 +50,6 @@ export type AppToast = {
 
 function randomId() {
   return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`
-}
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n))
 }
 
 

@@ -77,6 +77,7 @@
 </template>
 
 <script setup lang="ts">
+import type { OverlayPanelHandle } from '~/types/overlay-ref'
 import { useScripture } from '~/composables/useScripture'
 import type { ScriptureRef } from '~/composables/useScripture'
 
@@ -89,7 +90,7 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const popoverRef = ref<any>(null)
+const popoverRef = ref<OverlayPanelHandle | null>(null)
 const mobileOpen = ref(false)
 const loading = ref(false)
 const verseData = ref<ScriptureRef | null>(null)

@@ -42,6 +42,7 @@ const applyResult = ref<AutoVerifyApplyDto | null>(null)
 const { user } = useAuth()
 const viewerHasVerifiedEmail = computed(() => Boolean(user.value?.email && user.value?.emailVerifiedAt))
 const toast = useAppToast()
+const { run } = useAsyncAction()
 const emailSampleSending = ref<AdminEmailSampleType | null>(null)
 
 function applyCfg(cfg: SiteConfigDto) {
@@ -67,7 +68,7 @@ async function sendEmailSample(type: AdminEmailSampleType) {
   const ok = confirm(`Send sample "${type}" email to yourself?`)
   if (!ok) return
   emailSampleSending.value = type
-  try {
+  await run(async () => {
     const res = await apiFetchData<AdminEmailSampleSendResult>('/admin/email-samples/send', {
       method: 'POST',
       body: { type },
@@ -77,11 +78,8 @@ async function sendEmailSample(type: AdminEmailSampleType) {
     } else {
       toast.push({ title: res?.reason || 'Sample email was not sent.', tone: 'error', durationMs: 2600 })
     }
-  } catch (e: unknown) {
-    toast.pushError(e, 'Failed to send sample email.')
-  } finally {
-    emailSampleSending.value = null
-  }
+  }, { error: 'Failed to send sample email.' })
+  emailSampleSending.value = null
 }
 
 async function loadSiteConfig() {
@@ -131,7 +129,7 @@ async function saveRateLimits() {
 async function saveAutoVerifySettings(opts?: { openPreview?: boolean }) {
   siteError.value = null
   siteSaving.value = true
-  try {
+  await run(async () => {
     const code = autoVerifyReferralCode.value.trim()
     await patchSiteConfig({
       autoVerifyNewUsers: autoVerifyNewUsers.value,
@@ -141,12 +139,11 @@ async function saveAutoVerifySettings(opts?: { openPreview?: boolean }) {
     if (opts?.openPreview && autoVerifyNewUsers.value && code) {
       await openAutoVerifyPreview()
     }
-  } catch (e: unknown) {
-    siteError.value = getApiErrorMessage(e) || 'Failed to save auto-verify settings.'
-    toast.pushError(e, 'Failed to save auto-verify settings.')
-  } finally {
-    siteSaving.value = false
-  }
+  }, {
+    error: 'Failed to save auto-verify settings.',
+    onError: (e) => { siteError.value = getApiErrorMessage(e) || 'Failed to save auto-verify settings.' },
+  })
+  siteSaving.value = false
 }
 
 async function onToggleAutoVerify(next: boolean | undefined) {
@@ -185,16 +182,17 @@ async function openAutoVerifyPreview() {
 }
 
 async function confirmAutoVerifyApply() {
-  if (!preview.value?.recruiter.id) return
+  const recruiter = preview.value?.recruiter
+  if (!recruiter?.id) return
   autoVerifyBusy.value = true
   previewError.value = null
-  try {
+  await run(async () => {
     applyResult.value = await apiFetchData<AutoVerifyApplyDto>('/admin/site-config/auto-verify/apply', {
       method: 'POST',
-      body: { recruiterId: preview.value.recruiter.id },
+      body: { recruiterId: recruiter.id },
     })
     // Refresh the preview list after each batch.
-    const code = preview.value.recruiter.referralCode || autoVerifyReferralCode.value.trim()
+    const code = recruiter.referralCode || autoVerifyReferralCode.value.trim()
     if (code) {
       preview.value = await apiFetchData<AutoVerifyPreviewDto>('/admin/site-config/auto-verify/preview', {
         method: 'GET',
@@ -206,12 +204,11 @@ async function confirmAutoVerifyApply() {
       tone: 'success',
       durationMs: 2000,
     })
-  } catch (e: unknown) {
-    previewError.value = getApiErrorMessage(e) || 'Failed to verify users.'
-    toast.pushError(e, 'Failed to verify users.')
-  } finally {
-    autoVerifyBusy.value = false
-  }
+  }, {
+    error: 'Failed to verify users.',
+    onError: (e) => { previewError.value = getApiErrorMessage(e) || 'Failed to verify users.' },
+  })
+  autoVerifyBusy.value = false
 }
 
 function onPreviewHide() {

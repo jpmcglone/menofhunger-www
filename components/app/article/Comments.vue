@@ -212,9 +212,10 @@
 </template>
 
 <script setup lang="ts">
-import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
-import type { ArticleComment, ArticleAuthor, FollowListUser } from '~/types/api'
-import { getSafeUserErrorMessage } from '~/utils/api-error'
+import { articleVisibilityAccent } from '~/utils/article-visibility'
+import type { ArticleComment, ArticleAuthor } from '~/types/api'
+import { useArticleCommentsRealtime } from '~/composables/article/useArticleCommentsRealtime'
+import { useArticleMentionUsers } from '~/composables/article/useArticleMentionUsers'
 
 const props = defineProps<{
   articleId: string
@@ -235,11 +236,7 @@ const canComment = computed(() => {
   return isVerified.value || isPremium.value
 })
 
-const accentColor = computed(() => {
-  if (props.visibility === 'premiumOnly') return 'var(--moh-premium)'
-  if (props.visibility === 'verifiedOnly') return 'var(--moh-verified)'
-  return '#a1a1aa'
-})
+const accentColor = computed(() => articleVisibilityAccent(props.visibility))
 const {
   comments,
   nextCursor,
@@ -297,78 +294,6 @@ watch(replyingToId, (id) => {
   })
 })
 
-// ─── Realtime ───────────────────────────────────────────────────────────────
-
-function findComment(commentId: string): ArticleComment | undefined {
-  for (const c of comments.value) {
-    if (c.id === commentId) return c
-    const reply = c.replies?.find((r) => r.id === commentId)
-    if (reply) return reply
-  }
-}
-
-const articlesCallback = {
-  onCommentAdded(payload: { articleId: string; comment: ArticleComment }) {
-    if (payload.articleId !== props.articleId) return
-    const incoming = payload.comment
-    if (incoming.parentId) {
-      const parent = comments.value.find((c) => c.id === incoming.parentId)
-      if (parent) {
-        const existingIdx = (parent.replies ?? []).findIndex((r) => r.id === incoming.id)
-        if (existingIdx >= 0) {
-          parent.replies!.splice(existingIdx, 1, incoming)
-        } else {
-          parent.replies = [...(parent.replies ?? []), incoming]
-          parent.replyCount = (parent.replyCount ?? 0) + 1
-        }
-      }
-    } else {
-      const existingIdx = comments.value.findIndex((c) => c.id === incoming.id)
-      if (existingIdx >= 0) {
-        comments.value.splice(existingIdx, 1, incoming)
-      } else {
-        comments.value = [incoming, ...comments.value]
-      }
-    }
-  },
-
-  onCommentDeleted(payload: { articleId: string; commentId: string; parentId: string | null }) {
-    if (payload.articleId !== props.articleId) return
-    if (payload.parentId) {
-      const parent = comments.value.find((c) => c.id === payload.parentId)
-      if (parent) {
-        const had = parent.replies?.some((r) => r.id === payload.commentId)
-        if (had) {
-          parent.replies = (parent.replies ?? []).filter((r) => r.id !== payload.commentId)
-          parent.replyCount = Math.max(0, (parent.replyCount ?? 1) - 1)
-        }
-      }
-    } else {
-      const had = comments.value.some((c) => c.id === payload.commentId)
-      if (had) {
-        comments.value = comments.value.filter((c) => c.id !== payload.commentId)
-      }
-    }
-  },
-
-  onCommentUpdated(payload: { articleId: string; comment: ArticleComment }) {
-    if (payload.articleId !== props.articleId) return
-    const target = findComment(payload.comment.id)
-    if (target) {
-      target.body = payload.comment.body
-      target.editedAt = payload.comment.editedAt
-    }
-  },
-
-  onCommentReactionChanged(payload: { articleId: string; commentId: string; reactions: ArticleComment['reactions'] }) {
-    if (payload.articleId !== props.articleId) return
-    const target = findComment(payload.commentId)
-    if (target) {
-      target.reactions = payload.reactions
-    }
-  },
-}
-
 onMounted(() => {
   load()
 })
@@ -381,69 +306,8 @@ watch(
   },
 )
 
-usePresenceCallback('Articles', articlesCallback)
-
-// ─── Mention priority users ──────────────────────────────────────────────────
-
-const EMPTY_RELATIONSHIP: FollowListUser['relationship'] = {
-  viewerFollowsUser: false,
-  userFollowsViewer: false,
-  viewerPostNotificationsEnabled: false,
-}
-
-function authorToMentionUser(a: ArticleAuthor): FollowListUser {
-  return {
-    id: a.id,
-    username: a.username,
-    name: a.name,
-    avatarUrl: a.avatarUrl, avatarVideo: a.avatarVideo,
-    premium: a.premium,
-    premiumPlus: a.premiumPlus,
-    isOrganization: a.isOrganization,
-    verifiedStatus: a.verifiedStatus,
-    relationship: EMPTY_RELATIONSHIP,
-  }
-}
-
-/**
- * Unique mention users collected from all comment + reply authors in the thread.
- * The array is ordered by first appearance (top-level comments first, then replies).
- */
-const threadMentionUsers = computed<FollowListUser[]>(() => {
-  const seen = new Set<string>()
-  const result: FollowListUser[] = []
-  const articleAuthorId = props.author?.id
-
-  function add(a: ArticleAuthor) {
-    if (!a.id || seen.has(a.id) || a.id === articleAuthorId) return
-    seen.add(a.id)
-    result.push(authorToMentionUser(a))
-  }
-
-  for (const c of comments.value) {
-    add(c.author)
-    for (const r of c.replies ?? []) add(r.author)
-  }
-  return result
-})
-
-/** Priority users for the top-level compose box: article author first, then thread participants. */
-const composePriorityUsers = computed<FollowListUser[]>(() => {
-  const list: FollowListUser[] = []
-  if (props.author) list.push(authorToMentionUser(props.author))
-  list.push(...threadMentionUsers.value)
-  return list
-})
-
-/** Priority users for a reply box: reply target first, then author, then other thread participants. */
-function replyPriorityUsers(comment: ArticleComment): FollowListUser[] {
-  const replyTargetId = comment.author.id
-  const list: FollowListUser[] = [authorToMentionUser(comment.author)]
-  if (props.author && props.author.id !== replyTargetId) list.push(authorToMentionUser(props.author))
-  list.push(...threadMentionUsers.value.filter((u) => u.id !== replyTargetId))
-  return list
-}
-
+useArticleCommentsRealtime(props, comments)
+const { composePriorityUsers, replyPriorityUsers } = useArticleMentionUsers(props, comments)
 // ─── Compose / reply ────────────────────────────────────────────────────────
 
 function focusCompose() {

@@ -49,29 +49,19 @@
         </template>
       </AppFormField>
 
-      <AppFormField v-for="field in publicSocialFields" :key="field.key" :label="field.label">
-        <InputText
-v-model="editSocialUrls[field.key]" type="url" :placeholder="field.placeholder"
-          :maxlength="300" :disabled="saving || !canEdit" class="w-full" />
-      </AppFormField>
-
-      <AppFormField label="Website">
-        <InputText
-          v-model="editWebsite"
-          class="w-full"
-          :maxlength="200"
-          placeholder="https://example.com"
-        />
-        <template #helper>
-          Optional. Leave blank to hide.
-        </template>
-      </AppFormField>
-
-      <p class="text-sm moh-text-muted">
-        Connect X in
-        <NuxtLink to="/settings/integrations" class="font-semibold underline underline-offset-2">Settings</NuxtLink>
-        to show it on your profile.
-      </p>
+      <!-- Links moved to their own editor: website, Rumble, YouTube and the rest live on the links page. -->
+      <NuxtLink
+        v-if="isSelf && !isAdminMode"
+        to="/settings/links"
+        class="flex min-h-11 items-center gap-3 rounded-xl border moh-border px-3 py-2 transition-colors hover:bg-[var(--moh-surface-hover)]"
+      >
+        <Icon name="tabler:link" class="size-5 shrink-0 moh-text-muted" aria-hidden="true" />
+        <span class="min-w-0 flex-1">
+          <span class="block text-[15px] font-semibold">Links</span>
+          <span class="block text-sm moh-text-muted">{{ linksSummary }}</span>
+        </span>
+        <Icon name="tabler:chevron-right" class="shrink-0 moh-text-muted" aria-hidden="true" />
+      </NuxtLink>
 
       <AppInlineAlert v-if="editError" severity="danger">
         {{ editError }}
@@ -94,7 +84,9 @@ type PublicProfile = {
   username: string | null
   name: string | null
   bio: string | null
+  /** Deprecated mirror; links are edited in Settings → Links. */
   website?: string | null
+  links?: import('~/types/api').ProfileLink[]
   xUsername?: string | null
   pickaxUsername?: string | null
   rumbleUrl?: string | null
@@ -130,7 +122,7 @@ const emit = defineEmits<{
   (e: 'saved'): void
   (e: 'patchProfile', patch: Partial<Pick<
     PublicProfile,
-    'name' | 'bio' | 'avatarVideo' | 'avatarUrl' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'rumbleUrl' | 'linkedinUrl' | 'youtubeUrl' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+    'name' | 'bio' | 'avatarVideo' | 'avatarUrl' | 'bannerUrl' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
   >>): void
 }>()
 
@@ -149,9 +141,10 @@ const profileBannerUrl = computed(() => props.profileBannerUrl ?? null)
 const editName = ref('')
 const editBio = ref('')
 const editLocationQuery = ref('')
-const editWebsite = ref('')
-const editSocialUrls = reactive({ rumbleUrl: '', linkedinUrl: '', youtubeUrl: '' })
-const publicSocialFields = [{ key: 'rumbleUrl', label: 'Rumble', placeholder: 'https://rumble.com/c/' }, { key: 'linkedinUrl', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/' }, { key: 'youtubeUrl', label: 'YouTube', placeholder: 'https://youtube.com/@' }] as const
+const linksSummary = computed(() => {
+  const count = props.profile?.links?.length ?? 0
+  return count > 0 ? `${count} ${count === 1 ? 'link' : 'links'}` : 'Add your website, podcast, and more'
+})
 const nameCharCount = useFormCharCount(editName, 50)
 const bioCharCount = useFormCharCount(editBio, 160)
 const editError = ref<string | null>(null)
@@ -187,8 +180,6 @@ function hydrateEditFields() {
   editName.value = props.profile?.name || ''
   editBio.value = props.profile?.bio || ''
   editLocationQuery.value = locationQueryFromProfile(props.profile)
-  editWebsite.value = (props.profile?.website ?? '') || ''
-  for (const { key } of publicSocialFields) editSocialUrls[key] = props.profile?.[key] ?? ''
 }
 
 function fillEmptyEditFieldsFromProfile() {
@@ -196,7 +187,6 @@ function fillEmptyEditFieldsFromProfile() {
   if (!editName.value && props.profile?.name) editName.value = props.profile.name
   if (!editBio.value && props.profile?.bio) editBio.value = props.profile.bio
   if (!editLocationQuery.value) editLocationQuery.value = locationQueryFromProfile(props.profile)
-  if (!editWebsite.value && props.profile?.website) editWebsite.value = props.profile.website
 }
 
 watch(
@@ -214,8 +204,6 @@ watch(
     props.profile?.name,
     props.profile?.bio,
     props.profile?.locationZip,
-    props.profile?.website,
-    props.profile?.xUsername,
   ] as const,
   () => fillEmptyEditFieldsFromProfile(),
 )
@@ -360,19 +348,11 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           name: editName.value,
           bio: editBio.value,
           locationQuery: editLocationQuery.value,
-          website: editWebsite.value,
-          ...editSocialUrls,
         }
       })
       emit('patchProfile', {
         name: result?.name ?? null,
         bio: result?.bio ?? null,
-        website: result?.website ?? null,
-        xUsername: result?.xUsername ?? null,
-        pickaxUsername: result?.pickaxUsername ?? null,
-        rumbleUrl: result?.rumbleUrl ?? null,
-        linkedinUrl: result?.linkedinUrl ?? null,
-        youtubeUrl: result?.youtubeUrl ?? null,
         locationZip: result?.locationZip ?? null,
         locationDisplay: result?.locationDisplay ?? null,
         locationCity: result?.locationCity ?? null,
@@ -387,8 +367,6 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
           name: editName.value,
           bio: editBio.value,
           locationQuery: editLocationQuery.value,
-          website: editWebsite.value,
-          ...editSocialUrls,
         }
       })
       const u = result.user
@@ -396,12 +374,6 @@ const { submit: saveProfile, submitting: saving } = useFormSubmit(
       emit('patchProfile', {
         name: u?.name ?? null,
         bio: u?.bio ?? null,
-        website: u?.website ?? null,
-        xUsername: u?.xUsername ?? null,
-        pickaxUsername: u?.pickaxUsername ?? null,
-        rumbleUrl: u?.rumbleUrl ?? null,
-        linkedinUrl: u?.linkedinUrl ?? null,
-        youtubeUrl: u?.youtubeUrl ?? null,
         locationZip: u?.locationZip ?? null,
         locationDisplay: u?.locationDisplay ?? null,
         locationCity: u?.locationCity ?? null,

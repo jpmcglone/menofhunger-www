@@ -1,3 +1,5 @@
+import { formatCount } from './number-format'
+
 export function normalizeForMeta(text: string): string {
   return (text ?? '').toString().replace(/\s+/g, ' ').trim()
 }
@@ -34,10 +36,17 @@ export function formatShortCount(n: number): string {
   return '0'
 }
 
-const FULL_COUNT_FORMAT = new Intl.NumberFormat('en-US')
-
 /** Full grouped count (1,234) for profile stats; non-numbers and negatives become 0. */
 export function formatFullCount(n: unknown): string {
   const v = typeof n === 'number' ? n : Number(n)
-  return FULL_COUNT_FORMAT.format(Math.max(0, Math.floor(Number.isFinite(v) ? v : 0)))
+  return formatCount(Math.max(0, Math.floor(Number.isFinite(v) ? v : 0)))
+}
+
+/** Up to two uppercase initials for avatar fallbacks ("?" when empty). */
+export function initials(name: string | null | undefined): string {
+  const n = (name ?? '').trim()
+  if (!n) return '?'
+  const parts = n.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
+  return n.slice(0, 2).toUpperCase()
 }

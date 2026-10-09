@@ -6,9 +6,11 @@ import type {
   MessageReaction,
   MessageUser,
   SendMessageResponse,
+  VerifiedStatus,
 } from '~/types/api'
 import { redactDeletedChatMessage } from '~/utils/chat-message-deletion'
 import { getApiErrorMessage } from '~/utils/api-error'
+import { useAsyncAction } from '~/composables/useAsyncAction'
 import type { ComposerMediaItem, CreateMediaPayload } from '~/composables/composer/types'
 import type { useDestinationComposerDraft } from '~/composables/composer/useDestinationComposerDraft'
 import type { AuthUser } from '~/composables/useAuth'
@@ -113,6 +115,8 @@ export function createChatThreadActions(ctx: ChatThreadActionsCtx) {
     scrollToJumpTarget,
   } = ctx
   const scrollToMessage = ctx.scrollToMessage
+  const { run } = useAsyncAction()
+  const pendingReactionMessages = new Set<string>()
 
 // ─── Sending ─────────────────────────────────────────────────────────────────
 
@@ -211,7 +215,7 @@ async function sendMessage() {
       premium: Boolean(my.premium),
       premiumPlus: Boolean(my.premiumPlus),
       isOrganization: Boolean((my as { isOrganization?: boolean }).isOrganization),
-      verifiedStatus: (my.verifiedStatus ?? 'none') as 'none' | 'identity' | 'manual',
+      verifiedStatus: (my.verifiedStatus ?? 'none') as VerifiedStatus,
       avatarUrl: my.avatarUrl ?? null, avatarVideo: my.avatarVideo ?? null,
     }
     const replySnippet = replyToMessage.value
@@ -298,11 +302,16 @@ function handleInfo(message: Message) {
 
 async function handleReact(message: Message, reactionId: string) {
   const conversationId = message.conversationId
-  const existingGroup = message.reactions?.find((r) => r.reactionId === reactionId)
-  const isToggleOff = existingGroup?.reactedByMe
+  const pendingKey = `${conversationId}:${message.id}`
+  if (pendingReactionMessages.has(pendingKey)) return
+  pendingReactionMessages.add(pendingKey)
+  const viewerId = me.value?.id
+  const idx = messages.value.findIndex((m) => m.id === message.id && m.conversationId === conversationId)
+  const previousReactions = (idx === -1 ? message : messages.value[idx])?.reactions ?? []
+  const isToggleOff = previousReactions.find((r) => r.reactionId === reactionId)?.reactedByMe
+  let optimisticReactions: Message['reactions'] | undefined
 
   // Optimistic update
-  const idx = messages.value.findIndex((m) => m.id === message.id)
   if (idx !== -1) {
     const msg = messages.value[idx]!
     let reactions = [...(msg.reactions ?? [])]
@@ -327,17 +336,27 @@ async function handleReact(message: Message, reactionId: string) {
         }
       }
     }
+    optimisticReactions = reactions
     mutateMessageAt(idx, { ...msg, reactions })
   }
 
   try {
-    if (isToggleOff) {
-      await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/reactions/${reactionId}`, { method: 'DELETE' })
-    } else {
-      await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/reactions`, { method: 'POST', body: { reactionId } })
-    }
-  } catch {
-    // Revert optimistic update on failure by re-fetching is too complex; the socket event will re-sync.
+    await run(() => isToggleOff
+      ? apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/reactions/${reactionId}`, { method: 'DELETE' })
+      : apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/reactions`, { method: 'POST', body: { reactionId } }), {
+      error: 'Failed to update reaction.',
+      rollback: () => {
+        if (!optimisticReactions || me.value?.id !== viewerId) return
+        const currentIdx = messages.value.findIndex((m) => m.id === message.id && m.conversationId === conversationId)
+        const current = messages.value[currentIdx]
+        // A socket snapshot may already have replaced our optimistic reactions.
+        if (current?.reactions === optimisticReactions) {
+          mutateMessageAt(currentIdx, { ...current, reactions: previousReactions })
+        }
+      },
+    })
+  } finally {
+    pendingReactionMessages.delete(pendingKey)
   }
 }
 
@@ -347,14 +366,14 @@ async function handleDeleteForMe(message: Message) {
   if (idx !== -1) {
     mutateMessageAt(idx, { ...messages.value[idx]!, deletedForMe: true })
   }
-  try {
-    await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}`, { method: 'DELETE' })
-  } catch {
-    if (idx !== -1) {
+  await run(() => apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}`, { method: 'DELETE' }), {
+    silent: true,
+    rollback: () => {
+      if (idx === -1) return
       const msg = messages.value[idx]
       if (msg) mutateMessageAt(idx, { ...msg, deletedForMe: false })
-    }
-  }
+    },
+  })
 }
 
 async function handleRestore(message: Message) {
@@ -363,14 +382,14 @@ async function handleRestore(message: Message) {
   if (idx !== -1) {
     mutateMessageAt(idx, { ...messages.value[idx]!, deletedForMe: false })
   }
-  try {
-    await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/restore`, { method: 'POST' })
-  } catch {
-    if (idx !== -1) {
+  await run(() => apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/restore`, { method: 'POST' }), {
+    silent: true,
+    rollback: () => {
+      if (idx === -1) return
       const msg = messages.value[idx]
       if (msg) mutateMessageAt(idx, { ...msg, deletedForMe: true })
-    }
-  }
+    },
+  })
 }
 
 function handleEdit(message: Message) {
@@ -399,23 +418,24 @@ async function handleEditSubmit() {
   }
   cancelEdit()
 
-  try {
-    await apiFetch(`/messages/conversations/${conversationId}/messages/${msg.id}`, {
-      method: 'PATCH',
-      body: { body },
-    })
-  } catch {
-    if (me.value?.id !== identity || selectedConversationId.value !== conversationId) return
-    if (idx !== -1) {
-      const current = messages.value[idx]
-      if (current) {
-        mutateMessageAt(idx, { ...current, body: originalBody, editedAt: msg.editedAt })
+  await run(() => apiFetch(`/messages/conversations/${conversationId}/messages/${msg.id}`, {
+    method: 'PATCH',
+    body: { body },
+  }), {
+    silent: true,
+    rollback: () => {
+      if (me.value?.id !== identity || selectedConversationId.value !== conversationId) return
+      if (idx !== -1) {
+        const current = messages.value[idx]
+        if (current) {
+          mutateMessageAt(idx, { ...current, body: originalBody, editedAt: msg.editedAt })
+        }
       }
-    }
-    beforeEdit.current = draftSnapshot()
-    editingMessage.value = msg
-    composerText.value = body
-  }
+      beforeEdit.current = draftSnapshot()
+      editingMessage.value = msg
+      composerText.value = body
+    },
+  })
 }
 
 function applyDeletedForAll(messageId: string) {
@@ -434,15 +454,15 @@ async function handleDeleteForAll(message: Message) {
   if (idx !== -1) {
     mutateMessageAt(idx, { ...messages.value[idx]!, deletedForAll: true, body: '' })
   }
-  try {
-    await apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/all`, { method: 'DELETE' })
-    applyDeletedForAll(message.id)
-  } catch {
-    if (idx !== -1) {
+  await run(() => apiFetch(`/messages/conversations/${conversationId}/messages/${message.id}/all`, { method: 'DELETE' }), {
+    silent: true,
+    onSuccess: () => applyDeletedForAll(message.id),
+    rollback: () => {
+      if (idx === -1) return
       const msg = messages.value[idx]
       if (msg) mutateMessageAt(idx, { ...msg, deletedForAll: false, body: message.body })
-    }
-  }
+    },
+  })
 }
 
 async function handleScrollToReply(messageId: string) {

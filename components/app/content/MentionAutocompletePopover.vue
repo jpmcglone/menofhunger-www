@@ -3,8 +3,8 @@
     <Transition name="moh-fade">
       <div
         v-if="open"
-        ref="panelEl"
         :id="listboxId || undefined"
+        ref="panelEl"
         class="fixed z-[var(--moh-z-menu)] w-[min(22rem,92vw)] border moh-border bg-white shadow-2xl dark:bg-zinc-950 rounded-xl overflow-hidden"
         :style="panelStyle"
         role="listbox"
@@ -24,8 +24,8 @@
             </div>
 
             <button
-              type="button"
               :id="optionId(i)"
+              type="button"
               class="w-full text-left px-3 py-2 flex items-center gap-3 transition-colors"
               :class="i === highlightedIndex ? 'bg-black/5 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/10'"
               role="option"
@@ -41,7 +41,7 @@
                 ]"
               >
                 <AppUserAvatar
-                  :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, avatarVideo: u.avatarVideo, isOrganization: (u as any).isOrganization }"
+                  :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, avatarVideo: u.avatarVideo, isOrganization: u.isOrganization }"
                   size-class="h-9 w-9"
                   bg-class="moh-surface dark:bg-black"
                   :show-presence="false"
@@ -57,7 +57,7 @@
                     :status="u.verifiedStatus"
                     :premium="Boolean(u.premium)"
                     :premium-plus="Boolean(u.premiumPlus)"
-                    :is-organization="Boolean((u as any).isOrganization)"
+                    :is-organization="Boolean(u.isOrganization)"
                     size="xs"
                   />
                 </div>
@@ -110,7 +110,7 @@ const props = defineProps<{
 }>()
 
 const usersStore = useUsersStore()
-const items = computed(() => props.items.map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u)))
+const items = computed(() => props.items.map((u) => (u?.id ? (usersStore.overlay(u)) : u)))
 
 // Maps global item index → section title (only for the first item in each section).
 const sectionTitleByIndex = computed(() => {
@@ -122,7 +122,7 @@ const sectionTitleByIndex = computed(() => {
 })
 
 function roundClassFor(u: FollowListUser): string {
-  return getAvatarRoundClass(Boolean((u as any)?.isOrganization))
+  return getAvatarRoundClass(Boolean(u?.isOrganization))
 }
 
 const emit = defineEmits<{

@@ -2,6 +2,8 @@ import { formatLocaleDate } from '~/utils/time-format'
 import type { Article } from '~/types/api'
 import { useArticlePageActions } from './useArticlePageActions'
 import type { InjectionKey } from 'vue'
+import type { Extensions } from '@tiptap/core'
+import type { TiptapDocNode } from '~/utils/tiptap-doc'
 
 /**
  * Script state for `/a/:id`, shared with the article page sections through
@@ -79,7 +81,7 @@ export function useArticlePageContent() {
   // The shared factory in ~/utils/tiptap-render-extensions is also used by
   // the server-side RSS feed builder (server/utils/article-feed.ts).
   let _generateHTML: typeof import('@tiptap/html')['generateHTML'] | null = null
-  let _extensions: any[] | null = null
+  let _extensions: Extensions | null = null
 
   async function getTiptapRenderer() {
     if (_generateHTML && _extensions) return { generateHTML: _generateHTML, extensions: _extensions }
@@ -137,7 +139,7 @@ export function useArticlePageContent() {
     try {
       const json = JSON.parse(article.value.body)
       const texts: string[] = []
-      function walk(node: any) {
+      function walk(node: TiptapDocNode | null) {
         if (!node) return
         if (node.type === 'text' && node.text) texts.push(node.text)
         if (Array.isArray(node.content)) node.content.forEach(walk)

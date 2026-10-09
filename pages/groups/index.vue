@@ -225,6 +225,7 @@
 </template>
 
 <script setup lang="ts">
+import { initials } from '~/utils/text'
 import { formatCount } from '~/utils/number-format'
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { CommunityGroupInvite, CommunityGroupShell } from '~/types/api'
@@ -336,14 +337,6 @@ const spotlightCount = computed(() => discoverRows.value.length)
 //  - Search results: NOT excluded — surfacing groups the viewer is in is
 //    legitimate when they typed a name. Membership is indicated on the row.
 const discoverRows = computed(() => (hasQuery.value ? searchResults.value : spotlight.value))
-
-function initials(name: string) {
-  const n = (name ?? '').trim()
-  if (!n) return '?'
-  const parts = n.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
-  return n.slice(0, 2).toUpperCase()
-}
 
 // Debounced reaction to typing. 250ms felt right in playtests; shorter and
 // keystrokes thrash the API, longer and the UI feels laggy.

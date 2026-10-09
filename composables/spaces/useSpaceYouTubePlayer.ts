@@ -1,4 +1,4 @@
-import type { SpaceYouTubePlayerProps } from './space-youtube-player-types'
+import { getYtGlobal, type SpaceYouTubePlayerProps, type SpaceYtPlayer } from './space-youtube-player-types'
 import { mediaFocus } from '~/utils/mediaFocus'
 import type { WatchPartyState } from '~/types/api'
 import { isIosWebKit } from '~/utils/ios-webkit'
@@ -18,7 +18,7 @@ export function useSpaceYouTubePlayer(props: SpaceYouTubePlayerProps) {
 
 /** Player handle, timers, and sync samples shared by the player composables. Not reactive: none of it renders. */
 export interface SpaceYouTubePlayerSync {
-  ytPlayer: any
+  ytPlayer: SpaceYtPlayer | null
   ignoreNextStateChange: boolean
   ownerSyncTimer: ReturnType<typeof setInterval> | null
   /** Snapshot of last owner emit — atMs is the wall-clock time of the last emit (NOT updated on non-emit ticks). */
@@ -166,8 +166,8 @@ export function useSpaceYouTubePlayerState(props: SpaceYouTubePlayerProps) {
   }
 
   function isYtPlaying(): boolean {
-    const playing = (window as any).YT?.PlayerState?.PLAYING
-    const buffering = (window as any).YT?.PlayerState?.BUFFERING
+    const playing = getYtGlobal()?.PlayerState?.PLAYING
+    const buffering = getYtGlobal()?.PlayerState?.BUFFERING
     const st = playerSync.ytPlayer?.getPlayerState?.()
     return st === playing || st === buffering
   }

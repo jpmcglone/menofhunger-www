@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="post && (post as any).quoteCount > 0"
+    v-if="post && (post.quoteCount ?? 0) > 0"
     class="border-b moh-border"
   >
     <button
@@ -11,7 +11,7 @@
       <div class="text-sm font-semibold moh-text">
         Quotes
         <span class="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400 tabular-nums">
-          {{ (post as any).quoteCount }}
+          {{ post.quoteCount }}
         </span>
       </div>
       <Icon

@@ -16,7 +16,7 @@
         <InputText v-model="createPageName" class="w-full" :maxlength="50" />
       </div>
       <div class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
-        <Checkbox v-model="createPageIsOrg" binary inputId="moh-admin-create-page-org" />
+        <Checkbox v-model="createPageIsOrg" binary input-id="moh-admin-create-page-org" />
         <label for="moh-admin-create-page-org" class="text-sm font-semibold text-gray-900 dark:text-gray-50">
           Organization page
         </label>

@@ -70,7 +70,7 @@ function clearIdentityRealtimeState() {
 
 export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
   const resetViewerCaches = params?.resetViewerCaches ?? true
-  const prevUser = useState<any>('auth-user', () => null).value
+  const prevUser = useState<{ id?: unknown; username?: unknown } | null>('auth-user', () => null).value
   const prevUserId = typeof prevUser?.id === 'string' ? prevUser.id : ''
   const prevUsername = typeof prevUser?.username === 'string' ? prevUser.username.trim().toLowerCase() : ''
 
@@ -80,7 +80,7 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
   }
 
   // Auth user/session state
-  useState<any>('auth-user', () => null).value = null
+  useState<unknown>('auth-user', () => null).value = null
   // Mark that we attempted auth so middleware/components don't spam /auth/me.
   useState<boolean>('auth-did-attempt', () => false).value = true
   // Prevent duplicate init work on client.
@@ -96,58 +96,58 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
 
   // Viewer-specific client caches so we never show stale authed-only data.
   // (Safe even if these stores haven't been initialized yet.)
-  useState<any[]>('bookmark-collections', () => []).value = []
+  useState<unknown[]>('bookmark-collections', () => []).value = []
   useState<number>('bookmark-total-count', () => 0).value = 0
   useState<number>('bookmark-unorganized-count', () => 0).value = 0
   useState<boolean>('bookmark-collections-loaded', () => false).value = false
   useState<boolean>('bookmark-collections-loading', () => false).value = false
   useState<string | null>('bookmark-collections-error', () => null).value = null
 
-  useState<Record<string, any>>('boost-state', () => ({})).value = {}
+  useState<Record<string, unknown>>('boost-state', () => ({})).value = {}
   useState<Record<string, boolean>>('boost-inflight', () => ({})).value = {}
   useState<Record<string, boolean>>('boost-pending', () => ({})).value = {}
   useState<string | null>('boost-state-error', () => null).value = null
-  useState<Record<string, any>>('repost-state', () => ({})).value = {}
+  useState<Record<string, unknown>>('repost-state', () => ({})).value = {}
   useState<Record<string, boolean>>('repost-inflight', () => ({})).value = {}
   useState<Record<string, boolean>>('repost-pending', () => ({})).value = {}
   useState<string | null>('repost-state-error', () => null).value = null
-  useState<Record<string, any>>('follow-state', () => ({})).value = {}
+  useState<Record<string, unknown>>('follow-state', () => ({})).value = {}
   useState<Record<string, boolean>>('follow-inflight', () => ({})).value = {}
   useState<string | null>('follow-state-error', () => null).value = null
 
-  useState<any[]>('my-groups:items', () => []).value = []
+  useState<unknown[]>('my-groups:items', () => []).value = []
   useState<string | null>('my-groups:user-id', () => null).value = null
   useState<number>('my-groups:fetched-at', () => 0).value = 0
   useState<boolean>('my-groups:loading', () => false).value = false
   useState<string | null>('my-groups:error', () => null).value = null
 
-  useState<any[]>('posts-feed', () => []).value = []
+  useState<unknown[]>('posts-feed', () => []).value = []
   useState<string | null>('posts-feed-next', () => null).value = null
   useState<boolean>('posts-feed-loading', () => false).value = false
   useState<string | null>('posts-feed-error', () => null).value = null
-  useState<any[]>('posts-feed-local-inserts', () => []).value = []
+  useState<unknown[]>('posts-feed-local-inserts', () => []).value = []
   useState<number>('posts-feed-last-hard-refresh-ms', () => 0).value = 0
   useState<string>('posts-feed-last-hard-refresh-request-key', () => '').value = ''
-  useState<any[]>('crew-feed-local-inserts', () => []).value = []
+  useState<unknown[]>('crew-feed-local-inserts', () => []).value = []
 
-  useState<any>('viewer-crew-membership', () => null).value = null
+  useState<unknown>('viewer-crew-membership', () => null).value = null
   useState<boolean>('viewer-crew-loaded', () => false).value = false
   useState<boolean>('viewer-crew-inflight', () => false).value = false
 
-  useState<any[]>('posts-only-me', () => []).value = []
+  useState<unknown[]>('posts-only-me', () => []).value = []
   useState<string | null>('posts-only-me-next', () => null).value = null
   useState<boolean>('posts-only-me-loading', () => false).value = false
   useState<string | null>('posts-only-me-error', () => null).value = null
 
-  useState<any[]>('drafts', () => []).value = []
+  useState<unknown[]>('drafts', () => []).value = []
   useState<string | null>('drafts-next', () => null).value = null
   useState<boolean>('drafts-loading', () => false).value = false
   useState<string | null>('drafts-error', () => null).value = null
 
   // Normalized users cache + notifications list state.
-  useState<Record<string, any>>('users-by-id', () => ({})).value = {}
+  useState<Record<string, unknown>>('users-by-id', () => ({})).value = {}
   if (prevUserId) {
-    useState<any[]>(`notifications:${prevUserId}:items`, () => []).value = []
+    useState<unknown[]>(`notifications:${prevUserId}:items`, () => []).value = []
     useState<string | null>(`notifications:${prevUserId}:nextCursor`, () => null).value = null
     useState<boolean>(`notifications:${prevUserId}:loading`, () => false).value = false
     useState<boolean>(`notifications:${prevUserId}:pendingRefresh`, () => false).value = false
@@ -155,7 +155,7 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
     useState<string | null>(`notifications:${prevUserId}:activeKind`, () => null).value = null
     useState<Record<string, number>>(`notifications:${prevUserId}:unreadByKind`, () => ({ all: 0 })).value = { all: 0 }
   }
-  useState<any[]>('notifications:anon:items', () => []).value = []
+  useState<unknown[]>('notifications:anon:items', () => []).value = []
   useState<string | null>('notifications:anon:nextCursor', () => null).value = null
   useState<boolean>('notifications:anon:loading', () => false).value = false
   useState<boolean>('notifications:anon:pendingRefresh', () => false).value = false
@@ -166,19 +166,19 @@ export function clearAuthClientState(params?: { resetViewerCaches?: boolean }) {
   }
 
   // Clear the persistent WOTD state so viewerHasLiked doesn't leak to the next account.
-  useState<any>('wotd:data', () => null).value = null
+  useState<unknown>('wotd:data', () => null).value = null
 
-  useState<any>('app-header', () => null).value = null
+  useState<unknown>('app-header', () => null).value = null
 
   // Space / radio / chat rooms are per-identity: don't rejoin the previous account's rooms
   // or flash the previous lobby list (which then fades out on refresh).
-  useState<any[]>('spaces-list', () => []).value = []
+  useState<unknown[]>('spaces-list', () => []).value = []
   useState<boolean>('spaces-loaded-once', () => false).value = false
   useState<boolean>('spaces-loading', () => false).value = false
-  useState<any>('my-space', () => null).value = null
+  useState<unknown>('my-space', () => null).value = null
   useState<string | null>('selected-space-id', () => null).value = null
-  useState<any[]>('space-members', () => []).value = []
-  useState<any>('space-lobby-counts', () => ({ countsBySpaceId: {} })).value = { countsBySpaceId: {} }
+  useState<unknown[]>('space-members', () => []).value = []
+  useState<unknown>('space-lobby-counts', () => ({ countsBySpaceId: {} })).value = { countsBySpaceId: {} }
   useState<number>('space-lobby-socket-gen', () => 0).value = 0
   useState<string | null>('space-live-chat-subscribed-space', () => null).value = null
   useState<Record<string, unknown>>('space-live-chat-messages', () => ({})).value = {}

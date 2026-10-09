@@ -2,15 +2,14 @@
   <div v-if="locked" class="min-w-0 rounded-xl border moh-border moh-surface-1 p-3 text-left" data-testid="group-link-locked">
     <AppMembersLockedCta compact title="Group preview" :unlock="lockedUnlock" />
   </div>
-  <NuxtLink
+  <AppExternalLinkCard
     v-else-if="group"
-    :to="path"
-    class="block min-w-0 overflow-hidden rounded-xl border moh-border moh-surface-1 moh-surface-hover moh-focus text-left"
+    :internal-path="path"
+    class="block min-w-0 moh-card-frame moh-border moh-surface-1 moh-surface-hover moh-focus text-left"
     :aria-label="`Open ${group.name}`"
-    @click.stop
   >
     <div v-if="group.coverUrl" class="aspect-[3/1] w-full overflow-hidden moh-surface-2" aria-hidden="true">
-      <img :src="group.coverUrl" alt="" class="h-full w-full object-cover" loading="lazy" decoding="async">
+      <AppPreviewImage :src="group.coverUrl" :referrerpolicy="null" decoding="async" class="h-full w-full object-cover" />
     </div>
     <div class="flex items-start gap-3 p-3">
       <AppGroupsGroupAvatar :name="group.name" :src="group.avatarUrl" :size="40" accented />
@@ -22,7 +21,7 @@
         </div>
       </div>
     </div>
-  </NuxtLink>
+  </AppExternalLinkCard>
   <div v-else-if="loading" class="h-[72px] rounded-xl border moh-border moh-surface-1" aria-hidden="true" />
 </template>
 

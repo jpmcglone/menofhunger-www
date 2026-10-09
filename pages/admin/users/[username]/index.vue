@@ -20,7 +20,7 @@
             :src="user.bannerUrl"
             alt="User banner"
             class="h-full w-full object-cover"
-          />
+          >
           <div
             v-if="user.bannerUrl"
             v-show="!hideBannerThumb"
@@ -315,13 +315,13 @@
                 {{ isAffiliate ? 'Enabled' : 'Disabled' }}
               </span>
               <Button
+                v-tooltip.bottom="!isAffiliate && !userIsPremium ? 'Requires Premium (gifted OK)' : undefined"
                 :label="isAffiliate ? 'Disable' : 'Enable'"
                 size="small"
                 :severity="isAffiliate ? 'danger' : 'contrast'"
                 :loading="affiliateSaving"
                 :disabled="!isAffiliate && !userIsPremium"
                 outlined
-                v-tooltip.bottom="!isAffiliate && !userIsPremium ? 'Requires Premium (gifted OK)' : undefined"
                 @click="toggleAffiliate"
               />
             </div>

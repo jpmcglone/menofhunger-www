@@ -239,6 +239,7 @@ html.dark .moh-vignette::after {
 
   /* Lodge accent (brass) — used sparingly for focus + subtle highlights */
   --moh-brass: #a37422;
+  --moh-brand-strava: #fc4c02; /* third-party brand mark; same in both themes */
   --moh-brass-rgb: 163, 116, 34;
 
   /* Media tile system — used by every post media surface (single image,
@@ -880,6 +881,13 @@ input[type="reset"] {
   }
   html.dark .moh-img-outline {
     outline-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Hairline-bordered rounded frame shared by preview cards; pair with moh-border + a moh-surface-* background. */
+  .moh-card-frame {
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border-width: 1px;
   }
 
   /* Matte depth: inner shadow instead of glossy highlights */

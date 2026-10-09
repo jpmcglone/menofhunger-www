@@ -1,3 +1,5 @@
+import type { OverlayPanelHandle } from '~/types/overlay-ref'
+
 /**
  * Composable for PrimeVue Menu popup toggle with lazy mount.
  * Defers mounting the Menu until the first toggle so it doesn't render in SSR
@@ -5,12 +7,11 @@
  */
 export function useAutoToggleMenu() {
   const mounted = ref(false)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const menuRef = ref<any>(null)
+  const menuRef = ref<OverlayPanelHandle | null>(null)
 
   async function toggle(event: Event) {
     if (mounted.value && menuRef.value) {
-      menuRef.value.toggle?.(event)
+      menuRef.value.toggle(event)
       return
     }
     // The browser clears `currentTarget` once dispatch ends, and PrimeVue anchors the popup
@@ -19,8 +20,7 @@ export function useAutoToggleMenu() {
     mounted.value = true
     await nextTick()
     Object.defineProperty(event, 'currentTarget', { value: anchor, configurable: true })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(menuRef.value as any)?.toggle?.(event)
+    menuRef.value?.toggle(event)
   }
 
   return { mounted, menuRef, toggle }

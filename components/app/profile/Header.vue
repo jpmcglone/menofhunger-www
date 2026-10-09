@@ -24,6 +24,14 @@
     </template>
   </Menu>
 
+  <AppLinksShareLinksPageDialog
+    v-if="isSelf && profile?.username"
+    v-model="shareLinksOpen"
+    :username="profile.username"
+    :name="profile.name"
+    :bio="profile.bio"
+  />
+
   <!-- Avatar context menu: shown when on own profile and optionally in a space -->
   <Menu ref="avatarMenuRef" :model="avatarMenuItems" popup>
     <template #item="{ item, props: itemProps }">
@@ -111,6 +119,7 @@ const {
   goPremium,
   goBilling,
   canOpenMenu,
+  shareLinksOpen,
   reportOpen,
   menuRef,
   avatarMenuRef,

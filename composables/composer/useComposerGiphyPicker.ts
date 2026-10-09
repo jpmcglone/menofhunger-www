@@ -1,20 +1,21 @@
-import type { Ref } from 'vue'
+import type { ComponentPublicInstance, Ref } from 'vue'
 import type { GiphyItem, GiphySearchResponse } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
+import { getApiErrorMessage, isAbortError } from '~/utils/api-error'
 import type { ComposerMediaItem } from './types'
 import { makeLocalId } from './types'
+import type { ApiFetchData } from '~/composables/useApiClient'
 
 export function useComposerGiphyPicker(opts: {
   composerMedia: Ref<ComposerMediaItem[]>
   canAddMoreMedia: Ref<boolean>
-  apiFetchData: <T>(url: string, init: any) => Promise<T>
+  apiFetchData: ApiFetchData
 }) {
   const giphyOpen = ref(false)
   const giphyQuery = ref('')
   const giphyLoading = ref(false)
   const giphyError = ref<string | null>(null)
   const giphyItems = ref<GiphySearchResponse>([])
-  const giphyInputRef = ref<any>(null)
+  const giphyInputRef = ref<ComponentPublicInstance | null>(null)
   const giphyRequestId = ref(0)
   let giphyInflight: AbortController | null = null
 
@@ -78,7 +79,7 @@ export function useComposerGiphyPicker(opts: {
       giphyItems.value = Array.isArray(res) ? res : []
       giphyError.value = null
     } catch (e: unknown) {
-      if ((e as any)?.name === 'AbortError') return
+      if (isAbortError(e)) return
       if (!giphyOpen.value || giphyRequestId.value !== reqId) return
       giphyError.value = getApiErrorMessage(e) || (q ? 'Failed to search Giphy.' : 'Failed to load trending GIFs.')
       giphyItems.value = []

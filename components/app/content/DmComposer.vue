@@ -19,36 +19,7 @@
       @change="guardedOnMediaFilesSelected"
     >
 
-    <!-- Reply-to snippet -->
-    <Transition name="moh-fade">
-      <div
-        v-if="replyTo"
-        class="flex items-start gap-2 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 px-3 py-2 text-xs"
-      >
-        <Icon name="tabler:corner-up-right" size="13" class="shrink-0 text-gray-400 dark:text-zinc-500" aria-hidden="true" />
-        <div class="min-w-0 flex-1">
-          <span class="font-semibold text-gray-600 dark:text-gray-300 mr-1">
-            {{ replyTo.senderUsername ? `@${replyTo.senderUsername}` : 'Reply' }}
-          </span>
-          <span class="text-gray-500 dark:text-gray-400 line-clamp-1">{{ replyTo.bodyPreview }}</span>
-        </div>
-        <!-- Thumbnail of media from the original message -->
-        <img
-          v-if="replyTo.mediaThumbnailUrl"
-          :src="replyTo.mediaThumbnailUrl"
-          class="shrink-0 h-9 w-9 rounded-md object-cover"
-          aria-hidden="true"
-        >
-        <button
-          type="button"
-          aria-label="Cancel reply"
-          class="shrink-0 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
-          @click="emit('cancel-reply')"
-        >
-          <Icon name="tabler:x" size="13" aria-hidden="true" />
-        </button>
-      </div>
-    </Transition>
+    <AppDmReplyPreview :reply-to="replyTo" @cancel="emit('cancel-reply')" />
 
     <!-- Input row -->
     <div class="flex items-end gap-2">
@@ -283,9 +254,9 @@
 <script setup lang="ts">
 import type { FollowListUser, MessageReplySnippet } from '~/types/api'
 import type { ComposerMediaItem, CreateMediaPayload } from '~/composables/composer/types'
-import { userColorTier, userTierColorVar } from '~/utils/user-tier'
+import { dmComposerOutlineClass, dmComposerSendButtonClass, userColorTier, userTierColorVar } from '~/utils/user-tier'
 import { useComposerMedia } from '~/composables/useComposerMedia'
-import { useVoiceRecorder } from '~/composables/chat/useVoiceRecorder'
+import { useDmVoiceComposer } from '~/composables/chat/useDmVoiceComposer'
 
 const MAX_CHARS = 10_000
 
@@ -332,6 +303,7 @@ const isPremium = computed(() => Boolean(props.user?.premium || props.user?.prem
 const isVerified = computed(() => props.user?.verifiedStatus !== 'none' && props.user?.verifiedStatus != null)
 const canSendMedia = computed(() => props.canSendMedia !== false)
 const canAcceptVideoRef = computed(() => isPremium.value)
+const canUseMedia = computed(() => isVerified.value && canSendMedia.value)
 
 const {
   composerMedia,
@@ -364,9 +336,9 @@ const {
   clearAll,
 } = useComposerMedia({
   maxSlots: 1,
-  canAcceptImages: computed(() => isVerified.value && canSendMedia.value),
+  canAcceptImages: canUseMedia,
   canAcceptVideo: canAcceptVideoRef,
-  onMediaRejectedNeedPremium: () => usePremiumMediaModal().show(),
+  onMediaRejectedNeedPremium: () => usePremiumUpsell().show('media'),
 })
 
 const acceptTypes = computed(() =>
@@ -381,115 +353,46 @@ const showMic = computed(() =>
   isVerified.value && canSendMedia.value && !hasText.value && composerMedia.value.length === 0 && !props.replyTo,
 )
 
-const voice = useVoiceRecorder()
-const pendingVoice = voice.draft
-const sendingVoice = ref(false)
-const voicePreviewUrl = ref<string | null>(null)
-const voicePreviewEl = ref<HTMLAudioElement | null>(null)
-watch(pendingVoice, (draft) => {
-  if (voicePreviewUrl.value) URL.revokeObjectURL(voicePreviewUrl.value)
-  voicePreviewUrl.value = draft ? URL.createObjectURL(draft.file) : null
+const {
+  voice,
+  pendingVoice,
+  sendingVoice,
+  voicePreviewUrl,
+  voicePreviewEl,
+  pendingVoiceSeconds,
+  formatVoiceClock,
+  onMicClick,
+  stopVoice,
+  cancelVoice,
+  sendVoice,
+} = useDmVoiceComposer({
+  canRecord: canUseMedia,
+  disabled: computed(() => props.disabled),
+  media: { composerMedia, removeComposerMedia, enqueueAudio, waitForUploads },
+  onSend: () => emit('send'),
 })
-function onVoiceVisibility() { if (document.hidden) { if (voice.starting.value) voice.cancel(); else if (voice.recording.value) void stopVoice() } }
-onMounted(() => document.addEventListener('visibilitychange', onVoiceVisibility))
-onBeforeUnmount(() => {
-  document.removeEventListener('visibilitychange', onVoiceVisibility)
-  voice.cancel()
-  if (voicePreviewUrl.value) URL.revokeObjectURL(voicePreviewUrl.value)
-})
-const pendingVoiceSeconds = computed(() => pendingVoice.value?.durationSeconds ?? 0)
-
-function formatVoiceClock(total: number) {
-  const s = Math.max(0, Math.floor(total))
-  const m = Math.floor(s / 60)
-  const r = s % 60
-  return `${m}:${r.toString().padStart(2, '0')}`
-}
-
-async function onMicClick() {
-  if (!isVerified.value || !canSendMedia.value) {
-    usePremiumMediaModal().show()
-    return
-  }
-  pendingVoice.value = null
-  try {
-    await voice.start()
-  } catch {
-    useAppToast().push({ title: 'Couldn’t access your microphone.', tone: 'error' })
-  }
-}
-
-async function stopVoice() {
-  const result = await voice.stop()
-  pendingVoice.value = result
-}
-
-function cancelVoice() {
-  voicePreviewEl.value?.pause()
-  voice.cancel()
-  pendingVoice.value = null
-}
-
-async function sendVoice() {
-  const result = pendingVoice.value
-  if (!result || sendingVoice.value || props.disabled) return
-  voicePreviewEl.value?.pause()
-  sendingVoice.value = true
-  try {
-    for (const media of [...composerMedia.value]) removeComposerMedia(media.localId)
-    enqueueAudio(result.file, result.durationSeconds)
-    const ok = await waitForUploads()
-    if (!ok) {
-      for (const media of [...composerMedia.value]) removeComposerMedia(media.localId)
-      useAppToast().push({ title: 'Couldn’t upload. Your recording is ready to retry.', tone: 'error' })
-      return
-    }
-    pendingVoice.value = null
-    emit('send')
-  } finally { sendingVoice.value = false }
-}
 
 const charsRemaining = computed(() => MAX_CHARS - (props.modelValue?.length ?? 0))
 const showCharCount = computed(() => charsRemaining.value <= 200)
 
 const userTier = computed(() => userColorTier(props.user))
 const userHashtagColor = computed(() => userTierColorVar(userTier.value) ?? 'var(--p-primary-color)')
-const ORG_CHAT_SILVER = '#313643'
+const outlineClass = computed(() => dmComposerOutlineClass(userTier.value, isMultiline.value))
+const sendButtonClass = computed(() => dmComposerSendButtonClass(userTier.value))
 
-const outlineClass = computed(() => {
-  const radius = isMultiline.value ? 'rounded-2xl' : 'rounded-full'
-  const base = `${radius} border`
-  if (userTier.value === 'organization') return `${base} border-[${ORG_CHAT_SILVER}]`
-  if (userTier.value === 'premium') return `${base} border-[var(--moh-premium)]`
-  if (userTier.value === 'verified') return `${base} border-[var(--moh-verified)]`
-  return `${base} border-gray-300 dark:border-zinc-600`
-})
-
-const sendButtonClass = computed(() => {
-  if (userTier.value === 'organization') return `bg-[${ORG_CHAT_SILVER}] text-white hover:opacity-90`
-  if (userTier.value === 'premium') return 'bg-[var(--moh-premium)] text-white hover:opacity-90'
-  if (userTier.value === 'verified') return 'bg-[var(--moh-verified)] text-white hover:opacity-90'
-  return 'bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100'
-})
-
-function onMediaPickerClick() {
-  if (!isVerified.value || !canSendMedia.value) {
-    usePremiumMediaModal().show()
+/** Media pickers are verified-only; everyone else sees the premium modal. */
+function withMediaGate(open: () => void) {
+  if (!canUseMedia.value) {
+    usePremiumUpsell().show('media')
     return
   }
-  openMediaPicker()
+  open()
 }
-
-function onGifPickerClick() {
-  if (!isVerified.value || !canSendMedia.value) {
-    usePremiumMediaModal().show()
-    return
-  }
-  openGiphyPicker()
-}
+const onMediaPickerClick = () => withMediaGate(openMediaPicker)
+const onGifPickerClick = () => withMediaGate(openGiphyPicker)
 
 function guardedOnMediaFilesSelected(e: Event) {
-  if (!isVerified.value || !canSendMedia.value) return
+  if (!canUseMedia.value) return
   onMediaFilesSelected(e)
 }
 

@@ -5,19 +5,19 @@
       v-bind="mentionPopover"
       @select="onMentionSelect"
       @highlight="onMentionHighlight"
-      @requestClose="onMentionClose"
+      @request-close="onMentionClose"
     />
     <AppHashtagAutocompletePopover
       v-bind="hashtagPopover"
       @select="onHashtagSelect"
       @highlight="onHashtagHighlight"
-      @requestClose="onHashtagClose"
+      @request-close="onHashtagClose"
     />
     <AppCashtagAutocompletePopover
       v-bind="cashtagPopover"
       @select="onCashtagSelect"
       @highlight="onCashtagHighlight"
-      @requestClose="onCashtagClose"
+      @request-close="onCashtagClose"
     />
   </div>
 </template>

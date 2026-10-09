@@ -2,7 +2,7 @@
   <div class="flex items-center gap-3">
     <NuxtLink :to="`/g/${encodeURIComponent(group.slug)}`" class="min-w-0 flex flex-1 items-center gap-3 min-h-11" :aria-label="`View ${group.name}`">
       <img v-if="imageUrl" :src="imageUrl" alt="" class="h-10 w-10 shrink-0 rounded-xl object-cover" loading="lazy" decoding="async">
-      <span v-else class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold moh-surface-2" aria-hidden="true">{{ initials }}</span>
+      <span v-else class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold moh-surface-2" aria-hidden="true">{{ groupInitials }}</span>
       <span class="min-w-0">
         <span class="block truncate text-[15px] font-semibold">{{ group.name }}</span>
         <span class="block text-xs moh-text-muted">{{ memberLabel }}</span>
@@ -16,6 +16,7 @@
   <p v-if="error" role="alert" class="text-xs moh-text-muted">{{ error }}</p>
 </template>
 <script setup lang="ts">
+import { initials } from '~/utils/text'
 import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupShell } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
@@ -33,7 +34,7 @@ const error = ref<string | null>(null)
 const joined = computed(() => local.value.viewerMembership?.status === 'active')
 const pending = computed(() => local.value.viewerPendingApproval)
 const imageUrl = computed(() => props.group.avatarImageUrl || props.group.coverImageUrl || null)
-const initials = computed(() => props.group.name.trim().split(/\s+/).slice(0, 2).map(part => part[0] ?? '').join('').toUpperCase())
+const groupInitials = computed(() => initials(props.group.name))
 const memberLabel = computed(() => `${formatCount(Number(props.group.memberCount ?? 0))} ${props.group.memberCount === 1 ? 'member' : 'members'}`)
 async function join() {
   if (busy.value || pending.value) return

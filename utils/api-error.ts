@@ -49,6 +49,32 @@ function isLikelyTechnicalErrorMessage(msg: string | null | undefined): boolean 
   return technicalPatterns.some((re) => re.test(s))
 }
 
+type ErrorLike = {
+  status?: unknown
+  statusCode?: unknown
+  response?: { status?: unknown; _data?: ErrorLike['data'] } | null
+  data?: { meta?: { status?: unknown; errors?: Array<{ reason?: unknown }> } } | null
+}
+
+/** HTTP status carried by a fetch/API error, or null when it has none (e.g. a network failure). */
+export function getErrorStatus(e: unknown): number | null {
+  const err = e as ErrorLike | null | undefined
+  const status = [err?.status, err?.statusCode, err?.response?.status, err?.data?.meta?.status].find((v) => typeof v === 'number')
+  return typeof status === 'number' ? status : null
+}
+
+/** First machine-readable `reason` in the API error envelope, or null. */
+export function getErrorReason(e: unknown): string | null {
+  const err = e as ErrorLike | null | undefined
+  const reason = (err?.data ?? err?.response?._data)?.meta?.errors?.[0]?.reason
+  return typeof reason === 'string' && reason.trim() ? reason.trim() : null
+}
+
+/** True for an aborted `fetch`/request (e.g. a superseded typeahead query). */
+export function isAbortError(e: unknown): boolean {
+  return (e as { name?: string } | null | undefined)?.name === 'AbortError'
+}
+
 /** True when the API error envelope carries this machine-readable `reason` (e.g. `references_changed`). */
 export function hasApiErrorReason(e: unknown, reason: string): boolean {
   const maybe = e as MaybeFetchError | null | undefined

@@ -1,4 +1,3 @@
-import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 export function usePersonAccountGate() {
   const { user, isPageAccount, switchAccount } = useAuth()

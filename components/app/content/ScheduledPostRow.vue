@@ -28,7 +28,7 @@
           :verified-status="author.verifiedStatus ?? null"
           :premium="author.premium"
           :premium-plus="author.premiumPlus"
-          :is-organization="(author as any).isOrganization ?? false"
+          :is-organization="author.isOrganization ?? false"
           :profile-path="null"
           post-id=""
           post-permalink=""
@@ -128,6 +128,7 @@
 </template>
 
 <script setup lang="ts">
+import { isInteractiveTarget } from '~/utils/interactive-target'
 import { formatLocaleDateTime } from '~/utils/time-format'
 import type { ScheduledPost } from '~/types/api'
 import { visibilityTagLabel, visibilityTagClasses } from '~/utils/post-visibility'
@@ -155,16 +156,8 @@ const formattedScheduledAt = computed(() => {
   })
 })
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const el = target instanceof Element ? target : (target as Node | null)?.parentElement ?? null
-  if (!el) return false
-  return Boolean(
-    el.closest('[data-post-row-interactive], button, a, input, textarea, select, [role="button"]'),
-  )
-}
-
 function onRowClick(e: MouseEvent) {
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'scheduled')) return
   emit('edit', props.item)
 }
 </script>

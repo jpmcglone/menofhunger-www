@@ -101,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { presignedUpload } from '~/utils/put-presigned-file'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import { bannerAvatarEditorKey, useStagedBannerAvatarEdit } from '~/composables/useStagedBannerAvatarEdit'
 import type { CrewMemberListItem, CrewPrivate, CrewPublic } from '~/types/api'
@@ -191,18 +192,7 @@ async function uploadImageFile(file: File): Promise<string> {
   if (file.size > 8 * 1024 * 1024) {
     throw new Error('Image is too large (max 8MB).')
   }
-  const init = await apiFetchData<{ key: string; uploadUrl?: string; headers: Record<string, string>; skipUpload?: boolean }>(
-    '/uploads/post-media/init',
-    { method: 'POST', body: { contentType: file.type, purpose: 'crew' } },
-  )
-  if (!init.skipUpload && init.uploadUrl) {
-    const putRes = await fetch(init.uploadUrl, { method: 'PUT', headers: init.headers, body: file })
-    if (!putRes.ok) throw new Error('Upload failed.')
-  }
-  const committed = await apiFetchData<{ key: string }>('/uploads/post-media/commit', {
-    method: 'POST',
-    body: { key: init.key },
-  })
+  const committed = await presignedUpload(apiFetchData, 'post-media', file, { initBody: { purpose: 'crew' } })
   const url = assetUrl(committed.key)
   if (!url) throw new Error('Assets URL is not configured; cannot set image.')
   return url

@@ -27,7 +27,6 @@
 
 <script setup lang="ts">
 import AppGroupPreviewCard from '~/components/app/groups/AppGroupPreviewCard.vue'
-import type { CommunityGroupShell } from '~/types/api'
 import { shellToGroupPreview } from '~/utils/community-group-preview'
 
 const pop = useGroupPreviewPopover()

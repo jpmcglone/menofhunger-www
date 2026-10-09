@@ -39,10 +39,16 @@ const SURFACE_PARTS: Record<string, string[]> = {
     'composables/admin/useAnalyticsCharts.ts',
   ],
   'pages/a/[id].vue': ['components/app/article/page', 'composables/pages/article'],
-  'components/app/content/PostRow.vue': ['composables/post-row/usePostRow.ts'],
+  'components/app/content/PostRow.vue': ['composables/post-row', 'components/app/post/PostRowBoardVariant.vue'],
+  'components/app/content/PostComposer.vue': [
+    'components/app/composer/AudienceRow.vue',
+    'components/app/composer/EditorArea.vue',
+    'components/app/composer/Dialogs.vue',
+    'composables/composer',
+  ],
   'components/app/profile/Header.vue': ['components/app/profile/header', 'composables/profile'],
   'pages/p/[id].vue': ['components/app/post/permalink', 'composables/pages/post'],
-  'pages/u/[username].vue': ['components/app/profile/page', 'composables/pages/profile'],
+  'pages/u/[username]/index.vue': ['components/app/profile/page', 'composables/pages/profile'],
 }
 
 function readParts(root: string, rel: string): string[] {

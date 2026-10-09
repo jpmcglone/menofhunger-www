@@ -12,6 +12,8 @@ const { apiFetchData } = useApiClient()
 const transferId = computed(() => String(route.params.transferId ?? '').trim())
 const receipt = ref<CoinTransferReceipt | null>(null)
 const fallbackTransfer = ref<CoinTransferItem | null>(null)
+/** Only read while one of the two transfers is loaded (the detail card's `v-else-if`). */
+const direction = computed(() => receipt.value?.direction ?? fallbackTransfer.value!.direction)
 const isLoading = ref(true)
 const error = ref<string | null>(null)
 
@@ -77,7 +79,7 @@ async function loadReceipt() {
       method: 'GET',
     })
     receipt.value = data
-  } catch (e: any) {
+  } catch (e: unknown) {
     // Fallback path: if dedicated receipt lookup fails, scan the paginated history.
     // This keeps permalink pages useful even when receipt endpoint behavior differs by env.
     try {
@@ -128,12 +130,12 @@ onMounted(() => {
       <div v-else-if="receipt || fallbackTransfer" class="space-y-4">
         <div class="rounded-2xl border border-gray-200 bg-white/95 shadow-sm p-4 dark:border-white/10 dark:bg-white/[0.03]">
           <div class="flex items-center gap-3">
-            <div class="shrink-0 flex h-10 w-10 items-center justify-center rounded-full" :class="bubbleTone((receipt?.direction ?? fallbackTransfer!.direction) as any)">
-              <Icon :name="activityIcon((receipt?.direction ?? fallbackTransfer!.direction) as any)" size="18" :class="activityTone((receipt?.direction ?? fallbackTransfer!.direction) as any)" />
+            <div class="shrink-0 flex h-10 w-10 items-center justify-center rounded-full" :class="bubbleTone(direction)">
+              <Icon :name="activityIcon(direction)" size="18" :class="activityTone(direction)" />
             </div>
 
             <AppUserAvatar
-              v-if="(receipt?.direction ?? fallbackTransfer!.direction) !== 'streak_reward' && (receipt?.direction ?? fallbackTransfer!.direction) !== 'verification_gift'"
+              v-if="direction !== 'streak_reward' && direction !== 'verification_gift'"
               :user="{ id: (receipt?.counterparty.userId ?? fallbackTransfer!.counterparty.userId), username: (receipt?.counterparty.username ?? fallbackTransfer!.counterparty.username), avatarUrl: (receipt?.counterparty.avatarUrl ?? fallbackTransfer!.counterparty.avatarUrl), avatarVideo: receipt ? receipt.counterparty.avatarVideo : fallbackTransfer!.counterparty.avatarVideo }"
               size-class="h-9 w-9"
               :show-presence="false"
@@ -141,17 +143,17 @@ onMounted(() => {
 
             <div class="min-w-0 flex-1">
               <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                {{ receiptLabel((receipt?.direction ?? fallbackTransfer!.direction) as any) }}
+                {{ receiptLabel(direction) }}
               </div>
               <div class="mt-0.5 text-sm text-gray-900 dark:text-gray-100 truncate">
-                <template v-if="(receipt?.direction ?? fallbackTransfer!.direction) === 'streak_reward' || (receipt?.direction ?? fallbackTransfer!.direction) === 'verification_gift'">
+                <template v-if="direction === 'streak_reward' || direction === 'verification_gift'">
                   <span class="font-semibold">
                     {{ (receipt?.counterparty.displayName ?? fallbackTransfer!.counterparty.displayName) || `@${(receipt?.counterparty.username ?? fallbackTransfer!.counterparty.username)}` }}
                   </span>
                 </template>
                 <template v-else>
                   <span class="text-gray-600 dark:text-gray-400">
-                    {{ (receipt?.direction ?? fallbackTransfer!.direction) === 'sent' ? 'To ' : 'From ' }}
+                    {{ direction === 'sent' ? 'To ' : 'From ' }}
                   </span>
                   <NuxtLink
                     v-if="(receipt?.counterparty.username ?? fallbackTransfer!.counterparty.username)"
@@ -170,14 +172,14 @@ onMounted(() => {
               </div>
             </div>
 
-            <div class="text-lg font-bold tabular-nums shrink-0" :class="activityTone((receipt?.direction ?? fallbackTransfer!.direction) as any)">
-              {{ isPositiveDirection((receipt?.direction ?? fallbackTransfer!.direction) as any) ? '+' : '-' }}{{ fmtAmount(receipt?.amount ?? fallbackTransfer!.amount) }}
+            <div class="text-lg font-bold tabular-nums shrink-0" :class="activityTone(direction)">
+              {{ isPositiveDirection(direction) ? '+' : '-' }}{{ fmtAmount(receipt?.amount ?? fallbackTransfer!.amount) }}
             </div>
           </div>
         </div>
 
         <div
-          v-if="(receipt?.note ?? fallbackTransfer?.note) && (receipt?.direction ?? fallbackTransfer!.direction) !== 'streak_reward' && (receipt?.direction ?? fallbackTransfer!.direction) !== 'verification_gift'"
+          v-if="(receipt?.note ?? fallbackTransfer?.note) && direction !== 'streak_reward' && direction !== 'verification_gift'"
           class="rounded-xl border border-gray-200 bg-white/90 shadow-sm p-4 text-sm text-gray-700 italic dark:border-white/10 dark:bg-white/[0.02] dark:text-gray-300"
         >
           "{{ receipt?.note ?? fallbackTransfer?.note }}"

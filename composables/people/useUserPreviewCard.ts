@@ -8,6 +8,7 @@ import type { MenuItem } from 'primevue/menuitem'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'
 import { userColorTier } from '~/utils/user-tier'
 import { PRIMARY_PREMIUM_ORANGE, PRIMARY_VERIFIED_BLUE } from '~/utils/theme-tint'
+import { usePresenceInterest } from '~/composables/presence/usePresenceInterest'
 
 export type MenuItemWithIcon = MenuItem & { iconName?: string; value?: 'gotit' | 'ignore' }
 
@@ -232,25 +233,10 @@ export function useUserPreviewCard(props: UserPreviewCardProps) {
     }
   }
 
-  const { addInterest, removeInterest, getPresenceStatus, getUserStatus, getCurrentSpaceForUser, isPresenceKnown } = usePresence()
+  const { getPresenceStatus, getUserStatus, getCurrentSpaceForUser, isPresenceKnown } = usePresence()
   const { select: selectSpace } = useSpaceLobby()
   const { getById: getSpaceById } = useSpaces()
-  const lastUserId = ref<string | null>(null)
-  watch(
-    () => user.value.id ?? null,
-    (nextId) => {
-      if (!import.meta.client) return
-      const prev = lastUserId.value
-      if (prev && prev !== nextId) removeInterest([prev])
-      lastUserId.value = nextId ?? null
-      if (nextId) addInterest([nextId])
-    },
-    { immediate: true },
-  )
-  onBeforeUnmount(() => {
-    const id = lastUserId.value
-    if (id) removeInterest([id])
-  })
+  usePresenceInterest(() => user.value.id)
 
   const presenceStatus = computed(() => {
     const id = user.value.id

@@ -43,6 +43,7 @@
 
 <script setup lang="ts">
 import { Cropper } from 'vue-advanced-cropper'
+import { centeredCropPosition, maxCenteredCrop, type CropperChangeEvent, type CropperHandle, type CropperState } from '~/utils/cropper'
 
 const props = defineProps<{
   modelValue: boolean
@@ -66,12 +67,10 @@ const disabled = computed(() => Boolean(props.disabled))
 
 const cropSrc = ref<string | null>(null)
 const cropHasSelection = ref(false)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const cropperRef = ref<any>(null)
+const cropperRef = ref<CropperHandle | null>(null)
 const maxOnOpen = ref(true)
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const defaultSize = ({ imageSize }: any) => {
+const defaultSize = ({ imageSize }: Pick<CropperState, 'imageSize'>) => {
   const w = Number(imageSize?.width ?? 0)
   const h = Number(imageSize?.height ?? 0)
   if (!w || !h) return { width: 0, height: 0 }
@@ -80,11 +79,7 @@ const defaultSize = ({ imageSize }: any) => {
   return { width: cropW, height: cropH }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const defaultPosition = ({ coordinates, imageSize }: any) => ({
-  left: Math.round(imageSize.width / 2 - coordinates.width / 2),
-  top: Math.round(imageSize.height / 2 - coordinates.height / 2),
-})
+const defaultPosition = centeredCropPosition
 
 function clearInternalState() {
   cropHasSelection.value = false
@@ -112,8 +107,7 @@ watch(
 
 onBeforeUnmount(() => { clearInternalState() })
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function onCropChange(e: any) {
+function onCropChange(e: CropperChangeEvent) {
   cropHasSelection.value = Boolean(e?.canvas)
 }
 
@@ -122,20 +116,7 @@ async function onCropperReady() {
   maxOnOpen.value = false
   const cropper = cropperRef.value
   if (!cropper?.setCoordinates) return
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  cropper.setCoordinates(({ imageSize, coordinates }: any) => {
-    const w = Number(imageSize?.width ?? 0)
-    const h = Number(imageSize?.height ?? 0)
-    if (!w || !h) return coordinates
-    const cropW = Math.floor(Math.min(w, h * (16 / 9)))
-    const cropH = Math.floor(cropW / (16 / 9))
-    return {
-      width: cropW,
-      height: cropH,
-      left: Math.round(w / 2 - cropW / 2),
-      top: Math.round(h / 2 - cropH / 2),
-    }
-  })
+  cropper.setCoordinates((state) => maxCenteredCrop(state, 16 / 9))
 }
 
 function cancelCrop() {

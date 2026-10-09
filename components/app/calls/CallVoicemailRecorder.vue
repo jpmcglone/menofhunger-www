@@ -33,9 +33,9 @@
 </template>
 
 <script setup lang="ts">
+import { putPresignedFile } from '~/utils/put-presigned-file'
 import { pickVoicemailRecorderMime, voicemailFileExtension, VOICEMAIL_MAX_SECONDS } from '~/composables/calls/callVoicemail'
 import { useCallSession } from '~/composables/calls/useCallSession'
-import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 const props = defineProps<{
   conversationId: string
@@ -183,7 +183,7 @@ async function send() {
         { method: 'POST', body: { contentType: 'image/jpeg', purpose: 'thumbnail' } },
       )
       if (thumbInit.uploadUrl) {
-        await fetch(thumbInit.uploadUrl, { method: 'PUT', headers: thumbInit.headers, body: clip.poster })
+        await putPresignedFile(thumbInit.uploadUrl, thumbInit.headers, clip.poster)
       }
       thumbnailKey = thumbInit.key
     }
@@ -192,7 +192,7 @@ async function send() {
       { method: 'POST', body: { contentType: clip.file.type, purpose: 'voicemail' } },
     )
     if (init.uploadUrl) {
-      await fetch(init.uploadUrl, { method: 'PUT', headers: init.headers, body: clip.file })
+      await putPresignedFile(init.uploadUrl, init.headers, clip.file)
     }
     const committed = await apiFetchData<{ key: string }>(
       '/uploads/post-media/commit',

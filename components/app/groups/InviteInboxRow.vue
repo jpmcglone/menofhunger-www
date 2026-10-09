@@ -44,7 +44,6 @@
 
 <script setup lang="ts">
 import type { CommunityGroupInvite } from '~/types/api'
-import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 const props = defineProps<{
   invite: CommunityGroupInvite

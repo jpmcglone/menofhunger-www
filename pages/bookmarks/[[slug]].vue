@@ -3,13 +3,13 @@
   <div>
     <div class="sticky z-10 shrink-0 moh-bg border-b moh-border px-4 pt-4 pb-3" style="top: var(--moh-title-bar-height, 4rem);">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch">
-        <IconField iconPosition="left" class="flex-1 min-w-0 moh-bg rounded">
+        <IconField icon-position="left" class="flex-1 min-w-0 moh-bg rounded">
           <InputIcon>
             <Icon name="tabler:search" class="text-lg opacity-70" aria-hidden="true" />
           </InputIcon>
           <InputText
-            v-model="q"
             id="bookmarks-search"
+            v-model="q"
             name="q"
             aria-label="Search bookmarks"
             class="w-full"
@@ -24,10 +24,10 @@
         />
         <Button
           v-if="folder"
+          v-tooltip.bottom="'Manage folder'"
           severity="secondary"
           outlined
           aria-label="Manage folder"
-          v-tooltip.bottom="'Manage folder'"
           @click="openManageFolder"
         >
           <template #icon>

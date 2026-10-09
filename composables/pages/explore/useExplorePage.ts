@@ -66,7 +66,7 @@ export function useExplorePageDiscover() {
       const u = payload?.user
       if (!u?.id) return
       if (!onlineUsers.value.some((x) => x.id === u.id)) {
-        onlineUsers.value = [u as any, ...onlineUsers.value]
+        onlineUsers.value = [u, ...onlineUsers.value]
       }
     },
     onOffline: (payload: { userId: string }) => {

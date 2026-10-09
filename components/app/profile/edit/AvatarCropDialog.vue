@@ -83,8 +83,11 @@
 </template>
 
 <script setup lang="ts">
+import { clamp } from '~/utils/primitives'
 import { Cropper, CircleStencil, RectangleStencil } from 'vue-advanced-cropper'
 import { avatarRoundClass, groupAvatarRoundClass } from '~/utils/avatar-rounding'
+import { centeredCropPosition, type CropperChangeEvent, type CropperHandle, type CropperState } from '~/utils/cropper'
+import type { FaceDetector } from '@mediapipe/tasks-vision'
 
 const props = withDefaults(
   defineProps<{
@@ -136,24 +139,19 @@ const cropPreviewUrl = ref<string | null>(null)
 const cropHasSelection = ref(false)
 const cropperReady = ref(false)
 const cropApplyError = ref<string | null>(null)
-const cropperRef = ref<any>(null)
+const cropperRef = ref<CropperHandle | null>(null)
 let cropPreviewRaf: number | null = null
-let faceDetector: any | null = null
+let faceDetector: FaceDetector | null = null
 
 const faceDetecting = ref(false)
 const faceDetectError = ref<string | null>(null)
 const autoFaceOnOpen = ref(true)
 
-const avatarDefaultSize = ({ imageSize }: any) => {
+const avatarDefaultSize = ({ imageSize }: Pick<CropperState, 'imageSize'>) => {
   const size = Math.floor(Math.min(imageSize.width, imageSize.height) * 0.98)
   return { width: size, height: size }
 }
-const avatarDefaultPosition = ({ coordinates, imageSize }: any) => {
-  return {
-    left: Math.round(imageSize.width / 2 - coordinates.width / 2),
-    top: Math.round(imageSize.height / 2 - coordinates.height / 2),
-  }
-}
+const avatarDefaultPosition = centeredCropPosition
 
 function clearInternalState() {
   cropHasSelection.value = false
@@ -197,7 +195,7 @@ onBeforeUnmount(() => {
   clearInternalState()
 })
 
-function onCropChange(e: any) {
+function onCropChange(e: CropperChangeEvent) {
   const canvas: HTMLCanvasElement | null = e?.canvas ?? null
   cropHasSelection.value = Boolean(canvas)
   if (!canvas) return
@@ -228,9 +226,7 @@ function onCropChange(e: any) {
 async function ensureFaceDetector() {
   if (faceDetector) return faceDetector
   // Lazy-load on client only.
-  const mod: any = await import('@mediapipe/tasks-vision')
-  const FilesetResolver = mod.FilesetResolver
-  const FaceDetector = mod.FaceDetector
+  const { FilesetResolver, FaceDetector } = await import('@mediapipe/tasks-vision')
 
   const vision = await FilesetResolver.forVisionTasks(
     // WASM root
@@ -247,10 +243,6 @@ async function ensureFaceDetector() {
   })
 
   return faceDetector
-}
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n))
 }
 
 async function onCropperReady() {
@@ -282,20 +274,20 @@ async function autoCropFace() {
 
     const best = detections
       .slice()
-      .sort((a: any, b: any) => {
-        const sa = a?.categories?.[0]?.score ?? 0
-        const sb = b?.categories?.[0]?.score ?? 0
+      .sort((a, b) => {
+        const sa = a.categories?.[0]?.score ?? 0
+        const sb = b.categories?.[0]?.score ?? 0
         if (sb !== sa) return sb - sa
-        const ba = a?.boundingBox
-        const bb = b?.boundingBox
+        const ba = a.boundingBox
+        const bb = b.boundingBox
         const aa = (ba?.width ?? 0) * (ba?.height ?? 0)
         const ab = (bb?.width ?? 0) * (bb?.height ?? 0)
         return ab - aa
       })[0]
 
     const bb = best?.boundingBox
-    const x = bb?.originX ?? bb?.origin_x ?? bb?.x ?? 0
-    const y = bb?.originY ?? bb?.origin_y ?? bb?.y ?? 0
+    const x = bb?.originX ?? 0
+    const y = bb?.originY ?? 0
     const w = bb?.width ?? 0
     const h = bb?.height ?? 0
 

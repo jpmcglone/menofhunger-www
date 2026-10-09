@@ -41,7 +41,7 @@ describe('unique people + total views', () => {
     const pages = [
       'pages/home.vue',
       'pages/explore.vue',
-      'pages/u/[username].vue',
+      'pages/u/[username]/index.vue',
       'pages/check-ins/day/[dayKey].vue',
       'pages/check-ins/[sort].vue',
       'pages/g/[slug]/index.vue',

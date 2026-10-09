@@ -35,7 +35,7 @@
             :status="authUser?.verifiedStatus ?? 'none'"
             :premium="Boolean(billingMe?.premium)"
             :premium-plus="Boolean(billingMe?.premiumPlus)"
-            :is-organization="Boolean((authUser as any)?.isOrganization)"
+            :is-organization="Boolean(authUser?.isOrganization)"
           />
         </div>
       </div>

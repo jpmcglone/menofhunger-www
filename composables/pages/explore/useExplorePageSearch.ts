@@ -1,3 +1,4 @@
+import type { LocationQueryRaw } from 'vue-router'
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import type { CommunityGroupShell, FeedPost, Topic } from '~/types/api'
 import { applyCommunityGroupJoin, communityGroupJoinToast } from '~/utils/community-group-preview'
@@ -16,6 +17,7 @@ import type { useExplorePageCheckin } from './useExplorePageCheckin'
  */
 export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscover> & ReturnType<typeof useExplorePageCheckin>) {
   const { route, router, apiFetchData, invalidateMyGroups, isAuthed, canAccessCheckins, toast, openComposer, searchInputRef, hydrated, onGlobalKeyDown, subscribeOnlineFeed, unsubscribeOnlineFeed, subscribePosts, unsubscribePosts, onlineFeedCb, normalizeQueryParam, getRouteQ, searchQuery, searchQueryTrimmed, isSearching, searchActive, searchTab, activeTopic, activeCategory, featuredPosts, categories, trendingPosts, exploreGroups, refreshDiscover, joinExploreGroupId, checkinState, hasCheckedInToday, checkinAllowedVisibilities, onVisibilityChange, createCheckinViaComposer, topicLabelByValue } = ctx
+  const { run } = useAsyncAction()
 
   const DEBOUNCE_MS = 400
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -40,7 +42,7 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
     const id = (g?.id ?? '').trim()
     if (!id) return
     joinExploreGroupId.value = id
-    try {
+    await run(async () => {
       const result = await apiFetchData<{ ok: boolean; status: 'active' | 'pending' }>(
         `/groups/${encodeURIComponent(id)}/join`,
         { method: 'POST', body: {} },
@@ -56,11 +58,8 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
       toast.push(communityGroupJoinToast(status, g.name))
       void refreshDiscover()
       if (isSearching.value) void exploreSearch.search()
-    } catch (e: unknown) {
-      toast.pushError(e, 'Could not join group.')
-    } finally {
-      joinExploreGroupId.value = null
-    }
+    }, { error: 'Could not join group.' })
+    joinExploreGroupId.value = null
   }
 
   function setRouteQueryQ(nextQ: string) {
@@ -68,7 +67,7 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
     const current = getRouteQ()
     if (trimmed === current) return
 
-    const nextQuery: Record<string, any> = { ...route.query }
+    const nextQuery: LocationQueryRaw = { ...route.query }
     if (trimmed) nextQuery.q = trimmed
     else { delete nextQuery.q; delete nextQuery.tab }
 
@@ -102,7 +101,7 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
     const t = String(topic ?? '').trim()
     if (!t) return
     // Topic click: set a dedicated topic mode so we fetch topic-specific posts (not generic search).
-    const nextQuery: Record<string, any> = { ...route.query }
+    const nextQuery: LocationQueryRaw = { ...route.query }
     delete nextQuery.q
     // If the user is explicitly selecting a topic (not coming from category view),
     // drop category so the UI doesn't stay "pinned" to an unrelated category.
@@ -118,7 +117,7 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
     if (source) {
       useNuxtApp().$posthog?.capture('explore_category_selected', { category: c, source })
     }
-    const nextQuery: Record<string, any> = { ...route.query }
+    const nextQuery: LocationQueryRaw = { ...route.query }
     delete nextQuery.q
     delete nextQuery.topic
     nextQuery.category = c
@@ -266,7 +265,7 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
   } = topicFeed
 
   function clearTopic() {
-    const nextQuery: Record<string, any> = { ...route.query }
+    const nextQuery: LocationQueryRaw = { ...route.query }
     delete nextQuery.topic
     // Use push so browser Back returns to topic view if desired.
     Promise.resolve(router.push({ path: route.path, query: nextQuery })).catch(() => {})
@@ -311,7 +310,7 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
   })
 
   function clearCategory() {
-    const nextQuery: Record<string, any> = { ...route.query }
+    const nextQuery: LocationQueryRaw = { ...route.query }
     delete nextQuery.category
     Promise.resolve(router.push({ path: route.path, query: nextQuery })).catch(() => {})
   }
@@ -319,7 +318,7 @@ export function useExplorePageSearch(ctx: ReturnType<typeof useExplorePageDiscov
   function selectTopicInCategory(topic: string) {
     const t = String(topic ?? '').trim()
     if (!t) return
-    const nextQuery: Record<string, any> = { ...route.query }
+    const nextQuery: LocationQueryRaw = { ...route.query }
     delete nextQuery.q
     nextQuery.topic = t
     // Keep category pinned for breadcrumb/back behavior.

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { channelArrivals, channelLink, mergeChannel, mergeChannelMessages } from '~/utils/channels/reducer'
-import { formatBytes } from '~/utils/channels/format'
+import { formatBytes } from '~/utils/number-format'
 import { destinationDraftKey } from '~/utils/channels/drafts'
 import { actionSections } from '~/utils/surface-actions'
 import type { ChannelMessage, GroupChannel } from '~/types/api'

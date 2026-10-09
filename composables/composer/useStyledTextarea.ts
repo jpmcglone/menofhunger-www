@@ -179,7 +179,7 @@ export function useStyledTextareaMentions(props: StyledTextareaResolvedProps) {
     sections: [],
   })
 
-  let mentionCmd: ((attrs: Record<string, any>) => void) | null = null
+  let mentionCmd: SuggestionProps<FollowListUser>['command'] | null = null
 
   function computeMentionSections() {
     if (!props.priorityUsers?.length) { mentionPopover.sections = []; return }
@@ -214,7 +214,7 @@ export function useStyledTextareaMentions(props: StyledTextareaResolvedProps) {
     },
     render: () => ({
       onStart: (p: SuggestionProps<FollowListUser>) => {
-        mentionCmd = p.command as any
+        mentionCmd = p.command
         mentionPopover.items = p.items ?? []
         mentionPopover.highlightedIndex = 0
         mentionPopover.anchor = p.editor ? anchorFromEditor(p.editor) : null
@@ -222,7 +222,7 @@ export function useStyledTextareaMentions(props: StyledTextareaResolvedProps) {
         mentionPopover.open = true
       },
       onUpdate: (p: SuggestionProps<FollowListUser>) => {
-        mentionCmd = p.command as any
+        mentionCmd = p.command
         mentionPopover.items = p.items ?? []
         if (mentionPopover.highlightedIndex >= mentionPopover.items.length) mentionPopover.highlightedIndex = 0
         mentionPopover.anchor = p.editor ? anchorFromEditor(p.editor) : null

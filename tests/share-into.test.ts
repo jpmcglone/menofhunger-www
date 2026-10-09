@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { composeShareText } from '~/utils/share-text'
+import { readSurfaceSource } from './helpers/surface-source'
 
 function readFromRepo(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), 'utf8')
@@ -42,10 +43,7 @@ describe('web share target', () => {
     const keys = readFromRepo('utils/injection-keys.ts')
     const layout = readFromRepo('composables/layout/useAppLayoutComposer.ts')
     const overlay = readFromRepo('components/app/layout/ComposerModalOverlay.vue')
-    const composer = [
-      readFromRepo('components/app/content/PostComposer.vue'),
-      readFromRepo('composables/composer/usePostComposer.ts'),
-    ].join('\n')
+    const composer = readSurfaceSource('components/app/content/PostComposer.vue')
     expect(keys).toContain('initialFiles?: File[]')
     expect(keys).toContain('communityGroupId?: string')
     expect(layout).toContain('composerInitialFiles')

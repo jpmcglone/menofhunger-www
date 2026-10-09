@@ -33,6 +33,13 @@ describe('useAsyncAction', () => {
     expect(pushed.map((t) => t.title)).toEqual(['Already voted', 'Fixed title'])
   })
 
+  it('shows the server message from a fetch error response over the fallback (article delete)', async () => {
+    const { run } = useAsyncAction()
+    const fetchError = { response: { _data: { meta: { errors: [{ message: 'Articles with comments can’t be deleted.' }] } } } }
+    await run(async () => { throw fetchError }, { error: 'Could not delete the article.', durationMs: 3000 })
+    expect(pushed).toEqual([{ title: 'Articles with comments can’t be deleted.', tone: 'error', durationMs: 3000 }])
+  })
+
   it('rolls back before the toast and supports silent mode', async () => {
     const order: string[] = []
     const { run } = useAsyncAction()

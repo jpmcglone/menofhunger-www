@@ -262,7 +262,7 @@
                 Nudged back
               </span>
               <template v-else-if="nudgeIsTopmost && (canShowNudgeBack || !notification.readAt)">
-                <div class="inline-flex overflow-hidden rounded-xl border moh-border" @click.stop.prevent>
+                <div class="inline-flex moh-card-frame moh-border" @click.stop.prevent>
                   <Button
                     v-if="canShowNudgeBack"
                     size="small"

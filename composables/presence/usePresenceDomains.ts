@@ -1,3 +1,4 @@
+import { isRecord } from '~/utils/primitives'
 import type { Ref } from 'vue'
 import type { Socket } from 'socket.io-client'
 import type {
@@ -31,10 +32,6 @@ import { registerPresenceSocketHandlers } from './registerPresenceSocketHandlers
 export type { ChannelCallback } from './types'
 
 const PRESENCE_USER_CURRENT_SPACE_KEY = 'presence-user-current-space-by-id'
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return Boolean(v && typeof v === 'object')
-}
 
 function pickPublicUserEntity(u: unknown): import('~/composables/useUsersStore').PublicUserEntity | null {
   if (!isRecord(u)) return null

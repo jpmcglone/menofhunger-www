@@ -60,3 +60,20 @@ export function userTierBgClass(tier: UserColorTier, opts?: { fallback?: string 
 export function userActionColor(user: UserTierLike | null | undefined): string {
   return userTierColorVar(userColorTier(user)) ?? 'var(--moh-text)'
 }
+
+/** Outline of the DM composer field, tinted by the sender's tier (organizations use chat silver, #313643). */
+export function dmComposerOutlineClass(tier: UserColorTier, multiline: boolean): string {
+  const base = `${multiline ? 'rounded-2xl' : 'rounded-full'} border`
+  if (tier === 'organization') return `${base} border-[#313643]`
+  if (tier === 'premium') return `${base} border-[var(--moh-premium)]`
+  if (tier === 'verified') return `${base} border-[var(--moh-verified)]`
+  return `${base} border-gray-300 dark:border-zinc-600`
+}
+
+/** Send button of the DM composer, tinted by the sender's tier. */
+export function dmComposerSendButtonClass(tier: UserColorTier): string {
+  if (tier === 'organization') return 'bg-[#313643] text-white hover:opacity-90'
+  if (tier === 'premium') return 'bg-[var(--moh-premium)] text-white hover:opacity-90'
+  if (tier === 'verified') return 'bg-[var(--moh-verified)] text-white hover:opacity-90'
+  return 'bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100'
+}

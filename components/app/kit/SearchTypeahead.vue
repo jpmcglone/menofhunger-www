@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { formatCount } from '~/utils/number-format'
+import { isAbortError } from '~/utils/api-error'
 import type { FollowListUser, CommunityGroupShell, RecentSearch } from '~/types/api'
-import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
 
 const props = withDefaults(defineProps<{
   modelValue?: string
@@ -38,7 +37,6 @@ const query = computed({
   set: (v) => emit('update:modelValue', v),
 })
 const queryTrimmed = computed(() => (query.value ?? '').trim())
-const groupRoundClass = groupAvatarRoundClass()
 
 function getInputEl(): HTMLInputElement | null {
   const raw = inputRef.value?.$el ?? (inputRef.value as unknown as HTMLElement | null)
@@ -96,7 +94,7 @@ async function fetchResults(q: string) {
     if (peopleRes.status === 'fulfilled') people.value = Array.isArray(peopleRes.value) ? peopleRes.value : []
     if (groupsRes.status === 'fulfilled') groups.value = Array.isArray(groupsRes.value) ? groupsRes.value : []
   } catch (e: unknown) {
-    if ((e as any)?.name === 'AbortError') return
+    if (isAbortError(e)) return
     people.value = []
     groups.value = []
   } finally {
@@ -383,86 +381,14 @@ defineExpose({
               Clear all
             </button>
           </div>
-          <div
+          <AppSearchRecentRow
             v-for="r in recents.slice(0, 8)"
             :key="r.id"
-            class="relative flex items-center gap-2.5 px-3 py-2 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-            role="option"
-          >
-            <!-- Background anchor (full-row click) -->
-            <NuxtLink
-              v-if="r.user?.username"
-              :to="`/u/${encodeURIComponent(r.user.username)}`"
-              class="absolute inset-0 z-[1]"
-              tabindex="-1"
-              aria-hidden="true"
-              @click.capture="closePanel"
-            />
-            <NuxtLink
-              v-else-if="r.group?.slug"
-              :to="`/groups/${encodeURIComponent(r.group.slug)}`"
-              class="absolute inset-0 z-[1]"
-              tabindex="-1"
-              aria-hidden="true"
-              @click.capture="closePanel"
-            />
-            <div
-              v-else
-              class="absolute inset-0 z-[1] cursor-pointer"
-              @mousedown.prevent
-              @click.stop="applyRecent(r)"
-            />
-            <!-- Content at z-[2] -->
-            <div class="relative z-[2] flex items-center gap-2.5 w-full min-w-0 pointer-events-none">
-              <!-- User avatar -->
-              <div v-if="r.user" class="shrink-0">
-                <AppUserAvatar
-                  :user="{ id: r.user.id, username: r.user.username, avatarUrl: r.user.avatarUrl, avatarVideo: r.user.avatarVideo, isOrganization: r.user.isOrganization }"
-                  size-class="h-8 w-8"
-                  :show-presence="false"
-                />
-              </div>
-              <!-- Group avatar or icon -->
-              <div v-else-if="r.group" class="shrink-0 h-8 w-8 overflow-hidden bg-gray-100 dark:bg-zinc-800 flex items-center justify-center" :class="groupRoundClass">
-                <img v-if="r.group.avatarImageUrl" :src="r.group.avatarImageUrl" :alt="r.group.name" class="h-full w-full object-cover" >
-                <Icon v-else name="tabler:users-group" class="text-base moh-text-muted" aria-hidden="true" />
-              </div>
-              <!-- Clock icon for text queries -->
-              <div v-else class="shrink-0 h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-zinc-800">
-                <Icon name="tabler:clock" class="text-base moh-text-muted" aria-hidden="true" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <template v-if="r.user">
-                  <div class="flex items-center gap-1 min-w-0">
-                    <span class="font-medium text-sm moh-text truncate">{{ r.user.name?.trim() || `@${r.user.username}` }}</span>
-                    <AppVerifiedBadge
-                      v-if="r.user.verifiedStatus && r.user.verifiedStatus !== 'none'"
-                      :status="r.user.verifiedStatus"
-                      :premium="r.user.premium"
-                      :premium-plus="r.user.premiumPlus"
-                      :is-organization="r.user.isOrganization"
-                    />
-                  </div>
-                  <div class="text-xs moh-text-muted truncate">@{{ r.user.username }}</div>
-                </template>
-                <template v-else-if="r.group">
-                  <div class="text-sm font-medium moh-text truncate">{{ r.group.name }}</div>
-                  <div class="text-xs moh-text-muted truncate">{{ formatCount(r.group.memberCount) }} {{ r.group.memberCount === 1 ? 'member' : 'members' }}</div>
-                </template>
-                <span v-else class="text-sm moh-text truncate">{{ r.query }}</span>
-              </div>
-            </div>
-            <!-- Per-row X at z-[3] -->
-            <button
-              type="button"
-              class="relative z-[3] shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors p-0.5 rounded"
-              aria-label="Remove from recent searches"
-              @mousedown.prevent
-              @click.stop="remove(r.id)"
-            >
-              <Icon name="tabler:x" size="14" />
-            </button>
-          </div>
+            :recent="r"
+            @close="closePanel"
+            @apply="applyRecent(r)"
+            @remove="remove(r.id)"
+          />
         </template>
 
         <!-- Recents loading skeleton -->
@@ -520,25 +446,7 @@ defineExpose({
                 @click.capture="() => { closePanel(); void recordUser(u) }"
               />
               <div class="relative z-[2] flex items-center gap-2.5 w-full min-w-0 pointer-events-none">
-                <AppUserAvatar
-                  :user="{ id: u.id, username: u.username, avatarUrl: u.avatarUrl, avatarVideo: u.avatarVideo, isOrganization: u.isOrganization }"
-                  size-class="h-8 w-8"
-                  :show-presence="false"
-                  class="shrink-0"
-                />
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-1 min-w-0">
-                    <span class="font-medium text-sm moh-text truncate">{{ u.name?.trim() || `@${u.username}` }}</span>
-                    <AppVerifiedBadge
-                      v-if="u.verifiedStatus && u.verifiedStatus !== 'none'"
-                      :status="u.verifiedStatus"
-                      :premium="u.premium"
-                      :premium-plus="u.premiumPlus"
-                      :is-organization="u.isOrganization"
-                    />
-                  </div>
-                  <div class="text-xs moh-text-muted truncate">@{{ u.username }}</div>
-                </div>
+                <AppSearchPersonSummary :user="u" />
                 <div v-if="u.relationship?.viewerFollowsUser || u.relationship?.userFollowsViewer" class="shrink-0 text-xs moh-text-muted">
                   {{ u.relationship?.viewerFollowsUser && u.relationship?.userFollowsViewer ? 'Mutual' : u.relationship?.viewerFollowsUser ? 'Following' : 'Follows you' }}
                 </div>
@@ -568,14 +476,7 @@ defineExpose({
                 @click.capture="() => { closePanel(); void recordGroup(g) }"
               />
               <div class="relative z-[2] flex items-center gap-2.5 w-full min-w-0 pointer-events-none">
-                <div class="shrink-0 h-8 w-8 overflow-hidden bg-gray-100 dark:bg-zinc-800 flex items-center justify-center" :class="groupRoundClass">
-                  <img v-if="g.avatarImageUrl" :src="g.avatarImageUrl" :alt="g.name" class="h-full w-full object-cover" >
-                  <Icon v-else name="tabler:users-group" class="text-base moh-text-muted" aria-hidden="true" />
-                </div>
-                <div class="min-w-0 flex-1">
-                  <div class="text-sm font-medium moh-text truncate">{{ g.name }}</div>
-                  <div class="text-xs moh-text-muted truncate">{{ formatCount(g.memberCount) }} {{ g.memberCount === 1 ? 'member' : 'members' }}</div>
-                </div>
+                <AppSearchGroupSummary :group="g" />
                 <span class="shrink-0 text-xs moh-text-muted">Group</span>
               </div>
             </div>

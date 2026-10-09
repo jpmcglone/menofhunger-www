@@ -62,7 +62,7 @@ export function useStyledTextareaTags(ctx: ReturnType<typeof useStyledTextareaMe
     listboxId: 'moh-tiptap-hashtag-listbox',
   })
 
-  let hashtagCmd: ((attrs: Record<string, string>) => void) | null = null
+  let hashtagCmd: SuggestionProps<HashtagResult>['command'] | null = null
 
   // Decorates plain-text #word spans that weren't autocompleted
   const hashtagDecoPlugin = new Plugin({
@@ -104,14 +104,14 @@ export function useStyledTextareaTags(ctx: ReturnType<typeof useStyledTextareaMe
     items: async ({ query }: { query: string }) => fetchHashtags(query),
     render: () => ({
       onStart: (p: SuggestionProps<HashtagResult>) => {
-        hashtagCmd = p.command as any
+        hashtagCmd = p.command
         hashtagPopover.items = p.items ?? []
         hashtagPopover.highlightedIndex = 0
         hashtagPopover.anchor = p.editor ? anchorFromEditor(p.editor) : null
         hashtagPopover.open = true
       },
       onUpdate: (p: SuggestionProps<HashtagResult>) => {
-        hashtagCmd = p.command as any
+        hashtagCmd = p.command
         hashtagPopover.items = p.items ?? []
         if (hashtagPopover.highlightedIndex >= hashtagPopover.items.length) hashtagPopover.highlightedIndex = 0
         hashtagPopover.anchor = p.editor ? anchorFromEditor(p.editor) : null
@@ -186,7 +186,7 @@ export function useStyledTextareaTags(ctx: ReturnType<typeof useStyledTextareaMe
     loading: false,
   })
 
-  let cashtagCmd: ((attrs: Record<string, string>) => void) | null = null
+  let cashtagCmd: SuggestionProps<CashtagResult>['command'] | null = null
 
   // Decorates plain-text $SYMBOL spans that weren't autocompleted
   const cashtagDecoPlugin = new Plugin({
@@ -233,14 +233,14 @@ export function useStyledTextareaTags(ctx: ReturnType<typeof useStyledTextareaMe
     },
     render: () => ({
       onStart: (p: SuggestionProps<CashtagResult>) => {
-        cashtagCmd = p.command as any
+        cashtagCmd = p.command
         cashtagPopover.items = p.items ?? []
         cashtagPopover.highlightedIndex = 0
         cashtagPopover.anchor = p.editor ? anchorFromEditor(p.editor) : null
         cashtagPopover.open = true
       },
       onUpdate: (p: SuggestionProps<CashtagResult>) => {
-        cashtagCmd = p.command as any
+        cashtagCmd = p.command
         cashtagPopover.items = p.items ?? []
         if (cashtagPopover.highlightedIndex >= cashtagPopover.items.length) cashtagPopover.highlightedIndex = 0
         cashtagPopover.anchor = p.editor ? anchorFromEditor(p.editor) : null

@@ -217,11 +217,11 @@
       <div class="grid gap-3 sm:grid-cols-2">
         <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Admin note</label>
-          <Textarea v-model="editAdminNote" class="w-full" rows="3" autoResize placeholder="Optional internal note…" />
+          <Textarea v-model="editAdminNote" class="w-full" rows="3" auto-resize placeholder="Optional internal note…" />
         </div>
         <div class="space-y-2">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Reject reason</label>
-          <Textarea v-model="editRejectionReason" class="w-full" rows="3" autoResize placeholder="Required only when rejecting…" />
+          <Textarea v-model="editRejectionReason" class="w-full" rows="3" auto-resize placeholder="Required only when rejecting…" />
         </div>
       </div>
 
@@ -274,7 +274,7 @@
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
-import type { AdminVerificationListData, AdminVerificationRequest, AdminVerificationUser, VerificationRequestStatus } from '~/types/api'
+import type { AdminVerificationRequest, AdminVerificationUser, VerificationRequestStatus } from '~/types/api'
 import type { AdminCallback } from '~/composables/usePresence'
 import { useCursorFeed } from '~/composables/useCursorFeed'
 

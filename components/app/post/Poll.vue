@@ -120,7 +120,6 @@
 
 <script setup lang="ts">
 import { formatLocaleDateTime } from '~/utils/time-format'
-import { formatCount } from '~/utils/number-format'
 type PostVisibility = import('~/types/api').PostVisibility
 
 type PostPollOption = {

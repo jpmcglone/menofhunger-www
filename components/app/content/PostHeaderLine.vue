@@ -84,10 +84,10 @@
 
       <span class="shrink-0 text-base leading-none" aria-hidden="true">·</span>
       <NuxtLink
+        v-tooltip.bottom="createdAtTooltip"
         :to="postPermalink"
         class="shrink-0 whitespace-nowrap hover:underline underline-offset-2"
         :aria-label="`View post ${postId}`"
-        v-tooltip.bottom="createdAtTooltip"
       >
         {{ createdAtShort }}
       </NuxtLink>
@@ -145,6 +145,7 @@
 </template>
 
 <script setup lang="ts">
+import type { TinyTooltipConfig } from '~/utils/tiny-tooltip'
 type VerifiedStatus = 'none' | 'identity' | 'manual'
 type OrgAffiliation = { id: string; username: string | null; name: string | null; avatarUrl: string | null; avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null }
 
@@ -173,8 +174,7 @@ const props = defineProps<{
   postPermalink: string
   createdAtShort: string
   // PrimeVue tooltip directive accepts `null` or a config object.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdAtTooltip: any
+  createdAtTooltip: TinyTooltipConfig
 }>()
 
 const displayName = computed(() => props.displayName || props.username || 'User')

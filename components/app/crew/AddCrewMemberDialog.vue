@@ -59,7 +59,6 @@
 
 <script setup lang="ts">
 import type { FollowListUser } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
 
 const props = defineProps<{
   modelValue: boolean
@@ -84,12 +83,20 @@ useOverlayDismiss(visible, () => (visible.value = false))
 
 const selectedUser = ref<FollowListUser | null>(null)
 const message = ref('')
-const sending = ref(false)
-const error = ref<string | null>(null)
 
 function close() {
   visible.value = false
 }
+
+const { submit: send, submitting: sending, submitError: error } = useFormSubmit(async () => {
+  const invite = await crewApi.sendInvite({
+    inviteeUserId: selectedUser.value!.id,
+    message: message.value.trim() || null,
+  })
+  pushToast({ title: 'Invite sent', tone: 'success' })
+  emit('invited', invite)
+  close()
+}, { defaultError: 'Could not send that invite.' })
 
 function onHide() {
   selectedUser.value = null
@@ -97,22 +104,7 @@ function onHide() {
   error.value = null
 }
 
-async function submit() {
-  if (!selectedUser.value || sending.value) return
-  sending.value = true
-  error.value = null
-  try {
-    const invite = await crewApi.sendInvite({
-      inviteeUserId: selectedUser.value.id,
-      message: message.value.trim() || null,
-    })
-    pushToast({ title: 'Invite sent', tone: 'success' })
-    emit('invited', invite)
-    close()
-  } catch (e) {
-    error.value = getApiErrorMessage(e) || 'Could not send that invite.'
-  } finally {
-    sending.value = false
-  }
+function submit() {
+  if (selectedUser.value) return send()
 }
 </script>

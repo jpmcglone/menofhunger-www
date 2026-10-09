@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from '@tiptap/core'
+import { Node, mergeAttributes, type CommandProps } from '@tiptap/core'
 
 export type CalloutType = 'info' | 'tip' | 'warning'
 
@@ -31,12 +31,12 @@ export const Callout = Node.create({
     return {
       setCallout:
         (attrs?: { type?: CalloutType }) =>
-        ({ commands }: { commands: any }) => {
+        ({ commands }: CommandProps) => {
           return commands.wrapIn(this.name, attrs)
         },
       toggleCallout:
         (attrs?: { type?: CalloutType }) =>
-        ({ commands }: { commands: any }) => {
+        ({ commands }: CommandProps) => {
           return commands.toggleWrap(this.name, attrs)
         },
     }

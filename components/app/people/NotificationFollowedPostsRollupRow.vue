@@ -121,7 +121,7 @@ const firstActorLabel = computed(() => {
   if (!a) return 'someone'
   return (a.name ?? '').trim() || (a.username ?? '').trim() || 'someone'
 })
-const firstActorColorClass = computed(() => userTierTextClass(userColorTier(firstActor.value as any), { important: true }))
+const firstActorColorClass = computed(() => userTierTextClass(userColorTier(firstActor.value), { important: true }))
 const moreActorCount = computed(() => Math.max(0, Math.floor((rollup.value.actorCount ?? 0) - 1)))
 
 const avatarsEl = ref<HTMLElement | null>(null)

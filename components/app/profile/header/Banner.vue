@@ -33,7 +33,7 @@
           <!-- Nudge back split-button (primary action + caret menu) -->
           <div
             v-if="nudgeAction.kind === 'nudgeBack'"
-            class="inline-flex overflow-hidden rounded-xl border moh-border"
+            class="inline-flex moh-card-frame moh-border"
           >
             <Button
               label="Nudge back"

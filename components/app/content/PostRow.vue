@@ -124,7 +124,7 @@
             :premium="author.premium"
             :premium-plus="author.premiumPlus"
             :is-organization="author.isOrganization"
-            :org-affiliations="(author as any).orgAffiliations ?? postView.author?.orgAffiliations"
+            :org-affiliations="author.orgAffiliations ?? postView.author?.orgAffiliations"
             :is-bot="postView.author?.isBot ?? false"
             :is-new-member="postView.author?.isNewMember ?? false"
             :edited-at="postView.editedAt ?? null"
@@ -366,115 +366,9 @@
     </div>
   </div>
 
-  <AppBoardFeedPostRow
-    v-else-if="!hiddenByBlock && boardVariant === 'post'"
-    :ref="captureBoardRow"
-    :data-post-id="postView.id"
-    :class="rowBorderClass"
-    :post="postView"
-    :author="author"
-    :profile-path="authorProfilePath"
-    :href="postPermalink"
-    :age="createdAtShort"
-    :age-tooltip="createdAtTooltip"
-    :clickable="clickable"
-  >
-    <template #menu>
-      <button
-        v-if="showCatchUpButton && !isGatedPost"
-        v-tooltip.bottom="tinyTooltip(catchUpResultReady ? 'Catch me up — summary ready' : 'Catch me up — M.A.R.V summarizes this thread')"
-        type="button"
-        class="moh-tap moh-pressable inline-flex h-9 w-9 items-center justify-center rounded-full transition-opacity hover:opacity-70"
-        aria-label="Catch me up with M.A.R.V"
-        @click.stop="onCatchMeUp"
-      >
-        <AppIconGlyph name="catchup" :size="20" :selected="catchUpResultReady" />
-      </button>
-      <div v-if="!preview" class="relative h-5 w-10">
-        <AppPostRowMoreMenu :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
-      </div>
-    </template>
-    <template #actions>
-      <AppPostRowActionBar
-        :variant="isGatedPost ? 'boardLocked' : 'board'"
-        :post="postView"
-        :source-post="post"
-        :author="author"
-        :viewer-can-interact="viewerCanInteract"
-        :is-gated-post="isGatedPost"
-        @bookmark-count-delta="onBookmarkCountDelta"
-        @bookmark-state-changed="onBookmarkStateChanged"
-        @open-reposters="repostersPostId = post.id"
-      >
-        <template v-if="!isGatedPost && displayViewerCount > 0" #end>
-          <AppPostRowViewerBreakdown
-            class="ml-auto shrink-0"
-            :entity-id="postView.id"
-            :breakdown-path="`/posts/${encodeURIComponent(postView.id)}/views/breakdown?fresh=1`"
-            :viewer-count="displayViewerCount"
-            :total-view-count="displayTotalViewCount"
-            :has-viewed="hasViewedPost"
-            @count-synced="onViewerCountSynced"
-          />
-        </template>
-      </AppPostRowActionBar>
-    </template>
-    <template v-if="$slots.threadFooter" #footer>
-      <slot name="threadFooter" />
-    </template>
-  </AppBoardFeedPostRow>
-
-  <AppBoardFeedCommentRow
-    v-else-if="!hiddenByBlock"
-    :ref="captureBoardRow"
-    :data-post-id="postView.id"
-    :class="rowBorderClass"
-    :post="postView"
-    :author="author"
-    :profile-path="authorProfilePath"
-    :href="postPermalink"
-    :age="createdAtShort"
-    :age-tooltip="createdAtTooltip"
-    :clickable="clickable"
-  >
-    <template #actions>
-      <AppPostRowActionBar
-        :variant="isGatedPost ? 'boardLocked' : 'boardComment'"
-        :post="postView"
-        :source-post="post"
-        :author="author"
-        :viewer-can-interact="viewerCanInteract"
-        :is-gated-post="isGatedPost"
-        @bookmark-count-delta="onBookmarkCountDelta"
-        @bookmark-state-changed="onBookmarkStateChanged"
-      >
-        <template #start>
-          <div class="inline-flex items-center">
-            <AppBoardBoostButton
-              :post-id="postView.id"
-              :points="postView.boostCount"
-              :viewer-has-boosted="Boolean(postView.viewerHasBoosted)"
-              :disabled="isGatedPost"
-            />
-          </div>
-          <div v-if="!isGatedPost" class="inline-flex items-center">
-            <NuxtLink
-              :to="postPermalink"
-              class="moh-tap moh-focus inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-[13px] font-medium moh-text-muted transition-colors hover:text-[var(--moh-text)]"
-            >
-              <AppIconGlyph name="reply" :size="16" />
-              Reply
-            </NuxtLink>
-          </div>
-        </template>
-        <template #end>
-          <div class="relative ml-auto h-5 w-10 self-center">
-            <AppPostRowMoreMenu :items="moreMenuItems" :tooltip="moreTooltip" :on-before-open="ensureAuthorFollowLoaded" />
-          </div>
-        </template>
-      </AppPostRowActionBar>
-    </template>
-  </AppBoardFeedCommentRow>
+  <AppPostRowBoardVariant v-else-if="!hiddenByBlock" :row="row" :post="post" :preview="preview">
+    <template v-if="$slots.threadFooter" #threadFooter><slot name="threadFooter" /></template>
+  </AppPostRowBoardVariant>
 
 
   <AppEditPostDialog v-if="editOpen" v-model="editOpen" :post="postView" @edited="onEdited" />
@@ -508,6 +402,7 @@ const props = withDefaults(defineProps<PostRowProps>(), {
 
 const emit = defineEmits<PostRowEmits>()
 
+const row = usePostRow(props, emit)
 const {
   postView,
   hiddenByBlock,
@@ -534,7 +429,6 @@ const {
   threadLineAboveStyle,
   threadLineBelowOverlayStyle,
   threadLineBelowStyle,
-  captureBoardRow,
   pickaxError,
   xError,
   isSelf,
@@ -569,6 +463,6 @@ const {
   onBookmarkCountDelta,
   onBookmarkStateChanged,
   onViewerCountSynced,
-} = usePostRow(props, emit)
+} = row
 
 </script>

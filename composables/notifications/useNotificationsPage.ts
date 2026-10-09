@@ -1,9 +1,10 @@
-import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
+import { useNotificationActorPresence } from './useNotificationActorPresence'
+import { useNotificationInviteSync } from './useNotificationInviteSync'
+import { useNotificationReadActions } from './useNotificationReadActions'
 import { userActionColor } from '~/utils/user-tier'
 import { notificationFilterCategory } from '~/utils/notification-category'
 import type { Notification, NotificationKind } from '~/types/api'
 import { VOICE } from '~/config/voice'
-import { closeBrowserNotificationsForHref } from '~/utils/browser-notifications'
 
 export function useNotificationsPage() {
 /** Kinds that render as a full AppPostRow when `notification.post` is hydrated. */
@@ -22,8 +23,6 @@ function notificationIsFlatRepost(n: Notification): boolean {
     n.post && n.kind === 'repost' && n.post.kind === 'repost' && n.post.repostedPost,
   )
 }
-
-
 
 const {
   notifications,
@@ -79,10 +78,6 @@ async function onChipSelect(kind: NotificationKind | 'other' | 'board' | null) {
   void router.replace({ query })
 }
 
-const {
-  addInterest,
-  removeInterest,
-} = usePresence()
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
 const visitHighlights = useNotificationVisitHighlights(notifications)
@@ -127,101 +122,17 @@ const nudgeIsTopmostByIndex = computed(() => {
   })
 })
 
-// Presence: subscribe to notification actors so avatars show online/offline (works after hard refresh).
-const notificationActorIds = computed(() => {
-  const ids = new Set<string>()
-  for (const item of notifications.value) {
-    if (item.type === 'single') {
-      const id = item.notification.actor?.id
-      if (id) ids.add(id)
-      continue
-    }
-    if (item.type === 'group') {
-      for (const a of item.group.actors ?? []) {
-        const id = a?.id
-        if (id) ids.add(id)
-      }
-    }
-  }
-  return [...ids]
-})
-const presenceAddedIds = ref<Set<string>>(new Set())
-watch(
-  notificationActorIds,
-  (newIds) => {
-    const added = presenceAddedIds.value
-    const toRemove = [...added].filter((id) => !newIds.includes(id))
-    const toAdd = newIds.filter((id) => !added.has(id))
-    if (toRemove.length) {
-      removeInterest(toRemove)
-      toRemove.forEach((id) => added.delete(id))
-    }
-    if (toAdd.length) {
-      addInterest(toAdd)
-      toAdd.forEach((id) => added.add(id))
-    }
-  },
-  { immediate: true },
-)
-onBeforeUnmount(() => {
-  const added = [...presenceAddedIds.value]
-  if (added.length) removeInterest(added)
-})
-
-// Realtime: when a crew invite's status changes (accepted / declined / cancelled
-// / expired) — possibly from another tab or device — patch any matching
-// `crew_invite_received` rows in place so their inline buttons swap to the
-// terminal indicator without requiring a refresh.
-const crewCb = {
-  onInviteUpdated(payload: { invite: { id: string; status: string } }) {
-    const inviteId = payload?.invite?.id
-    const status = payload?.invite?.status as
-      | 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | undefined
-    if (!inviteId || !status) return
-    let mutated = false
-    const next = notifications.value.map((item) => {
-      if (item.type !== 'single') return item
-      const n = item.notification
-      if (n.kind !== 'crew_invite_received') return item
-      if (n.subjectCrewInviteId !== inviteId) return item
-      mutated = true
-      return {
-        ...item,
-        notification: { ...n, subjectCrewInviteStatus: status },
-      }
-    })
-    if (mutated) notifications.value = next
-  },
-}
-usePresenceCallback('Crew', crewCb)
-
-// Realtime: same pattern for community group invites — keep the row's terminal
-// state in sync when the invite is accepted / declined / cancelled / expired
-// from another tab or device.
-const groupInviteCb = {
-  onUpdated(payload: { invite: { id: string; status: string } }) {
-    const inviteId = payload?.invite?.id
-    const status = payload?.invite?.status as
-      | 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | undefined
-    if (!inviteId || !status) return
-    let mutated = false
-    const next = notifications.value.map((item) => {
-      if (item.type !== 'single') return item
-      const n = item.notification
-      if (n.kind !== 'community_group_invite_received') return item
-      if (n.subjectCommunityGroupInviteId !== inviteId) return item
-      mutated = true
-      return {
-        ...item,
-        notification: { ...n, subjectCommunityGroupInviteStatus: status },
-      }
-    })
-    if (mutated) notifications.value = next
-  },
-}
-usePresenceCallback('GroupInvite', groupInviteCb)
-
+const { user: notificationViewer } = useAuth()
 const notificationReadToast = useAppToast()
+useNotificationActorPresence(notifications)
+useNotificationInviteSync(notifications)
+const { markItemReadOptimistic, onNotificationClick, onNotificationAuxClick, onNotificationKeydown } = useNotificationReadActions({
+  notifications,
+  viewer: notificationViewer,
+  inbox: { markReadById, decrementUnreadKind, fetchList, itemHref },
+  badge: notifBadge,
+  toast: notificationReadToast,
+})
 async function onMarkAllRead() {
   const account = notificationViewer.value?.id
   const ids = new Set(notifications.value.map(item => item.type === 'single' ? item.notification.id : item.type === 'group' ? item.group.id : item.rollup.id))
@@ -259,95 +170,6 @@ async function loadMore() {
   }
 }
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null
-  if (!el) return false
-  return Boolean(
-    el.closest(
-      [
-        'a',
-        'button',
-        'iframe',
-        'video',
-        'audio',
-        'input',
-        'textarea',
-        'select',
-        '[role="button"]',
-        '[role="menu"]',
-        '[role="menuitem"]',
-        '[contenteditable="true"]',
-        '[data-pc-section]',
-      ].join(','),
-    ),
-  )
-}
-
-/**
- * Optimistically mark a feed item as read+seen in local state and on the server.
- * Used when the user opens a notification (including new-tab opens) so the row
- * updates read counts immediately, instead of waiting for the destination
- * page to fire markReadBySubject + the websocket to round-trip.
- *
- * Groups/rollups carry a representative id; markReadById on that id won't clear
- * every underlying notification — but the row's visible "unread" styling reads
- * off the group/rollup's own readAt, which we update locally. The destination
- * page's `markReadBySubject` will then clear the rest server-side.
- */
-function markItemReadOptimistic(item: (typeof notifications.value)[number]) {
-  const now = new Date().toISOString()
-  let id: string | null = null
-  let unreadKind: NotificationKind | null = null
-  let changed = false
-  notifications.value = notifications.value.map((curr) => {
-    if (curr.type === 'single') {
-      if (item.type !== 'single' || curr.notification.id !== item.notification.id) return curr
-      id = curr.notification.id
-      if (curr.notification.readAt) return curr
-      unreadKind = curr.notification.kind
-      changed = true
-      return {
-        ...curr,
-        notification: {
-          ...curr.notification,
-          readAt: now,
-          deliveredAt: curr.notification.deliveredAt ?? now,
-        },
-      }
-    }
-    if (curr.type === 'group') {
-      if (item.type !== 'group' || curr.group.id !== item.group.id) return curr
-      id = curr.group.id
-      if (curr.group.readAt) return curr
-      unreadKind = curr.group.kind
-      changed = true
-      return {
-        ...curr,
-        group: { ...curr.group, readAt: now, deliveredAt: curr.group.deliveredAt ?? now },
-      }
-    }
-    if (item.type !== 'followed_posts_rollup' || curr.rollup.id !== item.rollup.id) return curr
-    if (curr.rollup.readAt) return curr
-    unreadKind = 'followed_post'
-    changed = true
-    return {
-      ...curr,
-      rollup: { ...curr.rollup, readAt: now, deliveredAt: curr.rollup.deliveredAt ?? now },
-    }
-  })
-  if (changed) decrementUnreadKind(unreadKind)
-  if (id) {
-    const account = notificationViewer.value?.id
-    void markReadById(id).then(() => {
-      if (account === notificationViewer.value?.id) void notifBadge.fetchUndeliveredCount()
-    }).catch(() => {
-      if (account !== notificationViewer.value?.id) return
-      notificationReadToast.push({ title: 'Couldn’t mark notification read. Try again.', tone: 'error' })
-      void fetchList({ forceRefresh: true })
-    })
-  }
-  closeBrowserNotificationsForHref(itemHref(item))
-}
 
 function onNotificationInteractionCapture(item: (typeof notifications.value)[number]) {
   if (item.type !== 'single') return
@@ -355,35 +177,6 @@ function onNotificationInteractionCapture(item: (typeof notifications.value)[num
   markItemReadOptimistic(item)
 }
 
-function onNotificationClick(item: (typeof notifications.value)[number], e: MouseEvent) {
-  const href = itemHref(item)
-  if (!href) return
-  if (isInteractiveTarget(e.target)) return
-  if (e.metaKey || e.ctrlKey) {
-    markItemReadOptimistic(item)
-    window.open(href, '_blank')
-    return
-  }
-  markItemReadOptimistic(item)
-  void navigateTo(href)
-}
-
-function onNotificationAuxClick(item: (typeof notifications.value)[number], e: MouseEvent) {
-  if (e.button !== 1) return
-  const href = itemHref(item)
-  if (!href) return
-  if (isInteractiveTarget(e.target)) return
-  e.preventDefault()
-  markItemReadOptimistic(item)
-  window.open(href, '_blank')
-}
-
-function onNotificationKeydown(item: (typeof notifications.value)[number]) {
-  const href = itemHref(item)
-  if (!href) return
-  markItemReadOptimistic(item)
-  void navigateTo(href)
-}
 
 function kindFromQuery(): NotificationKind | 'other' | 'board' | null {
   const q = route.query.kind
@@ -442,7 +235,6 @@ onActivated(() => {
 
 onDeactivated(() => visitHighlights.end())
 onBeforeUnmount(() => visitHighlights.end())
-const { user: notificationViewer } = useAuth()
 const notificationActivityColor = computed(() => userActionColor(notificationViewer.value))
 watch(() => notificationViewer.value?.id, () => {
   visitHighlights.end()
@@ -487,59 +279,26 @@ watch(notificationUndeliveredCount, (newVal, oldVal) => {
     retryFetch,
     onChipSelect,
     chipHasUnseenNotifications,
-    nudgeActorIdForItem,
     itemKey,
     onMarkAllRead,
     loadMore,
-    isInteractiveTarget,
-    markItemReadOptimistic,
     onNotificationInteractionCapture,
     onNotificationClick,
     onNotificationAuxClick,
     onNotificationKeydown,
-    kindFromQuery,
-    markDeliveredInBackground,
-    syncNotificationsOnEntry,
-    POST_ROW_KINDS,
-    notifBadge,
-    notificationsTabReturnGate,
     kindChips,
-    router,
-    route,
     loadingMore,
     markingAllRead,
-    visitHighlights,
     stickyHighlightedItemKeys,
     showInitialLoader,
     nudgeIsTopmostByIndex,
-    notificationActorIds,
-    presenceAddedIds,
-    crewCb,
-    groupInviteCb,
-    notificationReadToast,
-    lastDeliveredMarkAt,
     notificationActivityColor,
     notifications,
     nextCursor,
     loading,
-    hasFetched,
     fetchError,
-    pendingRefresh,
     activeKind,
-    unreadByKind,
-    unreadByCategory,
-    setKind,
-    fetchList,
-    markDelivered,
-    markReadById,
-    markAllRead,
-    clearUnreadKind,
-    decrementUnreadKind,
     itemHref,
-    addInterest,
-    removeInterest,
-    notificationViewer,
-    notificationUndeliveredCount,
     VOICE,
   }
 }

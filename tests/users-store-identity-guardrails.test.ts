@@ -13,7 +13,7 @@ function readFromRepo(relativePath: string): string {
 
 describe('applyIdentitySwap guardrail (structural)', () => {
   it('calls me() directly, not ensureLoaded(), so impersonation metadata is always re-read', () => {
-    const src = readFromRepo('composables/useAuth.ts')
+    const src = readFromRepo('composables/useAuthIdentity.ts')
     // Extract applyIdentitySwap body
     const block =
       src.match(/async function applyIdentitySwap[\s\S]*?(?=\n {2}\/\*\*|\n {2}async function)/)?.[0] ?? ''
@@ -48,9 +48,9 @@ describe('applyIdentitySwap guardrail (structural)', () => {
   })
 
   it('swaps identity in place on account switch instead of reloading the document', () => {
-    const src = readFromRepo('composables/useAuth.ts')
+    const src = readFromRepo('composables/useAuthIdentity.ts')
     const block =
-      src.match(/async function switchAccount[\s\S]*?(?=\n {2}const isAuthed)/)?.[0] ?? ''
+      src.match(/async function switchAccount[\s\S]*?(?=\n {2}return \{)/)?.[0] ?? ''
     expect(block).toBeTruthy()
     expect(block).toMatch(/applyIdentitySwap\(next/)
     expect(block).not.toMatch(/reloadAsSwitchedIdentity/)
@@ -58,7 +58,7 @@ describe('applyIdentitySwap guardrail (structural)', () => {
   })
 
   it('bumps a reactive identity version so KeepAlive pages remount after a swap', () => {
-    const auth = readFromRepo('composables/useAuth.ts')
+    const auth = readFromRepo('composables/useAuthIdentity.ts')
     const app = readFromRepo('app.vue')
     const state = readFromRepo('composables/auth/authState.ts')
     const block =
@@ -87,7 +87,7 @@ describe('auth user patch-vs-replace guardrail', () => {
   // Assigning one of those wholesale made the impersonation banner vanish
   // until a hard refresh after saving a profile.
   it('only /auth/me and the identity swap replace the auth user wholesale', () => {
-    const src = readFromRepo('composables/useAuth.ts')
+    const src = [readFromRepo('composables/useAuth.ts'), readFromRepo('composables/useAuthIdentity.ts')].join('\n')
     const assignments = (src.match(/^\s*user\.value = (?!null)(?!current)(?!\{)\S.*$/gm) ?? []).map(
       (line) => line.trim(),
     )
@@ -147,7 +147,7 @@ describe('usePublicProfile store-overlay guardrail (structural)', () => {
   })
 
   it('patchPublicProfile in the profile page upserts into the store so banner/avatar updates are immediate', () => {
-    const src = readSurfaceSource('pages/u/[username].vue')
+    const src = readSurfaceSource('pages/u/[username]/index.vue')
     // The page owns the optimistic write; the composable just overlays.
     expect(src).toMatch(/usersStore\.upsert\(/)
   })

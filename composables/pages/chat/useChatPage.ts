@@ -9,7 +9,8 @@ import type ChatThreadPane from '~/components/app/chat/ChatThreadPane.vue'
 import { useCallSession } from '~/composables/calls/useCallSession'
 import { provideChatActiveCall } from '~/composables/chat/useChatActiveCall'
 import type ChatComposerBar from '~/components/app/chat/ChatComposerBar.vue'
-import { useChatPageView, useChatPageLifecycle } from './useChatPageView'
+import { useChatPageView } from './useChatPageView'
+import { useChatPageLifecycle } from './useChatPageLifecycle'
 
 /**
  * Script state for `/chat`.

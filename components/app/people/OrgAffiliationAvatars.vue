@@ -21,7 +21,8 @@
         @click.stop="onOrgClick(org.username, $event)"
         @auxclick.stop="onOrgAuxClick(org.username, $event)"
       >
-        <AppAvatarCircle :src="org.avatarUrl" :avatar-video="org.avatarVideo" :name="org.name"
+        <AppAvatarCircle
+:src="org.avatarUrl" :avatar-video="org.avatarVideo" :name="org.name"
           :size-class="sizeClass" :round-class="roundClass" :show-presence="false" />
       </button>
       <span
@@ -30,7 +31,8 @@
         class="relative flex-shrink-0"
         :class="zClasses[i]"
       >
-        <AppAvatarCircle :src="org.avatarUrl" :avatar-video="org.avatarVideo" :name="org.name"
+        <AppAvatarCircle
+:src="org.avatarUrl" :avatar-video="org.avatarVideo" :name="org.name"
           :size-class="sizeClass" :round-class="roundClass" :show-presence="false" />
       </span>
     </template>

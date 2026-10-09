@@ -61,8 +61,8 @@ Feel free to delete this file.
 
       <button
         type="button"
-        @click="getSentryData"
         :disabled="!isConnected"
+        @click="getSentryData"
       >
         <span>
           Throw Sample Error

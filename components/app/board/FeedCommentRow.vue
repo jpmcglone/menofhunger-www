@@ -92,9 +92,11 @@
 </template>
 
 <script setup lang="ts">
+import { isInteractiveTarget } from '~/utils/interactive-target'
 import type { FeedPost, PostAuthor } from '~/types/api'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
+import type { TinyTooltipConfig } from '~/utils/tiny-tooltip'
 
 /** Layout for a Board comment in post feeds; PostRow supplies the action row through a slot. */
 const props = withDefaults(defineProps<{
@@ -105,7 +107,7 @@ const props = withDefaults(defineProps<{
   href: string
   age: string
   // PrimeVue tooltip binding accepts objects.
-  ageTooltip?: any
+  ageTooltip?: TinyTooltipConfig
   clickable?: boolean
 }>(), { clickable: true, ageTooltip: undefined })
 
@@ -146,23 +148,13 @@ const rowEl = ref<HTMLElement | null>(null)
 const middleScrollerEl = useMiddleScroller()
 const { inView: rowInView } = useInViewOnce(rowEl, { root: middleScrollerEl, rootMargin: '250px 0px', threshold: 0.01 })
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const raw = target as Node | null
-  const el = raw instanceof Element ? raw : raw?.parentElement ?? null
-  if (!el) return false
-  return Boolean(el.closest([
-    'a', 'button', 'iframe', 'video', 'audio', 'input', 'textarea', 'select',
-    '[role="button"]', '[role="menu"]', '[role="menuitem"]', '[data-post-row-interactive]', '[data-pc-section]',
-  ].join(',')))
-}
-
 function goToComment() {
   if (!props.clickable) return
   void navigateTo(props.href)
 }
 
 function onRowClick(e: MouseEvent) {
-  if (!props.clickable || isInteractiveTarget(e.target)) return
+  if (!props.clickable || isInteractiveTarget(e.target, 'media')) return
   if (e.metaKey || e.ctrlKey) {
     window.open(props.href, '_blank')
     return
@@ -171,7 +163,7 @@ function onRowClick(e: MouseEvent) {
 }
 
 function onRowAuxClick(e: MouseEvent) {
-  if (!props.clickable || e.button !== 1 || isInteractiveTarget(e.target)) return
+  if (!props.clickable || e.button !== 1 || isInteractiveTarget(e.target, 'media')) return
   e.preventDefault()
   window.open(props.href, '_blank')
 }

@@ -13,12 +13,12 @@
           v-model="editPremiumPlusMonths"
           :min="0"
           :max="1200"
-          :allowEmpty="false"
-          inputClass="w-24 text-sm"
-          showButtons
-          buttonLayout="horizontal"
-          decrementButtonClass="p-button-secondary p-button-sm"
-          incrementButtonClass="p-button-secondary p-button-sm"
+          :allow-empty="false"
+          input-class="w-24 text-sm"
+          show-buttons
+          button-layout="horizontal"
+          decrement-button-class="p-button-secondary p-button-sm"
+          increment-button-class="p-button-secondary p-button-sm"
         />
       </div>
       <div class="flex items-center gap-3">
@@ -27,12 +27,12 @@
           v-model="editPremiumMonths"
           :min="0"
           :max="1200"
-          :allowEmpty="false"
-          inputClass="w-24 text-sm"
-          showButtons
-          buttonLayout="horizontal"
-          decrementButtonClass="p-button-secondary p-button-sm"
-          incrementButtonClass="p-button-secondary p-button-sm"
+          :allow-empty="false"
+          input-class="w-24 text-sm"
+          show-buttons
+          button-layout="horizontal"
+          decrement-button-class="p-button-secondary p-button-sm"
+          increment-button-class="p-button-secondary p-button-sm"
         />
       </div>
       <Button
@@ -92,7 +92,7 @@
       <label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
         Reason (optional)
       </label>
-      <Textarea v-model="banReason" class="w-full" rows="2" autoResize :maxlength="500" placeholder="Internal note for admins…" />
+      <Textarea v-model="banReason" class="w-full" rows="2" auto-resize :maxlength="500" placeholder="Internal note for admins…" />
     </div>
 
     <div v-if="editingUser?.bannedReason" class="mt-3 text-xs text-gray-600 dark:text-gray-300">

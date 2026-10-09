@@ -13,7 +13,6 @@
 </template>
 <script setup lang="ts">
 import { formatLocaleDateTime } from '~/utils/time-format'
-import { formatCount } from '~/utils/number-format'
 import type { ChannelMessage, CommunityGroupShell, GroupChannel } from '~/types/api'
 import { groupChannelsKey } from '~/composables/channels/useGroupChannels'
 import { channelLink, channelPath, channelTitle } from '~/utils/channels/reducer'

@@ -252,7 +252,7 @@ export function useSpaceLiveChat(options: { passive?: boolean } = {}) {
       if (!uid || uid === user.value?.id) continue
       const username = String(entry?.sender?.username ?? '').trim()
       if (!username) continue
-      const tier: TypingUserDisplay['tier'] = userColorTier(entry.sender as any)
+      const tier: TypingUserDisplay['tier'] = userColorTier(entry.sender)
       result.push({ userId: uid, username, tier })
     }
     // stable-ish ordering by username for deterministic display

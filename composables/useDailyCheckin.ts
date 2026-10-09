@@ -62,7 +62,7 @@ export function useDailyCheckin() {
       state.value = next
       crewStreak.set(next.crew?.currentStreakDays ?? null)
       if (key) cache.value = { ...cache.value, [key]: { expiresAt: Date.now() + TODAY_CHECKIN_CACHE_TTL_MS, data: next } }
-    } catch (e: any) {
+    } catch (e: unknown) {
       error.value = getSafeUserErrorMessage(e, 'Failed to load check-in.')
       state.value = null
     } finally {

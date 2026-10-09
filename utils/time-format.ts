@@ -243,6 +243,12 @@ export function formatClockTime(iso: string | null | undefined, fallback = ''): 
   return d.toLocaleTimeString(SSR_LOCALE, { hour: 'numeric', minute: '2-digit' })
 }
 
+/** Elapsed/remaining playback time as `m:ss` (e.g. `1:05`). */
+export function formatElapsedClock(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+}
+
 type DateInput = Date | string | number
 type LocaleDateOptions = Intl.DateTimeFormatOptions
 

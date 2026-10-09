@@ -434,11 +434,12 @@ describe('hydration guardrails (structural)', () => {
 
   it('keeps X post previews metadata-driven and backed by a real external anchor', () => {
     const card = readFromRepo('components/app/content/XPostPreviewCard.vue')
-    const postPreview = readFromRepo('components/app/post/PostRowLinkPreview.vue')
     const chatPreview = readFromRepo('components/app/chat/ChatMessageRichBody.vue')
-    expect(card).toMatch(/<a[\s\S]*?:href="href"/)
+    // The card renders inside the shared anchor shell, which owns the real external <a>.
+    expect(card).toMatch(/<AppExternalLinkCard[\s\S]*?:href="href"/)
+    expect(readFromRepo('components/app/content/ExternalLinkCard.vue')).toMatch(/linkHref\.value \? 'a' : 'div'/)
     expect(card).not.toMatch(/import\.meta\.client|window\.|document\./)
-    expect(postPreview).toMatch(/linkMeta\.value\?\.socialPost/)
+    expect(readFromRepo('composables/post-row/usePostLinkPreviewKind.ts')).toMatch(/linkMeta\.value\?\.socialPost/)
     expect(chatPreview).toMatch(/linkMeta\.value\?\.socialPost/)
   })
 
@@ -745,7 +746,7 @@ describe('hydration guardrails (structural)', () => {
   })
 
   it('mobile bottom chrome clips only while collapsing for the keyboard', () => {
-    const layout = readFromRepo('layouts/app.vue')
+    const layout = readFromRepo('components/app/layout/MobileBottomChrome.vue')
     // overflow-hidden while max-h-0 so the collapse doesn't leave stray scrollbars.
     // overflow-visible otherwise so radio-bar avatar glow is not clipped.
     expect(layout).toMatch(/isKeyboardOpen \? 'max-h-0 overflow-hidden' : 'max-h-36 overflow-visible'/)

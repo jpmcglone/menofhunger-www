@@ -1,8 +1,7 @@
+import { isInteractiveTarget } from '~/utils/interactive-target'
 import { formatCompact, formatCount } from '~/utils/number-format'
-import { userColorTier, userTierTextClass } from '~/utils/user-tier'
 import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
-import { avatarRoundClass } from '~/utils/avatar-rounding'
 import type { BreakdownRow, BreakdownSection } from '~/components/app/kit/LandingStatBreakdown.vue'
 import type { LandingSnapshot, LandingTopPost } from '~/types/api'
 
@@ -245,14 +244,8 @@ function authorHref(post: LandingTopPost): string {
   return username ? `/u/${encodeURIComponent(username)}` : postHref(post)
 }
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null
-  if (!el) return false
-  return Boolean(el.closest('a,button,iframe,input,textarea,select,[role="menu"],[role="menuitem"],[data-pc-section]'))
-}
-
 function onLandingPostRowClick(href: string, e: MouseEvent) {
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'basic')) return
   if (e.metaKey || e.ctrlKey) {
     window.open(href, '_blank')
     return
@@ -262,7 +255,7 @@ function onLandingPostRowClick(href: string, e: MouseEvent) {
 
 function onLandingPostRowAuxClick(href: string, e: MouseEvent) {
   if (e.button !== 1) return
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'basic')) return
   e.preventDefault()
   window.open(href, '_blank')
 }

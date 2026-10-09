@@ -40,6 +40,15 @@
         </template>
       </AppActionButton>
       <Button as="NuxtLink" to="/settings" label="Settings" severity="secondary" rounded class="min-h-11" />
+      <Button
+        v-if="canOpenMenu"
+        v-tooltip.bottom="tinyTooltip('More')"
+        rounded text severity="secondary"
+        class="!h-11 !w-11 !border moh-border"
+        aria-label="More"
+        aria-haspopup="menu"
+        @click="toggleMenu"
+      ><Icon name="tabler:dots" class="text-xl" aria-hidden="true" /></Button>
       </div>
     <!-- Visitor actions sit top-right, next to the banner: notifications, more, message, follow. -->
     <div v-if="!isSelf" class="profile-visitor-actions flex flex-wrap items-center justify-end gap-2">

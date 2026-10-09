@@ -99,7 +99,7 @@ export function useHomeFeedPrepend() {
  * Global hook so the modal composer in `layouts/app.vue` can prepend newly created posts
  * to the profile feed when the viewer is viewing their own profile.
  *
- * The profile page (`pages/u/[username].vue`) registers a callback via `registerProfilePrepend`
+ * The profile page (`pages/u/[username]/index.vue`) registers a callback via `registerProfilePrepend`
  * when `isSelf` is true and cleans up when it deactivates. `layouts/app.vue` calls
  * `prependToProfileFeed(post)` after every successful post creation.
  */

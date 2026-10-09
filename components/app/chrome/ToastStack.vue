@@ -83,6 +83,9 @@ import type { AppToast, AppToastAction } from '~/composables/useAppToast'
 
 const { toasts, dismiss, bgFor, fgFor } = useAppToast()
 
+// Auto-dismiss timer ids live on globalThis so they survive HMR re-instantiation of this component.
+const toastTimers = globalThis as unknown as Record<string, number | null | undefined>
+
 function hasActions(t: AppToast): boolean {
   return Array.isArray(t.actions) && t.actions.length > 0
 }
@@ -119,14 +122,11 @@ watchEffect(() => {
   // Schedule auto-dismiss timers only for non-persistent toasts.
   for (const t of toasts.value) {
     const key = `moh_toast_timer_${t.id}`
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((globalThis as any)[key]) continue
+    if (toastTimers[key]) continue
     if (t.persistent || !t.durationMs) continue
     const ms = t.durationMs
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(globalThis as any)[key] = window.setTimeout(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(globalThis as any)[key] = null
+    toastTimers[key] = window.setTimeout(() => {
+      toastTimers[key] = null
       dismiss(t.id)
     }, ms)
   }

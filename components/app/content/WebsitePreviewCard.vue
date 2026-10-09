@@ -1,30 +1,24 @@
 <template>
-  <component
-    :is="rootTag"
+  <AppExternalLinkCard
     :href="linkHref"
-    :target="linkHref ? '_blank' : undefined"
-    :rel="linkHref ? 'noopener noreferrer' : undefined"
+    :preview-only="!linkHref"
     class="group block w-full max-w-full text-left moh-focus"
     :aria-label="linkHref ? 'Open link' : undefined"
-    @click.stop="confirmExternal($event, linkHref)"
   >
-    <div v-if="showImage" class="relative overflow-hidden rounded-xl border moh-border">
+    <div v-if="showImage" class="relative moh-card-frame moh-border">
       <div
         class="relative w-full overflow-hidden moh-surface"
         :class="isPortraitImage ? 'aspect-[4/5]' : 'aspect-video'"
         aria-hidden="true"
       >
-        <img
+        <AppPreviewImage
           :src="imageUrl!"
-          alt=""
+          decoding="async"
           class="h-full w-full object-cover"
           :class="isPortraitImage ? 'object-top' : 'object-center'"
-          loading="lazy"
-          decoding="async"
-          referrerpolicy="no-referrer"
           @load="onImageLoad"
           @error="onImageError"
-        >
+        />
       </div>
       <div
         class="pointer-events-none absolute inset-x-2 bottom-2 rounded-lg bg-black/80 px-2 py-2"
@@ -47,7 +41,7 @@
     </div>
     <div
       v-else
-      class="relative overflow-hidden rounded-xl border moh-border moh-surface-2"
+      class="relative moh-card-frame moh-border moh-surface-2"
     >
       <div class="flex items-start gap-2 px-4 py-4">
         <div class="min-w-0 flex-1 text-sm font-semibold moh-text line-clamp-2">
@@ -77,12 +71,11 @@
         {{ sourceLabel }}
       </div>
     </div>
-  </component>
+  </AppExternalLinkCard>
 </template>
 
 <script setup lang="ts">
-const { onClick: confirmExternal } = useExternalLinkConfirm()
-import { isPortraitPreviewImage, previewDescription } from '~/utils/link-utils'
+import { previewDescription } from '~/utils/link-utils'
 
 const props = defineProps<{
   href?: string | null
@@ -110,11 +103,9 @@ const linkHref = computed(() => {
   const href = (props.href ?? '').trim()
   return href || undefined
 })
-const rootTag = computed(() => (linkHref.value ? 'a' : 'div'))
 
-function onImageLoad(event: Event) {
-  const img = event.target as HTMLImageElement | null
-  isPortraitImage.value = isPortraitPreviewImage(img?.naturalWidth ?? 0, img?.naturalHeight ?? 0)
+function onImageLoad(info: { portrait: boolean }) {
+  isPortraitImage.value = info.portrait
 }
 
 function onImageError() {

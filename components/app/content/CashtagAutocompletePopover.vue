@@ -3,8 +3,8 @@
     <Transition name="moh-fade">
       <div
         v-if="open"
-        ref="panelEl"
         :id="listboxId || undefined"
+        ref="panelEl"
         class="fixed z-[var(--moh-z-menu)] w-[min(20rem,92vw)] border moh-border bg-white shadow-2xl dark:bg-zinc-950 rounded-xl overflow-hidden"
         :style="panelStyle"
         role="listbox"
@@ -14,9 +14,9 @@
         <div ref="scrollEl" class="max-h-[min(18rem,46vh)] overflow-y-auto no-scrollbar">
           <button
             v-for="(t, i) in items"
+            :id="optionId(i)"
             :key="t.symbol"
             type="button"
-            :id="optionId(i)"
             class="w-full text-left px-3 py-2 flex items-center gap-3 transition-colors"
             :class="i === highlightedIndex ? 'bg-black/5 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/10'"
             role="option"

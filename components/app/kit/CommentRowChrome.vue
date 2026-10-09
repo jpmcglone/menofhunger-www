@@ -13,9 +13,9 @@
     <AppVerifiedBadge
       v-if="showBadge"
       :status="author.verifiedStatus"
-      :premium="author.premium"
-      :premium-plus="author.premiumPlus"
-      :is-organization="author.isOrganization"
+      :premium="Boolean(author.premium)"
+      :premium-plus="Boolean(author.premiumPlus)"
+      :is-organization="Boolean(author.isOrganization)"
     />
     <slot name="after-badge" />
     <span :class="separatorClass" aria-hidden="true">·</span>
@@ -28,9 +28,10 @@
 
 <script setup lang="ts">
 import { NuxtLink } from '#components'
+import type { VerifiedStatus } from '~/types/api'
 
 type ChromeAuthor = {
-  verifiedStatus?: string | null
+  verifiedStatus?: VerifiedStatus | null
   premium?: boolean | null
   premiumPlus?: boolean | null
   isOrganization?: boolean | null

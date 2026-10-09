@@ -4,8 +4,8 @@
     <Select
       v-model="editVerifiedStatus"
       :options="verifiedOptions"
-      optionLabel="label"
-      optionValue="value"
+      option-label="label"
+      option-value="value"
       placeholder="Select…"
       class="w-full"
     />
@@ -16,8 +16,8 @@
     <MultiSelect
       v-model="editFeatureToggles"
       :options="APP_FEATURE_TOGGLE_OPTIONS"
-      optionLabel="label"
-      optionValue="value"
+      option-label="label"
+      option-value="value"
       display="chip"
       class="w-full"
       placeholder="None enabled"

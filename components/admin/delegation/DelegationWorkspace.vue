@@ -32,7 +32,6 @@
 </template>
 <script setup lang="ts">
 import { formatLocaleDateTime } from '~/utils/time-format'
-import { formatCount } from '~/utils/number-format'
 import type { DelegationJobDto } from '~/types/api'
 import { delegationStatus as status, delegationSchedule as schedule, delegationNeedsReview as needsReview } from '~/utils/admin-delegation'
 const props = defineProps<{ jobId?: string }>()

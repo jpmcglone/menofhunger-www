@@ -225,10 +225,10 @@ export function registerPresenceMediaHandlers(socket: Socket, d: PresenceSocketH
 
   socket.on('spaces:reaction', (data: SpaceReactionEvent) => {
     if (!d.spacesCallbacks.value.size) return
-    const spaceId = String((data as any)?.spaceId ?? '').trim()
-    const userId = String((data as any)?.userId ?? '').trim()
-    const reactionId = String((data as any)?.reactionId ?? '').trim()
-    const emoji = String((data as any)?.emoji ?? '').trim()
+    const spaceId = String(data?.spaceId ?? '').trim()
+    const userId = String(data?.userId ?? '').trim()
+    const reactionId = String(data?.reactionId ?? '').trim()
+    const emoji = String(data?.emoji ?? '').trim()
     if (!spaceId || !userId || !emoji) return
     for (const cb of d.spacesCallbacks.value) {
       cb.onReaction?.({ spaceId, userId, reactionId, emoji })
@@ -253,7 +253,7 @@ export function registerPresenceMediaHandlers(socket: Socket, d: PresenceSocketH
 
   socket.on('spaces:modeChanged', (data: SpaceModeChanged) => {
     if (!d.spacesCallbacks.value.size) return
-    const spaceId = String((data as any)?.spaceId ?? '').trim()
+    const spaceId = String(data?.spaceId ?? '').trim()
     if (!spaceId) return
     for (const cb of d.spacesCallbacks.value) {
       cb.onModeChanged?.(data)

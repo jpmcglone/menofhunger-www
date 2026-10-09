@@ -33,8 +33,8 @@
   >
     <slot name="start" />
 
-    <!-- Upvote: first action for feed posts and Board posts in feeds. -->
-    <div v-if="variant === 'post' || variant === 'board'" class="inline-flex items-center">
+    <!-- Board points live in the thread's leading column. -->
+    <div v-if="variant === 'post'" class="inline-flex items-center">
       <button
         v-tooltip.bottom="upvoteTooltip"
         type="button"
@@ -182,7 +182,7 @@ const props = withDefaults(defineProps<{
   viewerCanInteract: boolean
   isGatedPost: boolean
   /**
-   * `board`: upvote, reply, repost, bookmark, share. The Board label and title stay in the row.
+   * `board`: reply, repost, bookmark, share. Board points stay in the row's leading column.
    * `boardComment`: bookmark + share after the `start` slot. `boardLocked`: share only.
    */
   variant?: 'post' | 'board' | 'boardComment' | 'boardLocked'

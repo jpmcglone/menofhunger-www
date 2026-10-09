@@ -334,8 +334,8 @@ const displayBodySegments = computed<TextSegment[]>(() => {
   let cursor = 0
 
   for (const m of matches) {
-    const start = typeof (m as any).index === 'number' ? ((m as any).index as number) : -1
-    const end = typeof (m as any).lastIndex === 'number' ? ((m as any).lastIndex as number) : -1
+    const start = typeof m.index === 'number' ? m.index : -1
+    const end = typeof m.lastIndex === 'number' ? m.lastIndex : -1
     if (start < 0 || end < 0 || end <= start) continue
     if (start > cursor) {
       const plain = input.slice(cursor, start)

@@ -1,11 +1,12 @@
 import { computed, ref, shallowRef, triggerRef, type ComputedRef, type Ref } from 'vue'
 import type { Message, MessageConversation } from '~/types/api'
-import { chatMessagePreview, conversationPreviewText } from '~/utils/chat-message-preview'
-import { userColorTier, type UserColorTier } from '~/utils/user-tier'
+import { chatMessagePreview } from '~/utils/chat-message-preview'
 import type { AuthUser } from '~/composables/useAuth'
+import { useChatConversationPresentation, type MessageConversationWithTone, type MessageTone } from './useChatConversationPresentation'
+import { useChatConversationSearch } from './useChatConversationSearch'
+import { useChatMarvRows } from './useChatMarvRows'
 
-export type MessageTone = UserColorTier
-export type MessageConversationWithTone = MessageConversation & { unreadTone?: MessageTone }
+export type { MessageTone, MessageConversationWithTone }
 
 export interface UseChatConversationsOptions {
   me: Ref<AuthUser | null> | ComputedRef<AuthUser | null>
@@ -28,8 +29,10 @@ export interface UseChatConversationsOptions {
  */
 export function useChatConversations(opts: UseChatConversationsOptions) {
   const { me, marv, selectedConversationId, atBottom } = opts
-  const { apiFetch, apiFetchData } = useApiClient()
-  const viewerCrew = useViewerCrew()
+  const { apiFetch } = useApiClient()
+  const presentation = useChatConversationPresentation(me)
+  const { getMessageTier } = presentation
+  const search = useChatConversationSearch()
 
   const activeTab = ref<'primary' | 'requests'>('primary')
 
@@ -219,10 +222,6 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
     }))
   }
 
-  function getMessageTier(message: Message): MessageTone {
-    return userColorTier(message.sender as Parameters<typeof userColorTier>[0])
-  }
-
   function updateConversationForMessage(message: Message): void {
     const unreadInc = message.sender.id === me.value?.id ? 0 : 1
     const incomingTier = getMessageTier(message)
@@ -284,144 +283,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
     })
   }
 
-  // ─── Row presentation helpers ────────────────────────────────────────────────
-
-  function getDirectUser(conversation: MessageConversation) {
-    return conversation.participants.find((p) => p.user.id !== me.value?.id)?.user ?? null
-  }
-
-  function getConversationTitle(conversation: MessageConversation) {
-    if (conversation.type === 'crew_wall') {
-      const crewName = (conversation.crew?.name ?? '').trim()
-      if (crewName) return crewName
-      return viewerCrew.membership.value?.role === 'owner' ? 'Your Crew' : 'My Crew'
-    }
-    if (conversation.type === 'group') {
-      return conversation.title || conversation.participants.map((p) => p.user.name || p.user.username || 'User').join(', ')
-    }
-    const other = getDirectUser(conversation)
-    return other?.name || other?.username || 'Chat'
-  }
-
-  function getConversationPreview(conversation: MessageConversation) {
-    return conversationPreviewText(conversation)
-  }
-
-  function getConversationLastMessageTier(conversation: MessageConversationWithTone): MessageTone {
-    // If there are unread messages and we've tracked the last incoming tier, prefer it for unread indicators.
-    const tracked = conversation.unreadTone
-    if (conversation.unreadCount > 0 && tracked) return tracked
-    const senderId = conversation.lastMessage?.senderId ?? null
-    if (!senderId) return 'normal'
-    const sender = conversation.participants.find((p) => p.user.id === senderId)?.user
-    return userColorTier(sender as Parameters<typeof userColorTier>[0])
-  }
-
-  const ORG_CHAT_SILVER_DOT_CLASS = 'bg-[#313643] text-white'
-  const ORG_CHAT_SILVER_UNREAD_CLASS = 'bg-[rgba(49,54,67,0.24)] dark:bg-[rgba(49,54,67,0.34)]'
-
-  function conversationDotClass(conversation: MessageConversationWithTone): string {
-    const tier = getConversationLastMessageTier(conversation)
-    if (tier === 'organization') return ORG_CHAT_SILVER_DOT_CLASS
-    if (tier === 'premium') return 'bg-[var(--moh-premium)] text-white'
-    if (tier === 'verified') return 'bg-[var(--moh-verified)] text-white'
-    return 'bg-gray-700 text-white dark:bg-white dark:text-black'
-  }
-
-  function conversationUnreadHighlightClass(conversation: MessageConversationWithTone): string {
-    const tier = getConversationLastMessageTier(conversation)
-    if (tier === 'organization') return ORG_CHAT_SILVER_UNREAD_CLASS
-    if (tier === 'premium') return 'bg-[rgba(var(--moh-premium-rgb),0.06)] dark:bg-[rgba(var(--moh-premium-rgb),0.09)]'
-    if (tier === 'verified') {
-      return 'bg-[rgba(var(--moh-verified-rgb),0.06)] dark:bg-[rgba(var(--moh-verified-rgb),0.09)]'
-    }
-    return 'bg-gray-100/40 dark:bg-white/6'
-  }
-
-  /** Last non–deleted-for-all message in the open thread (for list preview after delete). */
-  function lastVisibleMessageSnapshot(list: Message[]): NonNullable<MessageConversation['lastMessage']> | null {
-    for (let i = list.length - 1; i >= 0; i--) {
-      const m = list[i]!
-      if (m.deletedForAll) continue
-      return {
-        id: m.id,
-        body: chatMessagePreview(m),
-        createdAt: m.createdAt,
-        senderId: m.sender.id,
-      }
-    }
-    return null
-  }
-
-  // ─── Search ──────────────────────────────────────────────────────────────────
-
-  const conversationSearchResults = ref<MessageConversation[] | null>(null)
-  const conversationSearchLoading = ref(false)
-  let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
-
-  function handleConversationSearchQuery(q: string) {
-    if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
-    const trimmed = q.trim()
-    if (!trimmed) {
-      conversationSearchResults.value = null
-      conversationSearchLoading.value = false
-      return
-    }
-    conversationSearchLoading.value = true
-    conversationSearchResults.value = null
-    searchDebounceTimer = setTimeout(async () => {
-      searchDebounceTimer = null
-      try {
-        const result = await apiFetchData<MessageConversation[]>(
-          `/messages/conversations/search?q=${encodeURIComponent(trimmed)}`,
-        )
-        conversationSearchResults.value = Array.isArray(result) ? result : []
-      } catch {
-        conversationSearchResults.value = []
-      } finally {
-        conversationSearchLoading.value = false
-      }
-    }, 300)
-  }
-
-  // ─── Marv pinned-row derivations ─────────────────────────────────────────────
-
-  /**
-   * Marv lives as a regular `direct` conversation in the user's list. We surface
-   * a pinned row above the conversation list (premium-styled), and when the
-   * selected chat IS Marv we render the mode picker / credits chip.
-   *
-   * `marvConversation` walks the existing primary list — we don't need to fetch
-   * separately because the conversation list already contains the marv DM if
-   * one exists. When it doesn't yet, the pinned row routes to `?marv=1` which
-   * is resolved on demand when the user clicks it.
-   */
-  const marvConversation = computed<MessageConversation | null>(() => {
-    const marvId = marv.marvUserId.value
-    if (!marvId) return null
-    for (const c of conversations.value.primary) {
-      if (c.type !== 'direct') continue
-      if (c.participants.some((p) => p.user.id === marvId)) return c
-    }
-    for (const c of conversations.value.requests) {
-      if (c.type !== 'direct') continue
-      if (c.participants.some((p) => p.user.id === marvId)) return c
-    }
-    return null
-  })
-
-  const marvConversationId = computed(() => marvConversation.value?.id ?? null)
-  const marvUnreadCount = computed(() => marvConversation.value?.unreadCount ?? 0)
-  const marvLastMessagePreview = computed<string | null>(() => {
-    const body = marvConversation.value?.lastMessage?.body?.trim() ?? ''
-    return body || null
-  })
-  const isSelectedConversationMarv = computed(() => {
-    const marvId = marv.marvUserId.value
-    if (!marvId) return false
-    if (selectedConversation.value?.type !== 'direct') return false
-    return selectedConversation.value.participants.some((p) => p.user.id === marvId)
-  })
+  const marvRows = useChatMarvRows(marv, conversations, selectedConversation)
 
   // ─── Actions on the selected conversation ────────────────────────────────────
 
@@ -447,7 +309,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   }
 
   function teardown() {
-    if (searchDebounceTimer) { clearTimeout(searchDebounceTimer); searchDebounceTimer = null }
+    search.teardown()
   }
 
   return {
@@ -479,25 +341,9 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
     updateConversationUnread,
     updateConversationForMessage,
     markConversationReadIfVisible,
-    // Presentation helpers
-    getMessageTier,
-    getDirectUser,
-    getConversationTitle,
-    getConversationPreview,
-    getConversationLastMessageTier,
-    conversationDotClass,
-    conversationUnreadHighlightClass,
-    lastVisibleMessageSnapshot,
-    // Search
-    conversationSearchResults,
-    conversationSearchLoading,
-    handleConversationSearchQuery,
-    // Marv
-    marvConversation,
-    marvConversationId,
-    marvUnreadCount,
-    marvLastMessagePreview,
-    isSelectedConversationMarv,
+    ...presentation,
+    ...search,
+    ...marvRows,
     // Actions
     acceptConversation,
     toggleMuteConversation,

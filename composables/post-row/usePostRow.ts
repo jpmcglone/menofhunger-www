@@ -1,16 +1,16 @@
-import { formatLocaleDateTime } from '~/utils/time-format'
-import { formatCount } from '~/utils/number-format'
-import type { CommunityGroupShell, FeedPost } from '~/types/api'
+import type { CommunityGroupShell, FeedPost, PostAuthor } from '~/types/api'
 import type { PostRowEmits, PostRowProps } from './post-row-types'
 import { groupPreviewToFeedShell } from '~/utils/community-group-preview'
-import { visibilityTagClasses, visibilityTagLabel } from '~/utils/post-visibility'
-import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { postChainInvolvesAuthor } from '~/utils/post-block'
-import { boardPostHref } from '~/utils/board-links'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 import { usePostRowMenus } from '~/composables/post-row/usePostRowMenus'
+import { usePostRowCatchUp } from '~/composables/post-row/usePostRowCatchUp'
+import { usePostRowDisplay } from '~/composables/post-row/usePostRowDisplay'
+import { usePostRowNavigation } from '~/composables/post-row/usePostRowNavigation'
+import { usePostRowPatches } from '~/composables/post-row/usePostRowPatches'
+import { usePresenceInterest } from '~/composables/presence/usePresenceInterest'
 import { usePostRowThreadLines } from '~/composables/post-row/usePostRowThreadLines'
 import { isPendingLocalId } from '~/composables/usePendingPostsManager'
 
@@ -52,9 +52,9 @@ export function usePostRow(props: PostRowProps, emit: PostRowEmits) {
     return group
   })
 
-  function onPollUpdated(poll: any) {
+  function onPollUpdated(poll: FeedPost['poll']) {
     postCache.patch(postState.value.id, { poll })
-    postState.value = { ...(postState.value as any), poll }
+    postState.value = { ...postState.value, poll }
   }
 
   const authorSnapshot = computed(() => postView.value?.author ?? null)
@@ -67,7 +67,7 @@ export function usePostRow(props: PostRowProps, emit: PostRowEmits) {
     premium: false,
     premiumPlus: false,
     isOrganization: false,
-  } as any))
+  } as unknown as PostAuthor)) // placeholder for a post whose author snapshot is missing
   const isDeletedPost = computed(() => Boolean(postView.value.deletedAt))
   const isGatedPost = computed(() => postView.value.viewerCanAccess === false)
   const displayViewerCount = computed(() => Math.max(0, Math.floor(Number(postView.value.viewerCount ?? 0))))
@@ -221,41 +221,10 @@ export function usePostRow(props: PostRowProps, emit: PostRowEmits) {
     return Boolean(viewerId && authorId && viewerId === authorId)
   })
 
-  // Marv "Catch me up": offered to every signed-in viewer on every real post row. Marv
-  // summarizes the post itself plus any thread above/below it, and can pull in broader
-  // context (web search / current events) so it's useful even on a lone post. Opening the
-  // modal is free; generating a summary spends credits (gated server-side; non-premium
-  // sees an upsell).
-  const { show: showCatchUp, post: catchUpPost, result: catchUpResult } = useMarvCatchUp()
   const showCatchUpButton = computed(
     () => isAuthed.value && !props.preview && !isPendingRow.value && !isDeletedPost.value,
   )
-  // In-session signal: this post's summary is already loaded in global state.
-  const catchUpSessionReady = computed(
-    () => catchUpPost.value?.id === postView.value.id && !!catchUpResult.value,
-  )
-  // Persisted signal: we saw a summary for this post recently enough that the server cache
-  // should still have it. The initial read is deferred to onMounted because localStorage is
-  // client-only and reading it during setup would render a different icon class than SSR
-  // emitted. The watcher covers this row being recycled for a different post while scrolling.
-  const catchUpPersistedReady = ref(false)
-  onMounted(() => {
-    catchUpPersistedReady.value = isPostCaughtUp(postView.value.id)
-  })
-  watch(
-    () => postView.value.id,
-    (id) => {
-      catchUpPersistedReady.value = isPostCaughtUp(id)
-    },
-  )
-  // Combined: high-contrast icon when a result is either in-session or should still be cached.
-  watch(catchUpSessionReady, (ready) => {
-    if (ready) catchUpPersistedReady.value = true
-  })
-  const catchUpResultReady = computed(() => catchUpSessionReady.value || catchUpPersistedReady.value)
-  function onCatchMeUp() {
-    showCatchUp(postView.value)
-  }
+  const { catchUpResultReady, onCatchMeUp } = usePostRowCatchUp(postView)
 
   const isOnlyMe = computed(() => postView.value.visibility === 'onlyMe')
   const viewerIsAdmin = computed(() => Boolean(user.value?.siteAdmin))
@@ -274,147 +243,20 @@ export function usePostRow(props: PostRowProps, emit: PostRowEmits) {
   })
 
   const isCheckinPost = computed(() => !isDeletedPost.value && postView.value.kind === 'checkin')
-  const isStatusPost = computed(() => !isDeletedPost.value && postView.value.kind === 'status')
-
-  function easternDayKeyNow(): string {
-    try {
-      return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date())
-    } catch {
-      return new Date().toISOString().slice(0, 10)
-    }
-  }
 
   const NuxtLink = resolveComponent('NuxtLink')
 
-  const isCheckinPromptToday = computed(() => {
-    const dk = (postView.value.checkinDayKey ?? '').trim()
-    return Boolean(dk && dk === easternDayKeyNow())
+  const { isCheckinPromptToday, metaTags, createdAtShort, createdAtTooltip } = usePostRowDisplay(postView, isCheckinPost)
+  const { postPermalink, boardVariant, onRowClick, onRowAuxClick, onRowKeydown } = usePostRowNavigation(postView, {
+    isDeletedPost,
+    isPendingRow,
+    clickable,
   })
-  const metaTags = computed(() => {
-    const out: Array<{ key: string; label: string; class: string; tooltip: any; icon?: string | null; to?: string | null }> = []
+  const { onBookmarkCountDelta, onBookmarkStateChanged, onViewerCountSynced } = usePostRowPatches(postState, postView, emit)
+  usePresenceInterest(() => props.post?.author?.id)
 
-    // Visibility tag first (Verified/Premium/Only me), if any.
-    const vis = visibilityTagLabel(postView.value.visibility)
-    if (vis) {
-      out.push({
-        key: `vis:${postView.value.visibility}`,
-        label: vis,
-        class: visibilityTagClasses(postView.value.visibility),
-        tooltip:
-          postView.value.visibility === 'verifiedOnly'
-            ? tinyTooltip('Visible to verified members')
-            : postView.value.visibility === 'premiumOnly'
-              ? tinyTooltip('Visible to premium members')
-              : postView.value.visibility === 'onlyMe'
-                ? tinyTooltip('Visible only to you')
-                : null,
-        icon: postView.value.visibility === 'onlyMe' ? 'tabler:eye-off' : null,
-      })
-    }
 
-    // Check-in tag second (replaces nothing; appends after visibility).
-    if (isCheckinPost.value) {
-      out.push({
-        key: 'kind:checkin',
-        label: 'Check-in answer',
-        class: 'moh-tag-checkin',
-        tooltip: tinyTooltip('Daily check-in'),
-        icon: 'tabler:calendar-check',
-        to: '/check-ins/new',
-      })
-    }
 
-    return out
-  })
-
-  const postPermalink = computed(() => boardPostHref(postView.value) ?? `/p/${encodeURIComponent(postView.value.id)}`)
-  /** Board threads and comments render as Board rows; deleted or pending ones keep the post shell. */
-  const boardVariant = computed<'post' | 'comment' | null>(() => {
-    if (postView.value.kind !== 'board' || isDeletedPost.value || isPendingRow.value) return null
-    return postView.value.parentId ? 'comment' : 'post'
-  })
-
-  function goToPost() {
-    return navigateTo(postPermalink.value)
-  }
-
-  function isInteractiveTarget(target: EventTarget | null): boolean {
-    const raw = target as Node | null
-    const el = raw instanceof Element
-      ? raw
-      : raw?.parentElement ?? null
-    if (!el) return false
-    // Ignore clicks on any interactive element inside the row.
-    return Boolean(
-      el.closest(
-        [
-          'a',
-          'button',
-          'iframe',
-          'video',
-          'audio',
-          'input',
-          'textarea',
-          'select',
-          '[role="button"]',
-          '[role="menu"]',
-          '[role="menuitem"]',
-          '[contenteditable="true"]',
-          '[data-post-row-interactive]',
-          '[data-pc-section]',
-        ].join(','),
-      ),
-    )
-  }
-
-  function onRowClick(e: MouseEvent) {
-    if (!clickable.value) return
-    if (isInteractiveTarget(e.target)) return
-    if (e.metaKey || e.ctrlKey) {
-      window.open(postPermalink.value, '_blank')
-      return
-    }
-    void goToPost()
-  }
-
-  function onRowAuxClick(e: MouseEvent) {
-    if (!clickable.value) return
-    if (e.button !== 1) return
-    if (isInteractiveTarget(e.target)) return
-    e.preventDefault()
-    window.open(postPermalink.value, '_blank')
-  }
-
-  function onRowKeydown(e: KeyboardEvent) {
-    if (!clickable.value) return
-    if (isInteractiveTarget(e.target)) return
-    void goToPost()
-  }
-
-  const createdAtDate = computed(() => new Date(postView.value.createdAt))
-  const { nowMs } = useNowTicker({ everyMs: 15_000 })
-  const createdAtShort = computed(() => formatShortDate(createdAtDate.value, nowMs.value))
-  // Fixed locale for SSR: server and client must produce identical output.
-  const createdAtTooltip = computed(() =>
-    tinyTooltip(formatLocaleDateTime(createdAtDate.value)),
-  )
-
-  function formatShortDate(d: Date, nowMs: number): string {
-    const diffMs = Math.max(0, Math.floor((nowMs || 0) - d.getTime()))
-    const diffSec = Math.floor(diffMs / 1000)
-    if (diffSec < 60) return 'now'
-    const diffMin = Math.floor(diffSec / 60)
-    if (diffMin < 60) return `${diffMin}m`
-    const diffHr = Math.floor(diffMin / 60)
-    if (diffHr < 24) return `${diffHr}h`
-    const diffDay = Math.floor(diffHr / 24)
-    if (diffDay < 7) return `${diffDay}d`
-
-    const sameYear = new Date(nowMs).getFullYear() === d.getFullYear()
-    const month = formatLocaleDateTime(d, { month: 'short' })
-    const day = d.getDate()
-    return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`
-  }
 
   // More menu + avatar context menu + their actions (follow/block/pin/edit/delete).
   const {
@@ -459,60 +301,7 @@ export function usePostRow(props: PostRowProps, emit: PostRowEmits) {
     // toast + close handled in dialog
   }
 
-  function onBookmarkCountDelta(delta: number) {
-    const d = Math.trunc(Number(delta) || 0)
-    if (!d) return
-    const next = Math.max(0, Math.floor(Number(postState.value.bookmarkCount ?? 0)) + d)
-    postState.value = { ...postState.value, bookmarkCount: next }
-  }
 
-  function onBookmarkStateChanged(payload: { hasBookmarked: boolean; collectionIds: string[] }) {
-    const nextHas = Boolean(payload?.hasBookmarked)
-    const nextCollectionIds = Array.isArray(payload?.collectionIds) ? payload.collectionIds.filter(Boolean) : []
-    postState.value = {
-      ...postState.value,
-      viewerHasBookmarked: nextHas,
-      viewerBookmarkCollectionIds: nextCollectionIds,
-    }
-    emit('bookmarkUpdated', {
-      postId: postView.value.id,
-      hasBookmarked: nextHas,
-      collectionIds: nextCollectionIds,
-    })
-  }
-
-  function onViewerCountSynced(payload: { viewerCount: number, totalViewCount: number }) {
-    const nextUnique = Math.max(0, Math.floor(Number(payload.viewerCount ?? 0)))
-    const nextTotal = Math.max(nextUnique, Math.floor(Number(payload.totalViewCount ?? 0)))
-    const currentUnique = Math.max(0, Math.floor(Number(postState.value.viewerCount ?? 0)))
-    const currentTotal = Math.max(currentUnique, Math.floor(Number(postState.value.totalViewCount ?? currentUnique)))
-    if (nextUnique === currentUnique && nextTotal === currentTotal) return
-    postState.value = {
-      ...postState.value,
-      viewerCount: Math.max(currentUnique, nextUnique),
-      totalViewCount: Math.max(currentTotal, nextTotal),
-    }
-  }
-
-  // Presence interest: keep the author's online status fresh while the row is mounted.
-  const { addInterest, removeInterest } = usePresence()
-  const authorId = computed(() => props.post?.author?.id)
-  watch(
-    authorId,
-    (next, prev) => {
-      if (!import.meta.client) return
-      const prevId = typeof prev === 'string' ? prev : null
-      const nextId = typeof next === 'string' ? next : null
-      if (prevId && prevId !== nextId) removeInterest([prevId])
-      if (nextId && nextId !== prevId) addInterest([nextId])
-    },
-    { immediate: true },
-  )
-  onBeforeUnmount(() => {
-    if (!import.meta.client) return
-    const id = authorId.value
-    if (id) removeInterest([id])
-  })
 
   return {
     postView,

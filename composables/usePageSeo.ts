@@ -118,7 +118,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
   })
  
   const jsonLdGraph = computed(() => {
-    const baseGraph: any[] = [
+    const baseGraph: Array<Record<string, unknown>> = [
       {
         '@type': 'WebPage',
         '@id': `${canonical.value}#webpage`,
@@ -132,8 +132,8 @@ export function usePageSeo(options: PageSeoOptions = {}) {
  
     // Landing page: include WebSite + Organization as well (best practice).
     if (route.path === '/' || options.canonicalPath === '/') {
-      const email = (siteConfig as any).contactEmail as string | undefined
-      const topics = (siteConfig as any).topics as string[] | undefined
+      const email = (siteConfig as { contactEmail?: string }).contactEmail
+      const topics = (siteConfig as { topics?: string[] }).topics
 
       baseGraph.unshift(
         {

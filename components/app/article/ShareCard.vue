@@ -1,7 +1,7 @@
 <template>
   <NuxtLink
     :to="`/a/${article.id}`"
-    class="group mt-2 block overflow-hidden rounded-xl border moh-border"
+    class="group mt-2 block moh-card-frame moh-border"
     @click.stop
   >
     <!-- Thumbnail -->
@@ -16,7 +16,7 @@
           'h-full w-full object-cover transition-[filter] duration-200 ease-out group-hover:brightness-[1.08]',
           isGated ? 'scale-110 blur-xl' : '',
         ]"
-      />
+      >
       <div
         v-if="isGated"
         class="absolute inset-0 flex items-center justify-center bg-black/40"

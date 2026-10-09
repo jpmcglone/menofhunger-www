@@ -7,7 +7,7 @@ export function useUserPreview() {
 
   function cacheKeyFor(username: string) {
     const u = (username ?? '').trim().toLowerCase()
-    const authed = Boolean(user.value?.id) ? '1' : '0'
+    const authed = user.value?.id ? '1' : '0'
     return `userPreview:${u}:auth=${authed}`
   }
 

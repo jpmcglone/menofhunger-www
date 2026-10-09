@@ -3,7 +3,7 @@
     :model-value="modelValue"
     :title="header"
     body-class="p-0"
-    @update:modelValue="(v) => emit('update:modelValue', Boolean(v))"
+    @update:model-value="(v) => emit('update:modelValue', Boolean(v))"
   >
     <div v-if="error" class="p-4">
       <AppInlineAlert severity="danger">

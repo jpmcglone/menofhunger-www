@@ -84,12 +84,12 @@ describe('Header.vue social link markup guardrails', () => {
     expect(headerSrc).toContain('rel="noopener noreferrer nofollow"')
   })
 
-  it('imports buildSocialLinks', () => {
-    expect(headerSrc).toContain('buildSocialLinks')
+  it('builds its links through buildProfileHeaderLinks', () => {
+    expect(headerSrc).toContain('buildProfileHeaderLinks')
   })
 
-  it('uses v-for over socialLinks', () => {
-    expect(headerSrc).toContain('v-for="link in socialLinks"')
+  it('uses v-for over profileLinks', () => {
+    expect(headerSrc).toContain('v-for="link in profileLinks"')
   })
 })
 

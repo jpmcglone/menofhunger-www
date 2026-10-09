@@ -1,6 +1,6 @@
 import { formatCount } from '~/utils/number-format'
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
-import type { GetPresenceOnlineData, GetPresenceOnlinePageData, OnlineUser, RecentlyOnlineUser } from '~/types/api'
+import type { GetPresenceOnlineData, GetPresenceOnlinePageData, OnlineUser, PresencePagination, RecentlyOnlineUser } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { hydrateFollowRelationship } from '~/utils/follow-relationship'
 import { formatListTime } from '~/utils/time-format'
@@ -269,7 +269,7 @@ async function fetchOnlinePage() {
     recentNextCursor.value = null
   }
   try {
-    const res = await apiFetch<GetPresenceOnlinePageData>('/presence/online-page', {
+    const res = await apiFetch<GetPresenceOnlinePageData, PresencePagination>('/presence/online-page', {
       method: 'GET',
       query: {
         includeSelf: '1',
@@ -305,7 +305,7 @@ async function fetchOnlinePage() {
 
     if (viewerCanSeeLastOnline.value) {
       const recent = ((res?.data?.recent ?? []) as RecentlyOnlineUser[]).filter((u) => !u.isBot)
-      const next = (res as any)?.pagination?.recentNextCursor ?? null
+      const next = res?.pagination?.recentNextCursor ?? null
       recentUsers.value = recent
       addStatusesFromRest(recent.map((u) => u.status))
       recentNextCursor.value = typeof next === 'string' && next.trim() ? next : null

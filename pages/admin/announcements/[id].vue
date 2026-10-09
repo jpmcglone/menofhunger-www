@@ -141,6 +141,7 @@
 <script setup lang="ts">
 import type { Announcement, AnnouncementAdmin, AnnouncementPlacement } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
+import { presignedUpload } from '~/utils/put-presigned-file'
 
 definePageMeta({
   layout: 'app',
@@ -338,16 +339,7 @@ async function onCropped(file: File) {
   uploading.value = true
   error.value = ''
   try {
-    const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string> }>(
-      '/uploads/announcement-image/init',
-      { method: 'POST', body: { contentType: file.type || 'image/jpeg' } },
-    )
-    const uploadRes = await fetch(init.uploadUrl, { method: 'PUT', body: file, headers: init.headers ?? {} })
-    if (!uploadRes.ok) throw new Error('Upload failed.')
-    const commit = await apiFetchData<{ key: string }>('/uploads/announcement-image/commit', {
-      method: 'POST',
-      body: { key: init.key },
-    })
+    const commit = await presignedUpload(apiFetchData, 'announcement-image', file)
     imageKey.value = commit.key
     imagePreviewUrl.value = URL.createObjectURL(file)
   } catch (e) {

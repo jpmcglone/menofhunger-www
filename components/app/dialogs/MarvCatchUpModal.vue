@@ -265,7 +265,7 @@ const marvUser = computed(() => {
 const creditsLabel = computed(() => {
   const c = credits.value
   if (!c) return null
-  return `${formatCount(Math.floor(c.credits))} credits`
+  return `${formatCount(c.credits)} credits available`
 })
 
 const costBreakdownLabel = computed(() => {

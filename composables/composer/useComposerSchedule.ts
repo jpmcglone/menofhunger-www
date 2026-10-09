@@ -55,7 +55,7 @@ export function useComposerSchedule(opts: {
 
   function openSchedulePicker() {
     if (!opts.isPremium.value) {
-      useSchedulePremiumModal().show()
+      usePremiumUpsell().show('schedule')
       return
     }
     opts.refreshScheduledCount()

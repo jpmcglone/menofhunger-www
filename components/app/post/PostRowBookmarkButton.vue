@@ -35,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import type { OverlayPanelHandle } from '~/types/overlay-ref'
 import { userActionColor } from '~/utils/user-tier'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { usePostBookmark } from '~/composables/usePostBookmark'
@@ -55,7 +56,7 @@ const { isAuthed, user } = useAuth()
 const actionColor = computed(() => userActionColor(user.value))
 const { show: showAuthActionModal } = useAuthActionModal()
 
-const popoverRef = ref<any>(null)
+const popoverRef = ref<OverlayPanelHandle | null>(null)
 
 const bookmark = usePostBookmark({
   postId: computed(() => props.postId),
@@ -93,7 +94,7 @@ async function onButtonClick(event: Event) {
   if (result !== undefined) {
     // onClick returned the event — open the popover picker.
     bookmark.openPicker()
-    ;(popoverRef.value as any)?.toggle?.(event)
+    popoverRef.value?.toggle(event)
   }
 }
 </script>

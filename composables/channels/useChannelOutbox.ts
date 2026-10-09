@@ -2,6 +2,7 @@ import type { ChannelMessage } from '~/types/api'
 import { clearChannelDraft } from '~/utils/channels/drafts'
 import { channelPath } from '~/utils/channels/reducer'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
+import { putPresignedFile } from '~/utils/put-presigned-file'
 export type ChannelSend = { body: string; clientRequestId: string; threadRootId?: string; replyToId?: string; attachments?: Array<{ uploadId: string }>; giphy?: { url: string; mp4Url?: string; width?: number; height?: number } }
 export type ChannelOutboxEntry = { id: string; identity: string; groupId: string; channelId: string; rootId?: string; input: ChannelSend; files?: File[]; uploaded?: Record<number, string>; status: 'uploading' | 'sending' | 'failed' | 'sent'; error?: string; draftKey: string; draftRevision: string; queuedAt?: string; message?: ChannelMessage }
 export function useChannelOutbox() {
@@ -17,8 +18,7 @@ export function useChannelOutbox() {
     const path = channelPath(entry.groupId, entry.channelId)
     const ticket = await apiFetchData<{ uploadId: string; uploadUrl: string; headers: Record<string, string> }>(`${path}/uploads`, { method: 'POST', body: { bytes: file.size, contentType: file.type } })
     if (!current(entry)) return null
-    const response = await fetch(ticket.uploadUrl, { method: 'PUT', headers: ticket.headers, body: file, credentials: 'omit' })
-    if (!response.ok) throw new Error('Couldn’t upload the attachment.')
+    await putPresignedFile(ticket.uploadUrl, ticket.headers, file, { credentials: 'omit' })
     if (!current(entry)) return null
     const metadata = await mediaMetadata(file)
     const committed = await apiFetchData<{ uploadId: string }>(`${path}/uploads/${ticket.uploadId}/commit`, { method: 'POST', body: metadata })

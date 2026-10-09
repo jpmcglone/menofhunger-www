@@ -143,8 +143,8 @@ export function useSpaceReactions() {
   }
 
   function extractEmojis(text: string): string[] {
-    if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
-      const segmenter = new (Intl as any).Segmenter('en', { granularity: 'grapheme' })
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+      const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' })
       const segments: { segment: string }[] = [...segmenter.segment(text)]
       return segments.map((s) => s.segment).filter((s) => /\p{Extended_Pictographic}/u.test(s))
     }

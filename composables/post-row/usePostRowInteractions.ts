@@ -130,11 +130,7 @@ export function usePostRowInteractions(opts: {
       showAuthActionModal({ kind: 'setUsername', action: 'boost' })
       return
     }
-    try {
-      await boostState.toggleBoost(postView.value)
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to boost.')
-    }
+    await run(() => boostState.toggleBoost(postView.value), { error: 'Failed to boost.' })
   }
 
   // ── Reply ──────────────────────────────────────────────────────────────────
@@ -216,11 +212,7 @@ export function usePostRowInteractions(opts: {
   }
 
   async function onRepostMenuRepost() {
-    try {
-      await repostState.toggleRepost(postView.value)
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to repost.')
-    }
+    await run(() => repostState.toggleRepost(postView.value), { error: 'Failed to repost.' })
   }
 
   function onRepostMenuQuote() {

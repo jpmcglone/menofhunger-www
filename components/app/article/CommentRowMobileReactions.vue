@@ -22,10 +22,10 @@
       </div>
       <div v-if="isAuthed" class="relative shrink-0">
         <button
+          v-tooltip.bottom="tooltip"
           type="button"
           class="inline-flex h-8 w-8 items-center justify-center moh-text-soft transition-colors hover:text-[var(--moh-text)]"
           aria-label="Add reaction"
-          v-tooltip.bottom="tooltip"
           @click="emit('react', $event.currentTarget as HTMLElement)"
         >
           <Icon name="tabler:mood-smile" size="15" />

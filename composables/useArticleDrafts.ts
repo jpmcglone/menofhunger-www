@@ -31,8 +31,8 @@ export function useArticleDrafts(opts?: {
       const res = await apiFetch<Article[]>(`/articles/drafts?${buildParams()}`)
       drafts.value = res.data ?? []
       nextCursor.value = res.pagination?.nextCursor ?? null
-    } catch (e: any) {
-      error.value = e?.data?.meta?.errors?.[0]?.message ?? 'Failed to load drafts.'
+    } catch (e: unknown) {
+      error.value = (e as { data?: { meta?: { errors?: Array<{ message?: string }> } } } | null)?.data?.meta?.errors?.[0]?.message ?? 'Failed to load drafts.'
     } finally {
       loading.value = false
       hasLoadedOnce.value = true

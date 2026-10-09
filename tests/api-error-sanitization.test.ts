@@ -6,7 +6,14 @@
  * Backend-provided clean messages from the { meta: { errors } } envelope are preserved.
  */
 
-import { describe, expect, it, vi } from 'vitest'
+/**
+ * Tests for utils/api-error.ts sanitization.
+ *
+ * Ensures that raw technical strings (URLs, "Cannot GET /...", network errors, etc.)
+ * never leak through getApiErrorMessage or getSafeUserErrorMessage.
+ * Backend-provided clean messages from the { meta: { errors } } envelope are preserved.
+ */
+import { describe, expect, it } from 'vitest'
 import { getApiErrorMessage, getSafeUserErrorMessage } from '~/utils/api-error'
 
 describe('api error message sanitization (user-facing)', () => {

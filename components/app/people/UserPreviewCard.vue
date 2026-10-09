@@ -3,12 +3,12 @@
     <!-- Nudge overlay (top-right) -->
     <div
       v-if="showNudge"
-      class="absolute top-3 right-3 z-20"
       v-tooltip.bottom="nudgeDisabledTooltip"
+      class="absolute top-3 right-3 z-20"
     >
       <div
         v-if="nudgeAction.kind === 'nudgeBack'"
-        class="inline-flex overflow-hidden rounded-xl border moh-border"
+        class="inline-flex moh-card-frame moh-border"
         @click.stop.prevent
       >
         <Button
@@ -38,8 +38,6 @@
             <a v-bind="props.action" class="flex items-center gap-2">
               <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
               <span
-                v-bind="props.label"
-                class="flex-1"
                 v-tooltip.bottom="
                   item.value === 'ignore'
                     ? tinyTooltip(ignoreNudgeTooltip)
@@ -47,6 +45,8 @@
                       ? tinyTooltip(gotItNudgeTooltip)
                       : undefined
                 "
+                v-bind="props.label"
+                class="flex-1"
               >
                 {{ item.label }}
               </span>

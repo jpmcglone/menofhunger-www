@@ -139,7 +139,7 @@
             </div>
             <div class="flex items-center gap-2">
               <AppFormField label="Batch size" class="min-w-[10rem]">
-                <InputNumber v-model="hashtagBatchSize" :min="10" :max="5000" showButtons inputClass="w-full" />
+                <InputNumber v-model="hashtagBatchSize" :min="10" :max="5000" show-buttons input-class="w-full" />
               </AppFormField>
             </div>
           </div>
@@ -278,7 +278,7 @@
               @click="runJob('topics', 'Posts topics backfill', '/admin/jobs/posts-topics-backfill', { wipeExisting: topicsWipeExisting })"
             />
             <div class="flex items-center gap-2 pl-1">
-              <Checkbox v-model="topicsWipeExisting" binary inputId="moh-topics-wipe" />
+              <Checkbox v-model="topicsWipeExisting" binary input-id="moh-topics-wipe" />
               <label for="moh-topics-wipe" class="text-xs moh-text-muted select-none">
                 Wipe & rebuild
               </label>

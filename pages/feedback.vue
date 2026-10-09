@@ -14,8 +14,8 @@
             v-model="category"
             class="w-full"
             :options="categories"
-            optionLabel="label"
-            optionValue="value"
+            option-label="label"
+            option-value="value"
             placeholder="Select…"
           />
         </AppFormField>
@@ -32,7 +32,7 @@
         <div ref="detailsTextareaWrapEl" class="relative">
           <Textarea
             v-model="details"
-            autoResize
+            auto-resize
             rows="8"
             class="w-full"
             placeholder="What happened? What did you expect? Steps to reproduce?"
@@ -41,7 +41,7 @@
             v-bind="detailsMention.popoverProps"
             @select="detailsMention.onSelect"
             @highlight="detailsMention.onHighlight"
-            @requestClose="detailsMention.onRequestClose"
+            @request-close="detailsMention.onRequestClose"
           />
         </div>
       </AppFormField>

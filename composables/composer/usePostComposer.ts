@@ -3,9 +3,12 @@ import { siteConfig } from '~/config/site'
 import { VOICE } from '~/config/voice'
 import { destinationDraftKey } from '~/utils/channels/drafts'
 import { pollIsIncomplete } from '~/utils/composer-poll'
-import { makeLocalId, type ComposerPollPayload, type PostComposerEmit, type PostComposerProps } from './types'
+import type { ComposerPollPayload, PostComposerEmit, PostComposerProps } from './types'
 import type { CrosspostPayload } from '~/utils/crosspost'
 import { useComposerDestination } from './useComposerDestination'
+import { useComposerInitialSeed } from './useComposerInitialSeed'
+import { useComposerUnsavedGuard } from './useComposerUnsavedGuard'
+import { useComposerAttachmentActions } from './useComposerAttachmentActions'
 import { useComposerSchedule } from './useComposerSchedule'
 import { useComposerStatus } from './useComposerStatus'
 import { useComposerSubmit } from './useComposerSubmit'
@@ -18,7 +21,6 @@ export function usePostComposer(props: PostComposerProps, emit: PostComposerEmit
   const route = useRoute()
   const { user, me, isAuthed, isPremium, isVerified: viewerIsVerified, isVerifiedMember } = useAuth()
   const { apiFetchData } = useApiClient()
-  const toast = useAppToast()
   const { count: scheduledCount, increment: incScheduledCount, refresh: refreshScheduledCount } = useScheduledPostsCount()
 
   const mode = computed(() => props.mode ?? 'create')
@@ -106,7 +108,7 @@ export function usePostComposer(props: PostComposerProps, emit: PostComposerEmit
     canAcceptVideo: computed(() => Boolean(isPremium.value && !disableMedia.value && !hasPoll.value)),
     onMediaRejectedNeedPremium: () => {
       if (disableMedia.value) return
-      usePremiumMediaModal().show()
+      usePremiumUpsell().show('media')
     },
   })
   uploadingRef = media.composerUploading
@@ -225,117 +227,7 @@ export function usePostComposer(props: PostComposerProps, emit: PostComposerEmit
     source: () => 'local',
   })
 
-  const initialTextApplied = ref(false)
-  const initialFilesApplied = ref(false)
-  const initialGroupApplied = ref(false)
-  const initialPollApplied = ref(false)
-  const initialVisibilityApplied = ref(false)
-  const initialScheduledAtApplied = ref(false)
-
-  function seedInitialFilesIfNeeded() {
-    if (initialFilesApplied.value || disableMedia.value) return
-    const files = Array.isArray(props.initialFiles) ? props.initialFiles.filter(Boolean) : []
-    initialFilesApplied.value = true
-    if (!files.length) return
-    media.ingestMediaFiles(files, 'picker')
-  }
-
-  function seedInitialGroupIfNeeded() {
-    if (initialGroupApplied.value) return
-    initialGroupApplied.value = true
-    const id = (props.initialGroupId ?? '').trim()
-    if (!id || props.communityGroupId) return
-    dest.selectedGroupId.value = id
-    dest.rememberGroup(id)
-  }
-
-  function seedInitialMediaIfNeeded() {
-    if (disableMedia.value) return
-    const items = Array.isArray(props.initialMedia) ? props.initialMedia : null
-    if (!items || items.length === 0) return
-    if ((media.composerMedia.value?.length ?? 0) > 0) return
-    const seeded = items
-      .filter((m) => m && !m.deletedAt)
-      .slice(0, 4)
-      .map((m) => {
-        const isVideo = m.kind === 'video'
-        const previewUrl = isVideo ? (m.thumbnailUrl || m.url) : m.url
-        return {
-          localId: makeLocalId(),
-          source: m.source,
-          kind: m.kind,
-          previewUrl,
-          url: m.source === 'giphy' ? m.url : undefined,
-          mp4Url: m.mp4Url ?? undefined,
-          width: m.width ?? null,
-          height: m.height ?? null,
-          durationSeconds: (m as { durationSeconds?: number | null }).durationSeconds ?? null,
-          altText: m.alt ?? null,
-          existingId: m.id,
-          uploadStatus: 'done' as const,
-        }
-      })
-    media.composerMedia.value = seeded as typeof media.composerMedia.value
-  }
-
-  function applyInitialTextIfNeeded() {
-    if (initialTextApplied.value) return
-    const t = (props.initialText ?? '').toString()
-    if (!t.trim()) {
-      initialTextApplied.value = true
-      return
-    }
-    if (!draft.value) draft.value = t
-    initialTextApplied.value = true
-  }
-
-  function seedInitialPollIfNeeded() {
-    if (initialPollApplied.value) return
-    const src = props.initialPoll
-    if (!src || !src.options?.length) {
-      initialPollApplied.value = true
-      return
-    }
-    if (poll.value) {
-      initialPollApplied.value = true
-      return
-    }
-    const h = src.durationHours ?? 24
-    poll.value = {
-      options: src.options.map((o) => ({ text: o.text, image: null })),
-      duration: { days: Math.floor(h / 24), hours: h % 24, minutes: 0 },
-    }
-    initialPollApplied.value = true
-  }
-
-  function seedInitialVisibilityIfNeeded() {
-    if (initialVisibilityApplied.value) return
-    const v = props.initialVisibility
-    if (!v) {
-      initialVisibilityApplied.value = true
-      return
-    }
-    if (!props.lockedVisibility) dest.visibility.value = v
-    initialVisibilityApplied.value = true
-  }
-
-  function seedInitialScheduledAtIfNeeded() {
-    if (initialScheduledAtApplied.value) return
-    const s = props.initialScheduledAt
-    if (!s) {
-      initialScheduledAtApplied.value = true
-      return
-    }
-    const d = new Date(s)
-    if (isNaN(d.getTime())) {
-      initialScheduledAtApplied.value = true
-      return
-    }
-    schedule.scheduledAt.value = d
-    schedule.rememberPickedSchedule(d)
-    initialScheduledAtApplied.value = true
-  }
-
+  const { applyInitialTextIfNeeded, seedInitialMediaIfNeeded, seedAll: seedInitialState } = useComposerInitialSeed(props, { draft, poll, disableMedia, media, dest, schedule })
   function handoffToChat() {
     const files = media.composerMedia.value
       .map((item) => item.file)
@@ -343,48 +235,7 @@ export function usePostComposer(props: PostComposerProps, emit: PostComposerEmit
     emit('handoff-chat', { body: draft.value, files })
   }
 
-  function onClickAddMedia() {
-    if (disableMedia.value) return
-    if (hasPoll.value) return
-    if (!viewerIsVerified.value) {
-      toast.push({ title: 'Verify your account to post images and GIFs', to: '/tiers', durationMs: 3000 })
-      return
-    }
-    media.openMediaPicker()
-  }
-
-  function onClickAddGiphy() {
-    if (disableMedia.value) return
-    if (hasPoll.value) return
-    if (!viewerIsVerified.value) {
-      toast.push({ title: 'Verify your account to use GIF search', to: '/tiers', durationMs: 3000 })
-      return
-    }
-    media.openGiphyPicker()
-  }
-
-  function onUpdatePoll(v: ComposerPollPayload) {
-    poll.value = v
-  }
-
-  function onClickAddPoll() {
-    if (disableMedia.value) return
-    if (props.replyTo) return
-    if (hasPoll.value) return
-    if (!viewerIsVerified.value) {
-      toast.push({ title: 'Verify your account to create polls', to: '/tiers', durationMs: 3000 })
-      return
-    }
-    if (media.composerMedia.value.length > 0) return
-    poll.value = {
-      options: [
-        { text: '', image: null },
-        { text: '', image: null },
-      ],
-      duration: { days: 1, hours: 0, minutes: 0 },
-    }
-  }
-
+  const { onClickAddMedia, onClickAddGiphy, onUpdatePoll, onClickAddPoll } = useComposerAttachmentActions(props, { poll, hasPoll, disableMedia, viewerIsVerified, media })
   function onDraftChange(value: string) {
     draft.value = value
   }
@@ -419,27 +270,12 @@ export function usePostComposer(props: PostComposerProps, emit: PostComposerEmit
   }
 
   const draftText = computed(() => draft.value)
-  const shouldRegisterUnsavedGuard = computed(() =>
-    props.registerUnsavedGuard !== false && mode.value === 'create',
-  )
-  let unregisterUnsavedGuard: (() => void) | null = null
-  const unsavedGuardId =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? `composer:${crypto.randomUUID()}`
-      : `composer:${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
-
-  function registerUnsavedGuardIfNeeded() {
-    if (!import.meta.client) return
-    if (!shouldRegisterUnsavedGuard.value) return
-    if (unregisterUnsavedGuard) return
-    const { register } = useUnsavedDraftGuard()
-    unregisterUnsavedGuard = register({
-      id: unsavedGuardId,
-      hasUnsaved: () => Boolean(hasUnsavedContent.value) && (!persistKey.value || !destinationDrafts.saved.value),
-      snapshot: () => draftSnapshot(),
-      clear: () => clearComposer(),
-    })
-  }
+  const { registerUnsavedGuardIfNeeded } = useComposerUnsavedGuard({
+    enabled: computed(() => props.registerUnsavedGuard !== false && mode.value === 'create'),
+    hasUnsaved: () => Boolean(hasUnsavedContent.value) && (!persistKey.value || !destinationDrafts.saved.value),
+    snapshot: () => draftSnapshot(),
+    clear: () => clearComposer(),
+  })
 
   onMounted(() => {
     registerUnsavedGuardIfNeeded()
@@ -448,24 +284,13 @@ export function usePostComposer(props: PostComposerProps, emit: PostComposerEmit
       if (!submitApi.xIntegration.status.value) void submitApi.xIntegration.refresh()
     }
     if (isAuthed.value && !props.communityGroupId) dest.loadMyGroups()
-    applyInitialTextIfNeeded()
-    seedInitialMediaIfNeeded()
-    seedInitialFilesIfNeeded()
-    seedInitialGroupIfNeeded()
-    seedInitialPollIfNeeded()
-    seedInitialVisibilityIfNeeded()
-    seedInitialScheduledAtIfNeeded()
+    seedInitialState()
   })
 
   onActivated(() => {
     registerUnsavedGuardIfNeeded()
     void destinationDrafts.persist()
     if (isAuthed.value && !props.communityGroupId) void dest.loadMyGroups()
-  })
-
-  onBeforeUnmount(() => {
-    unregisterUnsavedGuard?.()
-    unregisterUnsavedGuard = null
   })
 
   watch(() => props.initialText, () => { applyInitialTextIfNeeded() })

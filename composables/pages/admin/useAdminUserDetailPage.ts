@@ -1,5 +1,4 @@
 import { getApiErrorMessage } from '~/utils/api-error'
-import { formatDateTime } from '~/utils/time-format'
 import { APP_FEATURE_TOGGLE_OPTIONS, type AppFeatureToggle } from '~/config/app-feature-toggles'
 import { articleVisibilityBarClass, articleVisibilityHoverClass } from '~/utils/article-visibility'
 import { avatarRoundClass as getAvatarRoundClass } from '~/utils/avatar-rounding'

@@ -72,7 +72,7 @@
 
 <script setup lang="ts">
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
-import type { DailyContentToday, DailyQuote } from '~/types/api'
+import type { DailyQuote, WsNotificationsNewPayload } from '~/types/api'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 import { siteConfig } from '~/config/site'
 
@@ -90,13 +90,13 @@ const { data: dailyContent, refresh: refreshDailyContent } = await useDailyConte
 const ogTitle = computed(() => {
   const q = dailyContent.value?.quote
   if (!q) return 'Quote of the Day'
-  const attr = formatDailyQuoteAttribution(q as any)
+  const attr = formatDailyQuoteAttribution(q)
   return `"${q.text.slice(0, 60)}${q.text.length > 60 ? '…' : ''}" — ${attr}`
 })
 const ogDescription = computed(() => {
   const q = dailyContent.value?.quote
   if (!q) return `Daily wisdom and scripture, brought to you by ${siteConfig.name}.`
-  const attr = formatDailyQuoteAttribution(q as any)
+  const attr = formatDailyQuoteAttribution(q)
   return `${q.text} — ${attr}`
 })
 
@@ -132,7 +132,7 @@ async function onQuotePublished() {
 
 // Refetch and clear the notification when a new quote_of_the_day notification arrives.
 const notificationsCb = {
-  onNew: (payload: any) => {
+  onNew: (payload: WsNotificationsNewPayload) => {
     if (payload?.notification?.kind === 'quote_of_the_day') {
       void onQuotePublished()
     }
@@ -159,7 +159,7 @@ if (import.meta.client) {
 
 const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
 const attribution = computed(() =>
-  dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value as any) : '',
+  dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value) : '',
 )
 
 // For scripture kind, tradition is already part of attribution via formatDailyQuoteAttribution.

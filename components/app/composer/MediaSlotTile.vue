@@ -35,7 +35,7 @@
             :alt="slot.item!.altText ?? ''"
             loading="lazy"
             draggable="false"
-          />
+          >
           <button
             type="button"
             class="absolute -right-2 -top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-zinc-800 dark:bg-black dark:text-gray-200 dark:hover:bg-zinc-900"

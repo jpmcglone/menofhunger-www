@@ -9,7 +9,6 @@
  * Only deletions and ordering/insertion changes are handled per-feed in their
  * own callbacks; content patches (counts, body, flags) all flow through here.
  */
-import { applyLiveUpdatedPatch, applyInteractionPatch } from '~/utils/feed-patch'
 
 export default defineNuxtPlugin(() => {
   const { addPostsCallback, removePostsCallback } = usePresence()

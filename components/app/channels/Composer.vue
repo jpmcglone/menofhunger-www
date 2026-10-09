@@ -35,7 +35,7 @@ import { CHANNEL_MAX_ATTACHMENTS, destinationDraftKey, loadChannelDraft, saveCha
 import { useChannelOutbox } from '~/composables/channels/useChannelOutbox'
 import { useVoiceRecorder } from '~/composables/chat/useVoiceRecorder'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
-import { formatBytes } from '~/utils/channels/format'
+import { formatBytes } from '~/utils/number-format'
 type Mention = { user: { id: string; username: string | null; name: string | null } }
 const props = defineProps<{ group: CommunityGroupShell; channel: GroupChannel; rootId?: string; replyTo?: ChannelMessage | null }>()
 const emit = defineEmits<{ 'clear-reply': [] }>()

@@ -63,7 +63,7 @@
                 placeholder="What are you up to?"
                 class="mt-4 min-h-28 w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-3 text-base leading-6 text-gray-900 outline-none transition-shadow placeholder:text-gray-400 focus:ring-2 focus:ring-black/20 dark:border-white/10 dark:bg-[color:var(--moh-surface-1)] dark:text-gray-50 dark:placeholder:text-gray-500 dark:focus:ring-white/20"
                 @input="onInput"
-              ></textarea>
+              />
 
               <!-- Duration chips + post toggle — only for new or replace -->
               <template v-if="!activeStatus || isReplacing">

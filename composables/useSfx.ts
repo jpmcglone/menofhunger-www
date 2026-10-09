@@ -1,13 +1,13 @@
+import { getAudioContextCtor } from '~/utils/audio-context'
 type DecodeAudioData = (arrayBuffer: ArrayBuffer) => Promise<AudioBuffer>
 
 function getDecodeAudioData(ctx: AudioContext): DecodeAudioData {
   // Safari historically used a callback-style decodeAudioData.
   return async (arrayBuffer: ArrayBuffer) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const maybePromise = (ctx.decodeAudioData as any)(arrayBuffer)
-      if (maybePromise && typeof (maybePromise as any).then === 'function') {
-        return await maybePromise
+      const maybePromise = (ctx as { decodeAudioData: (b: ArrayBuffer) => unknown }).decodeAudioData(arrayBuffer)
+      if (maybePromise && typeof (maybePromise as PromiseLike<unknown>).then === 'function') {
+        return await (maybePromise as Promise<AudioBuffer>)
       }
     } catch {
       // fall through to callback version
@@ -32,7 +32,7 @@ const arrayBufferCache = new Map<string, ArrayBuffer>()
 function hasUserActivation(): boolean {
   if (!import.meta.client) return false
   // Chrome/Edge/Safari: user activation API (not universally supported).
-  const ua = (navigator as any)?.userActivation
+  const ua = navigator?.userActivation
   if (ua && typeof ua.hasBeenActive === 'boolean') return Boolean(ua.hasBeenActive)
   return sawUserGesture
 }
@@ -40,7 +40,7 @@ function hasUserActivation(): boolean {
 function getAudioContext(): AudioContext | null {
   if (!import.meta.client || typeof window === 'undefined') return null
   if (audioCtx) return audioCtx
-  const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext
+  const Ctx = getAudioContextCtor()
   if (!Ctx) return null
   audioCtx = new Ctx({ latencyHint: 'interactive' })
   decodeAudioDataFn = getDecodeAudioData(audioCtx as AudioContext)
@@ -50,7 +50,7 @@ function getAudioContext(): AudioContext | null {
 async function ensureUnlocked(): Promise<boolean> {
   const ctx = getAudioContext()
   if (!ctx) return false
-  const state = ((ctx as any).state ?? '') as string
+  const state = ctx.state as string
   if (state === 'running') return true
   // Avoid calling `resume()` before a user gesture; Chrome will log a warning even if we catch.
   if (!hasUserActivation()) return false
@@ -59,7 +59,7 @@ async function ensureUnlocked(): Promise<boolean> {
   } catch {
     // ignore
   }
-  const nextState = ((ctx as any).state ?? '') as string
+  const nextState = ctx.state as string
   return nextState === 'running'
 }
 

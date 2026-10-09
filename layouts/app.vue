@@ -70,33 +70,7 @@
                 <!-- Email verification banner should sit ABOVE the title bar (when title bar is shown). -->
                 <AppLayoutEmailUnverifiedBanner />
 
-                <div class="border-b moh-border">
-                  <AppTitleBar>
-                    <div class="flex items-center justify-between gap-3">
-                      <div class="min-w-0 flex items-center gap-2">
-                        <AppGroupsGroupAvatar v-if="hydrated && appHeader?.group" :name="appHeader.group.name" :src="appHeader.group.avatarUrl" :size="32" />
-                        <Icon v-else-if="headerIcon" :name="headerIcon" class="text-xl shrink-0 opacity-80" aria-hidden="true" />
-                        <h1 class="min-w-0 truncate moh-h1">
-                          {{ headerTitle }}
-                        </h1>
-                        <AppVerifiedBadge
-                          v-if="hydrated && appHeader?.verifiedStatus"
-                          :status="appHeader.verifiedStatus"
-                          :premium="Boolean(appHeader?.premium)"
-                          :premium-plus="Boolean(appHeader?.premiumPlus)"
-                          :is-organization="Boolean((appHeader as any)?.isOrganization)"
-                        />
-                      </div>
-                      <div v-if="hydrated && typeof appHeader?.postCount === 'number'" class="shrink-0 moh-meta">
-                        <span class="font-semibold tabular-nums">{{ formatCompactNumber(appHeader.postCount) }}</span>
-                        <span class="ml-1">posts</span>
-                      </div>
-                    </div>
-                    <p v-if="headerDescription" class="moh-meta truncate">
-                      {{ headerDescription }}
-                    </p>
-                  </AppTitleBar>
-                </div>
+                <AppLayoutTitleBarHeader :route-title="title" />
               </div>
 
               <!-- hideTopBar pages own their sticky header. The day line scrolls away
@@ -134,47 +108,13 @@
             </div>
             </div>
 
-            <!-- Mobile bottom chrome lives inside the center column (no fixed overlap). -->
-            <!-- Radio sits above tab bar when playing. -->
-            <!-- max-h collapses the wrapper to 0 when the keyboard is open, eliminating the    -->
-            <!-- blank gap that translate-only leaves behind (transforms don't affect layout).  -->
-            <!-- overflow-hidden only while collapsing (keyboard open) so stray scrollbars
-                 don't appear; overflow-visible otherwise so radio avatar glow can paint. -->
-            <!-- inert removes the hidden chrome from tab order + screen readers.               -->
-            <div
-              v-if="!anyOverlayOpen"
-              class="md:hidden shrink-0 transition-[max-height] duration-200 ease-out motion-reduce:transition-none"
-              :class="isKeyboardOpen ? 'max-h-0 overflow-hidden' : 'max-h-36 overflow-visible'"
-              :aria-hidden="isKeyboardOpen || undefined"
-              :inert="isKeyboardOpen || undefined"
-            >
-              <Transition
-                enter-active-class="transition-[opacity,transform] duration-200 ease-out"
-                enter-from-class="opacity-0 translate-y-[30px]"
-                enter-to-class="opacity-100 translate-y-0"
-                leave-active-class="transition-[opacity,transform] duration-150 ease-in"
-                leave-from-class="opacity-100 translate-y-0"
-                leave-to-class="opacity-0 translate-y-[30px]"
-                @before-enter="() => { radioChromePadActive = true }"
-                @before-leave="() => { radioChromePadActive = true }"
-                @after-leave="() => { radioChromePadActive = false }"
-              >
-                <div
-                  v-show="radioHasStation"
-                  id="moh-radio-mobile"
-                  class="moh-radio-bar dark relative z-0 flex items-center border-t border-zinc-800 bg-black text-white"
-                  :style="{ minHeight: 'var(--moh-radio-bar-height, 4rem)' }"
-                >
-                  <div class="w-full">
-                    <!-- AppRadioBar teleports here on mobile -->
-                  </div>
-                </div>
-              </Transition>
-
-              <div class="relative z-10">
-                <AppTabBar :items="tabItems" />
-              </div>
-            </div>
+            <AppLayoutMobileBottomChrome
+              v-model:pad-active="radioChromePadActive"
+              :any-overlay-open="anyOverlayOpen"
+              :is-keyboard-open="isKeyboardOpen"
+              :radio-has-station="radioHasStation"
+              :tab-items="tabItems"
+            />
 
             <!-- Radio player row: bottom of the middle column on desktop only. -->
             <div
@@ -201,62 +141,19 @@
       </div>
     </div>
 
-    <!-- Right-rail search (collapses on Explore). Floating over the entire layout (desktop only). -->
-    <div
-      v-if="!isRightRailForcedHidden"
-      aria-label="Right rail search"
-      :class="[
-        // Fixed overlay aligned with the same max-width container as the columns.
-        // Match the right rail breakpoint (right rail is hidden below ~962px).
-        'hidden min-[962px]:block fixed left-0 right-0 top-0 z-40 pointer-events-none',
-        'transition-opacity duration-200 ease-out',
-        hideRightRailSearch ? 'opacity-0 pointer-events-none' : 'opacity-100'
-      ]"
-    >
-      <div class="mx-auto w-full max-w-6xl xl:max-w-7xl flex justify-end">
-        <div
-          :class="[
-            'pointer-events-auto border-b moh-border moh-bg moh-texture',
-            'transition-[width] duration-200 ease-out motion-reduce:transition-none',
-            showRadioChat ? 'w-[var(--moh-right-rail-chat-w)]' : 'w-[var(--moh-right-rail-w)]',
-          ]"
-        >
-          <div class="moh-gutter-x h-16 flex items-center">
-            <AppSearchTypeahead
-              ref="searchInputRef"
-              v-model="rightRailSearchQuery"
-              placeholder="Search…"
-              :pill="true"
-              @submit="goToExploreSearch"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    <AppLayoutRightRailSearch
+      ref="rightRailSearchRef"
+      :forced-hidden="isRightRailForcedHidden"
+      :hide-search="hideRightRailSearch"
+      :show-radio-chat="showRadioChat"
+    />
 
-    <!-- Mobile FAB: above tab bar and radio (when radio is up). -->
-    <Transition
-      enter-active-class="transition-opacity duration-200 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-150 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <button
-        v-if="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer && !anyOverlayOpen && !isKeyboardOpen"
-        type="button"
-        aria-label="New post"
-        :class="[
-          'moh-pressable md:hidden fixed right-4 z-[60] flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-lg hover:opacity-95 moh-focus-strong',
-          fabButtonClass,
-        ]"
-        :style="fabBottomStyle"
-        @click="openComposerForCurrentRoute()"
-      >
-        <Icon name="tabler:plus" class="text-3xl" aria-hidden="true" />
-      </button>
-    </Transition>
+    <AppLayoutComposerFab
+      :visible="canOpenComposer && isComposerEntrypointRoute && !hideFabForHomeComposer && !anyOverlayOpen && !isKeyboardOpen"
+      :button-class="fabButtonClass"
+      :bottom-style="fabBottomStyle"
+      @open="openComposerForCurrentRoute()"
+    />
 
     <!-- Composer modal + post-checkin share dialog. -->
     <AppLayoutComposerModalOverlay :composer="composer" />
@@ -271,19 +168,18 @@
 </template>
 
 <script setup lang="ts">
-import { formatCompact } from '~/utils/number-format'
-import { siteConfig } from '~/config/site'
-import { primaryTintCssForUser } from '~/utils/theme-tint'
 import {
   MOH_FOCUS_HOME_COMPOSER_KEY,
-  MOH_MIDDLE_SCROLLER_KEY,
 } from '~/utils/injection-keys'
-import { useBookmarkCollections } from '~/composables/useBookmarkCollections'
 import { useKeyboardPinnedFixedStyle } from '~/composables/useKeyboardHeight'
 import { useEnsureFocusedInputVisible } from '~/composables/useEnsureFocusedInputVisible'
-import { routeHeaderDefaultsFor, isAdminPath, isSettingsPath } from '~/config/routes'
+import { isAdminPath, isSettingsPath } from '~/config/routes'
 import { personOnlyFeatureForPath } from '~/utils/person-only-routes'
 import { useAppLayoutComposer } from '~/composables/layout/useAppLayoutComposer'
+import { useAppLayoutRadio } from '~/composables/layout/useAppLayoutRadio'
+import { useAppLayoutRadioChat } from '~/composables/layout/useAppLayoutRadioChat'
+import { useAppLayoutScrollers } from '~/composables/layout/useAppLayoutScrollers'
+import { useAppLayoutSession } from '~/composables/layout/useAppLayoutSession'
 import AppLayoutGlobalOverlays from '~/components/app/layout/GlobalOverlays.vue'
 import AppLayoutConnectionBanners from '~/components/app/layout/ConnectionBanners.vue'
 import AppLayoutDayBanner from '~/components/app/layout/DayBanner.vue'
@@ -301,19 +197,17 @@ const safariThemeColor = computed(() => (colorMode.value === 'dark' ? '#0F1113' 
 useHead({
   meta: [{ key: 'moh-theme-color', name: 'theme-color', content: safariThemeColor }],
 })
-const { initAuth, user, isPageAccount } = useAuth()
+const { initAuth, isPageAccount } = useAuth()
 const personOnlyBlockedFeature = computed(() =>
   isPageAccount.value ? personOnlyFeatureForPath(route.path) : null,
 )
-const { isAuthed, tabItems } = useAppNav()
-const attention = useAttentionTotals()
+const { tabItems } = useAppNav()
 const badgeHydration = useBadgeHydration()
 
 // App icon badge (PWA): notifications + chat unread. Works on Android/Chrome; no-op on iOS.
 useAppIconBadge()
 useChannelSounds()
 useGroupChannelBadgeSync()
-const currentGroup = useCurrentGroup()
 
 const { hideTopBar, navCompactMode: _navCompactModeBase, isRightRailForcedHidden: _isRightRailForcedHiddenBase, isRightRailSearchHidden, title } = useLayoutRules(route)
 const isMessagesPage = computed(() => route.path === '/chat')
@@ -344,18 +238,6 @@ const {
   isKeyboardOpen,
 } = useKeyboardPinnedFixedStyle()
 /** Mobile bottom chrome slides away whenever the software keyboard is open. */
-
-const { header: appHeader } = useAppHeader()
-// Prevent SSR hydration mismatches: render route meta during hydration, then swap to appHeader after mount.
-const hydrated = ref(false)
-onMounted(() => {
-  hydrated.value = true
-})
-const {
-  loaded: bookmarksLoaded,
-  loading: bookmarksLoading,
-  ensureLoaded: ensureBookmarkCollectionsLoaded,
-} = useBookmarkCollections()
 
 // ── Composer surface (modal state, entry points, provides) ────────────────────
 
@@ -391,48 +273,7 @@ const fabBottomStyle = computed<Record<string, string>>(() => {
 })
 
 // ── Spaces / radio chrome ─────────────────────────────────────────────────────
-
-const { selectedSpaceId, currentSpace, loadLobbyCounts, subscribeLobbyCounts, unsubscribeLobbyCounts } = useSpaceLobby()
-const radioHasStation = computed(() => Boolean(selectedSpaceId.value && currentSpace.value))
-const radioTeleportTarget = ref<string | null>(null)
-
-function syncRadioTeleportTarget() {
-  if (!import.meta.client) {
-    radioTeleportTarget.value = null
-    return
-  }
-  const md = window.matchMedia('(min-width: 768px)').matches
-  radioTeleportTarget.value = md ? '#moh-radio-desktop > div' : '#moh-radio-mobile > div'
-}
-
-watch(
-  () => Boolean(user.value?.id),
-  (authed, wasAuthed) => {
-    if (!import.meta.client) return
-    if (authed) {
-      void loadLobbyCounts()
-      void subscribeLobbyCounts()
-      return
-    }
-    if (wasAuthed) {
-      unsubscribeLobbyCounts()
-    }
-  },
-  { immediate: true },
-)
-
-watch(radioHasStation, (on) => {
-  if (on) nextTick(() => syncRadioTeleportTarget())
-}, { immediate: true })
-
-onMounted(() => {
-  syncRadioTeleportTarget()
-  const mq = window.matchMedia('(min-width: 768px)')
-  const onChange = () => syncRadioTeleportTarget()
-  mq.addEventListener('change', onChange)
-  onBeforeUnmount(() => mq.removeEventListener('change', onChange))
-})
-useSpacePlayPauseShortcut(radioHasStation)
+const { radioHasStation, radioTeleportTarget, radioChromePadActive } = useAppLayoutRadio()
 
 // Compact the left nav on space-hungry routes, and whenever the viewer is in a space
 // (live chat takes the right rail; icon-only nav frees the rest for the player/feed).
@@ -440,7 +281,7 @@ const isSettingsOrAdminPage = computed(() => isSettingsPath(route.path) || isAdm
 const navCompactMode = computed(() => _navCompactModeBase.value || radioHasStation.value || !!groupTabsView.value)
 
 // Global keyboard shortcuts
-const searchInputRef = ref<{ focus: () => void } | null>(null)
+const rightRailSearchRef = ref<{ focus: () => void } | null>(null)
 const focusHomeComposer = inject(MOH_FOCUS_HOME_COMPOSER_KEY, null)
 useKeyboardShortcutsHandler({
   openComposer: () => {
@@ -453,7 +294,7 @@ useKeyboardShortcutsHandler({
     }
   },
   focusSearch: () => {
-    searchInputRef.value?.focus()
+    rightRailSearchRef.value?.focus()
   },
 })
 
@@ -476,101 +317,9 @@ const { recommendationsDisplayed: railRecommendationsDisplayed } = useRailContex
 watchEffect(() => {
   railRecommendationsDisplayed.value = isRightRailVisible.value && !showRadioChat.value
 })
-// Keep space chat subscription alive while a space is selected (even when not on /spaces).
-useSpaceLiveChat()
-
-// Mobile bottom-sheet chat
-const radioChatSheetOpen = useState<boolean>('space-chat-sheet-open', () => false)
-const radioChat = useSpaceLiveChat({ passive: true })
-watch(
-  () => radioHasStation.value,
-  (has) => {
-    if (!has) radioChatSheetOpen.value = false
-  },
-  { immediate: true },
-)
-watch(
-  () => showRadioChat.value,
-  (show) => {
-    // If the right-rail live chat is visible again (e.g., resized back up),
-    // ensure the overlay is dismissed and doesn't auto-show next time.
-    if (show) radioChatSheetOpen.value = false
-  },
-  { immediate: true },
-)
-
-// ── Live-chat unread badge ────────────────────────────────────────────────────
-// Count non-system, non-self messages that arrive while the chat panel is either
-// not mounted (mobile modal closed) or not scrolled to the bottom.
-// When the panel IS visible and at the bottom it handles its own clear; we
-// only increment here for the "panel not showing" case to avoid double-counting.
-const { chatPanelVisible, chatAtBottom, clearUnread: clearChatUnread, incrementUnread: incrementChatUnread } = useSpaceChatUnread()
-
-let lastKnownChatMsgCount = 0
-watch(
-  () => radioChat.messages.value,
-  (msgs, prevMsgs) => {
-    if (!import.meta.client) return
-    const len = msgs.length
-    const prevLen = prevMsgs?.length ?? lastKnownChatMsgCount
-    lastKnownChatMsgCount = len
-    if (len <= prevLen) return
-    const newMsgs = msgs.slice(prevLen)
-    // Only count when the panel isn't already showing the messages at the bottom.
-    if (chatPanelVisible.value && chatAtBottom.value) return
-    const countable = newMsgs.filter(
-      (m) => m.kind === 'user' && m.sender?.id !== user.value?.id,
-    ).length
-    if (countable > 0) incrementChatUnread(countable)
-  },
-)
-
-// Reset the count whenever the selected space changes.
-watch(
-  () => radioChat.spaceId.value,
-  (_next, prev) => {
-    if (prev !== undefined) clearChatUnread()
-  },
-)
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Keep bottom spacing stable while the radio animates out.
-const radioChromePadActive = ref(false)
-watch(
-  () => radioHasStation.value,
-  (has) => {
-    if (has) radioChromePadActive.value = true
-  },
-  { immediate: true },
-)
+useAppLayoutRadioChat({ radioHasStation, showRadioChat })
 
 // ── Header ────────────────────────────────────────────────────────────────────
-
-const headerTitle = computed(() => {
-  // During SSR + initial hydration, prefer route meta title for stable markup.
-  if (!hydrated.value) return title.value
-  // Moving between a group's Channels and Posts must not flash a generic title.
-  if (currentGroup.value) return currentGroup.value.name
-  const t = (appHeader.value?.title ?? '').trim()
-  return t || title.value
-})
-
-const headerIcon = computed(() => (hydrated.value ? (appHeader.value?.icon ?? routeHeaderDefaults.value.icon) : routeHeaderDefaults.value.icon))
-const headerDescription = computed(() =>
-  hydrated.value ? (appHeader.value?.description ?? routeHeaderDefaults.value.description) : routeHeaderDefaults.value.description
-)
-
-const routeHeaderDefaults = computed(() => {
-  return routeHeaderDefaultsFor(route.path)
-})
-
-function formatCompactNumber(n: number): string {
-  try {
-    return formatCompact(n)
-  } catch {
-    return String(n)
-  }
-}
 
 // Centralized auth hydration lives in `useAuth()`.
 // Some app-layout routes (e.g. /home) intentionally allow logged-out access and skip auth middleware checks.
@@ -583,305 +332,17 @@ if (import.meta.server) {
 }
 // nav items are provided by useAppNav() so mobile + desktop stay in sync
 
-// Rebind web push whenever the active identity changes (login or account switch).
-watch(
-  () => user.value?.id ?? null,
-  (id) => {
-    if (!id || !import.meta.client) return
-    const push = usePushNotifications()
-    void push.ensureSubscribedWhenGranted()
-  },
-  { immediate: true },
-)
-
-function canLoadBookmarkCollections() {
-  if (!isAuthed.value) return false
-  const status = user.value?.verifiedStatus
-  return status === 'identity' || status === 'manual'
-}
-
-function maybeRetryBookmarkCollections() {
-  if (!import.meta.client) return
-  if (!canLoadBookmarkCollections()) return
-  // If we haven't loaded yet (or last attempt errored), retry.
-  if (!bookmarksLoaded.value && !bookmarksLoading.value) {
-    void ensureBookmarkCollectionsLoaded({ force: true })
-  }
-}
-
-watch(
-  () => [isAuthed.value, user.value?.verifiedStatus] as const,
-  () => {
-    if (!import.meta.client) return
-    if (!canLoadBookmarkCollections()) return
-    // Force once when the user can access folders (verified). Avoids 403s during onboarding.
-    void ensureBookmarkCollectionsLoaded({ force: true })
-  },
-  { immediate: true },
-)
-
-onMounted(() => {
-  window.addEventListener('focus', maybeRetryBookmarkCollections)
-  document.addEventListener('visibilitychange', maybeRetryBookmarkCollections)
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('focus', maybeRetryBookmarkCollections)
-  document.removeEventListener('visibilitychange', maybeRetryBookmarkCollections)
-})
-
-if (import.meta.client) {
-  watchEffect(() => {
-    // Counted activity shows its number; countless activity (a dot) shows (*). Both clear together.
-    const prefix = attention.totalCount.value > 0 ? `(${attention.totalLabel.value}) ` : attention.hasAnyDot.value ? '(*) ' : ''
-    useHead({
-      titleTemplate: (title) => `${prefix}${title || siteConfig.meta.title}`,
-    })
-  })
-}
-
-// Dynamic theme tint: default (orange) for logged out/unverified, verified = blue, premium = orange.
-// We override PrimeVue semantic primary tokens via CSS variables so the entire UI tint follows status.
-const primaryCssVars = computed(() => primaryTintCssForUser(user.value ?? null))
-useHead({
-  style: [{ key: 'moh-primary-tint', textContent: primaryCssVars }],
-})
-
-// ── Right-rail search ─────────────────────────────────────────────────────────
-
-const rightRailSearchQuery = ref('')
-function goToExploreSearch(q?: string) {
-  const query = (q ?? rightRailSearchQuery.value ?? '').trim()
-  // Empty Enter still opens Explore — just without a prefilled query.
-  if (!query) {
-    void navigateTo({ path: '/explore' })
-    return
-  }
-  void navigateTo({ path: '/explore', query: { q: query } })
-}
-watch(
-  [() => route.path, () => route.query.q],
-  () => {
-    if (route.path === '/explore' && route.query.q != null) {
-      rightRailSearchQuery.value = String(route.query.q).trim()
-    }
-  },
-  { immediate: true },
-)
+useAppLayoutSession()
 
 // ── Scrollers + title bar height ──────────────────────────────────────────────
-
-const titleBarEl = ref<HTMLElement | null>(null)
-const pinnedBannerEl = ref<HTMLElement | null>(null)
-const layoutViewportEl = ref<HTMLElement | null>(null)
-const leftRailRef = ref<{ el: HTMLElement | null } | null>(null)
-const rightRailRef = ref<{ el: HTMLElement | null } | null>(null)
-const leftRailEl = computed(() => leftRailRef.value?.el ?? null)
-const rightRailEl = computed(() => rightRailRef.value?.el ?? null)
-
-provide(MOH_MIDDLE_SCROLLER_KEY, middleScrollerEl)
-
-function updateTitleBarHeightVar() {
-  if (!import.meta.client) return
-  const main = middleScrollerEl.value
-  const bar = titleBarEl.value
-  if (!main) return
-  if (!hideTopBar.value && bar) {
-    main.style.setProperty('--moh-title-bar-height', `${bar.offsetHeight}px`)
-  } else if (hideTopBar.value) {
-    // Status banners only. The day line scrolls away and is not part of this offset.
-    const pinned = pinnedBannerEl.value?.offsetHeight ?? 0
-    main.style.setProperty('--moh-title-bar-height', `${pinned}px`)
-  } else {
-    main.style.setProperty('--moh-title-bar-height', '0px')
-  }
-  updateToastClearanceVar()
-}
-
-/** Toast stack is teleported to body — publish clearance on :root so it can see it. */
-function updateToastClearanceVar() {
-  if (!import.meta.client) return
-  let clearancePx = 0
-  if (!hideTopBar.value && titleBarEl.value) {
-    clearancePx = titleBarEl.value.offsetHeight
-  } else {
-    // hideTopBar routes often have their own sticky header (home avatar bar, etc.).
-    // Prefer an explicit anchor; otherwise clear a typical toolbar band so toasts
-    // don't sit on top of chrome.
-    const anchor = middleScrollerEl.value?.querySelector(
-      '[data-moh-toast-anchor]',
-    ) as HTMLElement | null
-    if (anchor) {
-      clearancePx = Math.max(0, Math.round(anchor.getBoundingClientRect().bottom))
-    } else {
-      clearancePx = 56
-    }
-  }
-  document.documentElement.style.setProperty('--moh-toast-clearance', `${clearancePx}px`)
-}
-watch([titleBarEl, pinnedBannerEl, hideTopBar, () => route.path], () => {
-  nextTick(() => {
-    updateTitleBarHeightVar()
-    updateToastClearanceVar()
-  })
-}, { immediate: true })
-
-let titleBarRo: ResizeObserver | null = null
-watch(
-  [titleBarEl, pinnedBannerEl],
-  (elements) => {
-    if (!import.meta.client) return
-    titleBarRo?.disconnect()
-    titleBarRo = null
-    const observed = elements.filter((el): el is HTMLElement => el != null)
-    if (!observed.length) return
-    updateTitleBarHeightVar()
-    titleBarRo = new ResizeObserver(() => updateTitleBarHeightVar())
-    for (const el of observed) titleBarRo.observe(el)
-  },
-  { immediate: true },
-)
-onMounted(() => {
-  if (!import.meta.client) return
-  updateTitleBarHeightVar()
-})
-onBeforeUnmount(() => {
-  titleBarRo?.disconnect()
-  titleBarRo = null
-})
-
-// ── Linked scroll: middle + right columns scroll together ─────────────────────
-function onLayoutWheel(e: WheelEvent) {
-  if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
-  if (anyOverlayOpen.value) return
-
-  const target = e.target as Node | null
-  if (!target) return
-
-  if (leftRailEl.value?.contains(target)) return
-  if (rightRailEl.value?.contains(target)) return
-
-  // If the event originates inside a nested scrollable container within the center
-  // column (e.g. chat message list, settings panel, admin table), let native scroll
-  // handle it rather than intercepting. Walk up from the target until we reach the
-  // middle scroller; if any intermediate element is independently scrollable, bail out.
-  const middle = middleScrollerEl.value
-  if (middle && target instanceof Element) {
-    let el: Element | null = target
-    while (el && el !== middle) {
-      const overflowY = window.getComputedStyle(el).overflowY
-      if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
-        return
-      }
-      el = el.parentElement
-    }
-  }
-
-  e.preventDefault()
-
-  let delta = e.deltaY
-  if (e.deltaMode === 1) delta *= 20
-  else if (e.deltaMode === 2) delta *= (middleScrollerEl.value?.clientHeight ?? window.innerHeight)
-
-  middleScrollerEl.value?.scrollBy(0, delta)
-  rightRailEl.value?.scrollBy(0, delta)
-}
-
-onMounted(() => {
-  layoutViewportEl.value?.addEventListener('wheel', onLayoutWheel, { passive: false })
-})
-
-onBeforeUnmount(() => {
-  layoutViewportEl.value?.removeEventListener('wheel', onLayoutWheel)
+const { titleBarEl, pinnedBannerEl, layoutViewportEl, leftRailRef, rightRailRef, scrollMiddleToTop } = useAppLayoutScrollers({
+  route,
+  hideTopBar,
+  middleScrollerEl,
+  anyOverlayOpen,
 })
 
 // Status page uses a custom “ops” background only in dark mode.
 const showStatusBg = computed(() => route.path === '/status' && colorMode.value === 'dark')
 
-function scrollMiddleToTop() {
-  const middle = middleScrollerEl.value
-  const right = rightRailEl.value
-  if (middle) middle.scrollTo({ top: 0, behavior: 'smooth' })
-  if (right) right.scrollTo({ top: 0, behavior: 'smooth' })
-}
 </script>
-
-<style>
-.moh-status-tone {
-  /* Force an "ops console" palette regardless of color mode. */
-  --moh-surface-0: #000;
-  --moh-surface-1: rgba(0, 0, 0, 0.55);
-  --moh-surface-2: rgba(0, 0, 0, 0.62);
-  --moh-surface-3: rgba(0, 0, 0, 0.72);
-
-  --moh-bg: var(--moh-surface-0);
-  --moh-surface: var(--moh-surface-1);
-  --moh-surface-hover: rgba(255, 255, 255, 0.06);
-
-  --moh-border-subtle: rgba(255, 255, 255, 0.08);
-  --moh-border: rgba(255, 255, 255, 0.12);
-  --moh-border-strong: rgba(255, 255, 255, 0.18);
-
-  --moh-text: #e7e9ea;
-  --moh-text-muted: rgba(231, 233, 234, 0.68);
-  --moh-text-soft: rgba(231, 233, 234, 0.54);
-
-  --moh-frosted: rgba(0, 0, 0, 0.55);
-
-  --moh-shadow-1: none;
-  --moh-shadow-2: none;
-}
-
-.moh-status-tone.moh-bg {
-  /* Let the `/status` background overlay show through. */
-  background-color: transparent !important;
-}
-
-.moh-status-tone :where(.text-gray-900) {
-  /* Many nav items use light-mode Tailwind text colors; force readable text on the status dark background. */
-  color: rgba(231, 233, 234, 0.92) !important;
-}
-
-.moh-status-tone :where(.text-gray-700) {
-  color: rgba(231, 233, 234, 0.78) !important;
-}
-
-.moh-status-tone :where(.text-gray-500) {
-  color: rgba(231, 233, 234, 0.62) !important;
-}
-
-.moh-slow-bounce {
-  animation: mohSlowBounce 2.2s ease-in-out infinite;
-  will-change: transform;
-}
-
-@keyframes mohSlowBounce {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
-}
-
-.moh-status-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-
-  /* “TV ops” vibe: deep black, faint grid + scanline */
-  background:
-    radial-gradient(1000px 600px at 20% 15%, rgba(29, 155, 240, 0.18), transparent 55%),
-    radial-gradient(900px 500px at 85% 20%, rgba(245, 158, 11, 0.12), transparent 55%),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03), transparent 35%),
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.04) 0px,
-      rgba(255, 255, 255, 0.04) 1px,
-      transparent 1px,
-      transparent 5px
-    ),
-    #000;
-}
-</style>

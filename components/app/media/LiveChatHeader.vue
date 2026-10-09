@@ -1,7 +1,7 @@
 <template>
   <!-- Title + user count -->
   <div class="min-w-0 flex items-center gap-2">
-    <div :class="['truncate font-semibold text-gray-900 dark:text-gray-50', titleClass]" :id="headingId || undefined">
+    <div :id="headingId || undefined" :class="['truncate font-semibold text-gray-900 dark:text-gray-50', titleClass]">
       {{ title }}
     </div>
     <span v-if="memberCount != null" class="shrink-0 inline-flex items-center gap-1">

@@ -136,7 +136,7 @@
 
 <script setup lang="ts">
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
-import type { DailyContentToday, DailyQuote, Websters1828WordOfDay } from '~/types/api'
+import type { DailyQuote, WsNotificationsNewPayload } from '~/types/api'
 import { formatDailyQuoteAttribution } from '~/utils/daily-quote'
 
 definePageMeta({
@@ -160,7 +160,7 @@ function clearDailyNotifications() {
 
 // Refetch content and clear the matching notification when a daily content event arrives.
 const notificationsCb = {
-  onNew: (payload: any) => {
+  onNew: (payload: WsNotificationsNewPayload) => {
     const kind = payload?.notification?.kind
     if (kind === 'word_of_the_day') {
       void refreshWotd()
@@ -185,7 +185,7 @@ if (import.meta.client) {
 // Quote
 const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
 const quoteAttribution = computed(() =>
-  dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value as any) : '',
+  dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value) : '',
 )
 const showTradition = computed(
   () => dailyQuote.value?.tradition && dailyQuote.value.kind !== 'scripture',

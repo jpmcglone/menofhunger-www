@@ -1,4 +1,8 @@
+import { isAbortError } from '~/utils/api-error'
 import type { Ref } from 'vue'
+import { bindMentionInputEvents } from '~/composables/mention/bindMentionInputEvents'
+import { useComboboxAria } from '~/composables/mention/useComboboxAria'
+import { createMentionCache } from '~/composables/mention/mentionCache'
 import { extractMentionedUsernames, parseActiveMention, type ActiveMention } from '~/utils/mention-autocomplete'
 import { getCaretPoint, type CaretPoint } from '~/utils/textarea-caret'
 import {
@@ -13,15 +17,11 @@ import {
 export type { MentionTier } from '~/composables/mention/mentionScore'
 export { tierFromMentionUser } from '~/composables/mention/mentionScore'
 
-type SearchCacheEntry = { expiresAt: number; items: MentionUser[] }
-
-const CACHE_TTL_MS = 30_000
 const DEFAULT_LIMIT = 10
-const MAX_CACHE_ENTRIES = 200
 
 let mentionAutocompleteIdSeq = 0
 
-const globalMentionCache = new Map<string, SearchCacheEntry>()
+const globalMentionCache = createMentionCache()
 let globalMentionRecent: MentionUser[] = []
 
 export type MentionSection = { title: string; startIndex: number; count: number }
@@ -53,7 +53,7 @@ export function useMentionAutocomplete(opts: {
   const debounceMs = typeof opts.debounceMs === 'number' ? clampMention(Math.floor(opts.debounceMs), 0, 600) : 120
 
   // SSR-safe: never share mutable caches across SSR requests.
-  const cache = import.meta.client ? globalMentionCache : new Map<string, SearchCacheEntry>()
+  const cache = import.meta.client ? globalMentionCache : createMentionCache()
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
   let blurCloseTimer: ReturnType<typeof setTimeout> | null = null
   let inflight: AbortController | null = null
@@ -82,14 +82,6 @@ export function useMentionAutocomplete(opts: {
       { title: 'Everyone', startIndex: pCount, count: otherCount },
     ]
   })
-
-  function pruneCache() {
-    while (cache.size > MAX_CACHE_ENTRIES) {
-      const firstKey = cache.keys().next().value as string | undefined
-      if (!firstKey) break
-      cache.delete(firstKey)
-    }
-  }
 
   function close() {
     open.value = false
@@ -171,24 +163,8 @@ export function useMentionAutocomplete(opts: {
     if (next) mentionTiers.value = next
   }
 
-  function getBestCached(qNorm: string): MentionUser[] | null {
-    const now = Date.now()
-    for (let i = qNorm.length; i >= 1; i--) {
-      const k = qNorm.slice(0, i)
-      const hit = cache.get(k)
-      if (!hit) continue
-      if (hit.expiresAt <= now) {
-        cache.delete(k)
-        continue
-      }
-      return hit.items
-    }
-    return null
-  }
-
   async function fetchUsers(q: string, requestId: number) {
     const qNorm = normalizeMentionQuery(q)
-    const now = Date.now()
 
     if (inflight) {
       try {
@@ -213,33 +189,24 @@ export function useMentionAutocomplete(opts: {
       const mentionable = raw.filter((u) => Boolean((u.username ?? '').trim()))
 
       const priorities = opts.priorityUsers?.value
+      const apiRanked = rerank(mentionable, q)
+      let shown = apiRanked
+      let priorityCount: number | null = null
       if (priorities !== undefined && priorities !== null) {
         // Merge: priority section first (local filter), then API results that aren't already there.
         const priorityMatches = rerank(priorities, q).slice(0, limit)
         const priorityIds = new Set(priorityMatches.map((u) => u.id))
-        const apiOnly = rerank(mentionable.filter((u) => !priorityIds.has(u.id)), q)
-        const merged = [...priorityMatches, ...apiOnly]
-        if (activeRequestId !== requestId) return
-        prioritySectionCount.value = priorityMatches.length
-        setItems(merged)
-        loading.value = false
-        if (qNorm) {
-          // Cache only the API portion so future non-lobby contexts aren't polluted.
-          cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: rerank(mentionable, q) })
-          pruneCache()
-        }
-      } else {
-        const ranked = rerank(mentionable, q)
-        if (activeRequestId !== requestId) return
-        setItems(ranked)
-        loading.value = false
-        if (qNorm) {
-          cache.set(qNorm, { expiresAt: now + CACHE_TTL_MS, items: ranked })
-          pruneCache()
-        }
+        shown = [...priorityMatches, ...rerank(mentionable.filter((u) => !priorityIds.has(u.id)), q)]
+        priorityCount = priorityMatches.length
       }
+      if (activeRequestId !== requestId) return
+      if (priorityCount !== null) prioritySectionCount.value = priorityCount
+      setItems(shown)
+      loading.value = false
+      // Cache only the API portion so future non-lobby contexts aren't polluted by priority users.
+      if (qNorm) cache.set(qNorm, apiRanked)
     } catch (e: unknown) {
-      if ((e as any)?.name === 'AbortError') return
+      if (isAbortError(e)) return
       if (activeRequestId !== requestId) return
       items.value = []
       loading.value = false
@@ -282,7 +249,7 @@ export function useMentionAutocomplete(opts: {
     // For non-priority mode, show best cached prefix immediately to avoid flicker.
     let usedCache = false
     if (!hasPriority) {
-      const cached = qNorm ? getBestCached(qNorm) : null
+      const cached = qNorm ? cache.getBestPrefix(qNorm) : null
       if (cached) {
         items.value = cached
         usedCache = true
@@ -408,57 +375,22 @@ export function useMentionAutocomplete(opts: {
     highlightedIndex.value = Math.max(0, Math.min(items.value.length - 1, Math.floor(index)))
   }
 
-  function onRequestClose() {
-    close()
+  const onRequestClose = close
+
+  function onBlur() {
+    // Delay so clicking a suggestion (which prevents mousedown) doesn’t immediately close before select.
+    if (blurCloseTimer) clearTimeout(blurCloseTimer)
+    blurCloseTimer = setTimeout(() => {
+      blurCloseTimer = null
+      const el = opts.el.value
+      if (!document.activeElement || document.activeElement !== el) close()
+    }, 80)
   }
 
   function bindDomEvents() {
-    if (!import.meta.client) return () => {}
     const el = opts.el.value
-    if (!el) return () => {}
-
-    const onInput = () => recompute()
-    const onClick = () => recompute()
-    const onKeyUp = (evt: KeyboardEvent) => {
-      // Don't recompute on navigation keys; that would reset the highlight while using arrows.
-      if (
-        evt.key === 'ArrowDown' ||
-        evt.key === 'ArrowUp' ||
-        evt.key === 'Enter' ||
-        evt.key === 'Tab' ||
-        evt.key === 'Escape'
-      ) {
-        return
-      }
-      recompute()
-    }
-    const onKeyDown: EventListener = (evt) => {
-      // Handle popover keyboard UX (arrows/enter/tab/esc).
-      onKeydown(evt as KeyboardEvent)
-      // If mention handler prevented default (e.g. selected on Enter),
-      // let the host component decide whether it also needs to early-return.
-    }
-    const onBlur = () => {
-      // Delay so clicking a suggestion (which prevents mousedown) doesn’t immediately close before select.
-      if (blurCloseTimer) clearTimeout(blurCloseTimer)
-      blurCloseTimer = setTimeout(() => {
-        blurCloseTimer = null
-        if (!document.activeElement || document.activeElement !== el) close()
-      }, 80)
-    }
-
-    el.addEventListener('input', onInput)
-    el.addEventListener('click', onClick)
-    el.addEventListener('keyup', onKeyUp as any)
-    el.addEventListener('keydown', onKeyDown)
-    el.addEventListener('blur', onBlur)
-    return () => {
-      el.removeEventListener('input', onInput)
-      el.removeEventListener('click', onClick)
-      el.removeEventListener('keyup', onKeyUp as any)
-      el.removeEventListener('keydown', onKeyDown)
-      el.removeEventListener('blur', onBlur)
-    }
+    if (!import.meta.client || !el) return () => {}
+    return bindMentionInputEvents(el, { onRecompute: recompute, onKeydown, onBlur })
   }
 
   let cleanupDom: (() => void) | null = null
@@ -492,29 +424,7 @@ export function useMentionAutocomplete(opts: {
     if (idx < 0 || idx >= items.value.length) return null
     return `${listboxId}-opt-${idx}`
   })
-
-  // Best-effort combobox semantics for assistive tech.
-  watchEffect(() => {
-    if (!import.meta.client) return
-    const el = opts.el.value
-    if (!el) return
-
-    // These are safe on both <input> and <textarea>.
-    try {
-      el.setAttribute('aria-autocomplete', 'list')
-      el.setAttribute('aria-haspopup', 'listbox')
-      el.setAttribute('aria-expanded', open.value ? 'true' : 'false')
-
-      if (open.value) el.setAttribute('aria-controls', listboxId)
-      else el.removeAttribute('aria-controls')
-
-      const activeId = activeDescendantId.value
-      if (open.value && activeId) el.setAttribute('aria-activedescendant', activeId)
-      else el.removeAttribute('aria-activedescendant')
-    } catch {
-      // ignore
-    }
-  })
+  useComboboxAria(opts.el, { open, listboxId, activeDescendantId })
 
   // Expose popover bindings as a plain reactive object so templates can `v-bind="mention.popoverProps"`
   // without accidentally binding a Ref wrapper.

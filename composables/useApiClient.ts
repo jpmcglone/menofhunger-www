@@ -2,6 +2,7 @@ import type { ApiEnvelope, ApiPagination } from '~/types/api'
 import { bumpAuthGeneration, clearAuthClientState, getAuthGeneration } from '~/composables/auth/authState'
 import { joinUrl } from '~/utils/url'
 import { isAdminPath, isArticlePermalinkPath, isLoggedOutAllowedPath, isPostPermalinkPath, isPublicPath, isSpacePermalinkPath, isUserProfilePath } from '~/config/routes'
+import { getErrorReason, getErrorStatus } from '~/utils/api-error'
 
 type ApiFetchOptions = NonNullable<Parameters<typeof $fetch>[1]>
 
@@ -41,6 +42,9 @@ export type MohApiFetchOptions = Omit<ApiFetchOptions, 'query'> & {
    */
   mohUnauthorized?: 'redirect' | 'ignore'
 }
+
+/** Signature of `useApiClient().apiFetchData`, for helpers that receive the fetcher as a parameter. */
+export type ApiFetchData = <T>(path: string, options?: MohApiFetchOptions) => Promise<T>
 
 // Client-only (never shared across SSR requests).
 const clientInflight = new Map<string, Promise<unknown>>()
@@ -142,22 +146,6 @@ export function useApiClient() {
 
   /** Default timeout (ms) so a slow or stuck API does not hang SSR. Override via options.timeout. */
   const defaultTimeoutMs = 15_000
-
-  function getErrorStatus(e: unknown): number | null {
-    const anyErr = e as any
-    const status =
-      (typeof anyErr?.status === 'number' ? anyErr.status : null) ??
-      (typeof anyErr?.statusCode === 'number' ? anyErr.statusCode : null) ??
-      (typeof anyErr?.response?.status === 'number' ? anyErr.response.status : null) ??
-      (typeof anyErr?.data?.meta?.status === 'number' ? anyErr.data.meta.status : null)
-    return typeof status === 'number' ? status : null
-  }
-
-  function getErrorReason(e: unknown): string | null {
-    const anyErr = e as any
-    const reason = anyErr?.data?.meta?.errors?.[0]?.reason
-    return typeof reason === 'string' && reason.trim() ? reason.trim() : null
-  }
 
   function shouldRedirectToLogin(path: string, layout: unknown): boolean {
     if (path === '/login') return false

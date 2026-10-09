@@ -1,4 +1,4 @@
-import type { SpaceYouTubePlayerProps } from './space-youtube-player-types'
+import { getYtGlobal, type SpaceYouTubePlayerProps } from './space-youtube-player-types'
 import { mediaFocus } from '~/utils/mediaFocus'
 import type { WatchPartyState } from '~/types/api'
 import { extractVideoId, driftAdjustedTime, expectedPlaybackTime, isSeekJump, shouldCorrectPlayingPosition, IOS_REMOTE_SEEK_THRESHOLD_S, REMOTE_SEEK_THRESHOLD_S } from '~/utils/watchPartyMath'
@@ -27,7 +27,8 @@ export function useSpaceYouTubePlayerSync(props: SpaceYouTubePlayerProps, ctx: R
     playerContainerRef.value.innerHTML = ''
     playerContainerRef.value.appendChild(container)
 
-    const YT = (window as any).YT
+    const YT = getYtGlobal()
+    if (!YT) return
     playerSync.ytPlayer = new YT.Player(container, {
       videoId,
       width: '100%',
@@ -57,8 +58,8 @@ export function useSpaceYouTubePlayerSync(props: SpaceYouTubePlayerProps, ctx: R
       },
       events: {
         onReady: () => {
-          playerSync.ytPlayer.setVolume?.(sharedVideo.appWideVolume.value * 100)
-          if (sharedVideo.appWideSoundOn.value) playerSync.ytPlayer.unMute?.(); else playerSync.ytPlayer.mute?.()
+          playerSync.ytPlayer?.setVolume?.(sharedVideo.appWideVolume.value * 100)
+          if (sharedVideo.appWideSoundOn.value) playerSync.ytPlayer?.unMute?.(); else playerSync.ytPlayer?.mute?.()
           prepareWatchPartyIframe()
           const iframe = playerContainerRef.value?.querySelector('iframe')
           wpLog('yt:onReady:dom', {
@@ -103,8 +104,8 @@ export function useSpaceYouTubePlayerSync(props: SpaceYouTubePlayerProps, ctx: R
             wpLog('yt:onReady:skip-request-room-not-ready', { spaceId: props.space.id })
           }
         },
-        onStateChange: (event: any) => {
-          const YTState = (window as any).YT?.PlayerState
+        onStateChange: (event: { data: number }) => {
+          const YTState = getYtGlobal()?.PlayerState
           const st = event.data
           if (st === YTState?.PLAYING) {
             if (locallySuspended.value || !mediaFocus.claim('video:watch-party', interruptWatchParty, { automatic: true })) {
@@ -128,7 +129,7 @@ export function useSpaceYouTubePlayerSync(props: SpaceYouTubePlayerProps, ctx: R
 
           if (isFollowingPlayback.value && playerSync.pendingUnlockPause && (st === YTState?.PLAYING || st === YTState?.BUFFERING)) {
             playerSync.pendingUnlockPause = false
-            playerSync.ytPlayer.pauseVideo?.()
+            playerSync.ytPlayer?.pauseVideo?.()
             return
           }
           if (isFollowingPlayback.value && (st === YTState?.PLAYING || st === YTState?.BUFFERING)) {
@@ -212,7 +213,7 @@ export function useSpaceYouTubePlayerSync(props: SpaceYouTubePlayerProps, ctx: R
     if (!playerSync.ytPlayer || !props.space?.id) return
     if (isReplacedOwner.value) return
     const videoUrl = props.space.watchPartyUrl ?? ''
-    const YTState = (window as any).YT?.PlayerState
+    const YTState = getYtGlobal()?.PlayerState
     const playerState = playerSync.ytPlayer.getPlayerState?.()
     const nextState = {
       videoUrl,
@@ -246,7 +247,7 @@ export function useSpaceYouTubePlayerSync(props: SpaceYouTubePlayerProps, ctx: R
       // Don't emit while waiting for the initial restore — we don't want to
       // overwrite the server's saved position with the player's 0:00 start position.
       if (pendingOwnerRestore.value) return
-      const YTState = (window as any).YT?.PlayerState
+      const YTState = getYtGlobal()?.PlayerState
       const playerState = playerSync.ytPlayer.getPlayerState?.()
       const isPlaying = playerState === YTState?.PLAYING || playerState === YTState?.BUFFERING
       const currentTime = Number(playerSync.ytPlayer.getCurrentTime?.() ?? 0)

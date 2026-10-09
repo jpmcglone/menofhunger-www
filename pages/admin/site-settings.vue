@@ -112,7 +112,7 @@
               :min="1"
               :max="100"
               size="small"
-              :inputStyle="{ width: '5.25rem' }"
+              :input-style="{ width: '5.25rem' }"
             />
           </div>
           <div class="flex items-center justify-between gap-3">
@@ -122,7 +122,7 @@
               :min="1"
               :max="1440"
               size="small"
-              :inputStyle="{ width: '5.25rem' }"
+              :input-style="{ width: '5.25rem' }"
             />
           </div>
         </div>
@@ -146,7 +146,7 @@
               :min="1"
               :max="100"
               size="small"
-              :inputStyle="{ width: '5.25rem' }"
+              :input-style="{ width: '5.25rem' }"
             />
           </div>
           <div class="flex items-center justify-between gap-3">
@@ -156,7 +156,7 @@
               :min="1"
               :max="1440"
               size="small"
-              :inputStyle="{ width: '5.25rem' }"
+              :input-style="{ width: '5.25rem' }"
             />
           </div>
         </div>

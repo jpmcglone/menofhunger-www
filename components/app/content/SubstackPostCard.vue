@@ -1,11 +1,8 @@
 <template>
-  <a
+  <AppExternalLinkCard
     :href="href"
-    target="_blank"
-    rel="noopener noreferrer"
-    class="group block overflow-hidden rounded-xl border moh-border bg-white text-gray-950 transition-colors hover:bg-gray-50 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
+    class="group block moh-card-frame moh-border bg-white text-gray-950 transition-colors hover:bg-gray-50 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
     :aria-label="`Open on Substack: ${meta.title ?? 'post'}`"
-    @click.stop="confirmExternal($event, href)"
   >
     <div class="flex min-h-[6rem] gap-0">
       <!-- Cover image (left) -->
@@ -13,13 +10,7 @@
         v-if="meta.imageUrl"
         class="w-24 shrink-0 overflow-hidden sm:w-28"
       >
-        <img
-          :src="meta.imageUrl"
-          class="h-full w-full object-cover"
-          alt=""
-          loading="lazy"
-          referrerpolicy="no-referrer"
-        >
+        <AppPreviewImage :src="meta.imageUrl" class="h-full w-full object-cover" />
       </div>
 
       <!-- Text column (right) -->
@@ -59,11 +50,10 @@
         </div>
       </div>
     </div>
-  </a>
+  </AppExternalLinkCard>
 </template>
 
 <script setup lang="ts">
-const { onClick: confirmExternal } = useExternalLinkConfirm()
 import type { LinkMetadata } from '~/utils/link-metadata'
 
 defineProps<{

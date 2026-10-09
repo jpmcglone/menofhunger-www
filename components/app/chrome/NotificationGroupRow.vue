@@ -105,7 +105,7 @@
                 Nudged back
               </span>
               <template v-else-if="nudgeIsTopmost && (canShowNudgeBack || !group.readAt)">
-                <div class="inline-flex overflow-hidden rounded-xl border moh-border" @click.stop.prevent>
+                <div class="inline-flex moh-card-frame moh-border" @click.stop.prevent>
                   <Button
                     v-if="canShowNudgeBack"
                     size="small"
@@ -137,15 +137,15 @@
                     <a v-bind="props.action" class="flex items-center gap-2">
                       <Icon v-if="item.iconName" :name="item.iconName" aria-hidden="true" />
                       <span
-                        v-bind="props.label"
-                        class="flex-1"
-                      v-tooltip.bottom="
+                        v-tooltip.bottom="
                         item.value === 'ignore'
                           ? tinyTooltip(ignoreNudgeTooltip)
                           : item.value === 'gotit'
                             ? tinyTooltip(gotItNudgeTooltip)
                             : undefined
                       "
+                        v-bind="props.label"
+                      class="flex-1"
                       >
                         {{ item.label }}
                       </span>

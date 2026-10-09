@@ -3,7 +3,6 @@ import type { FeedPost, GetPostData } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { siteConfig } from '~/config/site'
 import { extractLinksFromText } from '~/utils/link-utils'
-import type { LinkMetadata } from '~/utils/link-metadata'
 import { peekPermalinkSeed, consumePermalinkSeed } from '~/utils/permalink-seed'
 import { normalizeForMeta } from '~/utils/text'
 

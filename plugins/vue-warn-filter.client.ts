@@ -15,14 +15,14 @@ export default defineNuxtPlugin((nuxtApp) => {
     // which can trigger this warning. It's not an app bug.
     if (
       m.includes('Extraneous non-props attributes (style)') &&
-      (m.includes('<VueElement') || (instance as any)?.type?.name === 'VueElement')
+      (m.includes('<VueElement') || (instance as { type?: { name?: string } } | null)?.type?.name === 'VueElement')
     ) {
       return
     }
 
     if (typeof prev === 'function') return prev(msg, instance, trace)
     // Fallback to default behavior (warn + trace).
-    // eslint-disable-next-line no-console
+
     console.warn(m + (trace ?? ''))
   }
 })

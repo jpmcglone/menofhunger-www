@@ -2,6 +2,7 @@ import type { FeedPost, FollowListUser } from '~/types/api'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import { siteConfig } from '~/config/site'
 import { prepareUploadImage } from '~/utils/prepare-upload-image'
+import { presignedUpload } from '~/utils/put-presigned-file'
 
 export type SendViaChatState = {
   open: boolean
@@ -38,7 +39,7 @@ export function useSendViaChat() {
     state.value = { open: false, post: null, body: null, files: [] }
   }
 
-  const sending = ref(false)
+  const { run, pending: sending } = useAsyncAction()
 
   async function uploadShareFiles(files: File[]): Promise<CreateMediaPayload[]> {
     const payloads: CreateMediaPayload[] = []
@@ -46,32 +47,12 @@ export function useSendViaChat() {
       const type = (file.type || '').toLowerCase()
       if (!type.startsWith('image/')) continue
       const prepared = type === 'image/gif' ? file : await prepareUploadImage(file)
-      const init = await apiFetchData<{
-        key: string
-        uploadUrl?: string
-        headers?: Record<string, string>
-        skipUpload?: boolean
-      }>('/uploads/post-media/init', {
-        method: 'POST',
-        body: { contentType: prepared.type || type || 'image/jpeg' },
-      })
-      if (!init.skipUpload && init.uploadUrl) {
-        const headers = new Headers()
-        for (const [key, value] of Object.entries(init.headers ?? {})) {
-          headers.set(key, value)
-        }
-        const put = await fetch(init.uploadUrl, { method: 'PUT', headers, body: prepared })
-        if (!put.ok) throw new Error('Failed to upload.')
-      }
-      const committed = await apiFetchData<{
-        key: string
-        kind?: string
-        width?: number | null
-        height?: number | null
-      }>('/uploads/post-media/commit', {
-        method: 'POST',
-        body: { key: init.key },
-      })
+      const committed = await presignedUpload<{ key: string; kind?: string; width?: number | null; height?: number | null }>(
+        apiFetchData,
+        'post-media',
+        prepared,
+        { initBody: { contentType: prepared.type || type || 'image/jpeg' } },
+      )
       payloads.push({
         source: 'upload',
         kind: committed.kind === 'gif' ? 'gif' : 'image',
@@ -92,8 +73,7 @@ export function useSendViaChat() {
     const shareUrl = current.post
       ? `${siteConfig.url}/p/${encodeURIComponent(current.post.id)}`
       : (current.body ?? '')
-    sending.value = true
-    try {
+    const sent = await run(async () => {
       const media = await uploadShareFiles(current.files)
       const lookup = await apiFetchData<{ conversationId: string | null }>('/messages/lookup', {
         method: 'POST',
@@ -128,12 +108,8 @@ export function useSendViaChat() {
         durationMs: 3000,
       })
       return true
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to send message.')
-      return false
-    } finally {
-      sending.value = false
-    }
+    }, { error: 'Failed to send message.' })
+    return sent ?? false
   }
 
   return {

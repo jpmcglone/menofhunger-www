@@ -86,7 +86,7 @@ export function useRadioPlayer() {
     if (!import.meta.client) return
     if (radioCbRef.value) return
     const radioCb: RadioCallback = {
-      onListeners: (payload: { stationId: string; listeners: any[] }) => {
+      onListeners: (payload) => {
         if (!payload?.stationId) return
         if (payload.stationId !== stationId.value) return
         // API emits {id, username, avatarUrl} (matches RadioListener shape)

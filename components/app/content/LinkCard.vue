@@ -1,16 +1,14 @@
 <!-- Fixed-shape preview for generic websites (custom embeds keep their own cards).
      Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=901-399 -->
 <template>
-  <component
-    :is="previewOnly ? 'div' : 'a'"
-    :href="previewOnly ? undefined : href"
-    :target="previewOnly ? undefined : '_blank'"
-    :rel="previewOnly ? undefined : 'noopener noreferrer nofollow ugc'"
-    class="group relative flex h-[112px] w-full overflow-hidden rounded-xl border moh-border moh-surface-2 transition-colors moh-focus"
+  <AppExternalLinkCard
+    :href="href"
+    :preview-only="previewOnly"
+    rel="noopener noreferrer nofollow ugc"
+    class="group relative flex h-[112px] w-full moh-card-frame moh-border moh-surface-2 transition-colors moh-focus"
     :class="previewOnly ? '' : 'moh-surface-hover'"
     :aria-label="previewOnly ? undefined : ariaLabel"
     :aria-busy="state === 'loading' || undefined"
-    @click.stop="onLinkClick"
   >
     <button
       v-if="dismissible"
@@ -29,18 +27,15 @@
         <div v-if="!showImage" class="absolute inset-0 flex items-center justify-center">
           <Icon name="tabler:world" class="text-[28px] moh-text-soft" />
         </div>
-        <img
+        <AppPreviewImage
           v-if="imageUrl && !imageFailed"
           :src="imageUrl"
-          alt=""
+          decoding="async"
           class="absolute inset-0 h-full w-full object-cover transition-opacity duration-150"
           :class="imageLoaded ? 'opacity-100' : 'opacity-0'"
-          loading="lazy"
-          decoding="async"
-          referrerpolicy="no-referrer"
           @load="imageLoaded = true"
           @error="imageFailed = true"
-        >
+        />
       </template>
     </div>
 
@@ -65,11 +60,10 @@
         </p>
       </div>
     </div>
-  </component>
+  </AppExternalLinkCard>
 </template>
 
 <script setup lang="ts">
-const { onClick: confirmExternal } = useExternalLinkConfirm()
 const props = defineProps<{
   href: string
   siteLabel: string
@@ -82,8 +76,6 @@ const props = defineProps<{
   /** Composer: show a remove control over the thumbnail. */
   dismissible?: boolean
 }>()
-function onLinkClick(event: MouseEvent) { if (!props.previewOnly) confirmExternal(event, props.href) }
-
 defineEmits<{ dismiss: [] }>()
 
 const imageLoaded = ref(false)

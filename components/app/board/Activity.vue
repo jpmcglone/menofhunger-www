@@ -1,11 +1,13 @@
-<!-- Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=951-866 -->
+<!-- Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=1099-989 -->
 <template>
   <section aria-label="Unread Board activity" :aria-busy="loading">
     <div v-if="error" class="moh-gutter-x py-4 text-center" role="alert">
       <p class="text-sm moh-text-muted">{{ error }}</p>
       <button type="button" class="moh-focus min-h-11 text-sm text-[var(--moh-brass)]" @click="load()">Retry</button>
     </div>
-    <AppSubtleSectionLoader :loading="loading && !items.length" :refreshing="loading && !!items.length" min-height-class="min-h-[160px]">
+    <AppScreenState v-if="loading && !items.length" status="loading" skeleton="post" :skeleton-count="3" />
+    <div v-else class="relative">
+      <AppRefreshIndicator :loading="loading" />
       <div v-if="!items.length && !error && !loading" class="moh-gutter-x py-8 text-center">
         <h2 class="text-[15px] font-semibold moh-text">You're all caught up</h2>
         <p class="mt-2 text-sm moh-text-muted">Replies, mentions and comments on your discussions will appear here.</p>
@@ -27,7 +29,7 @@
         :disabled="loading"
         @click="load(false)"
       >More comments</button>
-    </AppSubtleSectionLoader>
+    </div>
   </section>
 </template>
 

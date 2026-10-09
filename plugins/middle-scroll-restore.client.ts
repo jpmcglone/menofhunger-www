@@ -4,11 +4,9 @@
  * is only set when scrollBehavior returns a position (we use a custom scroll container, so we don't).
  */
 
-const KEY_PREFIX = 'moh.middleScroll.v1:'
+import { clamp } from '~/utils/primitives'
 
-function clamp(n: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, n))
-}
+const KEY_PREFIX = 'moh.middleScroll.v1:'
 
 function getMiddleScroller(): HTMLElement | null {
   return document.getElementById('moh-middle-scroller')
@@ -77,9 +75,9 @@ export default defineNuxtPlugin((nuxtApp) => {
     const ensureScrollListener = () => {
       const next = getMiddleScroller()
       if (next === currentEl) return
-      if (currentEl) currentEl.removeEventListener('scroll', onScroll as any)
+      if (currentEl) currentEl.removeEventListener('scroll', onScroll)
       currentEl = next
-      if (currentEl) currentEl.addEventListener('scroll', onScroll as any, { passive: true })
+      if (currentEl) currentEl.addEventListener('scroll', onScroll, { passive: true })
     }
 
     // Initial attach, plus reattach on layout swaps / scroller replacement.
@@ -87,9 +85,9 @@ export default defineNuxtPlugin((nuxtApp) => {
     nuxtApp.hook('page:finish', () => ensureScrollListener())
 
     // Best-effort cleanup for HMR / teardown.
-    if ((import.meta as any).hot) {
-      ;(import.meta as any).hot.dispose(() => {
-        if (currentEl) currentEl.removeEventListener('scroll', onScroll as any)
+    if (import.meta.hot) {
+      ;import.meta.hot.dispose(() => {
+        if (currentEl) currentEl.removeEventListener('scroll', onScroll)
         currentEl = null
       })
     }

@@ -2,7 +2,7 @@
   <button
     type="button"
     class="relative z-[2] moh-tap moh-focus inline-flex shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-[var(--moh-surface-hover)]"
-    :class="vertical ? 'min-h-11 w-10 flex-col gap-0.5 py-1' : 'min-h-9 gap-1 px-1.5'"
+    :class="vertical ? 'min-h-13 w-11 flex-col gap-0.5 py-1' : 'min-h-9 gap-1 px-1.5'"
     :aria-label="boosted ? 'Remove boost' : 'Boost'"
     :aria-pressed="boosted"
     :disabled="disabled"

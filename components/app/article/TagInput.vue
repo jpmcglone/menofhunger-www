@@ -44,7 +44,7 @@
           @keydown.backspace="onBackspace"
           @focus="onFocus"
           @blur="onBlur"
-        />
+        >
         <div
           v-if="showAddAnotherHint"
           class="pointer-events-none absolute right-0 top-1/2 flex -translate-y-1/2 items-center gap-1 text-[10px] moh-text-soft"

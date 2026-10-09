@@ -1,15 +1,17 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { CreatePostData, FeedPost, PostAuthor, PostStreakReward, PostVisibility, ScheduledPost } from '~/types/api'
+import type { CreatePostData, FeedPost, PostAuthor, PostVisibility, ScheduledPost } from '~/types/api'
 import { seedPermalinkPost } from '~/utils/permalink-seed'
 import { buildPostedToastParams } from '~/utils/posted-toast'
 import { buildOptimisticPost } from '~/utils/optimistic-post'
 import { buildPostPreview } from '~/utils/post-preview'
-import { crosspostOptions, crosspostSkipMessage, xContainsLink, type CrosspostDraft, type CrosspostPayload } from '~/utils/crosspost'
+import type { CrosspostPayload } from '~/utils/crosspost'
 import type { CrosspostDestinationView } from '~/components/app/post/CrosspostDestinations.vue'
 import { makePendingLocalId } from '~/composables/usePendingPostsManager'
 import { recordWelcomeProgress } from '~/utils/welcome-progress'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { ComposerMediaItem, ComposerPollPayload, CreateMediaPayload } from './types'
+import { buildCrosspostDraft, crosspostDestinationRow } from './crosspostDestinationRow'
+import { makeOptimisticAuthor, notifyCrosspostSkipped, pushStreakToast, submitPreconditionsMet, unwrapCreated } from './composerSubmitHelpers'
 
 export function useComposerSubmit(opts: {
   mode: ComputedRef<'create' | 'edit'>
@@ -86,29 +88,6 @@ export function useComposerSubmit(opts: {
   const actionSounds = useActionSounds()
   const { crosspostChoice } = opts
 
-  const STREAK_MULTIPLIER_MILESTONES = new Set([8, 15, 22])
-  function pushStreakToast(reward: PostStreakReward) {
-    const isMilestone = STREAK_MULTIPLIER_MILESTONES.has(reward.streakDays)
-    const coinWord = reward.coinsEarned === 1 ? 'coin' : 'coins'
-    if (isMilestone) {
-      toast.push({
-        title: `Streak milestone! Day ${reward.streakDays}`,
-        message: `Your multiplier is now ${reward.multiplier}x — you earned ${reward.coinsEarned} ${coinWord} today!`,
-        tone: 'success',
-        to: '/coins',
-        durationMs: 4000,
-      })
-    } else {
-      toast.push({
-        title: `+${reward.coinsEarned} ${coinWord} from your streak`,
-        message: `Day ${reward.streakDays} · ${reward.multiplier}x multiplier`,
-        tone: 'success',
-        to: '/coins',
-        durationMs: 3000,
-      })
-    }
-  }
-
   function buildSubmitBody(): string {
     const quotedUrl = opts.quotedPostUrl.value
     if (!quotedUrl) return opts.draft.value
@@ -148,28 +127,7 @@ export function useComposerSubmit(opts: {
     })
   }
 
-  function mediaAllImages(media: CreateMediaPayload[]): boolean {
-    return media.every((m) => {
-      if (m.source !== 'existing') return m.source === 'upload' && m.kind === 'image'
-      const existing = opts.composerMedia.value.find((item) => item.existingId === m.id)
-      return existing?.source === 'upload' && existing.kind === 'image'
-    })
-  }
-
-  function crosspostDraft(media: CreateMediaPayload[]): CrosspostDraft {
-    return {
-      visibility: opts.effectiveVisibility.value,
-      body: opts.draft.value,
-      mediaCount: media.length,
-      mediaAllUploadedImages: mediaAllImages(media),
-      hasPoll: opts.hasPoll.value,
-      isReply: Boolean(opts.replyTo.value),
-      isQuote: Boolean(opts.quotedPost.value),
-      isCheckin: Boolean(opts.checkinPrompt.value),
-      groupId: opts.effectiveGroupId.value,
-      scheduled: Boolean(opts.scheduledAt.value),
-    }
-  }
+  const crosspostDraft = (media: CreateMediaPayload[]) => buildCrosspostDraft(opts, media)
 
   const useOptimisticCreate = computed(
     () => opts.mode.value !== 'edit' && !opts.syncSubmit.value && !opts.createPost,
@@ -181,23 +139,8 @@ export function useComposerSubmit(opts: {
     () => (opts.mode.value === 'create' || Boolean(opts.scheduledEditId.value)) && !opts.replyTo.value && !opts.quotedPost.value,
   )
 
-  function makeOptimisticAuthor(): PostAuthor | null {
-    const u = opts.user.value
-    if (!u?.id) return null
-    return {
-      id: u.id,
-      username: (u.username ?? '') || null,
-      name: (u as { name?: string | null }).name ?? null,
-      premium: Boolean(u.premium),
-      premiumPlus: Boolean((u as { premiumPlus?: boolean }).premiumPlus),
-      isOrganization: Boolean((u as { isOrganization?: boolean }).isOrganization),
-      verifiedStatus: ((u as { verifiedStatus?: PostAuthor['verifiedStatus'] }).verifiedStatus ?? 'none') as PostAuthor['verifiedStatus'],
-      avatarUrl: (u as { avatarUrl?: string | null }).avatarUrl ?? null, avatarVideo: u.avatarVideo ?? null,
-    }
-  }
-
   const previewPost = computed<FeedPost | null>(() => {
-    const author = makeOptimisticAuthor()
+    const author = makeOptimisticAuthor(opts.user.value)
     if (!author) return null
     return buildPostPreview({
       localId: 'preview',
@@ -211,32 +154,15 @@ export function useComposerSubmit(opts: {
     })
   })
 
-  function destinationRow(
-    id: 'pickax' | 'x',
-    media: CreateMediaPayload[],
-  ): CrosspostDestinationView | null {
-    const connected = id === 'pickax' ? pickaxIntegration.connected.value : xIntegration.connected.value
-    if (!connected) return null
-    if (!opts.viewerIsVerified.value) return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to share outward', premiumHref: '/settings/verification' }
-    if (id === 'x' && xIntegration.status.value?.connected && !xIntegration.status.value.canPost) {
-      return { id, modes: [], disabled: true, disabledNote: 'Verify your MOH account to post to X', premiumHref: '/settings/verification' }
-    }
-    const options = crosspostOptions(crosspostDraft(media), id, xIntegration.status.value?.linksEnabled === true, xIntegration.status.value?.capabilities)
-    const modes = options.modes
-    let allowanceNote: string | undefined
-    if (id === 'x' && xIntegration.status.value?.allowance) {
-      const allowance = xIntegration.status.value.allowance
-      const hasLink = xContainsLink(crosspostDraft(media).body)
-      const remaining = hasLink ? allowance.linkPostsLeft : allowance.nativePostsLeft
-      allowanceNote = hasLink ? 'Estimated $0.20 · Uses your shared high-cost allowance' : `${remaining} posts left this month`
-      if (opts.scheduledAt.value) allowanceNote += ' · Checked again at publishing'
-      else if (remaining <= 0) return {
-        id, modes: [], disabled: true, allowanceNote, disabledNote: "You've used this month's X posts.",
-      }
-    }
-    if (!modes.length) return { id, modes, disabled: true, disabledNote: options.blockedReason, allowanceNote }
-    return { id, modes, linkOnlyReason: options.linkOnlyReason, allowanceNote }
-  }
+  const destinationRow = (id: 'pickax' | 'x', media: CreateMediaPayload[]) =>
+    crosspostDestinationRow({
+      id,
+      pickaxIntegration,
+      xIntegration,
+      viewerIsVerified: opts.viewerIsVerified.value,
+      scheduled: Boolean(opts.scheduledAt.value),
+      draft: crosspostDraft(media),
+    })
 
   const previewDestinations = computed<CrosspostDestinationView[] | null>(() => {
     if ((opts.mode.value !== 'create' && !opts.scheduledEditId.value) || opts.createPost || opts.groupComposer.value) return null
@@ -250,24 +176,6 @@ export function useComposerSubmit(opts: {
     previewApproved.value = true
     previewOpen.value = false
     await submit()
-  }
-
-  function notifyCrosspostSkipped(created: unknown) {
-    const crossposts = (created as CreatePostData | null | undefined)?.crossposts
-    const pickax = crossposts?.pickax ?? (created as CreatePostData | null | undefined)?.pickax
-    if (pickax?.status === 'skipped') {
-      toast.push({ title: crosspostSkipMessage('Pickax', pickax.reason), durationMs: 3500 })
-    }
-    if (crossposts?.x?.status === 'skipped') {
-      toast.push({ title: crosspostSkipMessage('X', crossposts.x.reason), durationMs: 3500 })
-    }
-  }
-
-  function unwrapCreated(created: unknown): { post: FeedPost | null; streakReward: PostStreakReward | null } {
-    const wrapped = created as CreatePostData | null | undefined
-    const post = (wrapped?.post ?? (created as FeedPost | null | undefined)) ?? null
-    const streakReward = wrapped?.streakReward ?? null
-    return { post: post && (post as FeedPost).id ? (post as FeedPost) : null, streakReward }
   }
 
   const { submit: submitPost, submitting, submitError } = useFormSubmit(
@@ -345,7 +253,7 @@ export function useComposerSubmit(opts: {
 
       const created = await performCreate(submitBody, vis, mediaPayload, pollPayload, crosspostChoice.value)
       const { post, streakReward } = unwrapCreated(created)
-      notifyCrosspostSkipped(created)
+      notifyCrosspostSkipped(toast, created)
 
       if (opts.destinationDrafts.unchanged(submittedDraft)) opts.clearComposer()
       await opts.destinationDrafts.submitted(submittedDraft)
@@ -354,7 +262,7 @@ export function useComposerSubmit(opts: {
         recordWelcomeProgress(post.author.id, { posted: true })
         opts.emit('posted', { id: post.id, visibility: vis, post })
         pushPostedToast(post)
-        if (streakReward) pushStreakToast(streakReward)
+        if (streakReward) pushStreakToast(toast, streakReward)
       }
     },
     {
@@ -373,7 +281,7 @@ export function useComposerSubmit(opts: {
 
   function submitOptimistic(): boolean {
     void opts.destinationDrafts.persist()
-    const author = makeOptimisticAuthor()
+    const author = makeOptimisticAuthor(opts.user.value)
     if (!author) return false
 
     const vis = opts.effectiveVisibility.value
@@ -416,7 +324,7 @@ export function useComposerSubmit(opts: {
         const created = await performCreate(snapshot.body, snapshot.vis, snapshot.mediaPayload, snapshot.pollPayload, snapshot.crosspost, snapshot.groupId)
         await opts.destinationDrafts.submitted(snapshot.draft)
         const { post } = unwrapCreated(created)
-        notifyCrosspostSkipped(created)
+        notifyCrosspostSkipped(toast, created)
         if (post) {
           const wrapped = created as CreatePostData | null | undefined
           const pickax = wrapped?.crossposts?.pickax ?? wrapped?.pickax
@@ -444,48 +352,7 @@ export function useComposerSubmit(opts: {
   )
 
   const submit = async () => {
-    if (!opts.isAuthed.value) {
-      try {
-        await opts.me()
-      } catch {
-        // best-effort; normal canPost checks below handle final state
-      }
-    }
-    if (!opts.canPost.value) {
-      if (!opts.isAuthed.value) {
-        toast.push({
-          title: 'Session expired',
-          message: 'Please log in again to post your draft.',
-          tone: 'error',
-          durationMs: 2600,
-        })
-      }
-      return
-    }
-    if (opts.mode.value === 'edit' && !opts.scheduledEditId.value) {
-      if (!opts.draft.value.trim()) return
-    } else {
-      if (!(opts.draft.value.trim() || opts.composerMedia.value.length || opts.hasPoll.value)) return
-    }
-    if (opts.postCharCount.value > opts.postMaxLen.value) return
-    if (opts.composerUploading.value) return
-    if (opts.composerHasFailedMedia.value) return
-    if (opts.pollUploading.value) return
-    if (opts.pollHasFailed.value) return
-    if (opts.hasPoll.value && opts.poll.value) {
-      const pollOpts = (opts.poll.value.options ?? []).filter(Boolean) as Array<{ image: { r2Key?: string } | null }>
-      const anyHasImage = pollOpts.some((o) => Boolean(o?.image?.r2Key))
-      const allHaveImages = pollOpts.every((o) => Boolean(o?.image?.r2Key))
-      if (anyHasImage && !allHaveImages) {
-        toast.push({
-          title: 'Poll images must be all or none',
-          message: 'If you add an image to any choice, every choice must have an image.',
-          tone: 'error',
-          durationMs: 2600,
-        })
-        return
-      }
-    }
+    if (!(await submitPreconditionsMet(opts, toast))) return
 
     opts.emojiPickerEl.value?.close()
 

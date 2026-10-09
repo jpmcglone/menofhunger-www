@@ -106,7 +106,9 @@
                 <SettingsBlockedUsersSection />
               </div>
 
-              <div v-if="showsBlock('links')" class="space-y-4">
+              <SettingsProfileLinksSection v-if="showsBlock('profile-links')" />
+
+              <div v-if="showsBlock('helpful')" class="space-y-4">
                 <div v-if="composedBlocks.length > 1" class="border-t moh-border pt-6 -mt-2">
                   <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
                     Helpful links
@@ -155,6 +157,7 @@ import SettingsDangerZoneSection from '~/components/settings/sections/SettingsDa
 import SettingsFitnessSection from '~/components/settings/sections/SettingsFitnessSection.vue'
 import SettingsAiConnectionSection from '~/components/settings/sections/SettingsAiConnectionSection.vue'
 import SettingsIntegrationsSection from '~/components/settings/sections/SettingsIntegrationsSection.vue'
+import SettingsProfileLinksSection from '~/components/settings/sections/SettingsProfileLinksSection.vue'
 
 // Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=414-12178
 definePageMeta({
@@ -171,7 +174,7 @@ usePageSeo({
 
 // Verification has its own destination so signup and verification prompts open
 // the agreement flow directly instead of burying it among account fields.
-type SettingsSection = 'account' | 'verification' | 'notifications' | 'privacy' | 'billing' | 'marv' | 'ai' | 'fitness' | 'integrations'
+type SettingsSection = 'account' | 'links' | 'verification' | 'notifications' | 'privacy' | 'billing' | 'marv' | 'ai' | 'fitness' | 'integrations'
 type SettingsBlock =
   | 'ai'
   | 'account'
@@ -180,7 +183,8 @@ type SettingsBlock =
   | 'privacy'
   | 'notifications'
   | 'blocked'
-  | 'links'
+  | 'helpful'
+  | 'profile-links'
   | 'marv'
   | 'danger'
   | 'fitness'
@@ -209,7 +213,7 @@ onMounted(() => {
 onMounted(() => {
   if (!import.meta.client) return
   if (route.query.digest_unsubscribed !== '1') return
-  const nextQuery = { ...(route.query as Record<string, any>) }
+  const nextQuery = { ...route.query }
   delete nextQuery.digest_unsubscribed
   void navigateTo({ path: route.path, query: nextQuery }, { replace: true })
 })
@@ -220,7 +224,7 @@ onMounted(() => {
   if (route.query.email_verified !== '1') return
   toast.push({ title: 'Email was verified.', tone: 'success', durationMs: 2200 })
   // Remove query param so it doesn't re-toast on refresh/back.
-  const nextQuery = { ...(route.query as Record<string, any>) }
+  const nextQuery = { ...route.query }
   delete nextQuery.email_verified
   delete nextQuery.reason
   void navigateTo({ path: route.path, query: nextQuery }, { replace: true })
@@ -228,13 +232,12 @@ onMounted(() => {
 
 const allowedSections = computed<SettingsSection[]>(() =>
   isPageAccount.value
-    ? ['account', 'notifications', 'privacy', 'marv', 'fitness', 'integrations']
-    : ['account', 'verification', 'notifications', 'privacy', 'billing', 'marv', 'ai', 'fitness', 'integrations'],
+    ? ['account', 'links', 'notifications', 'privacy', 'marv', 'fitness', 'integrations']
+    : ['account', 'links', 'verification', 'notifications', 'privacy', 'billing', 'marv', 'ai', 'fitness', 'integrations'],
 )
 
 // Old narrower URL keys redirect into one of the top-level sections.
 const sectionAlias: Record<string, SettingsSection> = {
-  links: 'account',
   blocked: 'privacy',
 }
 
@@ -250,7 +253,7 @@ const routeSection = computed<SettingsSection | null>(() => {
   return normalizeSection(raw)
 })
 
-// Legacy support: /settings?section=links -> /settings/account, etc.
+// Legacy support: /settings?section=privacy -> /settings/privacy, etc.
 const legacySection = computed<SettingsSection | null>(() => {
   const raw = typeof route.query.section === 'string' ? route.query.section : null
   return normalizeSection(raw)
@@ -288,6 +291,12 @@ const sections = computed(() => {
       label: 'Account',
       icon: 'profile' as const,
       description: 'Username, email, profile, and helpful links.',
+    },
+    {
+      key: 'links' as const,
+      label: 'Links',
+      icon: 'link' as const,
+      description: 'Your public links page: accounts, links, and sharing.',
     },
     {
       key: 'verification' as const,
@@ -345,7 +354,8 @@ const sections = computed(() => {
 // narrower sections). Rendering them as independent `v-if` siblings (instead of
 // a single `v-if/v-else-if` chain) lets us mount multiple blocks under one URL.
 const sectionToBlocks: Record<SettingsSection, ReadonlyArray<SettingsBlock>> = {
-  account: ['account', 'links', 'danger'],
+  account: ['account', 'helpful', 'danger'],
+  links: ['profile-links'],
   verification: ['verification'],
   notifications: ['notifications'],
   privacy: ['privacy', 'blocked'],

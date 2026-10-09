@@ -32,23 +32,51 @@ const sourceFiles = SRC_DIRS.flatMap((d) => walk(d, SRC_EXT))
 const read = (f: string) => readFileSync(resolve(ROOT, f), 'utf8')
 const lineCount = (f: string) => read(f).split('\n').length
 
-const MAX_LINES = { pages: 500, components: 600, composables: 600, layouts: 500, utils: 500 } as const
+const MAX_LINES = { pages: 400, components: 400, composables: 400, layouts: 400, utils: 400 } as const
 
 /** Files allowed to own raw Intl/toLocale formatting (the format utilities themselves). */
 const FORMAT_OWNER = /^utils\/(?:[\w-]+-format|eastern-time)\.ts$/
 /** Owners of the async-action error toast: the composable itself and the comment-row helper that wraps it. */
 const TOAST_CATCH_OWNER = /^composables\/(?:useAsyncAction|useCommentRowActions)\.ts$/
 
-/** True when a `catch` block (or `.catch(` handler) pushes a toast within its first lines. */
+/** Text between the bracket at `open` and its matching close (naive: ignores brackets inside strings). */
+function balancedBody(src: string, open: number, openCh: string, closeCh: string): string {
+  let depth = 0
+  for (let i = open; i < src.length; i++) {
+    if (src[i] === openCh) depth++
+    else if (src[i] === closeCh && --depth === 0) return src.slice(open, i)
+  }
+  return src.slice(open)
+}
+
+/** True when any `catch { }` block or `.catch(...)` handler, of any length, pushes a toast. */
 function hasToastCatch(src: string): boolean {
-  const lines = src.split('\n')
-  return lines.some((line, i) => {
-    if (!/\bcatch\b\s*(\([^)]*\))?\s*\{\s*$|\.catch\(/.test(line)) return false
-    const block = lines.slice(i, i + 8).join('\n')
-    const end = block.search(/\n\s*\}\s*(finally|$|\n)/)
-    return /toast\.push\(/.test(end > 0 ? block.slice(0, end) : block)
+  for (const m of src.matchAll(/\bcatch\b\s*(?:\([^)]*\))?\s*\{/g)) {
+    if (/toast\.push\(/.test(balancedBody(src, m.index + m[0].length - 1, '{', '}'))) return true
+  }
+  for (const m of src.matchAll(/\.catch\(/g)) {
+    if (/toast\.push\(/.test(balancedBody(src, m.index + m[0].length - 1, '(', ')'))) return true
+  }
+  return false
+}
+
+/** Link-preview cards share one anchor shell (ExternalLinkCard) for rel, target, and the leave-site confirmation. */
+const LINK_CARD_FILE = /^components\/app\/content\/[\w-]*(?:Card|Preview)\w*\.vue$/
+
+/** Explicit `any` outside comments and lines carrying an eslint-disable reason. */
+function hasExplicitAny(src: string): boolean {
+  return src.split('\n').some((line) => {
+    const t = line.trim()
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || /eslint-disable/.test(line)) return false
+    return /(?::\s*any\b|\bas any\b|<any[,>\[]|\bany\[\]|Record<string,\s*any>)/.test(line)
   })
 }
+
+/** The only file allowed to issue a raw presigned-URL `PUT` (retries + friendly 403 message). */
+const PRESIGNED_PUT_OWNER = 'utils/put-presigned-file.ts'
+/** Shared homes for tiny utilities; local redefinitions drift (clamp/sleep/isRecord/initials/formatBytes). */
+const UTILITY_OWNER = /^utils\/(?:primitives|text|number-format)\.ts$/
+const LOCAL_UTILITY = /(?:\bfunction\s+|\b(?:const|let)\s+)(?:clamp|sleep|isRecord|initials|formatBytes|getInitials)\b\s*(?:\(|=\s*(?:\(|async|computed))/
 
 const PRESENCE_OWNER = /^composables\/(?:presence\/|usePresence\.ts$)/
 
@@ -61,6 +89,10 @@ function computeOffenders(): Record<string, string[]> {
   const presenceCallbacks: string[] = []
   const adHocFormatting: string[] = []
   const toastCatchPattern: string[] = []
+  const externalLinkShell: string[] = []
+  const explicitAny: string[] = []
+  const rawPresignedPut: string[] = []
+  const duplicatedUtilities: string[] = []
 
   for (const file of sourceFiles) {
     const src = read(file)
@@ -77,6 +109,10 @@ function computeOffenders(): Record<string, string[]> {
     if (!PRESENCE_OWNER.test(file) && /\b(?:add|remove)[A-Z]\w*Callback\s*\(/.test(src)) presenceCallbacks.push(file)
     if (!FORMAT_OWNER.test(file) && /toLocale(?:Date|Time)?String\(|new Intl\./.test(src)) adHocFormatting.push(file)
     if (!TOAST_CATCH_OWNER.test(file) && hasToastCatch(src)) toastCatchPattern.push(file)
+    if (LINK_CARD_FILE.test(file) && file !== 'components/app/content/ExternalLinkCard.vue' && /target="_blank"|confirmExternal/.test(src)) externalLinkShell.push(file)
+    if (hasExplicitAny(src)) explicitAny.push(file)
+    if (file !== PRESIGNED_PUT_OWNER && /(?<![\w.])fetch\(\s*[\w.?]*[uU]ploadUrl/.test(src)) rawPresignedPut.push(file)
+    if (!UTILITY_OWNER.test(file) && LOCAL_UTILITY.test(src)) duplicatedUtilities.push(file)
     const group = file.split('/')[0] as keyof typeof MAX_LINES
     const max = MAX_LINES[group]
     if (max && lineCount(file) > max) oversized.push(file)
@@ -91,6 +127,10 @@ function computeOffenders(): Record<string, string[]> {
     presenceCallbacks: presenceCallbacks.sort(),
     adHocFormatting: adHocFormatting.sort(),
     toastCatchPattern: toastCatchPattern.sort(),
+    externalLinkShell: externalLinkShell.sort(),
+    explicitAny: explicitAny.sort(),
+    rawPresignedPut: rawPresignedPut.sort(),
+    duplicatedUtilities: duplicatedUtilities.sort(),
   }
 }
 
@@ -99,9 +139,13 @@ const MESSAGES: Record<string, string> = {
   undefinedLocaleDates: 'Use utils/time-format (fixed en-US) to avoid SSR hydration mismatch.',
   transitionAll: 'Transition explicit properties with --moh-duration/--moh-ease tokens, not `all`.',
   pageHandRolledCursor: 'Use useCursorFeed (or a feature composable) instead of paging inside a page or component.',
-  oversizedFiles: 'Keep pages/layouts/utils <= 500, components <= 600, composables <= 600 lines; extract composables/sections.',
+  oversizedFiles: 'Keep source files <= 400 lines; extract composables/sections. Baselined files are the remaining splits and may not grow past the baseline.',
   presenceCallbacks: 'Register realtime callbacks with usePresenceCallback (composables/presence/usePresenceCallback.ts). Baselined files are ref-counted singletons or non-component scopes.',
   toastCatchPattern: 'Wrap async actions with useAsyncAction (composables/useAsyncAction.ts) instead of try/catch + toast.push. Baselined files have conditional control flow around the error.',
+  externalLinkShell: 'Render link-preview cards inside AppExternalLinkCard (components/app/content/ExternalLinkCard.vue) instead of hand-rolling target="_blank" and the external-link confirmation.',
+  explicitAny: 'Use unknown, a narrow type, or a typed helper instead of `any`. A justified exception needs an eslint-disable-next-line with a reason.',
+  rawPresignedPut: 'Upload through presignedUpload/putPresignedFile (utils/put-presigned-file.ts) instead of a raw fetch to the presigned URL.',
+  duplicatedUtilities: 'Import clamp/sleep/isRecord from utils/primitives, initials from utils/text, formatBytes from utils/number-format instead of redefining them.',
   adHocFormatting: 'Use utils/number-format and utils/time-format instead of inline toLocale*String / new Intl.*.',
 }
 
@@ -110,6 +154,16 @@ const MESSAGES: Record<string, string> = {
  * exceed the page cap, or the SFC is a dense row/player whose next split is a
  * behavior-risk rewrite (PostRow, Header, YouTube player, admin dashboards).
  */
+
+/** Hand-written response shapes in types/api.ts. Alias the generated contract (Contracts.XDto) instead of redeclaring. */
+const MAX_HAND_WRITTEN_API_TYPES = 111
+
+describe('types/api.ts hand-written shapes', () => {
+  it(`stays at or below ${MAX_HAND_WRITTEN_API_TYPES}`, () => {
+    const count = (read('types/api.ts').match(/^export (?:type \w+(?:<[^=]*>)? = \{|interface )/gm) ?? []).length
+    expect(count, 'Alias the generated contract in types/api-contracts.gen.ts instead of hand-writing a new shape; lower the cap when you alias more.').toBeLessThanOrEqual(MAX_HAND_WRITTEN_API_TYPES)
+  })
+})
 
 describe('architecture guardrails (ratchet)', () => {
   const current = computeOffenders()

@@ -4,6 +4,7 @@ import type { ProfilePostsFilter } from '~/utils/post-visibility'
 import { settleCrosspostPending } from '~/utils/feed-patch'
 import type { useProfilePageRoute, useProfilePageProfile, ProfileTabKey } from './useProfilePage'
 import type { useProfilePageFeeds } from './useProfilePageFeeds'
+import type { WsNotificationsNewPayload } from '~/types/api'
 
 /**
  * Realtime notification and composer wiring, follow lists, load-more observers,
@@ -16,7 +17,7 @@ export function useProfilePageActions(ctx: ReturnType<typeof useProfilePageRoute
   // update the local followSummary.nudge immediately so the header shows "Nudge back",
   // then refresh from the API to keep outbound/inbound state consistent.
     const notificationsCb = {
-    onNew: (payload: any) => {
+    onNew: (payload: WsNotificationsNewPayload) => {
       const n = payload?.notification ?? null
       if (!n || n.kind !== 'nudge') return
       const actorUsername = (n.actor?.username ?? '').trim().toLowerCase()
@@ -342,7 +343,7 @@ export function useProfilePageActions(ctx: ReturnType<typeof useProfilePageRoute
 
   function patchPublicProfile(patch: Partial<Pick<
     PublicProfile,
-    'name' | 'bio' | 'avatarUrl' | 'avatarVideo' | 'bannerUrl' | 'website' | 'xUsername' | 'pickaxUsername' | 'rumbleUrl' | 'linkedinUrl' | 'youtubeUrl' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
+    'name' | 'bio' | 'avatarUrl' | 'avatarVideo' | 'bannerUrl' | 'locationZip' | 'locationDisplay' | 'locationCity' | 'locationCounty' | 'locationState' | 'locationCountry'
   >>) {
     if (!data.value) return
     data.value = { ...(data.value as PublicProfile), ...patch }

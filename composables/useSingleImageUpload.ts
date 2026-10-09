@@ -1,4 +1,5 @@
 import { prepareUploadImage } from '~/utils/prepare-upload-image'
+import { presignedUpload } from '~/utils/put-presigned-file'
 
 export type UploadedImage = { r2Key: string; width: number | null; height: number | null; alt: string | null }
 
@@ -35,18 +36,18 @@ export function useSingleImageUpload() {
     try {
       const file = await prepareUploadImage(input)
       const contentHash = await sha256Hex(file)
-      const init = await apiFetchData<{ key: string; uploadUrl?: string; headers: Record<string, string>; maxBytes?: number; skipUpload?: boolean }>(
-        '/uploads/post-media/init',
-        { method: 'POST', body: { contentType: file.type, contentHash }, signal },
-      )
-      if (init.maxBytes && file.size > init.maxBytes) throw new Error('That image is too large.')
-      if (!init.skipUpload && init.uploadUrl) {
-        const res = await fetch(init.uploadUrl, { method: 'PUT', headers: init.headers ?? {}, body: file, signal })
-        if (!res.ok) throw new Error('Upload failed.')
-      }
-      const committed = await apiFetchData<{ key: string; kind: 'image' | 'gif' | 'video'; width?: number | null; height?: number | null }>(
-        '/uploads/post-media/commit',
-        { method: 'POST', body: { key: init.key, contentHash }, signal },
+      const committed = await presignedUpload<{ key: string; kind: 'image' | 'gif' | 'video'; width?: number | null; height?: number | null }>(
+        apiFetchData,
+        'post-media',
+        file,
+        {
+          initBody: { contentHash },
+          commitBody: { contentHash },
+          signal,
+          beforePut: (init) => {
+            if (init.maxBytes && file.size > init.maxBytes) throw new Error('That image is too large.')
+          },
+        },
       )
       if (committed.kind !== 'image') throw new Error('Only images are allowed.')
       const alt = input.name.replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim().slice(0, 120) || null

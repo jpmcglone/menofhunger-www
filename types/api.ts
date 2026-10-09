@@ -23,7 +23,9 @@ export type OrgAffiliation = Contracts.OrgAffiliationDto
 /** Short-lived URL for transferring an authenticated native session to the browser. */
 export type BrowserHandoff = Contracts.BrowserHandoffDto
 
-export type AccountKind = 'person' | 'page'
+export type VerifiedStatus = Contracts.VerifiedStatus
+
+export type AccountKind = Contracts.AccountKind
 
 // ─── Board ──────────────────────────────────────────────────────────────────
 export type PostBoardPreview = Contracts.PostBoardPreviewDto
@@ -50,26 +52,9 @@ export type MembersMapOnlineEntry = Contracts.MembersMapOnlineEntryDto
 export type MembersMapTotals = Contracts.MembersMapTotalsDto
 export type MembersMapSummary = Contracts.MembersMapSummaryDto
 
-export type AccountSwitch = {
-  operatorUserId: string
-  operatorUsername: string | null
-  operatorName: string | null
-  operatorAvatarUrl: string | null
-}
+export type AccountSwitch = Contracts.AccountSwitchDto
 
-export type SwitchableAccount = {
-  id: string
-  username: string | null
-  name: string | null
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-  accountKind: AccountKind
-  isOrganization: boolean
-  isCurrent: boolean
-  unreadBadgeCount: number
-  hasUnreadNotifications?: boolean
-  hasUnreadBoard?: boolean
-}
+export type SwitchableAccount = Contracts.SwitchableAccountDto
 
 export type ApiPagination = {
   nextCursor?: string | null
@@ -123,47 +108,9 @@ export type ActiveSubscriptionGrant = Contracts.ActiveSubscriptionGrantDto
  * Where the active premium entitlement comes from.
  * Web: disable IAP CTA when source === 'apple'; show "managed on iOS".
  */
-export type BillingSource = 'stripe' | 'apple' | 'grant' | null
+export type BillingSource = Contracts.BillingSource
 
-export type BillingMe = {
-  premium: boolean
-  premiumPlus: boolean
-  verified: boolean
-  /** Where the active premium entitlement originates. */
-  source: BillingSource
-  subscriptionStatus: string | null
-  cancelAtPeriodEnd: boolean
-  /** When the current Stripe billing period ends (null if no active Stripe sub). */
-  currentPeriodEnd: string | null
-  /** Apple IAP subscription expiry (null if no active Apple sub). */
-  appleExpiresAt: string | null
-  /** Latest access expiry across Stripe + Apple + active grants. */
-  effectiveExpiresAt: string | null
-  /** Active (non-expired, non-revoked) subscription grants. */
-  grants: ActiveSubscriptionGrant[]
-  /** Referral code set by this user (premium-only). */
-  referralCode: string | null
-  /** Who recruited this user (null if no recruiter). */
-  recruiter: {
-    id: string
-    username: string | null
-    name: string | null
-    avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-    premium: boolean
-    premiumPlus: boolean
-    verifiedStatus: 'none' | 'identity' | 'manual'
-  } | null
-  /** How many users this user has recruited. */
-  recruitCount: number
-  /** Whether the one-time referral bonus has been granted to this user. */
-  referralBonusGranted: boolean
-  /**
-   * True when the viewer was recruited and has not yet triggered the bonus —
-   * meaning verifying their account will earn them a free month.
-   */
-  recruitBonusEligible: boolean
-}
+export type BillingMe = Contracts.BillingMeDto
 
 export type Recruit = Omit<FollowListUser, 'relationship'> & {
   relationship?: FollowRelationship
@@ -174,148 +121,36 @@ export type Recruit = Omit<FollowListUser, 'relationship'> & {
   bonusGranted: boolean
 }
 
-export type ReferralMe = {
-  referralCode: string | null
-  recruiter: { username: string | null; name: string | null } | null
-  recruitCount: number
-  referralBonusGranted: boolean
-  /** True when the viewer can claim and share a referral code (verified or premium). */
-  canInvite: boolean
-  /** True when the viewer has an active paid subscription (Stripe or Apple IAP). */
-  isPayingPremium: boolean
-  /** Total months earned from referral grants (all time). */
-  monthsEarned: number
-}
+export type ReferralMe = Contracts.ReferralMeDto
 
-export type AdminReferralInfo = {
-  referralCode: string | null
-  bonusGrantedAt: string | null
-  recruiter: { id: string; username: string | null; name: string | null } | null
-  recruits: Recruit[]
-}
+export type AdminReferralInfo = Contracts.AdminReferralInfoDto
 
-export type AdminAcquisitionRow = { key: string; signups: number; verified: number }
+export type AdminAcquisitionRow = Contracts.AdminAcquisitionRowDto
 
-export type AdminAcquisition = {
-  days: number
-  since: string
-  asOf: string
-  totalSignups: number
-  totalVerified: number
-  /** Distinct members who recruited at least one signup in the window. */
-  distinctRecruiters: number
-  bySource: AdminAcquisitionRow[]
-  byCampaign: AdminAcquisitionRow[]
-}
+export type AdminAcquisition = Contracts.AdminAcquisitionDto
 
-export type AdminReferralAnalytics = {
-  totalCodesCreated: number
-  totalRecruits: number
-  totalBonusesGranted: number
-  /** Percentage of recruits who converted to premium (0–100, integer). */
-  conversionRatePct: number
-  recruitsOverTime: Array<{ bucket: string; count: number }>
-  topRecruiters: Array<{ userId: string; username: string | null; name: string | null; recruitCount: number }>
-}
+export type AdminReferralAnalytics = Contracts.AdminReferralAnalyticsDto
 
 // ─── Affiliate program (Referral Pilot) ──────────────────────────────────────
 
-export type AffiliateEarningType = 'signup' | 'verified' | 'premium' | 'premium60d'
+export type AffiliateEarningType = Contracts.AffiliateEarningType
 
-export type AffiliateEarning = {
-  id: string
-  recruitUserId: string
-  recruitUsername: string | null
-  recruitName: string | null
-  type: AffiliateEarningType
-  /** Amount in cents (USD). */
-  amountCents: number
-  createdAt: string
-  settledAt: string | null
-}
+export type AffiliateEarning = Contracts.AffiliateEarningDto
 
-export type AffiliateSummary =
-  | { isAffiliate: false }
-  | {
-      isAffiliate: true
-      pendingCents: number
-      settledCents: number
-      /** Total lifetime earnings (pending + settled). */
-      totalCents: number
-      /** Minimum pending balance required to trigger a payout. */
-      minPayoutCents: number
-      /** Per-member lifetime earnings cap. */
-      capCents: number
-      /** True when totalCents >= capCents. */
-      capReached: boolean
-      counts: { signups: number; verified: number; premium: number; premium60d: number }
-      earnings: AffiliateEarning[]
-    }
+export type AffiliateSummary = Contracts.AffiliateSummaryDto
 
-export type AdminAffiliateUser = {
-  userId: string
-  username: string | null
-  name: string | null
-  affiliateAt: string
-  recruitCount: number
-  pendingCents: number
-  settledCents: number
-  /** Total lifetime earnings (pending + settled). */
-  totalCents: number
-  /** Per-member lifetime earnings cap. */
-  capCents: number
-  /** True when totalCents >= capCents. */
-  capReached: boolean
-}
+export type AdminAffiliateUser = Contracts.AdminAffiliateUserDto
 
-export type AdminAffiliateSettle = {
-  settledCount: number
-  settledCents: number
-}
+export type AdminAffiliateSettle = Contracts.AdminAffiliateSettleDto
 
 /** Summary of banked free months for admin grant management UI. */
-export type AdminGrantSummary = {
-  premiumMonthsRemaining: number
-  premiumPlusMonthsRemaining: number
-}
+export type AdminGrantSummary = Contracts.AdminGrantSummaryDto
 
-export type BillingCheckoutSession = {
-  url: string
-}
+export type BillingCheckoutSession = Contracts.BillingCheckoutSessionDto
 
-export type BillingPortalSession = {
-  url: string
-}
+export type BillingPortalSession = Contracts.BillingPortalSessionDto
 
-export type NotificationPreferences = {
-  pushComment: boolean
-  pushBoost: boolean
-  pushFollow: boolean
-  pushMention: boolean
-  pushMessage: boolean
-  pushRepost: boolean
-  pushNudge: boolean
-  pushFollowedPost: boolean
-  /** Send a single push 24h after a reply if the recipient hasn't opened it yet. Once-per-notification, never spammed. */
-  pushReplyNudge: boolean
-  /** Crew streak: push when the strict crew streak advances or breaks. Highest-signal push in the product. */
-  pushCrewStreak: boolean
-  /** Group activity: push for join, approve/reject, remove, disband events. */
-  pushGroupActivity: boolean
-  /** Word of the day + quote of the day push (fires at 9:00am / 9:30am ET). */
-  pushDailyContent: boolean
-  /** 8pm ET reminder to complete today's check-in (at-risk streaks only). */
-  pushCheckinReminder: boolean
-  /** In-app banner + chime when someone you follow comes online (throttled server-side). Never a push. */
-  inAppFollowOnline: boolean
-  emailDigestWeekly: boolean
-  emailNewNotifications: boolean
-  emailInstantHighSignal: boolean
-  emailStreakReminder: boolean
-  emailFollowedArticle: boolean
-  emailOnboarding: boolean
-  emailNewsletter: boolean
-}
+export type NotificationPreferences = Contracts.NotificationPreferencesDto
 
 /** Shared shape for Radio and Space lobby members (listeners/members). */
 export type LobbyMember = {
@@ -326,7 +161,7 @@ export type LobbyMember = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   paused?: boolean
   muted?: boolean
 }
@@ -338,114 +173,39 @@ export type LiveChatSender = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
 }
 
-export type RadioStation = {
-  id: string
-  name: string
-  streamUrl: string
-  attributionName: string | null
-  attributionUrl: string | null
-}
+export type RadioStation = Contracts.RadioStationDto
 
-export type RadioListener = LobbyMember
+export type RadioListener = Contracts.RadioListenerDto
 
-export type RadioLobbyCounts = {
-  countsByStationId: Record<string, number>
-}
+export type RadioLobbyCounts = Contracts.RadioLobbyCountsDto
 
-export type RadioChatSender = LiveChatSender
+export type RadioChatSender = Contracts.RadioChatSenderDto
 
-export type RadioChatMessage = {
-  id: string
-  stationId: string
-  body: string
-  createdAt: string
-  sender: RadioChatSender
-}
+export type RadioChatMessage = Contracts.RadioChatMessageDto
 
-export type RadioChatSnapshot = {
-  stationId: string
-  messages: RadioChatMessage[]
-}
+export type RadioChatSnapshot = Contracts.RadioChatSnapshotDto
 
-export type SpaceOwner = {
-  id: string
-  username: string | null
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-  premium: boolean
-  premiumPlus: boolean
-  isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
-}
+export type SpaceOwner = Contracts.SpaceOwnerDto
 
-export type Space = {
-  id: string
-  title: string | null
-  description: string | null
-  isActive: boolean
-  scheduledAt: string | null
-  mode: 'NONE' | 'WATCH_PARTY' | 'RADIO'
-  watchPartyUrl: string | null
-  radioStreamUrl: string | null
-  playbackTitle: string | null
-  owner: SpaceOwner
-  listenerCount: number
-  viewerSubscribed: boolean
-  subscriberCount: number
-  viewerFollowsOwner: boolean
-}
+export type Space = Contracts.SpaceDto
 
 /** Viewer-agnostic live patch for lobby / host schedule UI (`spaces:updated`). */
-export type WsSpacesUpdatedPayload = {
-  spaceId: string
-  version: string
-  reason: string
-  patch: Partial<{
-    title: string | null
-    description: string | null
-    isActive: boolean
-    scheduledAt: string | null
-    mode: 'NONE' | 'WATCH_PARTY' | 'RADIO'
-    watchPartyUrl: string | null
-    radioStreamUrl: string | null
-    playbackTitle: string | null
-    subscriberCount: number
-    deleted: boolean
-  }>
-}
+export type WsSpacesUpdatedPayload = Contracts.SpacesUpdatedPayloadDto
 
 export type SpaceMember = LobbyMember
 
-export type WatchPartyState = {
-  videoUrl: string
-  isPlaying: boolean
-  currentTime: number
-  playbackRate: number
-  updatedAt: number
-}
+export type WatchPartyState = Contracts.WatchPartyStateDto
 
-export type SpaceModeChanged = {
-  spaceId: string
-  mode: 'NONE' | 'WATCH_PARTY' | 'RADIO'
-  watchPartyUrl: string | null
-  radioStreamUrl: string | null
-}
+export type SpaceModeChanged = Contracts.SpaceModeChangedDto
 
-export type SpaceLobbyCounts = {
-  countsBySpaceId: Record<string, number>
-}
+export type SpaceLobbyCounts = Contracts.SpaceLobbyCountsDto
 
-export type SpaceChatSender = LiveChatSender
+export type SpaceChatSender = Contracts.SpaceChatSenderDto
 
-export type SpaceChatMediaItem = {
-  url: string
-  width: number | null
-  height: number | null
-  alt: string | null
-}
+export type SpaceChatMediaItem = Contracts.SpaceChatMediaItemDto
 
 export type SpaceChatReactionSummary = {
   reactionId: string
@@ -484,90 +244,27 @@ export type SpaceChatMessage =
       sender: null
     }
 
-export type SpaceChatSnapshot = {
-  spaceId: string
-  messages: SpaceChatMessage[]
-}
+export type SpaceChatSnapshot = Contracts.SpaceChatSnapshotDto
 
-export type SpaceReaction = {
-  id: string
-  emoji: string
-  label: string
-}
+export type SpaceReaction = Contracts.SpaceReactionDto
 
-export type SpaceReactionEvent = {
-  spaceId: string
-  userId: string
-  reactionId: string
-  emoji: string
-}
+export type SpaceReactionEvent = Contracts.SpaceReactionEventDto
 
-export type SpaceChatReactionEvent = {
-  spaceId: string
-  messageId: string
-  userId: string
-  username: string | null
-  reactionId: string
-  emoji: string
-}
+export type SpaceChatReactionEvent = Contracts.SpaceChatReactionEventDto
 
-export type Websters1828WordOfDay = {
-  word: string
-  dictionaryUrl: string
-  definition: string | null
-  definitionHtml: string | null
-  sourceUrl: string
-  fetchedAt: string
-  likeCount: number
-  viewerHasLiked: boolean
-}
+export type Websters1828WordOfDay = Contracts.Websters1828WordOfDayDto
 
-export type WotdLikeBreakdown = {
-  premium: number
-  verified: number
-  unverified: number
-  total: number
-}
+export type WotdLikeBreakdown = Contracts.WotdLikeBreakdownDto
 
-export type WotdLikeToggle = {
-  liked: boolean
-  likeCount: number
-}
+export type WotdLikeToggle = Contracts.WotdLikeToggleDto
 
-export type DailyQuoteKind = 'scripture' | 'quote' | 'paraphrase'
-export type DailyQuote = {
-  id: string
-  kind: DailyQuoteKind
-  author: string
-  reference: string | null
-  text: string
-  isParaphrase: boolean
-  tradition?: string
-  note?: string
-  sourceUrl?: string
-}
+export type DailyQuoteKind = Contracts.DailyQuoteKindDto
+export type DailyQuote = Contracts.DailyQuoteDto
 
-export type DailyContentToday = {
-  /** Eastern Time day key (YYYY-MM-DD). */
-  dayKey: string
-  quote: DailyQuote | null
-  quoteRefreshedAt: string | null
-  websters1828: Websters1828WordOfDay | null
-  websters1828RefreshedAt: string | null
-  /** UTC ISO timestamp of the next content publish boundary (9:00am ET for word, 9:30am ET for quote). */
-  nextPublishAt: string | null
-  /** UTC ISO timestamp of when today's word-of-the-day will (or did) publish: 09:00 ET. */
-  nextWordPublishAt: string | null
-  /** UTC ISO timestamp of when today's quote-of-the-day will (or did) publish: 09:30 ET. */
-  nextQuotePublishAt: string | null
-}
+export type DailyContentToday = Contracts.DailyContentTodayDto
 
 export type AdminEmailSampleType = 'weekly_digest' | 'new_notifications' | 'instant_high_signal' | 'streak_reminder'
-export type AdminEmailSampleSendResult = {
-  sent: boolean
-  reason: string | null
-  type: AdminEmailSampleType
-}
+export type AdminEmailSampleSendResult = Contracts.AdminEmailSampleSendResultDto
 
 export type FeedbackCategory = Contracts.FeedbackCategory
 export type FeedbackStatus = Contracts.FeedbackStatus
@@ -594,7 +291,7 @@ export type PostAuthor = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   avatarUrl: string | null
   avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   orgAffiliations?: OrgAffiliation[]
@@ -607,6 +304,16 @@ export type PostAuthor = {
 
 export type PostMention = Contracts.PostMentionDto
 
+// ─── Profile links (public links page) ─────────────────────────────────────
+export type ProfileLinkIcon = Contracts.ProfileLinkIcon
+export type ProfileLink = Contracts.ProfileLinkDto
+export type ConnectedAccount = Contracts.ConnectedAccountDto
+export type LinksPageRecentItem = Contracts.LinksPageRecentItemDto
+export type LinksPage = Contracts.LinksPageDto
+export type MyProfileLink = Contracts.MyProfileLinkDto
+export type MyConnectedAccount = Contracts.MyConnectedAccountDto
+export type MyProfileLinks = Contracts.MyProfileLinksDto
+
 /** Public profile payload from GET /users/:username */
 export type PublicProfile = {
   id: string
@@ -614,7 +321,10 @@ export type PublicProfile = {
   username: string | null
   name: string | null
   bio: string | null
+  /** @deprecated Mirror of the first website link; render `links` instead. */
   website: string | null
+  /** Public custom links in display order. Absent only on payloads from older API deployments. */
+  links?: ProfileLink[]
   xUsername: string | null
   pickaxUsername: string | null
   rumbleUrl: string | null
@@ -632,7 +342,7 @@ export type PublicProfile = {
   premiumPlus: boolean
   isOrganization: boolean
   accountKind?: AccountKind
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   avatarUrl: string | null
   avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   bannerUrl: string | null
@@ -670,7 +380,7 @@ export type UserPreviewBatchEntry = {
   premium?: boolean
   premiumPlus?: boolean
   isOrganization?: boolean
-  verifiedStatus?: 'none' | 'identity' | 'manual'
+  verifiedStatus?: VerifiedStatus
 }
 
 export type UserPreviewBatchResponse = {
@@ -687,7 +397,7 @@ export type UserPreview = {
   premiumPlus: boolean
   isOrganization: boolean
   accountKind?: AccountKind
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   avatarUrl: string | null
   avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   bannerUrl: string | null
@@ -705,32 +415,13 @@ export type UserPreview = {
 }
 
 /** Compact group card for gated posts and discovery. */
-export type CommunityGroupPreview = {
-  id: string
-  slug: string
-  name: string
-  descriptionPreview: string
-  coverImageUrl: string | null
-  avatarImageUrl: string | null
-  joinPolicy: 'open' | 'approval'
-  memberCount: number
-  viewerMembership: { status: 'active' | 'pending'; role: 'owner' | 'moderator' | 'member' } | null
-  viewerPendingApproval: boolean
-}
+export type CommunityGroupPreview = Contracts.CommunityGroupPreviewDto
 
 /**
  * Server-cached video embed for the post's preview link. Lets the feed lay out
  * the player at its final aspect ratio on first paint (no `/link-metadata` wait).
  */
-export type PostVideoEmbed = {
-  /** Normalized body URL this embed was resolved from. */
-  url: string
-  platform: 'rumble'
-  embedUrl: string
-  thumbnailUrl: string | null
-  width: number
-  height: number
-}
+export type PostVideoEmbed = Contracts.PostVideoEmbedDto
 
 export type ConversationInsights = Contracts.ConversationInsightsDto
 export type ConversationContext = Contracts.ConversationContextDto
@@ -775,6 +466,8 @@ export type FeedPost = {
   commentCount?: number
   /** Denormalized count of flat reposts + quote reposts referencing this post. */
   repostCount?: number
+  /** Quote reposts of this post (permalink Quotes section). */
+  quoteCount?: number
   /** Unique people (person × post). */
   viewerCount?: number
   /** Accepted impressions, including revisits after the 30s gate. */
@@ -853,21 +546,9 @@ export type FeedPost = {
   _pendingError?: string | null
 }
 
-export type PostViewAck = {
-  id: string
-  uniqueCounted: boolean
-  totalCounted: boolean
-  viewerCount: number
-  totalViewCount: number
-}
+export type PostViewAck = Contracts.PostViewAckDto
 
-export type ArticleViewAck = {
-  id: string
-  uniqueCounted: boolean
-  totalCounted: boolean
-  viewCount: number
-  totalViewCount: number
-}
+export type ArticleViewAck = Contracts.ArticleViewAckDto
 
 export type PostViewBreakdown = {
   premium: number
@@ -1084,20 +765,11 @@ export type AdminReportListData = AdminReportItem[]
 
 export type VerificationRequestStatus = Contracts.VerificationRequestStatus
 
-export type VerificationRequestPublic = {
-  id: string
-  createdAt: string
-  updatedAt: string
-  status: VerificationRequestStatus
-  provider: string | null
-  providerRequestId: string | null
-  reviewedAt: string | null
-  rejectionReason: string | null
-}
+export type VerificationRequestPublic = Contracts.VerificationRequestPublicDto
 
 /** Data type for GET /verification/me. */
 export type MyVerificationStatus = {
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   verifiedAt: string | null
   unverifiedAt: string | null
   latestRequest: VerificationRequestPublic | null
@@ -1115,7 +787,7 @@ export type AdminVerificationUser = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   verifiedAt: string | null
   unverifiedAt: string | null
 }
@@ -1194,7 +866,7 @@ export type AdminImageReviewDetailResponse = {
       name: string | null
       premium: boolean
       premiumPlus: boolean
-      verifiedStatus: 'none' | 'identity' | 'manual'
+      verifiedStatus: VerifiedStatus
       isAvatar: boolean
       isBanner: boolean
     }>
@@ -1339,12 +1011,7 @@ export type FollowRelationship = {
   viewerNotificationPreference?: UserNotificationPreference
 }
 
-export type NudgeState = {
-  outboundPending: boolean
-  inboundPending: boolean
-  inboundNotificationId: string | null
-  outboundExpiresAt: string | null
-}
+export type NudgeState = Contracts.NudgeStateDto
 
 export type FollowSummaryResponse = FollowRelationship & {
   canView: boolean
@@ -1376,7 +1043,7 @@ export type FollowListUser = {
   premiumPlus: boolean
   isOrganization: boolean
   accountKind?: AccountKind
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   avatarUrl: string | null
   avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   orgAffiliations?: OrgAffiliation[]
@@ -1396,20 +1063,9 @@ export type OnboardingMatches = {
 /** Search user result (FollowListUser + createdAt for interleaving). */
 export type SearchUserResult = FollowListUser & { createdAt?: string }
 
-export type HashtagResult = {
-  /** Canonical lowercase tag value (no '#'). */
-  value: string
-  /** Display label (most common casing). */
-  label: string
-  usageCount: number
-}
+export type HashtagResult = Contracts.HashtagResultDto
 
-export type CashtagResult = {
-  /** Uppercase ticker symbol (no '$'), e.g. "SPY". */
-  symbol: string
-  /** Full company or ETF name, e.g. "SPDR S&P 500 ETF Trust". */
-  name: string
-}
+export type CashtagResult = Contracts.CashtagResultDto
 
 export type TaxonomyKind = 'topic' | 'subtopic' | 'tag'
 
@@ -1492,43 +1148,19 @@ export type GetPresenceRecentData = RecentlyOnlineUser[]
 /** Data type for GET /presence/statuses (array). */
 export type GetPresenceStatusesData = UserStatus[]
 
-export type PresenceOnlinePage = {
-  online: OnlineUser[]
-  recent: RecentlyOnlineUser[]
-}
+export type PresenceOnlinePage = Contracts.PresenceOnlinePageDto
 
 /** Data type for GET /presence/online-page (object); totalOnline + recentNextCursor in pagination. */
 export type GetPresenceOnlinePageData = PresenceOnlinePage
 
-export type ActiveUsersMetrics = {
-  dau: number
-  mau: number
-  dauWindowDays: number
-  mauWindowDays: number
-  /** ISO timestamp of when the metric was computed. */
-  asOf: string
-}
+export type ActiveUsersMetrics = Contracts.ActiveUsersMetricsDto
 
 /** Data type for GET /metrics/active-users. */
 export type GetActiveUsersMetricsData = ActiveUsersMetrics
 
-export type Topic = {
-  topic: string
-  category: string
-  categoryLabel: string
-  score: number
-  interestCount: number
-  postCount: number
-  viewerFollows?: boolean
-}
+export type Topic = Contracts.TopicDto
 
-export type TopicCategory = {
-  category: string
-  label: string
-  score: number
-  interestCount: number
-  postCount: number
-}
+export type TopicCategory = Contracts.TopicCategoryDto
 
 /** Data type for GET /topics (array). */
 export type GetTopicsData = Topic[]
@@ -1561,10 +1193,10 @@ export type GetTopicOptionsData = TopicOption[]
 /** Data type for GET /hashtags/trending (array); pagination in envelope. */
 export type GetTrendingHashtagsData = HashtagResult[]
 
-export type NotificationCategory = 'posts' | 'replies' | 'mentions' | 'statuses' | 'follows' | 'boosts' | 'other'
+export type NotificationCategory = Contracts.NotificationCategory
 export type NotificationKind = Contracts.NotificationKind
 
-export type NotificationGroupKind = 'comment' | 'boost' | 'repost' | 'follow' | 'followed_post' | 'nudge'
+export type NotificationGroupKind = Contracts.NotificationGroupKind
 
 export type NotificationActor = Contracts.NotificationActorDto
 
@@ -1573,7 +1205,7 @@ export type SubjectPostPreview = Contracts.SubjectPostPreviewDto
 export type SubjectArticlePreview = Contracts.SubjectArticlePreviewDto
 
 /** Tier of the notification subject (post visibility or user tier) for unseen row highlight. */
-export type SubjectTier = 'premium' | 'verified' | null
+export type SubjectTier = Contracts.SubjectTier
 
 export type Notification = {
   actionPath?: string | null
@@ -1648,33 +1280,9 @@ export type Notification = {
   boardCommentId?: string | null
 }
 
-export type NotificationGroup = {
-  id: string
-  kind: NotificationGroupKind
-  createdAt: string
-  deliveredAt: string | null
-  readAt: string | null
-  subjectPostId: string | null
-  subjectUserId: string | null
-  actors: NotificationActor[]
-  actorCount: number
-  count: number
-  latestBody: string | null
-  latestSubjectPostPreview: SubjectPostPreview | null
-  subjectPostVisibility: PostVisibility | null
-  subjectTier: SubjectTier
-  boardThreadId?: string | null
-}
+export type NotificationGroup = Contracts.NotificationGroupDto
 
-export type FollowedPostsRollup = {
-  id: string
-  createdAt: string
-  deliveredAt: string | null
-  readAt: string | null
-  actors: NotificationActor[]
-  actorCount: number
-  count: number
-}
+export type FollowedPostsRollup = Contracts.FollowedPostsRollupDto
 
 export type NotificationFeedItem =
   | { type: 'single'; notification: Notification }
@@ -1725,16 +1333,9 @@ export type MessageConversationType = 'direct' | 'group' | 'crew_wall'
  * list/header can render the crew avatar, label the row as a Crew chat, and
  * deep-link to /c/:slug without a per-row round-trip.
  */
-export type MessageConversationCrewSummary = {
-  id: string
-  slug: string
-  /** Display name; null when the crew hasn't been named yet. */
-  name: string | null
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-}
-export type MessageParticipantStatus = 'pending' | 'accepted'
-export type MessageParticipantRole = 'owner' | 'member'
+export type MessageConversationCrewSummary = Contracts.MessageConversationCrewSummaryDto
+export type MessageParticipantStatus = Contracts.MessageParticipantStatus
+export type MessageParticipantRole = Contracts.MessageParticipantRole
 
 export type MessageUser = {
   id: string
@@ -1743,7 +1344,7 @@ export type MessageUser = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   avatarUrl: string | null
   avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   isBot?: boolean
@@ -1757,13 +1358,7 @@ export type MessageParticipant = {
   lastReadAt: string | null
 }
 
-export type MessageReactionSummary = {
-  reactionId: string
-  emoji: string
-  count: number
-  reactedByMe: boolean
-  reactors: { id: string; username: string | null; avatarUrl: string | null; avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null }[]
-}
+export type MessageReactionSummary = Contracts.MessageReactionSummaryDto
 
 export type MessageReplySnippet = Contracts.MessageReplySnippetDto
 
@@ -1907,19 +1502,9 @@ export type GetMessageBlocksResponse = {
 
 // --- Websocket (Socket.IO) payload types ---
 
-export type WsNotificationsNewPayload = {
-  notification: Notification
-  /**
-   * True when this event only re-renders an already-seen notification (e.g. the actor
-   * reworded their active status). The row's unread state and the bell count are
-   * untouched, so clients must patch quietly: no sound, no badge change, no highlight.
-   */
-  silent?: boolean
-}
+export type WsNotificationsNewPayload = Contracts.NotificationsNewPayloadDto
 
-export type WsNotificationsDeletedPayload = {
-  notificationIds: string[]
-}
+export type WsNotificationsDeletedPayload = Contracts.NotificationsDeletedPayloadDto
 
 export type WsNotificationsUpdatedPayload = {
   undeliveredCount?: number
@@ -1927,119 +1512,34 @@ export type WsNotificationsUpdatedPayload = {
   clearedPostIds?: string[]
 }
 
-export type WsNotificationsLockScreenClearPayload = {
-  section: 'inbox' | 'groups'
-}
+export type WsNotificationsLockScreenClearPayload = Contracts.NotificationsLockScreenClearPayloadDto
 
-export type WsAccountsBadgeUpdatedPayload = {
-  userId: string
-  unreadBadgeCount: number
-  hasUnreadNotifications?: boolean
-  hasUnreadBoard?: boolean
-}
+export type WsAccountsBadgeUpdatedPayload = Contracts.AccountsBadgeUpdatedPayloadDto
 
-export type WsMessagesReadPayload = {
-  conversationId: string
-  userId: string
-  lastReadAt: string
-}
+export type WsMessagesReadPayload = Contracts.MessagesReadPayloadDto
 
-export type WsFollowsChangedPayload = {
-  actorUserId: string
-  targetUserId: string
-  viewerFollowsUser: boolean
-  viewerNotificationPreference?: UserNotificationPreference
-}
+export type WsFollowsChangedPayload = Contracts.FollowsChangedPayloadDto
 
 export type WsPostInteractionKind = 'boost' | 'bookmark' | 'repost'
-export type WsPostsInteractionPayload = {
-  postId: string
-  actorUserId: string
-  kind: WsPostInteractionKind
-  active: boolean
-  boostCount?: number
-  bookmarkCount?: number
-  repostCount?: number
-}
+export type WsPostsInteractionPayload = Contracts.PostsInteractionPayloadDto
 
-export type WsPostsSubscribedPayload = {
-  postIds: string[]
-}
+export type WsPostsSubscribedPayload = Contracts.PostsSubscribedPayloadDto
 
-export type WsPostsLiveUpdatedPayload = {
-  postId: string
-  version: string
-  reason: string
-  patch: Partial<{
-    body: string
-    editedAt: string | null
-    editCount: number
-    deletedAt: string | null
-    commentCount: number
-    viewerCount: number
-    totalViewCount: number
-    boostCount: number
-    bookmarkCount: number
-    repostCount: number
-    poll: PostPoll | null
-    replyPrompt: 'question' | 'discussion' | null
-    pickaxUrl: string | null
-    xUrl: string | null
-    pickaxError: string | null
-    xError: string | null
-  }>
-}
+export type WsPostsLiveUpdatedPayload = Contracts.PostsLiveUpdatedPayloadDto
 
-export type WsArticlesLiveUpdatedPayload = {
-  articleId: string
-  version: string
-  reason: string
-  patch: Partial<{
-    commentCount: number
-    viewCount: number
-    totalViewCount: number
-    boostCount: number
-    reactions: ArticleReactionSummary[]
-    deletedAt: string
-    pickaxUrl: string | null
-    xUrl: string | null
-    pickaxError: string | null
-    xError: string | null
-  }>
-}
+export type WsArticlesLiveUpdatedPayload = Contracts.ArticlesLiveUpdatedPayloadDto
 
-export type WsArticlesCommentAddedPayload = {
-  articleId: string
-  comment: ArticleComment
-}
+export type WsArticlesCommentAddedPayload = Contracts.ArticlesCommentAddedPayloadDto
 
-export type WsArticlesCommentDeletedPayload = {
-  articleId: string
-  commentId: string
-  parentId: string | null
-}
+export type WsArticlesCommentDeletedPayload = Contracts.ArticlesCommentDeletedPayloadDto
 
-export type WsArticlesCommentUpdatedPayload = {
-  articleId: string
-  comment: ArticleComment
-}
+export type WsArticlesCommentUpdatedPayload = Contracts.ArticlesCommentUpdatedPayloadDto
 
-export type WsArticlesCommentReactionChangedPayload = {
-  articleId: string
-  commentId: string
-  parentId: string | null
-  reactions: ArticleReactionSummary[]
-}
+export type WsArticlesCommentReactionChangedPayload = Contracts.ArticlesCommentReactionChangedPayloadDto
 
-export type WsPostsCommentAddedPayload = {
-  parentPostId: string
-  comment: FeedPost
-}
+export type WsPostsCommentAddedPayload = Contracts.PostsCommentAddedPayloadDto
 
-export type WsPostsCommentDeletedPayload = {
-  parentPostId: string
-  commentId: string
-}
+export type WsPostsCommentDeletedPayload = Contracts.PostsCommentDeletedPayloadDto
 
 /**
  * Live "someone is replying to this post" indicator.
@@ -2049,86 +1549,36 @@ export type WsPostsCommentDeletedPayload = {
  * `'replying'` only after he has committed to a reply, while composing — clients show the
  * same "is replying" copy. `'thinking'` is legacy and should render the same.
  */
-export type WsPostsTypingPayload = {
-  postId: string
-  user: {
-    id: string
-    username: string | null
-    verifiedStatus: string | null
-    premium: boolean
-    premiumPlus: boolean
-    isOrganization: boolean
-  }
-  typing: boolean
-  status?: 'thinking' | 'replying'
-  /** Board threads: the comment being answered; absent for a top-level comment. */
-  replyToId?: string
-}
+export type WsPostsTypingPayload = Contracts.PostsTypingPayloadDto
 
 /** New top-level post from someone the viewer follows; pushed to each follower's user room. */
-export type WsFeedNewPostPayload = {
-  post: FeedPost
-}
+export type WsFeedNewPostPayload = Contracts.FeedNewPostPayloadDto
 
 /** New top-level post (or repost) in a community group; pushed to the `group:{id}` room. */
-export type WsGroupNewPostPayload = {
-  groupId: string
-  post: FeedPost
-}
+export type WsGroupNewPostPayload = Contracts.GroupNewPostPayloadDto
 
-export type WsGroupMarvChangedPayload = {
-  groupId: string
-  isMember: boolean
-}
+export type WsGroupMarvChangedPayload = Contracts.GroupMarvChangedPayloadDto
 
 /**
  * Live "someone in your circle just answered today's check-in" event.
  * Emitted to followers + crew members of the actor when a `kind: 'checkin'` post is created.
  */
-export type WsCheckinAnsweredTodayPayload = {
-  dayKey: string
-  totalToday: number
-  answerer: {
-    id: string
-    username: string | null
-    displayName: string | null
-    avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-    isFollowed?: boolean
-  }
-}
+export type WsCheckinAnsweredTodayPayload = Contracts.CheckinAnsweredTodayPayloadDto
 
 export type WsAdminUpdateKind = 'reports' | 'verification' | 'feedback' | 'assistant'
 export type WsAdminUpdateAction = 'created' | 'updated' | 'deleted' | 'resolved' | 'reviewed' | 'other'
-export type WsAdminUpdatedPayload = {
-  kind: WsAdminUpdateKind
-  action: WsAdminUpdateAction
-  id?: string
-}
+export type WsAdminUpdatedPayload = Contracts.AdminUpdatedPayloadDto
 
-export type WsUsersSelfUpdatedPayload = {
-  user: PublicProfile
-}
+export type WsUsersSelfUpdatedPayload = Contracts.UsersSelfUpdatedPayloadDto
 
 /** Emitted to subscribers of a user when that user joins or leaves a space. */
-export type WsUsersSpaceChangedPayload = {
-  userId: string
-  spaceId: string | null
-  previousSpaceId?: string
-}
+export type WsUsersSpaceChangedPayload = Contracts.UsersSpaceChangedPayloadDto
 
-export type WsPresenceStatusUpdatedPayload = {
-  status: UserStatus
-}
+export type WsPresenceStatusUpdatedPayload = Contracts.PresenceStatusUpdatedPayloadDto
 
-export type WsPresenceStatusClearedPayload = {
-  userId: string
-}
+export type WsPresenceStatusClearedPayload = Contracts.PresenceStatusClearedPayloadDto
 
-export type WsPresencePlatformsChangedPayload = {
-  userId: string
-  platforms: string[]
-}
+export type WsPresencePlatformsChangedPayload = Contracts.PresencePlatformsChangedPayloadDto
 
 export type HeardAboutUs = Contracts.HeardAboutUs
 
@@ -2174,7 +1624,7 @@ export type UserDto = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   verifiedAt: string | null
   unverifiedAt: string | null
   followVisibility: 'all' | 'verified' | 'premium' | 'none'
@@ -2219,23 +1669,11 @@ export type UserDto = {
 }
 
 /** Mirrors `ImpersonationDto` in menofhunger-api/src/common/dto/auth.dto.ts. */
-export type Impersonation = {
-  adminUserId: string
-  adminUsername: string | null
-  adminName: string | null
-  adminAvatarUrl: string | null
-}
+export type Impersonation = Contracts.ImpersonationDto
 
-export type WsUsersMeUpdatedPayload = {
-  user?: UserDto
-  reason?: string
-}
+export type WsUsersMeUpdatedPayload = Contracts.UsersMeUpdatedPayloadDto
 
-export type AdminUserSensitiveFields = {
-  phone: string | null
-  email: string | null
-  birthdate: string | null
-}
+export type AdminUserSensitiveFields = Contracts.AdminUserSensitiveFieldsDto
 
 export type AdminUserDetailData = UserDto & {
   orgAffiliations: OrgAffiliation[]
@@ -2243,39 +1681,11 @@ export type AdminUserDetailData = UserDto & {
   canRevealSensitive: boolean
 }
 
-export type AdminUserRecentPost = {
-  id: string
-  createdAt: string
-  body: string
-  parentId: string | null
-  rootId: string | null
-  kind: string
-  visibility: string
-  commentCount: number
-  boostCount: number
-  bookmarkCount: number
-}
+export type AdminUserRecentPost = Contracts.AdminUserRecentPostDto
 
-export type AdminUserRecentArticle = {
-  id: string
-  title: string
-  slug: string
-  excerpt: string | null
-  createdAt: string
-  publishedAt: string | null
-  isDraft: boolean
-  visibility: string
-  viewCount: number
-  totalViewCount: number
-  boostCount: number
-  commentCount: number
-}
+export type AdminUserRecentArticle = Contracts.AdminUserRecentArticleDto
 
-export type AdminUserRecentSearch = {
-  id: string
-  query: string
-  createdAt: string
-}
+export type AdminUserRecentSearch = Contracts.AdminUserRecentSearchDto
 
 export type AdminAdjustCoinsResult = {
   transferId: string
@@ -2354,7 +1764,7 @@ export type LeaderboardUser = {
   premium: boolean
   premiumPlus: boolean
   isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   avatarUrl: string | null
   avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   checkinStreakDays: number
@@ -2378,246 +1788,48 @@ export type GetCheckinsLeaderboardResponse = {
 
 // --- Admin analytics ---
 
-export type AnalyticsRange = '7d' | '30d' | '3m' | '1y' | 'all'
-export type AnalyticsGranularity = 'day' | 'week' | 'month'
+export type AnalyticsRange = Contracts.AnalyticsRange
+export type AnalyticsGranularity = Contracts.AnalyticsGranularity
 
 export type AdminAnalyticsTimeSeriesPoint = {
   bucket: string
   count: number
 }
 
-export type AdminAnalyticsSummary = {
-  totalUsers: number
-  verifiedUsers: number
-  /** All-time public, regular, non-draft, non-deleted posts. */
-  totalPublicPosts: number
-  premiumUsers: number
-  premiumPlusUsers: number
-  /** Users with at least one active (non-revoked, non-expired) subscription grant */
-  usersWithActiveGrants: number
-  dau: number
-  mau: number
-  /** Sum of all user coin balances — total coins in the economy */
-  totalCoinsInEconomy: number
-}
+export type AdminAnalyticsSummary = Contracts.AdminAnalyticsSummaryDto
 
-export type AdminAnalyticsTopPost = {
-  id: string
-  bodyPreview: string
-  authorUsername: string
-  uniqueViewCount: number
-  viewCount: number
-  boostCount: number
-  commentCount: number
-  reactionCount: number
-  createdAt: string
-}
+export type AdminAnalyticsTopPost = Contracts.AdminAnalyticsTopPostDto
 
-export type AdminAnalyticsRetentionRow = {
-  cohortWeek: string
-  size: number
-  w1: number
-  w4: number
-}
+export type AdminAnalyticsRetentionRow = Contracts.AdminAnalyticsRetentionRow
 
-export type AdminAnalyticsEngagement = {
-  d30CohortSize: number
-  d30RetainedCount: number
-  d30RetentionPct: number | null
-  activationEligibleCount: number
-  activationCount: number
-  activationPct: number | null
-  creatorMauCount: number
-  creatorCount: number
-  creatorPct: number | null
-  avgFollowersPerUser: number
-  connectedUserCount: number
-  connectedUserPct: number | null
-}
+export type AdminAnalyticsEngagement = Contracts.AdminAnalyticsEngagementDto
 
-export type AdminAnalyticsMonetization = {
-  free: number
-  payingPremium: number
-  payingPremiumPlus: number
-  compedPremium: number
-  compedPremiumPlus: number
-  byStatus: Record<string, number>
-}
+export type AdminAnalyticsMonetization = Contracts.AdminAnalyticsMonetizationDto
 
-export type AdminAnalyticsCoins = {
-  /** Sum of all user coin balances (all time, all non-banned users). */
-  totalInEconomy: number
-  /** Coins minted from streak rewards in the selected range. */
-  mintedInRange: number
-  /** Coins sent peer-to-peer in the selected range. */
-  transferredInRange: number
-  /** Distinct users who earned streak coins in the selected range. */
-  uniqueEarnersInRange: number
-  /** Distinct users who sent coins to others in the selected range. */
-  uniqueSendersInRange: number
-  /** Coins minted per time bucket in the selected range. */
-  minted: AdminAnalyticsTimeSeriesPoint[]
-  /** Coins minted grouped by multiplier amount (1, 2, 3, 4). */
-  mintedByMultiplier: Record<string, number>
-  /** transferred / minted in range. Null when minted = 0. */
-  velocityRatio: number | null
-  /** Gini coefficient (0 = equal, 1 = all coins held by one person). Null when no holders. */
-  giniCoefficient: number | null
-}
+export type AdminAnalyticsCoins = Contracts.AdminAnalyticsCoinsDto
 
-export type AdminAnalyticsTopArticle = {
-  id: string
-  title: string
-  slug: string
-  visibility: string
-  authorUsername: string
-  uniqueViewCount: number
-  viewCount: number
-  boostCount: number
-  commentCount: number
-  reactionCount: number
-  publishedAt: string
-}
+export type AdminAnalyticsTopArticle = Contracts.AdminAnalyticsTopArticleDto
 
-export type AdminAnalyticsArticleKpi = {
-  totalPublished: number
-  totalDrafts: number
-  uniqueAuthors: number
-  uniqueViewsInRange: number
-  totalViewsInRange: number
-  totalBoostsInRange: number
-  totalReactionsInRange: number
-  totalCommentsInRange: number
-  avgViewsPerArticle: number
-}
+export type AdminAnalyticsArticleKpi = Contracts.AdminAnalyticsArticleKpiDto
 
-export type AdminAnalyticsArticles = {
-  kpis: AdminAnalyticsArticleKpi
-  published: AdminAnalyticsTimeSeriesPoint[]
-  views: AdminAnalyticsTimeSeriesPoint[]
-  byVisibility: Record<string, number>
-  topArticles: AdminAnalyticsTopArticle[]
-}
+export type AdminAnalyticsArticles = Contracts.AdminAnalyticsArticlesDto
 
-export type AdminAnalyticsGroupsTopRow = {
-  id: string
-  slug: string
-  name: string
-  memberCount: number
-  rootPostsInRange: number
-  replyRate24hPct: number | null
-}
+export type AdminAnalyticsGroupsTopRow = Contracts.AdminAnalyticsGroupsTopRowDto
 
-export type AdminAnalyticsGroups = {
-  usersInAnyGroup: number
-  pctUsersInAnyGroup: number | null
-  activeGroups: number
-  newActiveMembershipsInRange: number
-  pendingApprovals: number
-  groupRootPostsInRange: number
-  groupRepliesInRange: number
-  pctGroupRootsWithReplyWithin24h: number | null
-  topGroups: AdminAnalyticsGroupsTopRow[]
-}
+export type AdminAnalyticsGroups = Contracts.AdminAnalyticsGroupsDto
 
-export type AdminAnalyticsSpacesTopRow = {
-  id: string
-  ownerId: string
-  ownerUsername: string
-  title: string
-  mode: string
-  isActive: boolean
-  createdAt: string
-  activatedAt: string | null
-}
+export type AdminAnalyticsSpacesTopRow = Contracts.AdminAnalyticsSpacesTopRowDto
 
-export type AdminAnalyticsSpaces = {
-  /** All-time total spaces. */
-  totalSpaces: number
-  /** Spaces currently marked isActive = true. */
-  activeSpaces: number
-  /** Spaces created within the selected range. */
-  spacesCreatedInRange: number
-  /** Spaces whose last go-live falls in the selected range. */
-  wentLiveInRange: number
-  /** Currently scheduled (upcoming) and not live. */
-  scheduledSpaces: number
-  /** Notify-me subscribers excluding hosts, all time. */
-  notifyMeSubscribers: number
-  /** Notify-me subscribers (excluding hosts) created in the selected range. */
-  notifyMeSubscribersInRange: number
-  /** All-time spaces by current mode (NONE / WATCH_PARTY / RADIO). */
-  byMode: Record<string, number>
-  /** Time series — spaces created per bucket in the selected range. */
-  created: AdminAnalyticsTimeSeriesPoint[]
-  /** Currently active spaces, most recently updated first. */
-  topSpaces: AdminAnalyticsSpacesTopRow[]
-}
+export type AdminAnalyticsSpaces = Contracts.AdminAnalyticsSpacesDto
 
-export type AdminAnalyticsAI = {
-  /** All MarvinUsageEvent rows in range (success + errors). */
-  totalInteractionsInRange: number
-  /** Rows where errorCode IS NULL (actual AI responses delivered). */
-  successfulInteractionsInRange: number
-  /** Distinct users who triggered Marv in range. */
-  uniqueUsersInRange: number
-  /** Sum of creditsSpent for all events in range. */
-  creditsSpentInRange: number
-  /** Sum of estimatedCostUsd in range; null when no cost data yet. */
-  estimatedCostUsdInRange: number | null
-  /** Average latencyMs for successful events; null when no data. */
-  avgLatencyMsInRange: number | null
-  /** Count by MarvinSource: "public_thread" | "private_session" | "catch_up". */
-  bySource: Record<string, number>
-  /** Count by effectiveMode for successful events: "fast" | "regular" | "smart". */
-  byEffectiveMode: Record<string, number>
-  /** Count by outcome for all events: "success" | errorCode string. */
-  byOutcome: Record<string, number>
-  /** Time series of successful interactions per granularity bucket. */
-  interactions: AdminAnalyticsTimeSeriesPoint[]
-}
+export type AdminAnalyticsAI = Contracts.AdminAnalyticsAIDto
 
 export type AdminAnalyticsChannelsTopRow = Contracts.AdminAnalyticsChannelsTopRowDto
 export type AdminAnalyticsChannels = Contracts.AdminAnalyticsChannelsDto
 export type AdminAnalyticsBoard = Contracts.AdminAnalyticsBoardDto
 export type AdminAnalyticsBoardTopThread = Contracts.AdminAnalyticsBoardTopThreadDto
 
-export type AdminAnalytics = {
-  range: AnalyticsRange
-  granularity: AnalyticsGranularity
-  summary: AdminAnalyticsSummary
-  signups: AdminAnalyticsTimeSeriesPoint[]
-  /** Top public regular posts by all-time denormalized view count. */
-  topPostsAllTime: AdminAnalyticsTopPost[]
-  postsByVisibility: Record<string, number>
-  /** Time series of regular posts by human (non-bot) users. */
-  posts: AdminAnalyticsTimeSeriesPoint[]
-  /** Time series of regular posts by AI/bot users. */
-  aiPosts: AdminAnalyticsTimeSeriesPoint[]
-  checkins: AdminAnalyticsTimeSeriesPoint[]
-  /** Time series of messages sent by human (non-bot) users. */
-  messages: AdminAnalyticsTimeSeriesPoint[]
-  /** Time series of messages sent by AI/bot users. */
-  aiMessages: AdminAnalyticsTimeSeriesPoint[]
-  follows: AdminAnalyticsTimeSeriesPoint[]
-  retention: AdminAnalyticsRetentionRow[]
-  engagement: AdminAnalyticsEngagement
-  /**
-   * All-time landing-eligible men/posts/views + authorship concentration.
-   * Same filters as the public homepage stats (not range-filtered).
-   */
-  landing: LandingStats
-  monetization: AdminAnalyticsMonetization
-  coins: AdminAnalyticsCoins
-  articles: AdminAnalyticsArticles
-  /** Board threads and comments, reported apart from posts. */
-  board: AdminAnalyticsBoard
-  groups: AdminAnalyticsGroups
-  channels: AdminAnalyticsChannels
-  spaces: AdminAnalyticsSpaces
-  ai: AdminAnalyticsAI
-  asOf: string
-}
+export type AdminAnalytics = Contracts.AdminAnalyticsDto
 
 /** Marv briefing of the already-loaded admin analytics snapshot. */
 export type AdminAnalyticsBrief = Contracts.AdminAnalyticsBriefDto
@@ -2627,73 +1839,22 @@ export type AdminIntroPair = Contracts.AdminIntroPairDto
 export type AdminIntroBrief = Contracts.AdminIntroBriefDto
 export type AdminIntroBriefQueued = Contracts.AdminIntroBriefQueuedDto
 
-export type LandingMenBreakdown = {
-  /** premium OR premiumPlus. */
-  premium: number
-  /** verifiedStatus != 'none' AND NOT (premium OR premiumPlus). */
-  verified: number
-  /** premium + verified. */
-  total: number
-  /** Distinct verified men who authored ≥1 landing-eligible post or reply. */
-  contributors: number
-  /** Distinct verified men who authored ≥1 landing-eligible original (non-reply) post. */
-  originalAuthors: number
-  /** Integer percent 0–100 of eligible content by the single most prolific author. */
-  topAuthorSharePercent: number
-  /** Integer percent 0–100 of eligible content by the five most prolific authors. */
-  top5SharePercent: number
-  /** Median posts+replies among contributors only. */
-  medianPostsPerContributor: number
-}
+export type LandingMenBreakdown = Contracts.LandingMenBreakdownDto
 
-export type LandingPostBreakdown = {
-  /** visibility = 'public'. */
-  public: number
-  /** visibility = 'verifiedOnly'. */
-  verified: number
-  /** visibility = 'premiumOnly'. */
-  premium: number
-  /** Top-level posts (parentId IS NULL). */
-  original: number
-  /** Replies/comments (parentId IS NOT NULL). */
-  replies: number
-  /** public + verified + premium (onlyMe excluded). Equals original + replies. */
-  total: number
-}
+export type LandingPostBreakdown = Contracts.LandingPostBreakdownDto
 
 /**
  * Site-wide post views. Tier rows are unique people; `total` is impressions.
  */
-export type LandingViewsBreakdown = {
-  premium: number
-  verified: number
-  unverified: number
-  guest: number
-  total: number
-  unique: number
-}
+export type LandingViewsBreakdown = Contracts.LandingViewsBreakdownDto
 
 /** Published articles by landing-eligible authors (drafts/deleted/onlyMe excluded). */
-export type LandingArticleBreakdown = {
-  public: number
-  verified: number
-  premium: number
-  total: number
-  authors: number
-  views: number
-  unique: number
-}
+export type LandingArticleBreakdown = Contracts.LandingArticleBreakdownDto
 
 /** Board threads (minus article mirrors) and comments by landing-eligible authors; not part of posts. */
 export type LandingBoardBreakdown = Contracts.LandingBoardBreakdownDto
 
-export type LandingStats = {
-  men: LandingMenBreakdown
-  posts: LandingPostBreakdown
-  articles: LandingArticleBreakdown
-  board: LandingBoardBreakdown
-  views: LandingViewsBreakdown
-}
+export type LandingStats = Contracts.LandingStatsDto
 
 export type LandingTopPost = FeedPost & {
   /** Distinct logged-in/anonymous viewers active on this post in the last 7 days. */
@@ -2713,43 +1874,9 @@ export type LandingSnapshot = {
 }
 
 /** Community group shell (public to signed-in users). */
-export type CommunityGroupShell = {
-  channelsAvailable?: boolean
-  channelPersonalCount?: number
-  channelHasUnread?: boolean
-  id: string
-  slug: string
-  name: string
-  description: string
-  rules: string | null
-  coverImageUrl: string | null
-  avatarImageUrl: string | null
-  joinPolicy: 'open' | 'approval'
-  memberCount: number
-  isFeatured: boolean
-  featuredOrder: number
-  createdAt: string
-  viewerMembership: { status: 'active' | 'pending'; role: 'owner' | 'moderator' | 'member' } | null
-  viewerPendingApproval: boolean
-  /** Number of pending join requests. Only populated for owners and moderators of approval-policy groups. */
-  pendingMemberCount?: number
-  /** Number of pending outbound invites the group still has open. Only populated for owners and moderators. */
-  pendingInviteCount?: number
-  /** Marv bot membership status. Only populated on getShellBySlug; null when Marv is not configured. */
-  marv?: { userId: string; username: string | null; isMember: boolean } | null
-  /** ISO timestamp of the viewer's most recent post/reply in this group. Only populated on listMine. */
-  lastViewerPostAt?: string | null
-}
+export type CommunityGroupShell = Contracts.CommunityGroupShellDto
 
-export type CommunityGroupMemberListItem = {
-  userId: string
-  username: string | null
-  name: string | null
-  role: 'owner' | 'moderator' | 'member'
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-  joinedAt: string
-}
+export type CommunityGroupMemberListItem = Contracts.CommunityGroupMemberListItemDto
 
 export type CommunityGroupPendingMember = {
   userId: string
@@ -2760,90 +1887,28 @@ export type CommunityGroupPendingMember = {
 
 // ─── Community group invites ─────────────────────────────────────────────────
 
-export type CommunityGroupInviteStatus =
-  | 'pending'
-  | 'accepted'
-  | 'declined'
-  | 'cancelled'
-  | 'expired'
+export type CommunityGroupInviteStatus = Contracts.CommunityGroupInviteStatus
 
 /** Lightweight group ref returned with each invite (for inbox row rendering). */
-export type CommunityGroupInviteGroupRef = {
-  id: string
-  slug: string
-  name: string
-  descriptionPreview: string
-  avatarImageUrl: string | null
-  coverImageUrl: string | null
-  joinPolicy: 'open' | 'approval'
-  memberCount: number
-}
+export type CommunityGroupInviteGroupRef = Contracts.CommunityGroupInviteGroupRefDto
 
-export type CommunityGroupInvite = {
-  id: string
-  createdAt: string
-  updatedAt: string
-  expiresAt: string
-  status: CommunityGroupInviteStatus
-  message: string | null
-  /** ISO; only set when the invitee previously declined this same row. */
-  lastDeclinedAt: string | null
-  group: CommunityGroupInviteGroupRef
-  /** List-user without viewer relationship (the API doesn't compute it for invites). */
-  invitedBy: Omit<FollowListUser, 'relationship'> & { relationship?: FollowRelationship }
-  invitee: Omit<FollowListUser, 'relationship'> & { relationship?: FollowRelationship }
-}
+export type CommunityGroupInvite = Contracts.CommunityGroupInviteDto
 
 /**
  * Annotation returned by `/groups/:groupId/invitable-users` so the picker can
  * render hints like "Already a member" or "Declined — try again on Mar 14".
  */
-export type CommunityGroupInvitableUserStatus =
-  | { kind: 'invitable' }
-  | { kind: 'self' }
-  | { kind: 'banned' }
-  | { kind: 'member'; role: 'owner' | 'moderator' | 'member' }
-  | { kind: 'pending_join_request' }
-  | { kind: 'pending_invite'; inviteId: string; lastNotifiedAt: string | null }
-  | { kind: 'declined_cooldown'; inviteId: string; declinedAt: string; canReinviteAt: string }
-  | { kind: 'declined_invitable'; inviteId: string; declinedAt: string }
+export type CommunityGroupInvitableUserStatus = Contracts.CommunityGroupInvitableUserStatus
 
-export type CommunityGroupInvitableUser = {
-  user: FollowListUser
-  inviteStatus: CommunityGroupInvitableUserStatus
-}
+export type CommunityGroupInvitableUser = Contracts.CommunityGroupInvitableUserDto
 
 // ─── Articles ────────────────────────────────────────────────────────────────
 
-export type ArticleReactionSummary = {
-  reactionId: string
-  emoji: string
-  count: number
-  viewerHasReacted: boolean
-}
+export type ArticleReactionSummary = Contracts.ArticleReactionSummaryDto
 
-export type ArticleAuthor = {
-  id: string
-  username: string | null
-  name: string | null
-  bio: string | null
-  /** Override bio for article author sections. Falls back to `bio` if null. */
-  articleBio: string | null
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-  premium: boolean
-  premiumPlus: boolean
-  isOrganization: boolean
-  verifiedStatus: 'none' | 'identity' | 'manual'
-  orgAffiliations: OrgAffiliation[]
-}
+export type ArticleAuthor = Contracts.ArticleAuthorDto
 
-export type ArticleTag = {
-  /** Normalized slug — safe for URL params (e.g. "stoicism"). */
-  tag: string
-  /** Display label as the author typed it (e.g. "Stoicism"). */
-  label: string
-}
+export type ArticleTag = Contracts.ArticleTagDto
 
 /** User-selected taxonomy preferences for digest personalization. */
 export type TaxonomyPreference = {
@@ -2910,174 +1975,46 @@ export type ArticleSharePreview = {
 
 // ─── Fitness types ────────────────────────────────────────────────────────────
 
-export type FitnessProvider = 'strava' | 'apple_health'
-export type FitnessActivityType = 'run' | 'ride' | 'walk' | 'swim' | 'workout' | 'hike' | 'yoga' | 'other'
-export type FitnessUnits = 'us' | 'metric'
-export type FitnessShareType = 'activity' | 'weight' | 'progress' | 'vo2max'
+export type FitnessProvider = Contracts.FitnessProvider
+export type FitnessActivityType = Contracts.FitnessActivityType
+export type FitnessUnits = Contracts.FitnessUnits
+export type FitnessShareType = Contracts.FitnessShareType
 
-export type FitnessConnection = {
-  provider: FitnessProvider
-  status: string
-  lastSyncAt: string | null
-  lastManualSyncAt: string | null
-  providerUserId: string | null
-}
+export type FitnessConnection = Contracts.FitnessConnectionDto
 
-export type FitnessActivity = {
-  id: string
-  provider: FitnessProvider
-  activityType: FitnessActivityType
-  name: string | null
-  startedAt: string
-  endedAt: string | null
-  durationSec: number
-  distanceM: number | null
-  effortScore: number | null
-  stepsCount: number | null
-  calories: number | null
-  avgHeartrate: number | null
-  maxHeartrate: number | null
-  /** Total elevation gain in meters. Populated for Strava; null for Apple Health. */
-  totalElevationM: number | null
-}
+export type FitnessActivity = Contracts.FitnessActivityDto
 
 /** Full activity for the detail page. `raw` is the provider payload (or a normalized fallback). */
-export type FitnessActivityDetail = FitnessActivity & {
-  externalId: string
-  raw: unknown
-  units: FitnessUnits
-}
+export type FitnessActivityDetail = Contracts.FitnessActivityDetailDto
 
-export type FitnessDailySummary = {
-  dayKey: string
-  stepsCount: number | null
-  workoutMinutes: number | null
-  distanceM: number | null
-  effortScore: number | null
-  sleepMinutes?: number | null
-  hrvMs?: number | null
-}
+export type FitnessDailySummary = Contracts.FitnessDailySummaryDto
 
-export type FitnessStepsDay = {
-  dayKey: string
-  stepsCount: number
-}
+export type FitnessStepsDay = Contracts.FitnessStepsDayDto
 
-export type FitnessBodyMetric = {
-  id: string
-  /** "weight" | "vo2max" */
-  kind: string
-  /** kg for weight; ml/kg/min for vo2max */
-  weightKg: number
-  measuredAt: string
-  source: string
-}
+export type FitnessBodyMetric = Contracts.FitnessBodyMetricDto
 
-export type FitnessGoal = {
-  id: string
-  kind: string
-  startKg: number | null
-  targetKg: number | null
-  startedAt: string
-  completedAt: string | null
-}
+export type FitnessGoal = Contracts.FitnessGoalDto
 
-export type FitnessActivitySnapshot = {
-  activityType: FitnessActivityType
-  startedAt: string
-  durationSec: number
-  distanceM: number | null
-  effortScore: number | null
-  stepsCount: number | null
-  calories: number | null
-  avgHeartrate: number | null
-  maxHeartrate: number | null
-  totalElevationM: number | null
-}
+export type FitnessActivitySnapshot = Contracts.FitnessActivitySnapshotDto
 
-export type FitnessWeightSnapshot = {
-  weightKg: number
-  measuredAt: string
-  previousWeightKg: number | null
-  deltaKg: number | null
-}
+export type FitnessWeightSnapshot = Contracts.FitnessWeightSnapshotDto
 
-export type FitnessProgressSnapshot = {
-  startKg: number | null
-  currentKg: number | null
-  targetKg: number | null
-  startedAt: string
-}
+export type FitnessProgressSnapshot = Contracts.FitnessProgressSnapshotDto
 
-export type FitnessVo2MaxSnapshot = {
-  vo2maxMlKgMin: number
-  measuredAt: string
-  startVo2maxMlKgMin: number | null
-  startedAt: string | null
-  deltaMlKgMin: number | null
-}
+export type FitnessVo2MaxSnapshot = Contracts.FitnessVo2MaxSnapshotDto
 
-export type FitnessShareSnapshot =
-  | { type: 'activity'; data: FitnessActivitySnapshot }
-  | { type: 'weight'; data: FitnessWeightSnapshot }
-  | { type: 'progress'; data: FitnessProgressSnapshot }
-  | { type: 'vo2max'; data: FitnessVo2MaxSnapshot }
+export type FitnessShareSnapshot = Contracts.FitnessShareSnapshotDto
 
-export type FitnessSharePreview = {
-  id: string
-  shareType: FitnessShareType
-  snapshot: FitnessShareSnapshot
-}
+export type FitnessSharePreview = Contracts.FitnessSharePreviewDto
 
-export type FitnessWeekSummary = {
-  weekStart: string
-  weekEnd: string
-  totalSteps: number
-  totalWorkoutMinutes: number
-  totalDistanceM: number
-  totalEffort: number
-  activityCount: number
-  days: FitnessDailySummary[]
-}
+export type FitnessWeekSummary = Contracts.FitnessWeekSummaryDto
 
-export type FitnessPage = {
-  connections: FitnessConnection[]
-  weekSummary: FitnessWeekSummary
-  recentActivities: FitnessActivity[]
-  units: FitnessUnits
-  /** True when the viewer has the 'fitnessStrava' feature toggle. */
-  stravaEnabled: boolean
-  latestWeight: FitnessBodyMetric | null
-  weightHistory: FitnessBodyMetric[]
-  latestVo2Max: FitnessBodyMetric | null
-  vo2maxHistory: FitnessBodyMetric[]
-  /** Up to 60 days with steps, newest-first. */
-  stepsHistory: FitnessStepsDay[]
-  activeGoal: FitnessGoal | null
-}
+export type FitnessPage = Contracts.FitnessPageDto
 
-export type ArticleComment = {
-  id: string
-  createdAt: string
-  editedAt: string | null
-  deletedAt: string | null
-  body: string
-  articleId: string
-  parentId: string | null
-  replyCount: number
-  author: ArticleAuthor
-  reactions: ArticleReactionSummary[]
-  replies?: ArticleComment[]
-}
+export type ArticleComment = Contracts.ArticleCommentDto
 
 
-export type CoinTransferCounterparty = {
-  userId: string
-  username: string
-  displayName: string | null
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-}
+export type CoinTransferCounterparty = Contracts.CoinTransferCounterpartyDto
 
 export type CoinTransferItem = {
   id: string
@@ -3088,37 +2025,13 @@ export type CoinTransferItem = {
   counterparty: CoinTransferCounterparty
 }
 
-export type CoinTransferReceiptParty = {
-  userId: string
-  username: string | null
-  displayName: string | null
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-}
+export type CoinTransferReceiptParty = Contracts.CoinTransferReceiptPartyDto
 
-export type CoinTransferReceipt = {
-  id: string
-  createdAt: string
-  amount: number
-  note: string | null
-  direction: 'sent' | 'received' | 'admin_added' | 'admin_removed' | 'streak_reward' | 'verification_gift'
-  sender: CoinTransferReceiptParty
-  recipient: CoinTransferReceiptParty
-  counterparty: CoinTransferCounterparty
-}
+export type CoinTransferReceipt = Contracts.CoinTransferReceiptDto
 
-export type TransferCoinsRequest = {
-  recipientUsername: string
-  amount: number
-  note?: string | null
-}
+export type TransferCoinsRequest = Contracts.TransferCoinsRequest
 
-export type TransferCoinsResponse = {
-  transferId: string
-  amount: number
-  recipientUsername: string
-  senderBalanceAfter: number
-}
+export type TransferCoinsResponse = Contracts.TransferCoinsResponse
 
 /** Response from GET /users/location-preview */
 export type LocationPreviewResponse = {
@@ -3150,60 +2063,22 @@ export type LocationBrowseResponse = {
 
 // ─── Crews ───────────────────────────────────────────────────────────────────
 
-export type CrewMemberRole = 'owner' | 'member'
+export type CrewMemberRole = Contracts.CrewMemberRole
 
-export type CrewInviteStatus =
-  | 'pending'
-  | 'accepted'
-  | 'declined'
-  | 'cancelled'
-  | 'expired'
+export type CrewInviteStatus = Contracts.CrewInviteStatus
 
-export type CrewMemberListItem = {
-  user: CrewUserSummary
-  role: CrewMemberRole
-  joinedAt: string
-  isDesignatedSuccessor: boolean
-}
+export type CrewMemberListItem = Contracts.CrewMemberListItemDto
 
 /** Shared user summary used by crew DTOs (matches the API UserListDto shape). */
 export type CrewUserSummary = Omit<FollowListUser, 'relationship' | 'orgAffiliations'> & {
   orgAffiliations?: OrgAffiliation[]
 }
 
-export type CrewPublic = {
-  id: string
-  slug: string
-  /** null means "Untitled Crew". Renderers should show the friendly fallback. */
-  name: string | null
-  tagline: string | null
-  bio: string | null
-  avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-  coverUrl: string | null
-  memberCount: number
-  createdAt: string
-  owner: CrewUserSummary
-  members: CrewMemberListItem[]
-}
+export type CrewPublic = Contracts.CrewPublicDto
 
-export type CrewPrivate = CrewPublic & {
-  wallConversationId: string
-  designatedSuccessorUserId: string | null
-  viewerRole: CrewMemberRole
-  pendingInviteCount: number
-}
+export type CrewPrivate = Contracts.CrewPrivateDto
 
-export type CrewInvite = {
-  id: string
-  createdAt: string
-  expiresAt: string
-  status: CrewInviteStatus
-  message: string | null
-  crew: CrewPublic | null
-  invitedBy: CrewUserSummary
-  invitee: CrewUserSummary
-}
+export type CrewInvite = Contracts.CrewInviteDto
 
 /**
  * Viewer-specific membership info attached to GET /crew/by-slug responses.
@@ -3234,164 +2109,39 @@ export type OpenCrewMember = {
 // ─── Marv (AI helper) ────────────────────────────────────────────────────────
 
 /** User-facing reply-mode tier; mirrors the API's `MarvinMode` enum. */
-export type MarvinModeDto = 'auto' | 'fast' | 'regular' | 'smart'
+export type MarvinModeDto = Contracts.MarvinModeDto
 /** Source channel; mirrors the API's `MarvinSource` enum. */
-export type MarvinSourceDto = 'public_thread' | 'private_session' | 'catch_up' | 'admin_console'
+export type MarvinSourceDto = Contracts.MarvinSourceDto
 
 /** Snapshot of the requester's Marv credit bucket. Returned by `GET /marvin/me`. */
-export type MarvinCreditSummaryDto = {
-  credits: number
-  maxCredits: number
-  creditsPerDay: number
-  /** ISO timestamp. */
-  lastRefilledAt: string
-}
+export type MarvinCreditSummaryDto = Contracts.MarvinCreditSummaryDto
 
 /** Per-mode credit costs, sourced from server config. Used to preview spend before "Catch me up". */
-export type MarvinCostsDto = {
-  fast: number
-  regular: number
-  smart: number
-  /** Extra credits charged per web-search call the model makes. */
-  webSearchSurcharge: number
-  /** Extra credits charged per image passed to a vision-capable model. */
-  visionPerImage: number
-  /** Extra credits charged per URL the model fetches. */
-  urlFetchSurcharge: number
-}
+export type MarvinCostsDto = Contracts.MarvinCostsDto
 
 /** `GET /marvin/me` response body. Used by chat page + settings + composer mode pill. */
-export type MarvinMeDto = {
-  aiConsentGranted: boolean
-  enabled: boolean
-  isPremium: boolean
-  preferredMode: MarvinModeDto
-  credits: MarvinCreditSummaryDto
-  /** Per-mode base costs + surcharges, for cost-preview UI. */
-  costs: MarvinCostsDto
-  marv: {
-    userId: string
-    username: string
-    displayName: string
-    avatarUrl: string | null
-  avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
-  } | null
-}
+export type MarvinMeDto = Contracts.MarvinMeDto
 
 /** Body for `PATCH /marvin/me/preferences`. */
-export type MarvinUpdatePreferencesBodyDto = {
-  aiConsent?: boolean
-  preferredMode?: MarvinModeDto
-}
+export type MarvinUpdatePreferencesBodyDto = Contracts.MarvinUpdatePreferencesBodyDto
 
 /** `GET /marvin/me/context-card` — what Marv knows about the viewer (or null if not generated). */
-export type MarvinContextCardDto = {
-  cardText: string
-  /** "generated" | "manual" | "hybrid" */
-  source: string
-  /** ISO timestamp. */
-  updatedAt: string
-}
+export type MarvinContextCardDto = Contracts.MarvinContextCardDto
 
 /** A single Marv interaction event (success, canned, or failure). */
-export type MarvinUsageEventDto = {
-  id: string
-  userId: string
-  source: MarvinSourceDto
-  sourceId: string
-  rootPostId: string | null
-  requestedMode: MarvinModeDto
-  effectiveMode: MarvinModeDto
-  creditsSpent: number
-  inputTokens: number | null
-  outputTokens: number | null
-  cachedInputTokens: number | null
-  /** Hidden reasoning tokens (subset of outputTokens). Null on older rows. */
-  reasoningTokens: number | null
-  modelUsed: string | null
-  estimatedCostUsd: number | null
-  responseId: string | null
-  routingReason: string | null
-  errorCode: string | null
-  latencyMs: number | null
-  /** ISO timestamp. */
-  createdAt: string
-}
+export type MarvinUsageEventDto = Contracts.MarvinUsageEventDto
 
 /** Realtime payload for `marv:credits-updated`. Same shape as `MarvinCreditSummaryDto`. */
 export type MarvCreditsUpdatedPayloadDto = MarvinCreditSummaryDto
 
 /** Body for `POST /marvin/catch-up/:postId`. */
-export type MarvinCatchUpBodyDto = {
-  mode?: MarvinModeDto
-  /** Skip the cache and regenerate a fresh summary (the "Regenerate" button). Spends credits. */
-  refresh?: boolean
-  /**
-   * Peek mode: return the cached summary if one exists, else `null`. Never spends credits or
-   * calls the model. Used to decide whether the modal can show a free summary on open.
-   */
-  cacheOnly?: boolean
-  /**
-   * When true (default), pass images from the thread to vision-capable models.
-   * When false, skip vision — no images attached, no vision surcharge, cheaper.
-   */
-  includeImages?: boolean
-}
+export type MarvinCatchUpBodyDto = Contracts.MarvinCatchUpBodyDto
 
 /**
  * Result of a "Catch me up" request — an AI summary of the conversation above AND
  * below a focal post. Returned by `POST /marvin/catch-up/:postId`.
  */
-export type MarvinCatchUpDto = {
-  postId: string
-  rootPostId: string | null
-  /** The generated summary text (markers stripped; always present). */
-  summary: string
-  /**
-   * Structured sections when the thread has replies and the model followed the format.
-   * `post` summarises the focal post; `replies` synthesises the replies below.
-   * `since` is present only when this summary was generated over a thread the viewer had
-   * already summarized — it's the delta, i.e. what changed since then, so lead with it.
-   * Null when the AI returned a single-blob response (no markers found).
-   */
-  sections?: { post: string; replies: string | null; since?: string | null } | null
-  /** The model tier that actually ran (after routing/auto-upgrades). */
-  effectiveMode: MarvinModeDto
-  /** Credits spent on this request (0 on a cache hit). */
-  creditsSpent: number
-  /**
-   * Breakdown of what drove the total spend (all 0 on a cache hit).
-   * Lets the UI render e.g. "5 credits: 2 model + 2 image + 1 web search".
-   */
-  costBreakdown: {
-    mode: number
-    vision: number
-    webSearch: number
-    urlFetch: number
-  }
-  /** True when this summary was served from cache (no new credits spent). */
-  cached: boolean
-  /**
-   * True when the thread changed after this summary was generated. The summary is still
-   * served for free — show it immediately and label it, so regenerating is an informed
-   * choice rather than a paywall. Always false on a freshly generated summary.
-   */
-  stale: boolean
-  /**
-   * Replies added since this summary was generated. 0 when fresh, and also 0 when `stale`
-   * is true but only edits (no new replies) caused the drift.
-   */
-  newReplies: number
-  /** How much of the thread the summary was built from. */
-  included: {
-    ancestors: number
-    descendants: number
-    /** Total descendants discovered within traversal depth (may exceed `descendants`). */
-    totalDescendants: number
-  }
-  /** ISO timestamp of when the underlying summary was generated. */
-  generatedAt: string
-}
+export type MarvinCatchUpDto = Contracts.MarvinCatchUpDto
 
 // Admin-only Marv types — used by `pages/admin/marv.vue`. Mirror what the
 // API's `MarvinAdminService` returns; keep field names identical so we can
@@ -3473,7 +2223,7 @@ export type RecentSearchUser = {
   premiumPlus: boolean
   isOrganization: boolean
   accountKind?: AccountKind
-  verifiedStatus: 'none' | 'identity' | 'manual'
+  verifiedStatus: VerifiedStatus
   avatarUrl: string | null
   avatarVideo?: import('~/types/api-contracts.gen').AvatarVideoDto | null
   orgAffiliations?: OrgAffiliation[]
@@ -3481,13 +2231,7 @@ export type RecentSearchUser = {
 }
 
 /** Minimal group info on a recent search entry (group tap). */
-export type RecentSearchGroup = {
-  id: string
-  slug: string
-  name: string
-  avatarImageUrl: string | null
-  memberCount: number
-}
+export type RecentSearchGroup = Contracts.RecentSearchGroupDto
 
 /** Recent search entry from GET /search/recent. */
 export type RecentSearch = {
@@ -3614,16 +2358,8 @@ export type DelegationJobDto = Contracts.DelegationJobDto
 export type DelegationActionDto = Contracts.DelegationActionDto
 export type DelegationScheduleDto = Contracts.DelegationScheduleDto
 
-export type GroupNotificationPreferences = {
-  groupId: string
-  preference: 'all' | 'repliesAndMentions' | 'muted'
-}
-export type GroupActivity = {
-  groupId: string
-  through: string
-  newPostCount: number
-  newPostIds: string[]
-}
+export type GroupNotificationPreferences = Contracts.GroupNotificationPreferencesDto
+export type GroupActivity = Contracts.GroupActivityDto
 
 export type { ActivationDto, ActivationCompletionDto } from './api-contracts.gen'
 

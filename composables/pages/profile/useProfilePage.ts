@@ -124,6 +124,7 @@ export function useProfilePageProfile(ctx: ReturnType<typeof useProfilePageRoute
       name: u.name ?? null,
       bio: u.bio ?? null,
       website: u.website ?? null,
+      links: u.links,
       xUsername: u.xUsername ?? null,
       pickaxUsername: u.pickaxUsername ?? null,
       rumbleUrl: u.rumbleUrl ?? null,
@@ -160,6 +161,7 @@ export function useProfilePageProfile(ctx: ReturnType<typeof useProfilePageRoute
         name: fromAuth.name ?? loaded.name,
         bio: fromAuth.bio ?? loaded.bio,
         website: fromAuth.website ?? loaded.website,
+        links: fromAuth.links ?? loaded.links,
         xUsername: fromAuth.xUsername ?? loaded.xUsername,
         pickaxUsername: fromAuth.pickaxUsername ?? loaded.pickaxUsername,
         rumbleUrl: fromAuth.rumbleUrl === undefined ? loaded.rumbleUrl : fromAuth.rumbleUrl,
@@ -229,10 +231,10 @@ export function useProfilePageProfile(ctx: ReturnType<typeof useProfilePageRoute
   })
 
   const streakCurrentDays = computed(() =>
-    Math.max(0, Math.floor((isSelf.value ? authUser.value?.checkinStreakDays : (profile.value as any)?.checkinStreakDays) ?? 0))
+    Math.max(0, Math.floor((isSelf.value ? authUser.value?.checkinStreakDays : profile.value?.checkinStreakDays) ?? 0))
   )
   const streakLongestDays = computed(() =>
-    Math.max(0, Math.floor((isSelf.value ? authUser.value?.longestStreakDays : (profile.value as any)?.longestStreakDays) ?? 0))
+    Math.max(0, Math.floor((isSelf.value ? authUser.value?.longestStreakDays : profile.value?.longestStreakDays) ?? 0))
   )
   const hasEarnedBadges = computed(() => hasAnyBadge(streakLongestDays.value))
 
@@ -400,9 +402,9 @@ export type ProfilePageContext = ReturnType<typeof useProfilePage>
 
 export const PROFILE_PAGE_CONTEXT: InjectionKey<ProfilePageContext> = Symbol('profile-page')
 
-/** Section components of pages/u/[username].vue read the shared context here. */
+/** Section components of pages/u/[username]/index.vue read the shared context here. */
 export function useProfilePageContext(): ProfilePageContext {
   const ctx = inject(PROFILE_PAGE_CONTEXT)
-  if (!ctx) throw new Error('useProfilePageContext() must be used inside pages/u/[username].vue')
+  if (!ctx) throw new Error('useProfilePageContext() must be used inside pages/u/[username]/index.vue')
   return ctx
 }

@@ -1,4 +1,3 @@
-import type { Ref } from 'vue'
 
 export type FeedVisibilityFilter = 'all' | 'public' | 'verifiedOnly' | 'premiumOnly'
 export type FeedSort = 'new' | 'trending'

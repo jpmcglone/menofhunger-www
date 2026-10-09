@@ -24,7 +24,7 @@ export function useArticleBoost(articleId: Ref<string>, initialBoosted: Ref<bool
       } else {
         await apiFetchData(`/articles/${id}/boost`, { method: 'DELETE' })
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (lastIntent !== intent) return
       boosted.value = !next
       count.value = Math.max(0, count.value + (next ? -1 : 1))

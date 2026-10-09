@@ -54,7 +54,7 @@
             Username
           </label>
           <form class="flex flex-col gap-3 sm:flex-row" @submit.prevent="onSubmit">
-            <IconField iconPosition="left" class="flex-1">
+            <IconField icon-position="left" class="flex-1">
               <InputIcon>
                 <span class="text-sm font-semibold moh-text-muted">@</span>
               </InputIcon>

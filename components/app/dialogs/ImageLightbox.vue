@@ -129,9 +129,10 @@
 </template>
 
 <script setup lang="ts">
+import { clamp } from '~/utils/primitives'
 import { DragGesture, PinchGesture, type UserPinchConfig } from '@use-gesture/vanilla'
 import type { LightboxMediaItem } from '~/composables/useImageLightbox'
-import type { StyleValue } from 'vue'
+import type { CSSProperties, StyleValue } from 'vue'
 
 const props = defineProps<{
   visible: boolean
@@ -161,10 +162,6 @@ const lightboxVideoEl = ref<HTMLVideoElement | null>(null)
 const lightboxVideoMuted = ref(true)
 const rootEl = ref<HTMLElement | null>(null)
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n))
-}
-
 function pxToNumber(v: unknown): number | null {
   if (typeof v !== 'string') return null
   const s = v.trim()
@@ -173,17 +170,17 @@ function pxToNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-function styleValueToObject(s: StyleValue): Record<string, any> {
+function styleValueToObject(s: StyleValue): CSSProperties {
   if (!s) return {}
   if (typeof s === 'string') return {}
   if (Array.isArray(s)) {
-    const out: Record<string, any> = {}
+    const out: CSSProperties = {}
     for (const item of s) {
       if (item && typeof item === 'object' && !Array.isArray(item)) Object.assign(out, item)
     }
     return out
   }
-  if (typeof s === 'object') return s as any
+  if (typeof s === 'object') return s as CSSProperties
   return {}
 }
 
@@ -247,19 +244,20 @@ function getClientXY(event: unknown): ClientXY | null {
   if (!event || typeof event !== 'object') return null
   // PointerEvent / MouseEvent
   if ('clientX' in event && 'clientY' in event) {
-    const x = Number((event as any).clientX)
-    const y = Number((event as any).clientY)
+    const { clientX, clientY } = event as { clientX: unknown; clientY: unknown }
+    const x = Number(clientX)
+    const y = Number(clientY)
     if (Number.isFinite(x) && Number.isFinite(y)) return { x, y }
   }
   // TouchEvent
-  const touches = (event as any).touches as ArrayLike<any> | undefined
+  const touches = (event as { touches?: ArrayLike<{ clientX?: unknown; clientY?: unknown }> }).touches
   if (touches && touches.length) {
     const t = touches[0]
     const x = Number(t?.clientX)
     const y = Number(t?.clientY)
     if (Number.isFinite(x) && Number.isFinite(y)) return { x, y }
   }
-  const changed = (event as any).changedTouches as ArrayLike<any> | undefined
+  const changed = (event as { changedTouches?: ArrayLike<{ clientX?: unknown; clientY?: unknown }> }).changedTouches
   if (changed && changed.length) {
     const t = changed[0]
     const x = Number(t?.clientX)

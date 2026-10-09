@@ -1,12 +1,12 @@
 <template>
   <span ref="anchorWrapEl" class="inline-flex">
     <Button
+      v-tooltip.bottom="tinyTooltip(tooltip)"
       text
       rounded
       severity="secondary"
       :aria-label="ariaLabel"
       :disabled="disabled"
-      v-tooltip.bottom="tinyTooltip(tooltip)"
       @click="toggle"
     >
       <template #icon>
@@ -202,8 +202,7 @@ defineExpose({ close })
 
 function onEmojiClick(e: unknown) {
   // emoji-picker-element dispatches a CustomEvent with detail.unicode
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const unicode = (e as any)?.detail?.unicode as string | undefined
+  const unicode = (e as { detail?: { unicode?: string } } | null)?.detail?.unicode
   const emoji = (unicode ?? '').trim()
   if (!emoji) return
   emit('select', emoji)

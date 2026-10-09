@@ -1,8 +1,8 @@
-<!-- Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=903-403 -->
+<!-- Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=1339-47287 -->
 <template>
   <div
     ref="rowEl"
-    class="relative moh-gutter-x moh-post-row pt-2 pb-1 transition-colors"
+    class="relative flex items-start gap-2 moh-post-row pt-2 pr-4 pb-1 pl-1 transition-colors"
     :class="clickable ? 'cursor-pointer hover:bg-[var(--moh-surface-hover)]' : ''"
     :style="scopeStyle"
     :role="clickable ? 'link' : undefined"
@@ -21,7 +21,11 @@
       aria-hidden="true"
     />
 
-    <div class="relative z-[2] flex min-w-0 flex-col gap-1.5">
+    <div class="relative z-[2] shrink-0">
+      <slot name="boost" />
+    </div>
+
+    <div class="relative z-[2] flex min-w-0 flex-1 flex-col gap-1.5">
       <div class="flex min-h-5 items-center gap-1.5 text-xs">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5">
           <Icon name="tabler:layout-list" class="shrink-0 text-[14px] moh-text-soft" aria-hidden="true" />
@@ -119,9 +123,11 @@
 </template>
 
 <script setup lang="ts">
+import { isInteractiveTarget } from '~/utils/interactive-target'
 import type { FeedPost, PostAuthor } from '~/types/api'
 import { useInViewOnce } from '~/composables/useInViewOnce'
 import { useMiddleScroller } from '~/composables/useMiddleScroller'
+import type { TinyTooltipConfig } from '~/utils/tiny-tooltip'
 
 /** Layout for a Board thread in post feeds; PostRow supplies menus and actions through slots. */
 const props = withDefaults(defineProps<{
@@ -132,7 +138,7 @@ const props = withDefaults(defineProps<{
   href: string
   age: string
   // PrimeVue tooltip binding accepts objects.
-  ageTooltip?: any
+  ageTooltip?: TinyTooltipConfig
   clickable?: boolean
 }>(), { clickable: true, ageTooltip: undefined })
 
@@ -162,23 +168,13 @@ const rowEl = ref<HTMLElement | null>(null)
 const middleScrollerEl = useMiddleScroller()
 const { inView: rowInView } = useInViewOnce(rowEl, { root: middleScrollerEl, rootMargin: '250px 0px', threshold: 0.01 })
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const raw = target as Node | null
-  const el = raw instanceof Element ? raw : raw?.parentElement ?? null
-  if (!el) return false
-  return Boolean(el.closest([
-    'a', 'button', 'iframe', 'video', 'audio', 'input', 'textarea', 'select',
-    '[role="button"]', '[role="menu"]', '[role="menuitem"]', '[data-post-row-interactive]', '[data-pc-section]',
-  ].join(',')))
-}
-
 function goToThread() {
   if (!props.clickable) return
   void navigateTo(props.href)
 }
 
 function onRowClick(e: MouseEvent) {
-  if (!props.clickable || isInteractiveTarget(e.target)) return
+  if (!props.clickable || isInteractiveTarget(e.target, 'media')) return
   if (e.metaKey || e.ctrlKey) {
     window.open(props.href, '_blank')
     return
@@ -187,7 +183,7 @@ function onRowClick(e: MouseEvent) {
 }
 
 function onRowAuxClick(e: MouseEvent) {
-  if (!props.clickable || e.button !== 1 || isInteractiveTarget(e.target)) return
+  if (!props.clickable || e.button !== 1 || isInteractiveTarget(e.target, 'media')) return
   e.preventDefault()
   window.open(props.href, '_blank')
 }

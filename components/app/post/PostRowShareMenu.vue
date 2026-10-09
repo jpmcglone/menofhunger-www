@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import type { MenuItem } from 'primevue/menuitem'
 import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
+import type { TinyTooltipConfig } from '~/utils/tiny-tooltip'
 
 type MenuItemWithIcon = MenuItem & { iconName?: string }
 
@@ -33,7 +34,7 @@ const props = defineProps<{
   canShare: boolean
   items: MenuItemWithIcon[]
    
-  tooltip: any
+  tooltip: TinyTooltipConfig
 }>()
 
 const canShare = computed(() => Boolean(props.canShare))

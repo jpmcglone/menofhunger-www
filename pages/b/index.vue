@@ -1,4 +1,4 @@
-<!-- Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=928-553 -->
+<!-- Figma: https://www.figma.com/design/YnuRSJB7p90n9jEY4mb4RN?node-id=1099-989 -->
 <template>
   <AppPageContent bottom="standard">
     <!-- Same header as iOS: title, then icon actions. Filters and the RSS link live in the Filter menu. -->
@@ -101,8 +101,14 @@
       <button v-for="filter in ['all', 'you']" :key="filter" type="button" class="moh-focus min-h-11 rounded-full px-4 text-sm" :class="commentsForYou === (filter === 'you') ? 'moh-text bg-[var(--moh-surface)] font-semibold' : 'moh-text-muted'" :aria-pressed="commentsForYou === (filter === 'you')" @click="setQuery({ for: filter === 'you' ? 'you' : undefined })">{{ filter === 'you' ? 'For you' : 'All' }}</button>
     </div>
     <AppBoardActivity v-if="view === 'comments' && commentsForYou" :key="user?.id" :items="activity.items.value" :next-cursor="activity.nextCursor.value" :loading="activity.loading.value" :error="activity.error.value" :load="activity.load" />
-    <AppSubtleSectionLoader v-else :loading="initialLoading" :refreshing="refreshing" min-height-class="min-h-[240px]">
-      <template v-if="view === 'comments'">
+    <div v-else class="relative" :aria-busy="loading || loadingMore">
+      <AppRefreshIndicator :loading="refreshing" />
+      <AppScreenState v-if="initialLoading" status="loading" skeleton="post" :skeleton-count="3" />
+      <div v-if="requestError && !loading" class="moh-gutter-x py-4 text-center" role="alert">
+        <p class="text-sm moh-text-muted">{{ requestError }}</p>
+        <button type="button" class="moh-focus min-h-11 text-sm text-[var(--moh-brass)]" :disabled="loadingMore" @click="retryLoad">Retry</button>
+      </div>
+      <template v-if="!initialLoading && view === 'comments'">
         <TransitionGroup tag="div" name="moh-list" class="relative moh-divide">
           <article v-for="c in latestComments" :key="c.id" class="moh-gutter-x py-3">
             <div class="flex flex-wrap items-center gap-x-1.5 text-xs moh-text-soft">
@@ -124,10 +130,10 @@
           </article>
         </TransitionGroup>
         <AppScreenState
-          v-if="!loading && !latestComments.length" title="No comments yet" icon="reply" />
+          v-if="!loading && !requestError && !latestComments.length" title="No comments yet" icon="reply" />
       </template>
 
-      <template v-else>
+      <template v-else-if="!initialLoading">
         <!-- Sort and filter changes reorder in place: rows still present glide to their new slot. -->
         <TransitionGroup tag="div" name="moh-list" class="relative moh-divide">
           <AppBoardThreadRow
@@ -139,18 +145,18 @@
           />
         </TransitionGroup>
         <AppScreenState
-          v-if="!loading && !visibleThreads.length" title="Nothing here yet" icon="board"
+          v-if="!loading && !requestError && !visibleThreads.length" title="Nothing here yet" icon="board"
           :description="emptyLabel" :action-label="isFiltered ? 'Clear filters' : undefined" @action="clearFilters" />
       </template>
 
       <div v-if="loadingMore" class="py-8 text-center moh-meta">Loading…</div>
       <button
-        v-else-if="nextCursor && !loading"
+        v-else-if="nextCursor && !loading && !requestError"
         type="button"
         class="w-full border-t moh-border py-3 text-sm moh-text-muted transition-colors hover:bg-[var(--moh-surface-hover)]"
         @click="loadMore"
       >More</button>
-    </AppSubtleSectionLoader>
+    </div>
   </AppPageContent>
 </template>
 
@@ -297,6 +303,8 @@ const latestComments = ref<BoardComment[]>([])
 const nextCursor = ref<string | null>(null)
 const loading = ref(false)
 const loadingMore = ref(false)
+const requestError = ref<string | null>(null)
+let failedReset = true
 /** Content type on screen. First load, or switching threads ↔ comments, shows the loader instead of "empty". */
 const loadedKind = ref<'threads' | 'comments' | null>(null)
 const contentKind = computed(() => (view.value === 'comments' ? 'comments' as const : 'threads' as const))
@@ -323,6 +331,7 @@ async function load(reset = true, preserveRows = false) {
   const targetCount = preserveRows ? threads.value.length : 0
   const seq = ++loadSeq
   const kind = contentKind.value
+  requestError.value = null
   if (reset) loading.value = true
   else loadingMore.value = true
   try {
@@ -349,8 +358,11 @@ async function load(reset = true, preserveRows = false) {
     if (reset) newThreadCount.value = 0
     loadedKind.value = kind
   } catch (e) {
-    if (seq === loadSeq) loadedKind.value = kind
-    if (seq === loadSeq) toast.push({ title: getApiErrorMessage(e) || 'Couldn’t load the Board.', tone: 'error', durationMs: 2200 })
+    if (seq === loadSeq) {
+      loadedKind.value = kind
+      failedReset = reset
+      requestError.value = getApiErrorMessage(e) || (kind === 'comments' ? 'Couldn’t load comments.' : 'Couldn’t load the Board.')
+    }
   } finally {
     if (seq === loadSeq) {
       loading.value = false
@@ -361,6 +373,10 @@ async function load(reset = true, preserveRows = false) {
 
 function loadMore() {
   void load(false)
+}
+
+function retryLoad() {
+  void load(failedReset, true)
 }
 
 watch(() => route.fullPath, () => {

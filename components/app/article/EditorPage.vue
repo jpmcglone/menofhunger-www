@@ -72,7 +72,7 @@
           v-if="editor.thumbnailUrl.value"
           class="group relative aspect-[16/9] w-full overflow-hidden rounded-xl moh-surface-2"
         >
-          <img :src="editor.thumbnailUrl.value" alt="Article thumbnail" class="h-full w-full object-cover" />
+          <img :src="editor.thumbnailUrl.value" alt="Article thumbnail" class="h-full w-full object-cover" >
           <div class="absolute inset-0 flex items-center justify-center gap-3 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 max-sm:opacity-100">
             <button
               type="button"
@@ -101,7 +101,7 @@
           <Icon v-else name="tabler:photo" class="text-lg" aria-hidden="true" />
           {{ thumbnailUploading ? 'Uploading…' : 'Add thumbnail' }}
         </button>
-        <input ref="thumbnailInputEl" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="onThumbnailFileSelected" />
+        <input ref="thumbnailInputEl" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="onThumbnailFileSelected" >
       </div>
 
       <!-- Thumbnail crop dialog -->
@@ -160,6 +160,7 @@
 
 <script setup lang="ts">
 import type { Article } from '~/types/api'
+import { presignedUpload } from '~/utils/put-presigned-file'
 
 const props = defineProps<{
   /** Null on `/articles/new`: the draft row is created lazily, on the first real content. */
@@ -352,18 +353,7 @@ function onThumbnailFileSelected(event: Event) {
 
 async function uploadCroppedThumbnail(file: File) {
   await runThumbnail(async () => {
-    const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string> }>(
-      '/uploads/article-thumbnail/init',
-      { method: 'POST', body: { contentType: file.type } },
-    )
-    const uploadRes = await fetch(init.uploadUrl, { method: 'PUT', body: file, headers: init.headers ?? {} })
-    if (!uploadRes.ok) {
-      throw new Error('Thumbnail upload failed during transfer.')
-    }
-    const commit = await apiFetchData<{ key: string }>('/uploads/article-thumbnail/commit', {
-      method: 'POST',
-      body: { key: init.key },
-    })
+    const commit = await presignedUpload(apiFetchData, 'article-thumbnail', file)
     if (commit.key) {
       const resolvedUrl = assetUrl(commit.key)
       if (resolvedUrl) {

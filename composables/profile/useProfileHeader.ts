@@ -3,7 +3,7 @@ import type { ProfileHeaderProps, ProfileHeaderEmits } from './profile-header-ty
 import { userNotificationOptions, userNotificationPreference } from '~/utils/user-notification-preference'
 import type { NudgeState } from '~/types/api'
 import { followedByLabel } from '~/utils/followed-by'
-import { buildSocialLinks } from '~/utils/social-links'
+import { buildProfileHeaderLinks } from '~/utils/social-links'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 import { resolveNudgeAction } from '~/utils/nudge-action'
 import type { MenuItem } from 'primevue/menuitem'
@@ -103,65 +103,49 @@ export function useProfileHeaderProfile(props: ProfileHeaderProps, emit: Profile
   const viewerIsVerified = computed(() => (authUser.value?.verifiedStatus ?? 'none') !== 'none')
 
   const locationLabel = computed(() => {
-    const s = (profile.value as any)?.locationDisplay ?? null
+    const s = profile.value?.locationDisplay ?? null
     const v = typeof s === 'string' ? s.trim() : ''
     return v ? v : null
   })
 
   const locationState = computed(() => {
-    const s = (profile.value as any)?.locationState ?? null
+    const s = profile.value?.locationState ?? null
     return typeof s === 'string' && s.trim() ? s.trim().toUpperCase() : null
   })
 
   const locationTo = computed(() => {
-    const p = profile.value as any
+    const p = profile.value
     const state = typeof p?.locationState === 'string' ? p.locationState.trim().toUpperCase() : ''
     if (!state) return null
     // State posts feed (with members facepile); "See all" there opens /l.
     return `/state/${state.toLowerCase()}`
   })
 
-  const websiteHref = computed(() => {
-    const s = (profile.value as any)?.website ?? null
-    const v = typeof s === 'string' ? s.trim() : ''
-    return v ? v : null
-  })
-
-  const socialLinks = computed(() => {
-    const p = profile.value as any
-    return buildSocialLinks({
+  /** Connected X/Pickax plus custom links (brand glyphs). Legacy fields only when `links` is absent. */
+  const profileLinks = computed(() => {
+    const p = profile.value
+    return buildProfileHeaderLinks({
       xUsername: p?.xUsername ?? null,
       pickaxUsername: p?.pickaxUsername ?? null,
+      links: p?.links,
+      website: p?.website ?? null,
       rumbleUrl: p?.rumbleUrl ?? null,
       linkedinUrl: p?.linkedinUrl ?? null,
       youtubeUrl: p?.youtubeUrl ?? null,
     })
   })
 
-  const websiteLabel = computed(() => {
-    const href = websiteHref.value
-    if (!href) return ''
-    try {
-      const u = new URL(href)
-      const host = u.hostname
-      const path = u.pathname && u.pathname !== '/' ? u.pathname.replace(/\/$/, '') : ''
-      return `${host}${path}`
-    } catch {
-      return href
-    }
-  })
-
   const birthdayLabel = computed(() => {
-    const display = (profile.value as any)?.birthdayDisplay ?? null
+    const display = profile.value?.birthdayDisplay ?? null
     const displayV = typeof display === 'string' ? display.trim() : ''
     if (displayV) return displayV
-    const s = (profile.value as any)?.birthdayMonthDay ?? null
+    const s = profile.value?.birthdayMonthDay ?? null
     const v = typeof s === 'string' ? s.trim() : ''
     return v ? v : null
   })
 
   const joinedLabel = computed(() => {
-    const raw = (profile.value as any)?.createdAt ?? null
+    const raw = profile.value?.createdAt ?? null
     if (!raw) return null
     const d = new Date(String(raw))
     if (Number.isNaN(d.getTime())) return null
@@ -427,9 +411,7 @@ export function useProfileHeaderProfile(props: ProfileHeaderProps, emit: Profile
     locationLabel,
     locationState,
     locationTo,
-    websiteHref,
-    socialLinks,
-    websiteLabel,
+    profileLinks,
     birthdayLabel,
     joinedLabel,
     crewPill,

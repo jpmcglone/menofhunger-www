@@ -77,7 +77,6 @@
 </template>
 
 <script setup lang="ts">
-import type { LeaderboardUser } from '~/types/api'
 
 const { users, loading, error, refresh } = useCheckinsLeaderboard({ limit: 3 })
 

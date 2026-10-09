@@ -11,6 +11,7 @@
 </template>
 
 <script setup lang="ts">
+import { articleVisibilityAccent } from '~/utils/article-visibility'
 const props = withDefaults(defineProps<{
   visibility?: string
   scrollContainerSelector?: string
@@ -20,11 +21,7 @@ const props = withDefaults(defineProps<{
 
 const progress = ref(0)
 
-const barColor = computed(() => {
-  if (props.visibility === 'premiumOnly') return 'var(--moh-premium)'
-  if (props.visibility === 'verifiedOnly') return 'var(--moh-verified)'
-  return '#a1a1aa'
-})
+const barColor = computed(() => articleVisibilityAccent(props.visibility))
 
 let scrollContainer: HTMLElement | null = null
 

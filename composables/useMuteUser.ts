@@ -14,7 +14,7 @@ export function useMuteUser(opts: {
   const toast = useAppToast()
 
   const muted = ref(Boolean(opts.initialMuted.value))
-  const pending = ref(false)
+  const { run, pending } = useAsyncAction()
 
   watch(
     () => [opts.userId.value, opts.initialMuted.value] as const,
@@ -30,20 +30,17 @@ export function useMuteUser(opts: {
     if (!userId || pending.value) return
     const next = !muted.value
     muted.value = next
-    pending.value = true
-    try {
+    await run(async () => {
       if (next) {
         await apiFetch('/mutes', { method: 'POST', body: { user_id: userId } })
       } else {
         await apiFetch(`/mutes/${encodeURIComponent(userId)}`, { method: 'DELETE' })
       }
       toast.push({ title: `${next ? 'Muted' : 'Unmuted'} ${handle.value}`, tone: 'success', durationMs: 2000 })
-    } catch (e: unknown) {
-      muted.value = !next
-      toast.pushError(e, next ? 'Couldn’t mute.' : 'Couldn’t unmute.')
-    } finally {
-      pending.value = false
-    }
+    }, {
+      error: next ? 'Couldn’t mute.' : 'Couldn’t unmute.',
+      rollback: () => { muted.value = !next },
+    })
   }
 
   return { muted, pending, toggle }

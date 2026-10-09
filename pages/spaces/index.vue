@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { getSafeUserErrorMessage } from '~/utils/api-error'
+import type { Space } from '~/types/api'
 
 definePageMeta({
   layout: 'app',
@@ -73,7 +73,7 @@ const { getMySpace, createSpace } = useSpaceOwner()
 const toast = useAppToast()
 const { run } = useAsyncAction()
 
-const mySpace = useState<any>('my-space', () => null)
+const mySpace = useState<Space | null>('my-space', () => null)
 
 const mySpaceHref = computed(() => {
   const username = String(mySpace.value?.owner?.username ?? user.value?.username ?? '').trim()

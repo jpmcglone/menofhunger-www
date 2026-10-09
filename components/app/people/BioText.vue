@@ -104,8 +104,8 @@ const segments = computed<Segment[]>(() => {
   const out: Segment[] = []
   let cursor = 0
   for (const m of urlMatches) {
-    const start = (m as any).index as number
-    const end = (m as any).lastIndex as number
+    const start = m.index
+    const end = m.lastIndex
     if (start > cursor) out.push(...buildMentionSegments(text.slice(cursor, start)))
     const href = (m.url ?? '').trim()
     if (href && /^https?:\/\//i.test(href)) {

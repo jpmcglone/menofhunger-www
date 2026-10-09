@@ -23,6 +23,7 @@ export function usePostBookmark(options: UsePostBookmarkOptions) {
 
   const { apiFetchData } = useApiClient()
   const toast = useAppToast()
+  const { run } = useAsyncAction()
   const route = useRoute()
 
   const { user, isAuthed } = useAuth()
@@ -105,19 +106,18 @@ export function usePostBookmark(options: UsePostBookmarkOptions) {
       bumpCounts({ prevHas, prevCollectionIds: prevIds, nextHas: false, nextCollectionIds: [] })
       bumpBookmarksFeed()
     }
-    try {
-      await apiFetchData('/bookmarks/' + encodeURIComponent(postId.value), { method: 'DELETE' })
-    } catch (e: unknown) {
-      if (prevHas) {
-        hasBookmarked.value = true
-        collectionIds.value = prevIds.slice()
-        options.onChange?.({ hasBookmarked: true, collectionIds: prevIds.slice() }, 1)
-        bumpCounts({ prevHas: false, prevCollectionIds: [], nextHas: prevHas, nextCollectionIds: prevIds })
-      }
-      toast.pushError(e, 'Failed to unsave post.')
-    } finally {
-      loading.value = false
-    }
+    await run(() => apiFetchData('/bookmarks/' + encodeURIComponent(postId.value), { method: 'DELETE' }), {
+      error: 'Failed to unsave post.',
+      rollback: () => {
+        if (prevHas) {
+          hasBookmarked.value = true
+          collectionIds.value = prevIds.slice()
+          options.onChange?.({ hasBookmarked: true, collectionIds: prevIds.slice() }, 1)
+          bumpCounts({ prevHas: false, prevCollectionIds: [], nextHas: prevHas, nextCollectionIds: prevIds })
+        }
+      },
+    })
+    loading.value = false
   }
 
   async function setBookmarkFolderIds(nextIds: string[]) {
@@ -133,7 +133,7 @@ export function usePostBookmark(options: UsePostBookmarkOptions) {
     options.onChange?.({ hasBookmarked: true, collectionIds: optimisticIds.slice() }, didCreate ? 1 : 0)
     bumpCounts({ prevHas, prevCollectionIds: prevCids, nextHas: true, nextCollectionIds: optimisticIds.slice() })
     bumpBookmarksFeed()
-    try {
+    await run(async () => {
       const res = await apiFetchData<{ collectionIds: string[] }>(
         '/bookmarks/' + encodeURIComponent(postId.value),
         { method: 'POST', body: { collectionIds: nextIds } },
@@ -149,16 +149,17 @@ export function usePostBookmark(options: UsePostBookmarkOptions) {
         collectionIds.value = serverIds
         options.onChange?.({ hasBookmarked: true, collectionIds: serverIds.slice() }, 0)
       }
-    } catch (e: unknown) {
-      const curIds = optimisticIds.slice()
-      hasBookmarked.value = Boolean(prevHas)
-      collectionIds.value = prevCids.slice()
-      options.onChange?.({ hasBookmarked: Boolean(prevHas), collectionIds: prevCids.slice() }, didCreate ? -1 : 0)
-      bumpCounts({ prevHas: true, prevCollectionIds: curIds, nextHas: prevHas, nextCollectionIds: prevCids })
-      toast.pushError(e, 'Failed to save post.')
-    } finally {
-      loading.value = false
-    }
+    }, {
+      error: 'Failed to save post.',
+      rollback: () => {
+        const curIds = optimisticIds.slice()
+        hasBookmarked.value = Boolean(prevHas)
+        collectionIds.value = prevCids.slice()
+        options.onChange?.({ hasBookmarked: Boolean(prevHas), collectionIds: prevCids.slice() }, didCreate ? -1 : 0)
+        bumpCounts({ prevHas: true, prevCollectionIds: curIds, nextHas: prevHas, nextCollectionIds: prevCids })
+      },
+    })
+    loading.value = false
   }
 
   async function toggleFolder(id: string) {
@@ -174,7 +175,7 @@ export function usePostBookmark(options: UsePostBookmarkOptions) {
     if (!name) return
     if (creating.value || loading.value) return
     creating.value = true
-    try {
+    await run(async () => {
       const created = await createCollection(name)
       if (!created?.id) throw new Error('Failed to create folder.')
       const next = new Set(collectionIds.value)
@@ -182,11 +183,8 @@ export function usePostBookmark(options: UsePostBookmarkOptions) {
       await setBookmarkFolderIds(Array.from(next))
       createOpen.value = false
       createName.value = ''
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to create folder.')
-    } finally {
-      creating.value = false
-    }
+    }, { error: 'Failed to create folder.' })
+    creating.value = false
   }
 
   async function onClick(event: Event) {

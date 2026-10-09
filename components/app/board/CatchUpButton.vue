@@ -15,7 +15,6 @@
 <script setup lang="ts">
 import type { GetPostData } from '~/types/api'
 import { isPostCaughtUp } from '~/composables/useMarvCatchUp'
-import { getApiErrorMessage } from '~/utils/api-error'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 /** Board posts and comments are posts, so they share the post catch-up flow and cache. */

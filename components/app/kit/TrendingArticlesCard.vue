@@ -40,15 +40,7 @@
       >
         <div :class="['absolute right-0 top-0 bottom-0 w-[3px]', accentBarClass(article)]" aria-hidden="true" />
 
-        <!-- Rank number -->
-        <div
-          class="shrink-0 flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-black tabular-nums leading-none"
-          :class="i === 0
-            ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-            : 'bg-gray-100 text-gray-400 dark:bg-zinc-800 dark:text-zinc-500'"
-        >
-          {{ i + 1 }}
-        </div>
+        <AppTrendingRankBadge :rank="i + 1" />
 
         <div class="flex-1 min-w-0">
           <p class="line-clamp-2 text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug">

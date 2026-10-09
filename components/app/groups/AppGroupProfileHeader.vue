@@ -124,7 +124,7 @@
             v-else
             class="flex h-full w-full items-center justify-center text-2xl font-bold moh-text"
           >
-            {{ initials }}
+            {{ groupInitials }}
           </div>
           <div
             v-if="avatarUrl"
@@ -355,40 +355,18 @@
       </Menu>
 
       <!-- Rules: members only -->
-      <div v-if="shell.rules && isMember" class="mt-4 border-t moh-border pt-4">
-        <div class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
-          Rules
-        </div>
-        <div class="relative">
-          <div
-            ref="rulesContentRef"
-            class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed overflow-hidden transition-[max-height] duration-300 ease-in-out"
-            :style="{ maxHeight: rulesExpanded ? `${rulesFullHeight}px` : '3.25rem' }"
-          >
-            {{ shell.rules }}
-          </div>
-          <button
-            v-if="rulesOverflows"
-            type="button"
-            class="mt-1 text-xs font-medium text-[color:var(--moh-group)] hover:underline"
-            @click="rulesExpanded = !rulesExpanded"
-          >
-            {{ rulesExpanded ? 'Show less' : 'See more' }}
-          </button>
-        </div>
-      </div>
+      <AppGroupsGroupRulesPanel v-if="shell.rules && isMember" :rules="shell.rules" />
     </div>
   </div>
 
 </template>
 
 <script setup lang="ts">
+import { initials } from '~/utils/text'
 import { formatCount } from '~/utils/number-format'
 import type { MenuItem } from 'primevue/menuitem'
 import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
-import { groupShareText, groupShareUrl } from '~/utils/acquisition-share'
-import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { tinyTooltip } from '~/utils/tiny-tooltip'
 
 type MenuItemWithIcon = MenuItem & { iconName?: string }
@@ -447,12 +425,7 @@ const preferencesOpen = ref(false)
 const avatarRoundClass = groupAvatarRoundClass()
 const avatarWrapperRef = ref<HTMLElement | null>(null)
 const { confirm } = useAppConfirm()
-const { copyText } = useCopyToClipboard()
-const { share: nativeShare, isSupported: nativeShareSupported } = useWebShare()
-const toast = useAppToast()
-const { run } = useAsyncAction()
-const { user } = useAuth()
-const { referralCode, ensureReferralCode } = useEnsureReferralCode()
+const { nativeShareSupported, shareGroup, copyGroupLink } = useGroupShare(() => props.shell)
 
 async function onLeaveClick() {
   const ok = await confirm({
@@ -466,72 +439,15 @@ async function onLeaveClick() {
 
 const moreMenuRef = ref<{ toggle: (event: Event) => void } | null>(null)
 
-async function resolveGroupShare() {
-  await ensureReferralCode()
-  const slug = props.shell?.slug ?? ''
-  const origin = import.meta.client ? window.location.origin : 'https://menofhunger.com'
-  const url = groupShareUrl(
-    slug,
-    {
-      ref: referralCode.value ?? null,
-      from: user.value?.username ?? null,
-    },
-    origin,
-  )
-  const message = groupShareText(props.shell?.name ?? 'this group')
-  return { url, message }
-}
+const moreMenuItems = computed<MenuItemWithIcon[]>(() => [
+  { label: nativeShareSupported.value ? 'Share invite…' : 'Copy invite link', iconName: 'tabler:share-2', command: () => void shareGroup() },
+  { label: 'Copy invite link', iconName: 'tabler:link', command: () => void copyGroupLink() },
+  ...(props.canLeave
+    ? [{ label: 'Leave group', iconName: 'tabler:logout', class: 'text-red-600 dark:text-red-400', command: () => void onLeaveClick() }]
+    : []),
+])
 
-async function shareGroup() {
-  await run(async () => {
-    const { url, message } = await resolveGroupShare()
-    if (nativeShareSupported.value) {
-      const shared = await nativeShare({ title: 'Men of Hunger', text: message, url })
-      if (shared) {
-        toast.push({ title: 'Shared', tone: 'public', durationMs: 1200 })
-        return
-      }
-    }
-    await copyText(`${message}\n${url}`)
-    toast.push({ title: 'Invite link copied', tone: 'public', durationMs: 1400 })
-  }, { error: () => 'Share failed', durationMs: 1800 })
-}
-
-async function copyGroupLink() {
-  await run(async () => {
-    const { url, message } = await resolveGroupShare()
-    await copyText(`${message}\n${url}`)
-    toast.push({ title: 'Invite link copied', tone: 'public', durationMs: 1400 })
-  }, { error: () => 'Copy failed', durationMs: 1800 })
-}
-
-const moreMenuItems = computed<MenuItemWithIcon[]>(() => {
-  const items: MenuItemWithIcon[] = [
-    {
-      label: nativeShareSupported.value ? 'Share invite…' : 'Copy invite link',
-      iconName: 'tabler:share-2',
-      command: () => void shareGroup(),
-    },
-    {
-      label: 'Copy invite link',
-      iconName: 'tabler:link',
-      command: () => void copyGroupLink(),
-    },
-  ]
-  if (props.canLeave) {
-    items.push({
-      label: 'Leave group',
-      iconName: 'tabler:logout',
-      class: 'text-red-600 dark:text-red-400',
-      command: () => void onLeaveClick(),
-    })
-  }
-  return items
-})
-
-function toggleMoreMenu(event: Event) {
-  moreMenuRef.value?.toggle(event)
-}
+const toggleMoreMenu = (event: Event) => moreMenuRef.value?.toggle(event)
 
 const isAdminViewer = computed(() => {
   const role = props.shell.viewerMembership?.role
@@ -543,24 +459,6 @@ const pendingInviteCount = computed(() => props.shell.pendingInviteCount ?? 0)
 
 // Show full description only to verified (logged-in + verified) viewers.
 const descriptionObfuscated = computed(() => !props.viewerIsLoggedIn || !props.viewerIsVerified)
-
-const rulesContentRef = ref<HTMLElement | null>(null)
-const rulesExpanded = ref(false)
-const rulesFullHeight = ref(0)
-const rulesOverflows = ref(false)
-
-function measureRules() {
-  const el = rulesContentRef.value
-  if (!el) return
-  rulesFullHeight.value = el.scrollHeight
-  rulesOverflows.value = el.scrollHeight > 52
-}
-
-onMounted(() => nextTick(measureRules))
-watch(() => props.shell.rules, () => {
-  rulesExpanded.value = false
-  nextTick(measureRules)
-})
 
 function emitOpenBanner(event: MouseEvent) {
   const url = props.coverUrl
@@ -580,11 +478,6 @@ function emitOpenAvatar(event: MouseEvent) {
   })
 }
 
-const initials = computed(() => {
-  const n = (props.shell.name ?? '').trim()
-  if (!n) return '?'
-  const parts = n.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
-  return n.slice(0, 2).toUpperCase()
-})
+const groupInitials = computed(() => initials(props.shell.name))
+
 </script>

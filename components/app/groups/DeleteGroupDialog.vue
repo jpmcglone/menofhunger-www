@@ -28,7 +28,6 @@
 <script setup lang="ts">
 import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupShell } from '~/types/api'
-import { getApiErrorMessage } from '~/utils/api-error'
 
 const props = defineProps<{ modelValue: boolean; shell: CommunityGroupShell | null }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void; (e: 'deleted'): void }>()
@@ -36,30 +35,24 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void; (e: 'dele
 const { apiFetchData } = useApiClient()
 const { invalidate: invalidateMyGroups } = useMyGroups()
 const typed = ref('')
-const busy = ref(false)
-const error = ref<string | null>(null)
 const matches = computed(() => Boolean(props.shell) && typed.value.trim() === props.shell!.name.trim())
 
 watch(() => props.modelValue, (open) => {
   if (open) { typed.value = ''; error.value = null }
 })
 
-async function remove() {
-  if (!props.shell || !matches.value || busy.value) return
-  busy.value = true
-  error.value = null
-  try {
-    await apiFetchData(`/groups/${encodeURIComponent(props.shell.id)}/delete`, {
-      method: 'POST',
-      body: { confirmName: typed.value.trim() },
-    })
-    invalidateMyGroups()
-    emit('update:modelValue', false)
-    emit('deleted')
-  } catch (e: unknown) {
-    error.value = getApiErrorMessage(e) || 'Could not delete the group.'
-  } finally {
-    busy.value = false
-  }
+const { submit: submitRemove, submitting: busy, submitError: error } = useFormSubmit(async () => {
+  await apiFetchData(`/groups/${encodeURIComponent(props.shell!.id)}/delete`, {
+    method: 'POST',
+    body: { confirmName: typed.value.trim() },
+  })
+  invalidateMyGroups()
+  emit('update:modelValue', false)
+  emit('deleted')
+}, { defaultError: 'Could not delete the group.' })
+
+function remove() {
+  if (!props.shell || !matches.value) return
+  return submitRemove()
 }
 </script>

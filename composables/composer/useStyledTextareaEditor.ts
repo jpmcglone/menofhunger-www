@@ -73,9 +73,9 @@ export function useStyledTextareaEditor(props: StyledTextareaResolvedProps, emit
     extensions: [
       composerStarterKit,
       Placeholder.configure({ placeholder: props.placeholder }),
-      MentionWithColor.configure({ suggestion: mentionSuggestion as any }),
-      HashtagNode.configure({ suggestion: hashtagSuggestion as any }),
-      CashtagNode.configure({ suggestion: cashtagSuggestion as any }),
+      MentionWithColor.configure({ suggestion: mentionSuggestion }),
+      HashtagNode.configure({ suggestion: hashtagSuggestion }),
+      CashtagNode.configure({ suggestion: cashtagSuggestion }),
       SendOnEnter,
     ],
     editorProps: {

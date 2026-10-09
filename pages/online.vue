@@ -60,7 +60,7 @@
       tag="div"
       class="moh-divide transition-opacity duration-150"
     >
-      <AppUserRow show-presence v-for="u in users" :key="u.id" :user="u" :show-follow-button="true" :platforms="u.platforms" :in-call="u.inCall === true" />
+      <AppUserRow v-for="u in users" :key="u.id" show-presence :user="u" :show-follow-button="true" :platforms="u.platforms" :in-call="u.inCall === true" />
     </TransitionGroup>
 
     <!-- Recently / older online (verified viewers only) -->
@@ -105,9 +105,10 @@
           tag="div"
           class="moh-divide transition-opacity duration-150"
         >
-          <AppUserRow show-presence
-            v-for="u in recentlyOnlineUsers"
+          <AppUserRow
+v-for="u in recentlyOnlineUsers"
             :key="u.id"
+            show-presence
             :user="u"
             :show-follow-button="true"
             :name-meta="recentLastOnlineLabel(u.lastOnlineAt)"
@@ -133,9 +134,10 @@
           tag="div"
           class="moh-divide transition-opacity duration-150"
         >
-          <AppUserRow show-presence
-            v-for="u in olderOnlineUsers"
+          <AppUserRow
+v-for="u in olderOnlineUsers"
             :key="u.id"
+            show-presence
             :user="u"
             :show-follow-button="true"
             :name-meta="recentLastOnlineLabel(u.lastOnlineAt)"

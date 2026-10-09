@@ -5,6 +5,8 @@ import { useAutoToggleMenu } from '~/composables/useAutoToggleMenu'
 import { siteConfig } from '~/config/site'
 import { articleShareUrl } from '~/utils/acquisition-share'
 import type { useArticlePageContent } from './useArticlePage'
+import { useArticleCommentDeepLink } from './useArticleCommentDeepLink'
+import { useArticleViewTracking } from './useArticleViewTracking'
 
 /**
  * Tipping, author hover cards, view tracking, realtime counts and crosspost status,
@@ -34,12 +36,8 @@ export function useArticlePageActions(ctx: ReturnType<typeof useArticlePageConte
   })
 
   const isHydrated = ref(false)
-
-  // ─── View tracking (scroll-based) ────────────────────────────────────────────
-  // A sentinel placed at the article midpoint triggers the view count after the
-  // reader has kept it visible for 2 s (dwell threshold).
-  const viewSentinelEl = ref<HTMLElement | null>(null)
-  const { observe: observeArticleView, trackOnDwell: trackArticleViewOnDwell } = useArticleViewTracker()
+  const { viewSentinelEl } = useArticleViewTracking(article)
+  const { highlightedCommentId, scrollIntoViewIfNeeded } = useArticleCommentDeepLink(route, article)
 
   // ─── Realtime live updates ────────────────────────────────────────────────────
   const presence = usePresence()
@@ -119,55 +117,6 @@ export function useArticlePageActions(ctx: ReturnType<typeof useArticlePageConte
     liveTotalViewCount.value = Math.max(liveTotalViewCount.value ?? 0, payload.totalViewCount)
   }
 
-  let stopObservingView: (() => void) | null = null
-
-  // ─── Comment deep-link (hash = #comment-<id>) ────────────────────────────────
-  const highlightedCommentId = ref<string | null>(null)
-
-  function extractCommentIdFromHash(hash: string): string | null {
-    const m = hash.match(/^#?comment-(.+)$/)
-    return m?.[1] ?? null
-  }
-
-  function commentIdFromRoute(): string | null {
-    const fromHash = extractCommentIdFromHash(route.hash)
-    if (fromHash) return fromHash
-    const q = route.query.comment
-    return typeof q === 'string' && q.trim() ? q : null
-  }
-
-  /**
-   * Scroll the custom middle scroller the minimum amount needed to bring `el`
-   * fully into view, with `padding` px of breathing room above and below.
-   * If the element is already fully visible, nothing happens.
-   */
-  function scrollIntoViewIfNeeded(el: HTMLElement, padding = 20) {
-    const scroller = document.getElementById('moh-middle-scroller')
-    if (!scroller) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      return
-    }
-    const scrollerRect = scroller.getBoundingClientRect()
-    const elRect = el.getBoundingClientRect()
-    const relTop = elRect.top - scrollerRect.top
-    const relBottom = elRect.bottom - scrollerRect.top
-    const viewHeight = scroller.clientHeight
-
-    if (relTop < padding) {
-      scroller.scrollBy({ top: relTop - padding, behavior: 'smooth' })
-    } else if (relBottom > viewHeight - padding) {
-      scroller.scrollBy({ top: relBottom - viewHeight + padding, behavior: 'smooth' })
-    }
-  }
-
-  function scrollToComment(commentId: string) {
-    const el = document.getElementById(`comment-${commentId}`)
-    if (!el) return
-    scrollIntoViewIfNeeded(el)
-    highlightedCommentId.value = commentId
-    setTimeout(() => { highlightedCommentId.value = null }, 4000)
-  }
-
   const closeTipPopover = () => { tipOpen.value = false }
 
   usePresenceCallback('Articles', articlesCallback)
@@ -197,87 +146,9 @@ export function useArticlePageActions(ctx: ReturnType<typeof useArticlePageConte
     { immediate: true },
   )
 
-  watch(
-    () => route.hash,
-    () => {
-      const commentId = commentIdFromRoute()
-      if (commentId) scrollToComment(commentId)
-    },
-  )
-
-  // ─── Comment deep-link: poll until the target comment element appears ─────────
-  // Start only after the article loads (ensures AppArticleComments is mounted).
-  // Uses double-rAF once found so the scroll fires after the layout is stable.
-  let deepLinkInterval: ReturnType<typeof setInterval> | null = null
-
-  watch(
-    article,
-    (art) => {
-      if (!art || deepLinkInterval !== null) return
-      const commentId = commentIdFromRoute()
-      if (!commentId) return
-
-      highlightedCommentId.value = commentId
-
-      const POLL_MS = 150
-      const TIMEOUT_MS = 10_000
-      let elapsed = 0
-      deepLinkInterval = setInterval(() => {
-        elapsed += POLL_MS
-        const el = document.getElementById(`comment-${commentId}`)
-        if (el) {
-          clearInterval(deepLinkInterval!)
-          deepLinkInterval = null
-          // Double rAF: ensures the scroll fires after the browser has painted
-          // the newly-added comment nodes and the layout is fully stable.
-          requestAnimationFrame(() => requestAnimationFrame(() => scrollToComment(commentId)))
-        } else if (elapsed >= TIMEOUT_MS) {
-          clearInterval(deepLinkInterval!)
-          deepLinkInterval = null
-        }
-      }, POLL_MS)
-    },
-    { immediate: true },
-  )
-
-  // Attach scroll observer once the sentinel element is rendered.
-  // Guard: never track views for articles the viewer cannot access.
-  watch(viewSentinelEl, (el) => {
-    stopObservingView?.()
-    stopObservingView = null
-    if (el && article.value?.id && article.value.viewerCanAccess !== false) {
-      stopObservingView = observeArticleView(article.value.id, el)
-    }
-  })
-
-  // Page-dwell view tracker: counts a view after 5 s on the page even if the
-  // reader never scrolls to the end sentinel.  Works for logged-out visitors
-  // (anon_id cookie) and logged-in users alike, matching how post feed rows
-  // count views when visible in the feed without requiring a full scroll-through.
-  let stopDwellTracking: (() => void) | null = null
-  watch(
-    () => article.value?.id,
-    (articleId) => {
-      stopDwellTracking?.()
-      stopDwellTracking = null
-      if (articleId && article.value?.viewerCanAccess !== false) {
-        stopDwellTracking = trackArticleViewOnDwell(articleId)
-      }
-    },
-    { immediate: true },
-  )
-
   onUnmounted(() => {
     if (article.value?.id) presence.unsubscribeArticles([article.value.id])
-    stopObservingView?.()
-    stopObservingView = null
-    stopDwellTracking?.()
-    stopDwellTracking = null
     document.removeEventListener('click', closeTipPopover)
-    if (deepLinkInterval) {
-      clearInterval(deepLinkInterval)
-      deepLinkInterval = null
-    }
   })
 
   const articleBoostCount = computed(() =>

@@ -76,27 +76,14 @@
       <span class="truncate">{{ locationLabel }}</span>
     </div>
 
-    <AppProfileMetadataPreview v-if="websiteHref" :url="websiteHref" :title="websiteLabel">
-    <a
-      :href="websiteHref"
-      target="_blank"
-      rel="noopener noreferrer nofollow"
-      class="inline-flex items-center gap-1.5 min-w-0 text-[var(--moh-link)] hover:underline underline-offset-2"
-    >
-      <AppIconGlyph name="link" class="size-4 shrink-0" aria-hidden="true" />
-      <span class="break-all">{{ websiteLabel }}</span>
-    </a>
-    </AppProfileMetadataPreview>
-
-    <AppProfileMetadataPreview v-for="link in socialLinks" :key="link.network" :url="link.href" :title="link.display" :x-profile-user-id="link.network === 'x' ? profile?.id : undefined">
+    <AppProfileMetadataPreview v-for="link in profileLinks" :key="link.key" :url="link.href" :title="link.display" :x-profile-user-id="link.network === 'x' ? profile?.id : undefined">
     <a
       :href="link.href"
       target="_blank"
       rel="noopener noreferrer nofollow"
       class="inline-flex items-center gap-1.5 min-w-0 text-[var(--moh-link)] hover:underline underline-offset-2"
     >
-      <Icon v-if="link.icon" :name="link.icon" class="shrink-0 text-gray-600 dark:text-gray-300" aria-hidden="true" />
-      <img v-else :src="link.image!" class="h-4 w-4 shrink-0 rounded-[3px]" alt="" aria-hidden="true" >
+      <AppLinksBrandGlyph :icon="link.icon" size-class="size-4 shrink-0 text-gray-600 dark:text-gray-300" />
       <span class="break-all">{{ link.display }}</span>
     </a>
     </AppProfileMetadataPreview>
@@ -186,9 +173,7 @@ const {
   locationLabel,
   locationTo,
   locationState,
-  websiteHref,
-  websiteLabel,
-  socialLinks,
+  profileLinks,
   birthdayLabel,
   joinedLabel,
   showFollowCounts,

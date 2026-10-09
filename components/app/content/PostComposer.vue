@@ -23,48 +23,14 @@
         ]"
       >
         <slot name="close" />
-        <slot name="audience">
-          <AppComposerAudienceChrome
-            :reply-to="replyTo"
-            :inline-audience="inlineAudience"
-            :checkin-prompt="checkinPrompt"
-            :can-choose-group="canChooseGroup"
-            :visibility="visibility"
-            :allowed="allowedComposerVisibilities"
-            :is-premium="isPremium"
-            :groups="myGroups"
-            :selected-group-id="selectedGroupId"
-            :loading="myGroupsLoading"
-            :error="myGroupsError"
-            :shows-chat="showChatDestination"
-            :show-visibility-picker="showVisibilityPicker"
-            :viewer-is-verified="viewerIsVerified"
-            :effective-group-id="effectiveGroupId"
-            :scope-tag-tooltip="scopeTagTooltip"
-            :scope-tag-label="scopeTagLabel"
-            :effective-visibility="effectiveVisibility"
-            :show-group-scope-icon="showGroupScopeIcon"
-            :mode="mode"
-            :selected-group-read-label="selectedGroupReadLabel"
-            :select-chat="handoffToChat"
-            :select-visibility="selectDestinationVisibility"
-            :select-group="selectGroup"
-            :on-open="loadMyGroups"
-            @update:visibility="visibility = $event"
-          />
-        </slot>
-        <button
-          v-if="!checkinPrompt && scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
-          v-tooltip.bottom="`Click to change schedule`"
-          type="button"
-          class="inline-flex items-center gap-1 text-[11px] font-semibold moh-focus"
-          :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
-          :aria-label="`Scheduled for ${scheduledAtDisplay}. Click to change.`"
-          @click="openSchedulePicker"
+        <AppComposerAudienceRow
+          :composer="composer"
+          :reply-to="replyTo"
+          :inline-audience="inlineAudience"
+          :checkin-prompt="checkinPrompt"
         >
-          <Icon name="tabler:calendar-time" class="text-[12px]" aria-hidden="true" />
-          <span>{{ scheduledAtDisplay }}</span>
-        </button>
+          <template v-if="$slots.audience" #audience><slot name="audience" /></template>
+        </AppComposerAudienceRow>
       </div>
 
       <AppComposerPromptContext
@@ -121,125 +87,21 @@
           @change="onMediaFilesSelected"
         >
 
-        <div
-          class="relative"
-          :style="composerTextareaVars"
-          @dragenter="onComposerAreaDragEnter"
-          @dragover="onComposerAreaDragOver"
-          @dragleave="onComposerAreaDragLeave"
-          @drop.prevent="onComposerDrop"
-        >
-          <div class="relative" @paste.capture="onComposerPaste">
-            <AppStyledTextarea
-              ref="composerEditorEl"
-              :disabled="destinationDrafts.loading.value || submitting"
-              :model-value="draft"
-              :placeholder="composerPlaceholder"
-              :auto-focus="autoFocus"
-              :hashtag-color="composerHashtagColor"
-              submit-trigger="cmd-enter"
-              class="moh-composer-styled-textarea"
-              @update:model-value="onDraftChange"
-              @send="submit"
-              @media-files="(files) => ingestMediaFiles(files, 'paste')"
-            />
-            <AppComposerDropOverlay
-              :visible="dropOverlayVisible && !composerMedia.length"
-              :remaining-slots="remainingMediaSlots"
-              :max-slots="4"
-              tight-bottom
-            />
-          </div>
-
-          <AppComposerLinkPreview
-            v-if="!quotedPost && !poll"
-            :text="draft"
-            :has-media="composerMedia.length > 0"
-            class="mt-3"
-          />
-
-          <AppInlineAlert v-if="submitError" class="mt-3" severity="danger">
-            {{ submitError }}
-          </AppInlineAlert>
-
-          <div v-if="composerMedia.length" class="mt-3">
-            <AppComposerMediaSlots
-              :slots="displaySlots"
-              :first-empty-slot-index="firstEmptySlotIndex"
-              :can-add-more="canAddMoreMedia"
-              :dragging-media-id="draggingMediaId"
-              :upload-bar-color="composerUploadBarColor"
-              :upload-status-label="composerUploadStatusLabel"
-              @add="openMediaPicker"
-              @remove="removeComposerMedia"
-              @pointerdown="onMediaTilePointerDown"
-              @update-alt="onUpdateAltText"
-            />
-          </div>
-
-          <AppComposerPoll
-            v-if="poll && !composerMedia.length"
-            class="mt-3"
-            :model-value="poll"
-            @update:model-value="onUpdatePoll"
-            @remove="clearPoll"
-            @status="onPollStatus"
-          />
-
-          <AppComposerDropOverlay
-            :visible="dropOverlayVisible && composerMedia.length > 0"
-            :remaining-slots="remainingMediaSlots"
-            :max-slots="4"
-          />
-        </div>
+        <AppComposerEditorArea :composer="composer" :auto-focus="autoFocus" />
 
         <div v-if="quotedPost" class="select-none pointer-events-none">
           <AppEmbeddedPostPreview :preloaded-post="quotedPost" />
         </div>
 
         <div v-if="inlineAudience" class="flex min-w-0 flex-wrap items-center gap-2">
-          <slot name="audience">
-            <AppComposerAudienceChrome
-              :reply-to="replyTo"
-              :inline-audience="inlineAudience"
-              :checkin-prompt="checkinPrompt"
-              :can-choose-group="canChooseGroup"
-              :visibility="visibility"
-              :allowed="allowedComposerVisibilities"
-              :is-premium="isPremium"
-              :groups="myGroups"
-              :selected-group-id="selectedGroupId"
-              :loading="myGroupsLoading"
-              :error="myGroupsError"
-              :shows-chat="showChatDestination"
-              :show-visibility-picker="showVisibilityPicker"
-              :viewer-is-verified="viewerIsVerified"
-              :effective-group-id="effectiveGroupId"
-              :scope-tag-tooltip="scopeTagTooltip"
-              :scope-tag-label="scopeTagLabel"
-              :effective-visibility="effectiveVisibility"
-              :show-group-scope-icon="showGroupScopeIcon"
-              :mode="mode"
-              :selected-group-read-label="selectedGroupReadLabel"
-              :select-chat="handoffToChat"
-              :select-visibility="selectDestinationVisibility"
-              :select-group="selectGroup"
-              :on-open="loadMyGroups"
-              @update:visibility="visibility = $event"
-            />
-          </slot>
-          <button
-            v-if="!checkinPrompt && scheduledAt && isPremium && mode === 'create' && !replyTo && !quotedPost"
-            v-tooltip.bottom="`Click to change schedule`"
-            type="button"
-            class="inline-flex items-center gap-1 text-[11px] font-semibold moh-focus"
-            :style="scheduleAccentColor ? { color: scheduleAccentColor } : {}"
-            :aria-label="`Scheduled for ${scheduledAtDisplay}. Click to change.`"
-            @click="openSchedulePicker"
+          <AppComposerAudienceRow
+            :composer="composer"
+            :reply-to="replyTo"
+            :inline-audience="inlineAudience"
+            :checkin-prompt="checkinPrompt"
           >
-            <Icon name="tabler:calendar-time" class="text-[12px]" aria-hidden="true" />
-            <span>{{ scheduledAtDisplay }}</span>
-          </button>
+            <template v-if="$slots.audience" #audience><slot name="audience" /></template>
+          </AppComposerAudienceRow>
         </div>
 
         <ClientOnly>
@@ -323,60 +185,7 @@
     />
   </div>
 
-  <AppStatusEditorDialog
-    :open="statusEditorOpen"
-    :draft="statusDraft"
-    :active-status="Boolean(activeStatus)"
-    :saving="statusSaving"
-    :error="statusError"
-    title-id="composer-status-editor-title"
-    @update:open="(open) => { if (!open) closeStatusEditor() }"
-    @update:draft="statusDraft = $event"
-    @save="saveStatus($event)"
-    @edit="editStatus"
-    @clear="clearStatus"
-  />
-
-  <AppComposerGiphyPickerDialog
-    ref="giphyInputRef"
-    :open="giphyOpen"
-    :query="giphyQuery"
-    :loading="giphyLoading"
-    :error="giphyError"
-    :items="giphyItems"
-    :can-add-more="canAddMoreMedia"
-    @update:open="(v) => (giphyOpen = v)"
-    @update:query="(v) => (giphyQuery = v)"
-    @search="searchGiphy"
-    @select="selectGiphyGif"
-  />
-
-  <AppComposerScheduleDialog
-    v-model:schedule-picker-open="schedulePickerOpen"
-    v-model:scheduled-at-draft="scheduledAtDraft"
-    v-model:schedule-more="scheduleMore"
-    :is-premium="isPremium"
-    :scheduled-at="scheduledAt"
-    :schedule-min-date="scheduleMinDate"
-    :schedule-max-date="scheduleMaxDate"
-    :scheduled-at-draft-is-past="scheduledAtDraftIsPast"
-    :scheduled-count="scheduledCount"
-    :format-scheduled-at="formatScheduledAt"
-    :clear-schedule="clearSchedule"
-    :confirm-schedule="confirmSchedule"
-  />
-
-  <AppPostPreviewDialog
-    v-if="previewOpen"
-    :post="previewPost"
-    :scheduled-label="scheduledAt ? scheduledAtDisplay : null"
-    :destinations="previewDestinations"
-    :initial-selection="crosspostChoice"
-    :editing-scheduled="Boolean(scheduledEditId)"
-    :busy="submitting"
-    @close="previewOpen = false"
-    @confirm="onPreviewConfirm"
-  />
+  <AppComposerDialogs :composer="composer" />
   </div>
 </template>
 
@@ -402,31 +211,18 @@ const emit = defineEmits<{
 }>()
 
 const props = defineProps<PostComposerProps>()
+const composer = usePostComposer(props, emit)
 const {
   user, isAuthed, isPremium, viewerIsVerified, mode, disableMedia, disablePoll, showDivider,
-  enableAvatarStatusEditor, quotedPost, myProfilePath, draft, composerEditorEl,
-  poll, hasPoll, pollIncomplete, pollUploading, pollHasFailed, onPollStatus, onUpdatePoll, clearPoll,
-  onClickAddPoll, selectedGroupId, myGroups, myGroupsLoading, myGroupsError, effectiveGroupId,
-  canChooseGroup, selectedGroupReadLabel, loadMyGroups, visibility, selectDestinationVisibility,
-  selectGroup, allowedComposerVisibilities, effectiveVisibility, showChatDestination,
-  showVisibilityPicker, showGroupScopeIcon, scopeTagLabel, scopeTagTooltip, scheduledAt,
-  scheduledAtDraft, schedulePickerOpen, scheduleMore, scheduledEditId, scheduleMinDate, scheduleMaxDate,
-  formatScheduledAt, scheduledAtDisplay, scheduledAtDraftIsPast, openSchedulePicker, confirmSchedule,
-  clearSchedule, statusEditorOpen, statusDraft, statusSaving, statusError, activeStatus,
-  openStatusEditor, closeStatusEditor, saveStatus, editStatus, clearStatus, composerHashtagColor,
-  composerUploadBarColor, scheduleAccentColor, composerTextareaVars, postButtonClass, composerMedia,
-  canAddMoreMedia, remainingMediaSlots, displaySlots, firstEmptySlotIndex, composerUploading,
-  composerUploadStatusLabel, mediaFileInputEl, openMediaPicker, onMediaFilesSelected,
-  removeComposerMedia, draggingMediaId, dragGhost, dragGhostStyle, dropOverlayVisible,
-  onComposerAreaDragEnter, onComposerAreaDragOver, onComposerAreaDragLeave, onComposerDrop,
-  onComposerPaste, ingestMediaFiles, onMediaTilePointerDown, giphyOpen, giphyQuery, giphyLoading,
-  giphyError, giphyItems, giphyInputRef, searchGiphy, selectGiphyGif, scheduledCount,
-  destinationDrafts, hasEditChanges, canPost, composerHasFailedMedia, postMaxLen, postCharCount,
-  composerPlaceholder, composerAcceptTypes, previewOpen, previewPost, previewDestinations,
-  onPreviewConfirm, submitting, submitError, submit, crosspostChoice, onDraftChange, insertEmoji,
-  onUpdateAltText, onClickAddMedia, onClickAddGiphy, handoffToChat, loginTo, showLoginPrompt,
-  clearComposer, focus, draftText, draftSnapshot, hasUnsavedContent, setEmojiPickerEl,
-} = usePostComposer(props, emit)
+  enableAvatarStatusEditor, quotedPost, myProfilePath, draft, hasPoll, pollIncomplete,
+  pollUploading, pollHasFailed, onClickAddPoll, visibility, scheduledAt, scheduledEditId,
+  scheduledAtDisplay, openSchedulePicker, openStatusEditor, scheduleAccentColor, postButtonClass,
+  composerMedia, canAddMoreMedia, composerUploading, mediaFileInputEl, onMediaFilesSelected,
+  dragGhost, dragGhostStyle, scheduledCount, hasEditChanges, canPost, composerHasFailedMedia,
+  postMaxLen, postCharCount, composerAcceptTypes, submitting, submit, insertEmoji, onClickAddMedia,
+  onClickAddGiphy, loginTo, showLoginPrompt, clearComposer, focus, draftText, draftSnapshot,
+  hasUnsavedContent, setEmojiPickerEl
+} = composer
 
 const { inlineAudience, checkinPrompt, omitAvatar, inReplyThread, replyTo, autoFocus, actionsTarget, submitTarget } = toRefs(props)
 

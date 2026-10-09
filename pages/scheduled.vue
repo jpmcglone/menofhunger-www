@@ -52,7 +52,7 @@
       mode="edit"
       :edit-scheduled-id="editing.id"
       :initial-text="editing.body"
-      :initial-media="(editing.media as any)"
+      :initial-media="editing.media"
       :initial-poll="editing.poll"
       :initial-visibility="editing.scheduledVisibility"
       :initial-scheduled-at="editing.scheduledAt"

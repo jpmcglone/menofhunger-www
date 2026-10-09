@@ -25,7 +25,7 @@
       @keydown="onMmKeydown"
       @focus="focused = true"
       @blur="onBlur"
-    />
+    >
     <span class="moh-text-muted select-none text-sm">/</span>
     <!-- Day -->
     <input
@@ -41,7 +41,7 @@
       @keydown="onDdKeydown"
       @focus="focused = true"
       @blur="onBlur"
-    />
+    >
     <span class="moh-text-muted select-none text-sm">/</span>
     <!-- Year -->
     <input
@@ -57,7 +57,7 @@
       @keydown="onYyyyKeydown"
       @focus="focused = true"
       @blur="onBlur"
-    />
+    >
   </div>
 </template>
 

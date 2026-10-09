@@ -87,7 +87,7 @@
     <div v-if="canAccessFitness && !loading && !loadError" class="space-y-3 text-sm" :class="!stravaEnabled ? 'opacity-60' : ''">
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <span class="text-[11px] font-black uppercase tracking-wide" style="color: #FC4C02">Strava</span>
+          <span class="text-[11px] font-black uppercase tracking-wide" style="color: var(--moh-brand-strava)">Strava</span>
           <span class="font-medium">Strava</span>
         </div>
 

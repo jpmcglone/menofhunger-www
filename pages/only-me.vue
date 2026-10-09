@@ -56,7 +56,7 @@
           <div class="mt-5">
             <AppSlideToReveal
               label="Slide to unhide"
-              completedLabel="Unhidden"
+              completed-label="Unhidden"
               hint="Drag the handle all the way to the right"
               @revealed="revealed = true"
             />

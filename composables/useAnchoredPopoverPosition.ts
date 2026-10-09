@@ -1,11 +1,8 @@
+import { clamp } from '~/utils/primitives'
 import type { CSSProperties, Ref } from 'vue'
 import { OVERLAY_LAYERS } from '~/utils/overlay-layers'
 
 type Size = { w: number; h: number }
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n))
-}
 
 /**
  * Generic “anchored” popover positioning helper.

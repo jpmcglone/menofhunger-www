@@ -4,7 +4,7 @@
     <div class="flex h-[min(31rem,70dvh)] flex-col gap-4">
       <form class="flex items-center gap-2 rounded-xl border moh-border px-3" @submit.prevent="emit('search')">
         <AppIconGlyph name="search" :size="20" class="moh-text-muted shrink-0" />
-        <input ref="inputRefProxy" :value="query" class="min-w-0 flex-1 bg-transparent py-3 outline-none" placeholder="Search GIPHY" aria-label="Search GIPHY" @input="emit('update:query', ($event.target as HTMLInputElement).value)" />
+        <input ref="inputRefProxy" :value="query" class="min-w-0 flex-1 bg-transparent py-3 outline-none" placeholder="Search GIPHY" aria-label="Search GIPHY" @input="emit('update:query', ($event.target as HTMLInputElement).value)" >
         <button v-if="query" type="button" class="flex size-11 items-center justify-center" aria-label="Clear GIF search" @click="emit('update:query', ''); emit('search')"><AppIconGlyph name="close" :size="18" /></button>
         <button type="submit" class="text-sm font-semibold" :disabled="loading">Search</button>
       </form>
@@ -14,7 +14,7 @@
         <div v-else-if="error" class="flex h-full flex-col items-center justify-center gap-3 text-center" role="alert"><p>{{ error }}</p><button type="button" class="min-h-11 font-semibold" @click="emit('search')">Try again</button></div>
         <div v-else-if="!items.length" class="flex h-full flex-col items-center justify-center gap-2 text-center"><p class="font-semibold">No GIFs found</p><p class="text-sm moh-text-muted">Try a different word or clear your search.</p></div>
         <div v-else class="grid grid-cols-3 gap-2">
-          <button v-for="gif in items" :key="gif.id" type="button" class="aspect-square overflow-hidden rounded-xl bg-black/5 dark:bg-white/5 transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" :disabled="!canAddMore" :aria-label="`Add GIF ${gif.title || ''}`" @click="emit('select', gif)"><img :src="gif.url" class="h-full w-full object-cover" alt="" loading="lazy" /></button>
+          <button v-for="gif in items" :key="gif.id" type="button" class="aspect-square overflow-hidden rounded-xl bg-black/5 dark:bg-white/5 transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" :disabled="!canAddMore" :aria-label="`Add GIF ${gif.title || ''}`" @click="emit('select', gif)"><img :src="gif.url" class="h-full w-full object-cover" alt="" loading="lazy" ></button>
         </div>
       </div>
       <p class="text-xs moh-text-muted">Powered by GIPHY</p>

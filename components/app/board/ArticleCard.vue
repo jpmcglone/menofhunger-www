@@ -1,7 +1,7 @@
 <template>
   <NuxtLink
     :to="articleHref"
-    class="group flex overflow-hidden rounded-xl border moh-border transition-colors moh-surface-hover moh-focus"
+    class="group flex moh-card-frame moh-border transition-colors moh-surface-hover moh-focus"
   >
     <img
       v-if="thread.image?.url"

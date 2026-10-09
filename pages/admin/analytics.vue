@@ -64,9 +64,9 @@
           </div>
           <div v-if="briefLoading" class="space-y-2" aria-live="polite">
             <p class="text-sm text-gray-500 dark:text-gray-400">Reading the numbers…</p>
-            <div class="h-3 w-5/6 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
-            <div class="h-3 w-full animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
-            <div class="h-3 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
+            <AppSkeletonBar class="h-3 w-5/6" />
+            <AppSkeletonBar class="h-3 w-full" />
+            <AppSkeletonBar class="h-3 w-2/3" />
           </div>
           <p v-else-if="briefError" class="text-sm text-rose-700 dark:text-rose-300">{{ briefError }}</p>
           <p v-else class="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-gray-100">{{ brief }}</p>

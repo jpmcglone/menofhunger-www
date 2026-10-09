@@ -30,8 +30,7 @@
   <AppAnnouncementHost />
   <AppConfirmMount />
   <AppAuthActionModal />
-  <AppPremiumMediaModal />
-  <AppSchedulePremiumModal />
+  <AppPremiumUpsellModal />
   <AppExternalLinkDialog />
   <AppUnsavedDraftPromptModal />
   <AppReplyModal />

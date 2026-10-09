@@ -399,8 +399,8 @@ const displayBodySegments = computed<TextSegment[]>(() => {
   // Link matches
   const linkMatches = _linkify.match(input) ?? []
   for (const m of linkMatches) {
-    const start = typeof (m as any).index === 'number' ? ((m as any).index as number) : -1
-    const end = typeof (m as any).lastIndex === 'number' ? ((m as any).lastIndex as number) : -1
+    const start = typeof m.index === 'number' ? m.index : -1
+    const end = typeof m.lastIndex === 'number' ? m.lastIndex : -1
     if (start < 0 || end <= start) continue
     const text = input.slice(start, end)
     const href = (m.url ?? '').trim()

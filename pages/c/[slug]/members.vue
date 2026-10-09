@@ -167,6 +167,7 @@ const crewApi = useCrew()
 const { markReadBySubject } = useNotifications()
 const { user: meUser } = useAuth()
 const toast = useAppToast()
+const { run: runCancel } = useAsyncAction()
 
 const crewName = computed(() => {
   const n = (crew.value?.name ?? '').trim()
@@ -265,17 +266,17 @@ async function onCancelInviteRequested(inviteId: string) {
   const invite = pendingInvitees.value.find((i) => i.id === inviteId)
   const name = invite?.invitee.name ?? invite?.invitee.username ?? 'invite'
   pendingInvitees.value = pendingInvitees.value.filter((i) => i.id !== inviteId)
-  try {
-    await crewApi.cancelInvite(inviteId)
-    toast.push({ title: `Invite to ${name} withdrawn`, tone: 'success' })
-  } catch (e) {
-    if (invite) {
-      pendingInvitees.value = [...pendingInvitees.value, invite].sort((a, b) =>
-        a.createdAt.localeCompare(b.createdAt),
-      )
-    }
-    toast.push({ title: getApiErrorMessage(e) || 'Could not cancel the invite.', tone: 'error' })
-  }
+  await runCancel(() => crewApi.cancelInvite(inviteId), {
+    error: 'Could not cancel the invite.',
+    onSuccess: () => toast.push({ title: `Invite to ${name} withdrawn`, tone: 'success' }),
+    rollback: () => {
+      if (invite) {
+        pendingInvitees.value = [...pendingInvitees.value, invite].sort((a, b) =>
+          a.createdAt.localeCompare(b.createdAt),
+        )
+      }
+    },
+  })
 }
 
 async function refreshPendingInvitees(crewId: string | null) {

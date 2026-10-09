@@ -82,7 +82,7 @@ import type { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
-import { getSafeUserErrorMessage } from '~/utils/api-error'
+import { presignedUpload } from '~/utils/put-presigned-file'
 
 const props = defineProps<{
   modelValue: string
@@ -206,20 +206,7 @@ async function uploadAndInsertImage(file: File) {
   if (props.disabled) return
   await run(async () => {
     file = await prepareUploadImage(file)
-    const init = await apiFetchData<{ key: string; uploadUrl: string; headers: Record<string, string> }>(
-      '/uploads/article-media/init',
-      { method: 'POST', body: { contentType: file.type || 'image/jpeg' } },
-    )
-    const uploadRes = await fetch(init.uploadUrl, {
-      method: 'PUT',
-      body: file,
-      headers: init.headers ?? {},
-    })
-    if (!uploadRes.ok) throw new Error('Image upload failed.')
-    const commit = await apiFetchData<{ key: string }>('/uploads/article-media/commit', {
-      method: 'POST',
-      body: { key: init.key },
-    })
+    const commit = await presignedUpload(apiFetchData, 'article-media', file)
     const imageUrl = assetUrl(commit.key)
     if (!imageUrl) throw new Error('Missing public assets base URL.')
     editor.value?.chain().focus().setImage({ src: imageUrl }).run()

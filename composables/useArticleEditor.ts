@@ -1,5 +1,6 @@
 import { formatLocaleTime } from '~/utils/time-format'
 import type { Article, ArticleTag, PostVisibility  } from '~/types/api'
+import type { TiptapDocNode } from '~/utils/tiptap-doc'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -50,7 +51,7 @@ export function useArticleEditor(initialArticle: Ref<Article | null>, options: A
     if (!raw) return true
     try {
        
-      function hasText(node: any): boolean {
+      function hasText(node: TiptapDocNode): boolean {
         if (node.type === 'text') return !!node.text?.trim()
         if (Array.isArray(node.content)) return node.content.some(hasText)
         return false

@@ -264,7 +264,7 @@ export default defineNuxtConfig({
   // Fonts are bundled in public/fonts from the same source files as iOS.
   ui: { fonts: false },
 
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/status-tone.css'],
   ssr: true,
 
   image: {

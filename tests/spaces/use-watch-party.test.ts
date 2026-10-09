@@ -9,7 +9,17 @@
  *  - switching to a new spaceId clears state from the old one
  */
 
-import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest'
+/**
+ * useWatchParty composable tests.
+ *
+ * We test the observable contract rather than internals:
+ *  - watchPartyState is null before subscribe
+ *  - subscribe sets the spaceId that filters incoming events
+ *  - unsubscribe clears state
+ *  - sendControl / requestCurrentState delegate to usePresence helpers
+ *  - switching to a new spaceId clears state from the old one
+ */
+import { describe, expect, it, vi, afterEach } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import type { WatchPartyState } from '~/types/api'

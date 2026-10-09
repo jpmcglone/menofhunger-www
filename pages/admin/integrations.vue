@@ -75,7 +75,6 @@
 
 <script setup lang="ts">
 import { formatLocaleDate, formatLocaleDateTime } from '~/utils/time-format'
-import { formatCount } from '~/utils/number-format'
 import type { IntegrationSpendDiagnosticsDto, IntegrationOperationsDto } from '~/types/api-contracts.gen'
 import { integrationMicros, integrationDollars as money } from '~/utils/integration-money'
 import { getApiErrorMessage } from '~/utils/api-error'

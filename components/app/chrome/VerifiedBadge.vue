@@ -4,9 +4,9 @@
     <span
       v-else-if="isVerified"
       ref="verifiedEl"
+      v-tooltip="tooltip"
       :class="['inline-block', sizeClass]"
       :style="{ color: badgeColor }"
-      v-tooltip="tooltip"
       :aria-label="ariaLabel"
       @mouseenter="updateTooltipPlacement"
     >

@@ -199,7 +199,7 @@ export function useProfilePageFeeds(ctx: ReturnType<typeof useProfilePageRoute> 
     return u ? `@${u}` : 'this user'
   })
 
-  const blockingProfile = ref(false)
+  const { run: runBlock, pending: blockingProfile } = useAsyncAction()
   const { confirm } = useAppConfirm()
 
   async function openBannerUnblockConfirm() {
@@ -210,15 +210,11 @@ export function useProfilePageFeeds(ctx: ReturnType<typeof useProfilePageRoute> 
       confirmSeverity: 'primary',
     })
     if (!ok || blockingProfile.value || !profile.value?.id) return
-    blockingProfile.value = true
-    try {
-      await blockState.unblockUser(profile.value.id)
+    const profileId = profile.value.id
+    await runBlock(async () => {
+      await blockState.unblockUser(profileId)
       toast.push({ title: `${profileBlockHandle.value} unblocked`, message: 'You can now engage with their posts.', tone: 'success', durationMs: 3000 })
-    } catch (e: unknown) {
-      toast.pushError(e, 'Failed to unblock.')
-    } finally {
-      blockingProfile.value = false
-    }
+    }, { error: 'Failed to unblock.' })
   }
 
   const showFollowCounts = computed(() => {

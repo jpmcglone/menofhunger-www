@@ -1,13 +1,9 @@
 <template>
-  <component
-    :is="internalPath ? NuxtLink : 'a'"
-    :to="internalPath || undefined"
-    :href="internalPath ? undefined : url"
-    :target="internalPath ? undefined : '_blank'"
-    :rel="internalPath ? undefined : 'noopener noreferrer'"
+  <AppExternalLinkCard
+    :href="url"
+    :internal-path="internalPath"
     class="block overflow-hidden rounded-2xl moh-popover moh-card-matte moh-focus text-left"
     :aria-label="internalPath ? 'Open page' : 'Open link'"
-    @click.stop="!internalPath && confirmExternal($event, url)"
   >
     <div
       v-if="imageUrl"
@@ -15,16 +11,13 @@
       :class="imageReady ? 'aspect-video' : 'hidden'"
       aria-hidden="true"
     >
-      <img
+      <AppPreviewImage
         :src="imageUrl"
-        alt=""
-        class="h-full w-full object-cover moh-img-outline"
-        loading="lazy"
         decoding="async"
-        referrerpolicy="no-referrer"
+        class="h-full w-full object-cover moh-img-outline"
         @load="imageReady = true"
         @error="imageReady = false"
-      >
+      />
     </div>
     <div class="p-3">
       <div class="line-clamp-2 text-pretty text-sm font-semibold leading-5 moh-text">
@@ -46,15 +39,12 @@
         />
       </div>
     </div>
-  </component>
+  </AppExternalLinkCard>
 </template>
 
 <script setup lang="ts">
-const { onClick: confirmExternal } = useExternalLinkConfirm()
 import type { LinkMetadata } from '~/utils/link-metadata'
 import { isMohUrl, mohUrlPath, safeUrlDisplay, safeUrlHostname } from '~/utils/link-utils'
-
-const NuxtLink = resolveComponent('NuxtLink')
 
 const props = defineProps<{
   url: string

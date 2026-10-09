@@ -76,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceInterest } from '~/composables/presence/usePresenceInterest'
 import type { FollowListUser } from '~/types/api'
 import { useUserOverlay } from '~/composables/useUserOverlay'
 
@@ -105,19 +106,13 @@ const { isAuthed } = useAuth()
 const showFollowButton = computed(() => props.showFollowButton !== false && (isAuthed.value || props.allowLoggedOutFollowButton === true))
 
 const nameMeta = computed(() => (props.nameMeta ?? '').trim() || null)
-const { getUserStatus, getCurrentSpaceForUser, addInterest, removeInterest } = usePresence()
+const { getUserStatus, getCurrentSpaceForUser } = usePresence()
+usePresenceInterest(() => user.value?.id)
 const activeStatus = computed(() => getUserStatus(user.value?.id ?? ''))
 const currentSpaceId = computed(() => getCurrentSpaceForUser(user.value?.id ?? ''))
 const profilePath = computed(() => {
   if (!user.value?.username) return null
   return `/u/${encodeURIComponent(user.value.username)}`
-})
-
-onMounted(() => {
-  if (user.value?.id) addInterest([user.value.id])
-})
-onBeforeUnmount(() => {
-  if (user.value?.id) removeInterest([user.value.id])
 })
 
 const { onEnter, onMove, onLeave } = useUserPreviewTrigger({

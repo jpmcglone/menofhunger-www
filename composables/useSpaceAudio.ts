@@ -1,5 +1,6 @@
 import { mediaFocus } from '~/utils/mediaFocus'
 import type { Space } from '~/types/api'
+import { getAudioContextCtor } from '~/utils/audio-context'
 
 /** Opacity for the visualizer when used as a background (radio bar, space cards). Use via :style="{ opacity }". */
 export const SPACE_VISUALIZER_BACKGROUND_OPACITY = 0.26
@@ -37,8 +38,8 @@ export function getSpaceAudioAnalyser(): AnalyserNode | null {
 
   if (!audioCtx) {
     try {
-      const AudioContextCtor: typeof AudioContext =
-        window.AudioContext ?? (window as any).webkitAudioContext
+      const AudioContextCtor = getAudioContextCtor()
+      if (!AudioContextCtor) throw new Error('AudioContext is not supported')
       audioCtx = new AudioContextCtor()
     } catch (e) {
       console.warn('[SpaceAudio] Failed to create AudioContext:', e)

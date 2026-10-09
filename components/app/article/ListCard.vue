@@ -136,7 +136,7 @@
           :src="article.thumbnailUrl"
           :alt="article.title"
           :class="['h-full w-full object-cover', isGated ? 'blur-md scale-110' : '']"
-        />
+        >
         <!-- Lock overlay for gated articles -->
         <div
           v-if="isGated"
@@ -162,7 +162,7 @@
         <Transition name="more-menu">
           <div
             v-if="menuOpen"
-            class="absolute right-0 top-full z-30 mt-1 w-36 overflow-hidden rounded-xl border moh-border moh-surface shadow-lg"
+            class="absolute right-0 top-full z-30 mt-1 w-36 moh-card-frame moh-border moh-surface shadow-lg"
             role="menu"
           >
             <button
@@ -182,6 +182,7 @@
 </template>
 
 <script setup lang="ts">
+import { isInteractiveTarget } from '~/utils/interactive-target'
 import { formatLocaleDate } from '~/utils/time-format'
 import { formatShortCount } from '~/utils/text'
 import type { Article } from '~/types/api'
@@ -256,19 +257,8 @@ function onViewCountSynced(payload: { viewerCount: number, totalViewCount: numbe
   }
 }
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null
-  if (!el) return false
-  return Boolean(
-    el.closest(
-      ['a', 'button', 'iframe', 'input', 'textarea', 'select',
-        '[role="menu"]', '[role="menuitem"]', '[data-pc-section]'].join(','),
-    ),
-  )
-}
-
 function onRowClick(href: string, e: MouseEvent) {
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'basic')) return
   if (e.metaKey || e.ctrlKey) {
     window.open(href, '_blank')
     return
@@ -278,7 +268,7 @@ function onRowClick(href: string, e: MouseEvent) {
 
 function onRowAuxClick(href: string, e: MouseEvent) {
   if (e.button !== 1) return
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'basic')) return
   e.preventDefault()
   window.open(href, '_blank')
 }

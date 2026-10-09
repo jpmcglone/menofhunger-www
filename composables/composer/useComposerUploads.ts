@@ -2,6 +2,7 @@ import { prepareUploadImage } from '~/utils/prepare-upload-image'
 import type { Ref } from 'vue'
 import type { PostMediaKind } from '~/types/api'
 import type { ComposerMediaItem } from './types'
+import type { ApiFetchData } from '~/composables/useApiClient'
 
 const CHUNK_SIZE = 256 * 1024 // 256KB for hash chunks
 
@@ -16,7 +17,7 @@ async function computeFileSha256(file: File): Promise<string> {
 export function useComposerUploads(opts: {
   composerMedia: Ref<ComposerMediaItem[]>
   patchComposerMedia: (localId: string, patch: Partial<ComposerMediaItem>) => void
-  apiFetchData: <T>(url: string, init: any) => Promise<T>
+  apiFetchData: ApiFetchData
   concurrency?: number
 }) {
   const actionSounds = useActionSounds()

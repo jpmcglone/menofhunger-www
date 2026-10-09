@@ -36,6 +36,24 @@ describe('signup attribution', () => {
     expect(readAttributionFromVisit({ ...base, query: { ref: 'JOHN' } })?.landingPath).toBe('/')
   })
 
+  it('attributes a bare visit to a public links page as links_page', () => {
+    expect(readAttributionFromVisit({ ...base, path: '/u/john/links', query: {} })).toEqual({
+      src: 'links_page',
+      landingPath: '/u/john/links',
+    })
+    expect(readAttributionFromVisit({ ...base, path: '/u/john/links/', query: {} })?.src).toBe('links_page')
+  })
+
+  it('lets an explicit src or campaign win over the links page default', () => {
+    expect(readAttributionFromVisit({ ...base, path: '/u/john/links', query: { src: 'newsletter' } })?.src).toBe('newsletter')
+  })
+
+  it('does not treat other profile paths as links page visits', () => {
+    expect(readAttributionFromVisit({ ...base, path: '/u/john', query: {} })).toBeNull()
+    expect(readAttributionFromVisit({ ...base, path: '/u/john/links/extra', query: {} })).toBeNull()
+    expect(readAttributionFromVisit({ ...base, path: '/u/john/posts', query: {} })).toBeNull()
+  })
+
   it('expires stored attribution after 30 days', () => {
     const stored = parseStoredAttribution(JSON.stringify({ src: 'x-mhq', capturedAt: 1000 }))
     expect(isAttributionFresh(stored, 1000 + ATTRIBUTION_TTL_MS - 1)).toBe(true)

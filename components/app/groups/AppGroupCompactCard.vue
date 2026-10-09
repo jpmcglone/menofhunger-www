@@ -5,7 +5,7 @@
        carousels where vertical room is at a premium (e.g. /groups hub). -->
   <div
     v-if="dense"
-    class="group relative h-[105px] w-[105px] shrink-0 snap-start overflow-hidden rounded-xl border moh-border bg-gray-100 dark:bg-zinc-900 transition-[border-color] duration-150 ease-out hover:border-[color:rgba(var(--moh-group-rgb),0.4)]"
+    class="group relative h-[105px] w-[105px] shrink-0 snap-start moh-card-frame moh-border bg-gray-100 dark:bg-zinc-900 transition-[border-color] duration-150 ease-out hover:border-[color:rgba(var(--moh-group-rgb),0.4)]"
     role="link"
     tabindex="0"
     :aria-label="`Open ${group.name}`"
@@ -37,7 +37,7 @@
       style="background: linear-gradient(135deg, rgba(var(--moh-group-rgb), 0.55), rgba(var(--moh-group-rgb), 0.18))"
       aria-hidden="true"
     >
-      {{ initials }}
+      {{ groupInitials }}
     </div>
 
     <!-- Bottom-anchored gradient: ~60% of the tile, transparent at top so the
@@ -159,7 +159,7 @@
                 v-else
                 class="flex h-full w-full items-center justify-center text-base font-bold moh-text"
               >
-                {{ initials }}
+                {{ groupInitials }}
               </div>
             </div>
           </div>
@@ -178,6 +178,8 @@
 </template>
 
 <script setup lang="ts">
+import { initials } from '~/utils/text'
+import { isInteractiveTarget } from '~/utils/interactive-target'
 import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupShell } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
@@ -199,15 +201,7 @@ const avatarRoundClass = groupAvatarRoundClass()
 
 const href = computed(() => `/g/${encodeURIComponent(props.group.slug)}`)
 
-const initials = computed(() => {
-  const n = (props.group.name ?? '').trim()
-  if (!n) return '?'
-  const parts = n.split(/\s+/).filter(Boolean)
-  const a = parts[0]?.[0]
-  const b = parts[1]?.[0]
-  if (a && b) return (a + b).toUpperCase()
-  return n.slice(0, 2).toUpperCase()
-})
+const groupInitials = computed(() => initials(props.group.name))
 
 const memberCountLabel = computed(() => {
   const n = Number(props.group.memberCount ?? 0)
@@ -220,18 +214,8 @@ const tileImageUrl = computed(() => {
   return props.group.avatarImageUrl || props.group.coverImageUrl || null
 })
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null
-  if (!el) return false
-  return Boolean(
-    el.closest(
-      ['a', 'button', 'iframe', 'input', 'textarea', 'select', '[role="menu"]', '[role="menuitem"]', '[data-pc-section]'].join(','),
-    ),
-  )
-}
-
 function onRowClick(target: string, e: MouseEvent) {
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'basic')) return
   if (e.metaKey || e.ctrlKey) {
     window.open(target, '_blank')
     return
@@ -241,7 +225,7 @@ function onRowClick(target: string, e: MouseEvent) {
 
 function onRowAuxClick(target: string, e: MouseEvent) {
   if (e.button !== 1) return
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'basic')) return
   e.preventDefault()
   window.open(target, '_blank')
 }

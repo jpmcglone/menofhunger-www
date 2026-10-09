@@ -132,7 +132,7 @@
       </div>
     </div>
 
-    <div class="absolute right-2 top-2 flex flex-col overflow-hidden rounded-xl border moh-border bg-[var(--moh-surface-2)] shadow-sm">
+    <div class="absolute right-2 top-2 flex flex-col moh-card-frame moh-border bg-[var(--moh-surface-2)] shadow-sm">
       <button type="button" class="flex h-9 w-9 items-center justify-center moh-text hover:bg-[var(--moh-surface-hover)]" aria-label="Zoom in" @click="zoomBy(1.6)">
         <Icon name="tabler:plus" class="h-4 w-4" aria-hidden="true" />
       </button>

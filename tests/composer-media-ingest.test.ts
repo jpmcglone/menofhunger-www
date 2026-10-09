@@ -43,7 +43,7 @@ describe('paste and drop reach the TipTap editor', () => {
 
   it('chat and post composers ingest editor media-files', () => {
     const chat = readFromRepo('components/app/content/DmComposer.vue')
-    const post = readFromRepo('components/app/content/PostComposer.vue')
+    const post = readSurfaceSource('components/app/content/PostComposer.vue')
     expect(chat).toMatch(/@media-files="\(files\) => ingestMediaFiles\(files, 'paste'\)"/)
     expect(post).toMatch(/@media-files="\(files\) => ingestMediaFiles\(files, 'paste'\)"/)
     expect(chat).toMatch(/@paste\.capture="onComposerPaste"/)

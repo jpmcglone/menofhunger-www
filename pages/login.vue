@@ -55,6 +55,8 @@
 </template>
 
 <script setup lang="ts">
+import { getErrorReason } from '~/utils/api-error'
+import type { AuthUser } from '~/composables/useAuth'
 definePageMeta({
   layout: 'empty',
   title: 'Log in or sign up'
@@ -298,7 +300,7 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
 
     const referralCode = capturedReferralCode.value.trim()
     const attribution = signupAttribution.read()
-    const result = await apiFetchData<{ isNewUser: boolean; referralApplied?: boolean; user: any; sessionId: string }>('/auth/phone/verify', {
+    const result = await apiFetchData<{ isNewUser: boolean; referralApplied?: boolean; user: AuthUser; sessionId: string }>('/auth/phone/verify', {
       method: 'POST',
       body: { phone, code, ...(referralCode ? { referralCode } : {}), ...(attribution ? { attribution } : {}) }
     })
@@ -325,9 +327,7 @@ const { submit: submitCode, submitting: verifying } = useFormSubmit(
   {
     defaultError: 'Failed to verify code.',
     onError: (message, e) => {
-      const anyErr = e as { data?: any; response?: { _data?: any } | null } | null | undefined
-      const data = anyErr?.data ?? anyErr?.response?._data
-      const reason = data?.meta?.errors?.[0]?.reason
+      const reason = getErrorReason(e)
 
       if (reason === 'account_banned') {
         showAccountNotice('banned')

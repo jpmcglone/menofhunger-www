@@ -1,3 +1,4 @@
+import { formatBytes } from '~/utils/number-format'
 import { computed, type Ref } from 'vue'
 import type { ComposerMediaItem } from './types'
 import {
@@ -39,12 +40,6 @@ export function useComposerImageIngest(opts: {
 
   const isAllowedVideoType = isComposerVideoType
 
-  const formatBytes = (n: number) => {
-    const bytes = Math.max(0, Math.floor(n || 0))
-    const mb = bytes / (1024 * 1024)
-    if (mb < 1024) return `${Math.round(mb)}MB`
-    return `${(mb / 1024).toFixed(1)}GB`
-  }
 
   function defaultAltFromFilename(name: string | null | undefined): string | null {
     const raw = (name ?? '').trim()

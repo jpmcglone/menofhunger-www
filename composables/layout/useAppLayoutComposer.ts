@@ -1,4 +1,4 @@
-import { computed, onUnmounted, provide, ref, watch, type Ref } from 'vue'
+import { computed, provide, ref, watch, type Ref } from 'vue'
 import {
   MOH_COMPOSER_OPEN_KEY,
   MOH_GROUP_COMPOSER_KEY,
@@ -11,11 +11,13 @@ import {
 } from '~/utils/injection-keys'
 import type { FeedPost, PostVisibility } from '~/types/api'
 import { isComposerEntrypointPath } from '~/config/routes'
-import { useOnlyMePosts } from '~/composables/useOnlyMePosts'
 import { useReplyModal } from '~/composables/useReplyModal'
 import type { CreateMediaPayload } from '~/composables/useComposerMedia'
 import type { ComposerPollPayload } from '~/composables/composer/types'
 import { needsOnboarding } from '~/utils/onboarding'
+import { useComposerPostHandlers } from './useComposerPostHandlers'
+import { useComposerEntrypointStyle } from './useComposerEntrypointStyle'
+import { useComposerSheetAlignment } from './useComposerSheetAlignment'
 
 export type ComposerCreatePostFn = (
   body: string,
@@ -131,6 +133,7 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     // always a top-of-screen modal aligned with the center column.
     return { top: '0.75rem', bottom: 'auto' }
   })
+  const { destination: shareDestination } = useShareDestination()
   const { visibility: composerVisibility, feedVisibility: composerNonOnlyMeVisibility } = useComposerVisibility()
 
   // Drives --moh-scope-bg / --moh-scope-text on <html> synchronously so that
@@ -320,162 +323,24 @@ export function useAppLayoutComposer(opts: UseAppLayoutComposerOptions) {
     resetComposerCustomOptions()
   }
 
-  // ─── Posted / pending handling ───────────────────────────────────────────────
-
-  const { prependPost: prependOnlyMePost } = useOnlyMePosts()
-  const {
-    prependToHomeFeed,
-    prependOptimisticToHomeFeed,
-    replaceOptimisticInHomeFeed,
-    markOptimisticFailedInHomeFeed,
-    markOptimisticPostingInHomeFeed,
-    removeOptimisticFromHomeFeed,
-  } = useHomeFeedPrepend()
-  const { prependToProfileFeed } = useProfileFeedPrepend()
-  const pendingPosts = usePendingPostsManager()
-
-  function onComposerPending(payload: {
-    localId: string
-    optimisticPost: FeedPost
-    perform: () => Promise<FeedPost | { id: string } | null | undefined>
-  }) {
-    // Close the modal immediately so the user can keep working.
-    composerModalOpen.value = false
-    composerInitialText.value = null
-    composerSourceOnlyMePost.value = null
-    resetComposerCustomOptions()
-    const groupPending = groupComposerCtx.value?.onComposerPending
-    if (groupPending) {
-      groupPending(payload)
-      return
-    }
-    pendingPosts.submit({
-      localId: payload.localId,
-      optimisticPost: payload.optimisticPost,
-      perform: payload.perform,
-      callbacks: {
-        insert: (p) => prependOptimisticToHomeFeed(p),
-        replace: (lid, real) => {
-          replaceOptimisticInHomeFeed(lid, real)
-          // Also prepend to the profile feed in case the viewer is on their own profile.
-          if (real.id && real.visibility !== 'onlyMe' && !real.communityGroupId) {
-            prependToProfileFeed(real)
-          }
-        },
-        markFailed: (lid, msg) => markOptimisticFailedInHomeFeed(lid, msg),
-        markPosting: (lid) => markOptimisticPostingInHomeFeed(lid),
-        remove: (lid) => removeOptimisticFromHomeFeed(lid),
-      },
-    })
-  }
-
-  function onComposerPosted(payload: { id: string; visibility: string; post?: FeedPost }) {
-    composerModalOpen.value = false
-    composerInitialText.value = null
-    composerSourceOnlyMePost.value = null
-    resetComposerCustomOptions()
-    if (payload.visibility === 'onlyMe' && payload.post) {
-      prependOnlyMePost(payload.post)
-      if (route.path !== '/only-me') {
-        navigateTo('/only-me?posted=1')
-      }
-    } else if (payload.post && payload.post.id && payload.post.kind === 'checkin') {
-      // Check-in posts: prepend to home feed and open the share dialog in place —
-      // no navigation so the user stays on the current page.
-      prependToHomeFeed(payload.post)
-      prependToProfileFeed(payload.post)
-      sharePost.value = payload.post
-      shareDialogOpen.value = true
-    } else if (payload.post && payload.post.id && !payload.post.communityGroupId) {
-      // Prepend to home feed immediately and track in localInserts so it survives
-      // the next hard refresh (home page uses keepalive → onActivated → refresh()).
-      prependToHomeFeed(payload.post)
-      // Also push to the profile feed in case the viewer is on their own profile.
-      prependToProfileFeed(payload.post)
-    }
-  }
-
-  // ─── Presentation ────────────────────────────────────────────────────────────
-
-  const composerModalBorderClass = computed(() => {
-    if (isGroupPage.value && groupComposerCtx.value) return 'border-[color:var(--moh-group)]'
-    const v = composerLockedVisibility.value ?? (
-      composerVisibility.value === 'onlyMe' && !isOnlyMePage.value
-        ? (composerNonOnlyMeVisibility.value ?? 'public')
-        : composerVisibility.value
-    )
-    if (v === 'verifiedOnly') return 'moh-thread-verified'
-    if (v === 'premiumOnly') return 'moh-thread-premium'
-    if (v === 'onlyMe') return 'moh-thread-onlyme'
-    return 'border-gray-200 dark:border-zinc-800'
+  const { onComposerPending, onComposerPosted } = useComposerPostHandlers({
+    closeComposerModal,
+    groupComposerCtx,
+    sharePost,
+    shareDialogOpen,
   })
-
-  // Post button (FAB + left nav): color matches composer scope. Public = black/white (light) or white/black (dark).
-  const { destination: shareDestination } = useShareDestination()
-  const fabTargetsGroup = computed(() => Boolean(isGroupPage.value && groupComposerCtx.value) || (
-    !isOnlyMePage.value && viewerIsVerified.value && shareDestination.value.kind === 'group'
-  ))
-  const fabButtonClass = computed(() => {
-    if (fabTargetsGroup.value) return 'moh-btn-tone'
-    // On /only-me, always present the "Only me" purple button and default the composer to onlyMe.
-    // (We don't permanently change the cookie just by visiting the page.)
-    if (isOnlyMePage.value || !viewerIsVerified.value) return 'moh-btn-onlyme moh-btn-tone'
-    const v = composerVisibility.value === 'onlyMe'
-      ? (composerNonOnlyMeVisibility.value ?? 'public')
-      : composerVisibility.value
-    // Use .moh-btn-scope for verified/premium: its background reads --moh-scope-bg which
-    // is updated synchronously by useComposerScopeTint (via Unhead), so the button color
-    // snaps in the same CSS-cascade tick as the composer tint rather than waiting for
-    // Vue's async render flush.
-    if (v === 'verifiedOnly' || v === 'premiumOnly') return 'moh-btn-scope moh-btn-tone'
-    return 'bg-black text-white dark:bg-white dark:text-black'
+  const { composerModalBorderClass, fabButtonClass, fabButtonStyle } = useComposerEntrypointStyle({
+    isGroupPage,
+    isOnlyMePage,
+    groupComposerCtx,
+    composerLockedVisibility,
+    composerVisibility,
+    composerNonOnlyMeVisibility,
   })
-  const fabButtonStyle = computed(() => {
-    if (fabTargetsGroup.value) {
-      return { backgroundColor: 'var(--moh-group)', color: '#fff' }
-    }
-    return {}
-  })
-
-  // ─── Sheet alignment ─────────────────────────────────────────────────────────
-
-  function updateComposerSheetStyle() {
-    if (!import.meta.client) return
-    const el = middleContentEl.value ?? middleScrollerEl.value
-    if (!el) return
-    const r = el.getBoundingClientRect()
-
-    // Match the actual center-column content area so it lines up with posts/cards.
-    composerSheetStyle.value = {
-      left: `${Math.max(0, Math.floor(r.left))}px`,
-      width: `${Math.max(0, Math.floor(r.width))}px`,
-    }
-  }
-
-  useOverlayDismiss(composerModalOpen, closeComposerModal)
-
   // The composer and the bottom cards (check-in answered, first post) all align to the center column.
   const centerAlignedOpen = computed(() => composerModalOpen.value || shareDialogOpen.value)
-  watch(
-    centerAlignedOpen,
-    (open) => {
-      if (!import.meta.client) return
-      window.removeEventListener('resize', updateComposerSheetStyle)
-      window.visualViewport?.removeEventListener('resize', updateComposerSheetStyle)
-      if (open) {
-        requestAnimationFrame(() => updateComposerSheetStyle())
-        window.addEventListener('resize', updateComposerSheetStyle)
-        window.visualViewport?.addEventListener('resize', updateComposerSheetStyle)
-      }
-    },
-    { flush: 'post' },
-  )
-
-  onUnmounted(() => {
-    if (!import.meta.client) return
-    window.removeEventListener('resize', updateComposerSheetStyle)
-    window.visualViewport?.removeEventListener('resize', updateComposerSheetStyle)
-  })
+  useComposerSheetAlignment({ middleContentEl, middleScrollerEl, composerSheetStyle, centerAlignedOpen })
+  useOverlayDismiss(composerModalOpen, closeComposerModal)
 
   return {
     // Entry points

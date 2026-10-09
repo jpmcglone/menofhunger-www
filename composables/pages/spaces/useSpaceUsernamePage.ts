@@ -7,7 +7,6 @@ import { registerAvatarPositionResolver } from '~/composables/useSpaceReactions'
 import { useCopyToClipboard } from '~/composables/useCopyToClipboard'
 import { spaceDisplayTitle, spaceStatusKind as resolveSpaceStatusKind } from '~/utils/space-display'
 import { computeSpaceSeo } from '~/utils/spaceSeo'
-import { WATCH_PLAYER_PINNED_HEIGHT } from '~/utils/watchPartyLayout'
 
 export async function useSpaceUsernamePage() {
 const route = useRoute()

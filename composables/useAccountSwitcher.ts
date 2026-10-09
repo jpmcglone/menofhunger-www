@@ -1,5 +1,4 @@
 import type { SwitchableAccount, WsAccountsBadgeUpdatedPayload } from '~/types/api'
-import { getSafeUserErrorMessage } from '~/utils/api-error'
 import { mergeSwitchableAccountBadges } from '~/utils/switchable-account-badges'
 import type { AccountsCallback } from '~/composables/presence/types'
 import { getAuthGeneration } from '~/composables/auth/authState'

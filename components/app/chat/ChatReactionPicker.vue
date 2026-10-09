@@ -22,6 +22,7 @@
 </template>
 
 <script setup lang="ts">
+import type { OverlayPanelHandle } from '~/types/overlay-ref'
 import type { MessageReaction } from '~/types/api'
 
 const props = defineProps<{
@@ -33,7 +34,7 @@ const emit = defineEmits<{
   select: [reactionId: string]
 }>()
 
-const popoverRef = ref<any>(null)
+const popoverRef = ref<OverlayPanelHandle | null>(null)
 
 function toggle(event: Event) {
   popoverRef.value?.toggle(event)

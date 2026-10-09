@@ -64,8 +64,8 @@ describe('useMuteUser', () => {
     const { service } = render()
     await service.toggle()
     expect(service.muted.value).toBe(false)
-    expect(muteSpies.push).not.toHaveBeenCalled()
-    expect(muteSpies.pushError).toHaveBeenCalledTimes(1)
+    expect(muteSpies.push).toHaveBeenCalledTimes(1)
+    expect(muteSpies.push).toHaveBeenCalledWith(expect.objectContaining({ title: 'nope', tone: 'error' }))
   })
 
   it('ignores a second toggle while a request is in flight', async () => {

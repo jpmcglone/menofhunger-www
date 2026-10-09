@@ -93,7 +93,7 @@ export function usePostsFeedRealtime(ctx: {
   function rescanAndObserve() {
     if (!import.meta.client) return
     const root = middleScrollerEl.value ?? document
-    const els = Array.from((root as any).querySelectorAll?.('[data-post-id]') ?? []) as HTMLElement[]
+    const els = Array.from(root.querySelectorAll<HTMLElement>('[data-post-id]'))
     for (const el of els) {
       const id = (el.dataset.postId ?? '').trim()
       if (!id) continue

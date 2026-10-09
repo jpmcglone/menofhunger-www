@@ -46,7 +46,7 @@
       v-model="editBio"
       class="w-full"
       rows="4"
-      autoResize
+      auto-resize
       :maxlength="160"
       placeholder="Tell people a bit about yourself…"
     />
@@ -55,7 +55,7 @@
   <div class="space-y-2">
     <label class="text-sm font-medium text-gray-700 dark:text-gray-200">Organization account</label>
     <div class="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
-      <Checkbox v-model="editIsOrganization" binary inputId="moh-admin-is-org" />
+      <Checkbox v-model="editIsOrganization" binary input-id="moh-admin-is-org" />
       <div class="min-w-0">
         <label for="moh-admin-is-org" class="block text-sm font-semibold text-gray-900 dark:text-gray-50">
           Organization account

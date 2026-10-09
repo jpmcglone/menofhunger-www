@@ -50,7 +50,6 @@
 </template>
 
 <script setup lang="ts">
-import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 const {
   operatorUser,

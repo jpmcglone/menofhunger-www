@@ -149,6 +149,7 @@
 </template>
 
 <script setup lang="ts">
+import { isInteractiveTarget } from '~/utils/interactive-target'
 import type { MenuItem } from 'primevue/menuitem'
 import type { Space } from '~/types/api'
 import { siteConfig } from '~/config/site'
@@ -251,28 +252,8 @@ const spaceHref = computed(() => {
 
 const clickable = computed(() => Boolean(spaceHref.value))
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const raw = target as Node | null
-  const el = raw instanceof Element ? raw : raw?.parentElement ?? null
-  if (!el) return false
-  return Boolean(
-    el.closest(
-      [
-        'button',
-        'iframe',
-        'input',
-        'textarea',
-        'select',
-        '[role="menu"]',
-        '[role="menuitem"]',
-        '[data-pc-section]',
-      ].join(','),
-    ),
-  )
-}
-
 function onRowClick(e: MouseEvent) {
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'space')) return
   e.stopPropagation()
   if (e.metaKey || e.ctrlKey) {
     if (spaceHref.value) window.open(spaceHref.value, '_blank')
@@ -283,7 +264,7 @@ function onRowClick(e: MouseEvent) {
 
 function onRowAuxClick(e: MouseEvent) {
   if (e.button !== 1) return
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'space')) return
   e.preventDefault()
   e.stopPropagation()
   if (spaceHref.value) window.open(spaceHref.value, '_blank')

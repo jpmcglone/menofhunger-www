@@ -101,19 +101,10 @@
         />
       </AppFormField>
 
-      <AppFormField
-        label="Website"
-        optional
-        :helper="'Include full URL, e.g. https://example.com'"
-      >
-        <InputText
-          v-model="websiteInput"
-          class="w-full"
-          placeholder="https://your-site.com"
-          inputmode="url"
-          :disabled="profileDetailsSaving"
-        />
-      </AppFormField>
+      <p class="text-sm moh-text-muted">
+        Website, Rumble, YouTube and other links now live in
+        <NuxtLink to="/settings/links" class="font-semibold underline underline-offset-2">Links</NuxtLink>.
+      </p>
 
       <div class="flex items-center gap-3">
         <AppSaveButton label="Save profile details" severity="secondary" :loading="profileDetailsSaving" :disabled="!profileDetailsDirty" @click="saveProfileDetails" />
@@ -178,7 +169,6 @@ const {
   emailResendButtonLabel,
   resendEmailVerification,
   locationQueryInput,
-  websiteInput,
   profileDetailsHelperText,
   profileDetailsDirty,
   profileDetailsSaving,

@@ -3,7 +3,7 @@
   <NuxtLink
     v-else
     :to="path"
-    class="block min-w-0 overflow-hidden rounded-xl border moh-border moh-surface-1 moh-surface-hover moh-focus text-left"
+    class="block min-w-0 moh-card-frame moh-border moh-surface-1 moh-surface-hover moh-focus text-left"
     :aria-label="`Open ${title}`"
     @click.stop
   >

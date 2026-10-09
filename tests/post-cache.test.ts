@@ -16,7 +16,25 @@
  *   9. PostRow read path: postCache.get(post) reflects realtime changes without
  *      the feed array being mutated
  */
-import { computed, defineComponent, h, nextTick } from 'vue'
+/**
+ * Tests for the post-cache overlay system:
+ *   - composables/usePostCache.ts (patch, get, clear, ingest)
+ *   - utils/feed-patch.ts (applyLiveUpdatedPatch, applyInteractionPatch)
+ *   - Global plugin behaviour simulated inline
+ *
+ * The key scenarios this covers:
+ *   1. Cache patch/get/clear/ingest basics
+ *   2. get() merges delta on top of the raw post
+ *   3. get() applies the cache recursively through .parent chains
+ *   4. applyLiveUpdatedPatch is the canonical allowlist (unknown fields are ignored)
+ *   5. applyInteractionPatch applies boost/bookmark counts and viewer flags
+ *   6. isMe guard: viewerHasBoosted/Bookmarked only set when isMe=true
+ *   7. Global plugin simulation: liveUpdated event → cache updated correctly
+ *   8. Global plugin simulation: interaction event → boost/bookmark in cache
+ *   9. PostRow read path: postCache.get(post) reflects realtime changes without
+ *      the feed array being mutated
+ */
+import { defineComponent, h, nextTick } from 'vue'
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import type { FeedPost, WsPostsLiveUpdatedPayload, WsPostsInteractionPayload } from '~/types/api'

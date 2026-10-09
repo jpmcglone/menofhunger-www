@@ -11,7 +11,6 @@
 </template>
 
 <script setup lang="ts">
-import { siteConfig } from '~/config/site'
 import { primaryTintCssForUser } from '~/utils/theme-tint'
 
 // Ensure PrimeVue tint matches auth status even on "empty" pages (e.g. Login).

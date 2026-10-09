@@ -105,7 +105,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('pointerdown', onDocPointerDown, { capture: true } as any)
+  window.removeEventListener('pointerdown', onDocPointerDown, { capture: true })
 })
 </script>
 

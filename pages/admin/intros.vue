@@ -37,8 +37,8 @@
       </p>
 
       <div v-else-if="loading && !brief" class="space-y-2" aria-live="polite">
-        <div class="h-3 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
-        <div class="h-3 w-full animate-pulse rounded bg-gray-200 dark:bg-zinc-800" />
+        <AppSkeletonBar class="h-3 w-2/3" />
+        <AppSkeletonBar class="h-3 w-full" />
       </div>
 
       <p v-else-if="!brief" class="text-sm moh-text-muted">
@@ -89,15 +89,12 @@
 </template>
 
 <script setup lang="ts">
+import { sleep } from '~/utils/primitives'
 import type { AdminIntroBrief, AdminIntroBriefQueued } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 
 const POLL_MS = 2_000
 const POLL_DEADLINE_MS = 120_000
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
 
 definePageMeta({
   layout: 'app',

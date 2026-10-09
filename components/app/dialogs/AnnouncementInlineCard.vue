@@ -1,6 +1,6 @@
 <template>
   <div v-if="announcement" class="px-3 pt-3 pb-4 sm:px-4">
-    <article class="relative overflow-hidden rounded-xl border moh-border moh-surface">
+    <article class="relative moh-card-frame moh-border moh-surface">
       <button
         type="button"
         class="moh-tap moh-focus absolute top-2.5 right-2.5 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full"

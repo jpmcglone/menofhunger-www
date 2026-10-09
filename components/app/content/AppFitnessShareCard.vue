@@ -21,7 +21,7 @@
             {{ formatFitnessDate(share.snapshot.data.startedAt, { year: true }) }}
           </div>
         </div>
-        <span class="text-[10px] font-bold uppercase tracking-wide flex-shrink-0" style="color: #FC4C02;">Strava</span>
+        <span class="text-[10px] font-bold uppercase tracking-wide flex-shrink-0" style="color: var(--moh-brand-strava);">Strava</span>
       </div>
     </template>
 

@@ -312,7 +312,7 @@ const usersStore = useUsersStore()
 function getDirectUserOverlay(c: MessageConversation): MessageUser | null {
   const base = props.getDirectUser(c)
   if (!base?.id) return base
-  return usersStore.overlay(base as any) as any
+  return usersStore.overlay(base)
 }
 
 function conversationPath(id: string): string {

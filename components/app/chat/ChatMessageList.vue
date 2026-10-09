@@ -272,7 +272,7 @@ async function onCopy(message: Message) {
 
 function senderOverlay(u: MessageUser | null | undefined): MessageUser | null {
   if (!u?.id) return u ?? null
-  return usersStore.overlay(u as any) as any
+  return usersStore.overlay(u)
 }
 
 function getPrevMessageItem(list: ChatListItem[], listIndex: number): ChatListItem | null {

@@ -78,7 +78,7 @@
           :status="authUser?.verifiedStatus ?? 'none'"
           :premium="Boolean(authUser?.premium)"
           :premium-plus="Boolean(authUser?.premiumPlus)"
-          :is-organization="Boolean((authUser as any)?.isOrganization)"
+          :is-organization="Boolean(authUser?.isOrganization)"
         />
       </div>
 

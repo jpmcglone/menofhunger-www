@@ -145,7 +145,7 @@
 
 <script setup lang="ts">
 import { formatLocaleDateTime } from '~/utils/time-format'
-import { formatCount, formatCurrency } from '~/utils/number-format'
+import { formatCurrency } from '~/utils/number-format'
 import { getApiErrorMessage } from '~/utils/api-error'
 
 const { status, refresh, connect, reconnect, disconnect } = usePickaxIntegration()

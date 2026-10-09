@@ -59,16 +59,13 @@ async function mountRow(post: FeedPost) {
 }
 
 describe('Board post row in feeds', () => {
-  it('upvotes from the action row and links the title to the thread', async () => {
+  it('keeps one leading Board boost and the remaining feed actions, with the title linked to the thread', async () => {
     const w = await mountRow(thread)
     const row = w.find('[data-board-feed-row="post"]')
     expect(row.exists()).toBe(true)
-    expect(row.find('button[aria-label="Boost"]').exists()).toBe(false)
-    const labels = row.findAll('button').map((button) => button.attributes('aria-label'))
-    const upvoteAt = labels.indexOf('Upvote')
-    const replyAt = labels.indexOf('Reply')
-    expect(upvoteAt).toBeGreaterThanOrEqual(0)
-    expect(replyAt).toBeGreaterThan(upvoteAt)
+    expect(row.findAll('button[aria-label="Boost"]')).toHaveLength(1)
+    expect(row.get('button[aria-label="Boost"]').classes()).toContain('flex-col')
+    expect(row.find('button[aria-label="Upvote"]').exists()).toBe(false)
     const title = w.findAll('a').find((a) => a.text() === 'What a 5am lift did to my marriage')
     expect(title?.attributes('href')).toBe('/b/t1')
     expect(w.text()).toContain('menofhunger.com')
@@ -92,7 +89,7 @@ describe('Board post row in feeds', () => {
     expect(w.text()).toContain('Most men treat the hours after work as recovery.')
   })
 
-  it('shows a locked teaser with only the gate and share', async () => {
+  it('preserves the locked points without enabling boosts, with the gate and share', async () => {
     const w = await mountRow(feedPost({
       body: '',
       visibility: 'premiumOnly',
@@ -102,7 +99,7 @@ describe('Board post row in feeds', () => {
     }))
     expect(w.find('[data-board-gate]').exists()).toBe(true)
     expect(w.find('button[aria-label="Share"]').exists()).toBe(true)
-    expect(w.find('button[aria-label="Boost"]').exists()).toBe(false)
+    expect(w.get('button[aria-label="Boost"]').attributes('disabled')).toBeDefined()
     expect(w.find('button[aria-label="Upvote"]').exists()).toBe(false)
     expect(w.find('button[aria-label="Reply"]').exists()).toBe(false)
     expect(w.find('button[aria-label="Repost"]').exists()).toBe(false)

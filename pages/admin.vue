@@ -58,6 +58,8 @@
 </template>
 
 <script setup lang="ts">
+import type { AdminCapabilityDto } from '~/types/api'
+
 definePageMeta({
   layout: 'app',
   middleware: ['admin'],
@@ -79,7 +81,8 @@ interface AdminSection {
   items: AdminNavItem[]
 }
 
-const { data: capabilities } = await useAdminCapabilities()
+const { apiFetchData } = useApiClient()
+const { data: capabilities } = await useAsyncData('admin-capabilities', () => apiFetchData<AdminCapabilityDto[]>('/admin/assistant/capabilities'))
 const adminSections = computed<AdminSection[]>(() => {
   const sections = new Map<string, AdminNavItem[]>()
   for (const item of capabilities.value ?? []) {

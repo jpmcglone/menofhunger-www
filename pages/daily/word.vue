@@ -81,7 +81,7 @@
 
 <script setup lang="ts">
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
-import type { WotdLikeToggle } from '~/types/api'
+import type { WotdLikeToggle, WsNotificationsNewPayload } from '~/types/api'
 import { siteConfig } from '~/config/site'
 
 definePageMeta({
@@ -157,7 +157,7 @@ async function onWordPublished() {
 
 // Refetch and clear the notification when a new word_of_the_day notification arrives.
 const notificationsCb = {
-  onNew: (payload: any) => {
+  onNew: (payload: WsNotificationsNewPayload) => {
     if (payload?.notification?.kind === 'word_of_the_day') {
       void onWordPublished()
     }

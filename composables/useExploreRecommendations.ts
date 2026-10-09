@@ -67,7 +67,7 @@ export function useExploreRecommendations(options?: { enabled?: Ref<boolean>, is
       categories.value = (explore?.categories ?? []) as TopicCategory[]
       trendingArticles.value = ((explore?.trendingArticles ?? []) as Article[]).slice(0, 4)
       // Groups: API returns `{ data: [], pagination: {...} }` envelope from listExploreSpotlight.
-      const groupsPayload = explore?.groups as any
+      const groupsPayload = explore?.groups
       exploreGroups.value = Array.isArray(groupsPayload?.data) ? groupsPayload.data : []
       trendingHashtags.value = explore?.trendingHashtags ?? []
       topUsers.value = (explore?.topUsers ?? []) as FollowListUser[]

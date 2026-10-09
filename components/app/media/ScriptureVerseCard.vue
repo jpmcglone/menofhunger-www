@@ -3,7 +3,7 @@
     <button
       ref="cardEl"
       type="button"
-      class="w-full cursor-pointer p-0 overflow-hidden rounded-xl border moh-border moh-surface text-left transition-colors hover:bg-gray-50 dark:hover:bg-zinc-900"
+      class="w-full cursor-pointer p-0 moh-card-frame moh-border moh-surface text-left transition-colors hover:bg-gray-50 dark:hover:bg-zinc-900"
       data-post-row-interactive
       :aria-label="cardAriaLabel"
       @click.stop="openReader"

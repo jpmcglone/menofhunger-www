@@ -1,11 +1,11 @@
 <template>
   <span
     ref="badgeEl"
+    v-tooltip="tooltip"
     :class="[
       'inline-flex shrink-0 items-center justify-center rounded-[3px] align-middle',
       sizeClass,
     ]"
-    v-tooltip="tooltip"
     aria-label="AI assistant"
     @mouseenter="updateTooltipPlacement"
   >

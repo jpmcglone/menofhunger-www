@@ -1,4 +1,4 @@
-import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js'
+import { AsYouType, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 
 function keepLeadingPlusAndDigits(input: string): string {
   const trimmed = (input ?? '').trim()
@@ -12,7 +12,7 @@ function keepLeadingPlusAndDigits(input: string): string {
 export function formatPhoneAsYouType(input: string, defaultCountry: string = 'US'): string {
   const cleaned = keepLeadingPlusAndDigits(input)
   if (!cleaned) return ''
-  const ayt = new AsYouType(defaultCountry as any)
+  const ayt = new AsYouType(defaultCountry as CountryCode)
   return ayt.input(cleaned)
 }
 
@@ -29,7 +29,7 @@ export function normalizePhoneForApi(input: string, country: string = 'US'): str
   const trimmed = (input ?? '').trim()
   if (!trimmed) return ''
 
-  const parsed = parsePhoneNumberFromString(trimmed, country as any)
+  const parsed = parsePhoneNumberFromString(trimmed, country as CountryCode)
   if (parsed?.isValid()) return parsed.format('E.164')
 
   // Legacy fallback: mirrors the API's normalizePhone() behavior so the server

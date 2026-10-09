@@ -60,9 +60,9 @@
             <NuxtLink
               v-if="u.username"
               :ref="(el) => setAvatarRef(u.id, el as HTMLElement | null)"
+              v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
               :to="listenerProfileTo(u.username!)"
               class="relative pointer-events-auto cursor-pointer"
-              v-tooltip.bottom="tinyTooltip(`@${u.username}`)"
             >
               <AppUserAvatar
                 :user="u"
@@ -87,8 +87,8 @@
             <div
               v-else
               :ref="(el) => setAvatarRef(u.id, el as HTMLElement | null)"
-              class="relative pointer-events-auto"
               v-tooltip.bottom="tinyTooltip('User')"
+              class="relative pointer-events-auto"
             >
               <AppUserAvatar
                 :user="u"
@@ -237,7 +237,7 @@ const avatarEls = new Map<string, HTMLElement>()
 function setAvatarRef(userId: string, el: HTMLElement | { $el?: HTMLElement } | null) {
   // Template refs on Vue components (e.g. NuxtLink) give a component instance, not a raw
   // DOM element. Unwrap $el when necessary so getBoundingClientRect is always available.
-  const domEl = el ? (el instanceof HTMLElement ? el : (el as any)?.$el ?? null) : null
+  const domEl = el ? (el instanceof HTMLElement ? el : el.$el ?? null) : null
   if (domEl instanceof HTMLElement) avatarEls.set(userId, domEl)
   else avatarEls.delete(userId)
 }
@@ -340,7 +340,7 @@ const maxStackVisible = computed(() => {
 
 const listenerStack = computed<SpaceMember[]>(() => {
   if (!displaySpace.value) return []
-  return (members.value ?? []).slice(0, maxStackVisible.value).map((u) => (u?.id ? (usersStore.overlay(u as any) as any) : u))
+  return (members.value ?? []).slice(0, maxStackVisible.value).map((u) => (u?.id ? (usersStore.overlay(u)) : u))
 })
 const listenerOverflowCount = computed(() => {
   if (!displaySpace.value) return 0

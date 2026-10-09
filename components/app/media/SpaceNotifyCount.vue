@@ -1,8 +1,8 @@
 <template>
   <span
+    v-tooltip.top="tooltip"
     class="inline-flex items-center font-semibold tabular-nums bg-[var(--p-primary-color)]/15 text-[var(--p-primary-color)]"
     :class="compact ? 'gap-0.5 rounded-full px-1.5 py-0.5 text-[10px]' : 'gap-1 rounded-full px-2.5 py-1 text-[11px]'"
-    v-tooltip.top="tooltip"
     :aria-label="tooltipText"
   >
     <Icon

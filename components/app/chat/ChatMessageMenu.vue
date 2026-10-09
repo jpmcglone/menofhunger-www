@@ -5,6 +5,7 @@
 </template>
 
 <script setup lang="ts">
+import type { OverlayPanelHandle } from '~/types/overlay-ref'
 import type { Message } from '~/types/api'
 import type { SurfaceAction } from '~/utils/surface-actions'
 
@@ -33,7 +34,7 @@ const canEdit = computed(() => {
   return age < MESSAGE_EDIT_WINDOW_MS
 })
 
-const popoverRef = ref<any>(null)
+const popoverRef = ref<OverlayPanelHandle | null>(null)
 
 let origin: HTMLElement | null = null
 function restoreFocus() { origin?.focus(); origin = null }

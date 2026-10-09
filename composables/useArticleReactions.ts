@@ -1,4 +1,7 @@
+import { ref, watch, type Ref } from 'vue'
 import type { ArticleReactionSummary } from '~/types/api'
+import { useApiClient } from '~/composables/useApiClient'
+import { useAsyncAction } from '~/composables/useAsyncAction'
 
 export function useArticleReactions(
   entityType: 'article' | 'comment',
@@ -6,9 +9,10 @@ export function useArticleReactions(
   initialReactions: Ref<ArticleReactionSummary[]>,
 ) {
   const { apiFetchData } = useApiClient()
-  const toast = useAppToast()
+  const { run } = useAsyncAction()
 
   const reactions = ref<ArticleReactionSummary[]>(JSON.parse(JSON.stringify(initialReactions.value)))
+  const pendingEntities = new Set<string>()
 
   watch(initialReactions, (v) => { reactions.value = JSON.parse(JSON.stringify(v)) }, { deep: true })
 
@@ -18,36 +22,40 @@ export function useArticleReactions(
   }
 
   async function toggle(reactionId: string, emoji: string) {
-    const existing = reactions.value.find((r) => r.reactionId === reactionId)
+    const path = basePath()
+    if (pendingEntities.has(path)) return
+    pendingEntities.add(path)
+    const previous = reactions.value
+    const existing = previous.find((r) => r.reactionId === reactionId)
     const viewerHasReacted = existing?.viewerHasReacted ?? false
 
     if (viewerHasReacted) {
-      if (existing) {
-        existing.count = Math.max(0, existing.count - 1)
-        existing.viewerHasReacted = false
-        if (existing.count === 0) reactions.value = reactions.value.filter((r) => r.reactionId !== reactionId)
-      }
-      try {
-        await apiFetchData(`${basePath()}/${reactionId}`, { method: 'DELETE' })
-      } catch (e: any) {
-        if (existing) { existing.count += 1; existing.viewerHasReacted = true }
-        else reactions.value.push({ reactionId, emoji, count: 1, viewerHasReacted: true })
-        toast.pushError(e, 'Something went wrong.')
-      }
+      reactions.value = previous
+        .map((r) => r.reactionId === reactionId
+          ? { ...r, count: Math.max(0, r.count - 1), viewerHasReacted: false }
+          : r)
+        .filter((r) => r.count > 0)
+    } else if (existing) {
+      reactions.value = previous.map((r) => r.reactionId === reactionId
+        ? { ...r, count: r.count + 1, viewerHasReacted: true }
+        : r)
     } else {
-      if (existing) {
-        existing.count += 1
-        existing.viewerHasReacted = true
-      } else {
-        reactions.value.push({ reactionId, emoji, count: 1, viewerHasReacted: true })
-      }
-      try {
-        await apiFetchData(basePath(), { method: 'POST', body: { reactionId } })
-      } catch (e: any) {
-        if (existing) { existing.count = Math.max(0, existing.count - 1); existing.viewerHasReacted = false }
-        else reactions.value = reactions.value.filter((r) => r.reactionId !== reactionId)
-        toast.pushError(e, 'Something went wrong.')
-      }
+      reactions.value = [...previous, { reactionId, emoji, count: 1, viewerHasReacted: true }]
+    }
+    const optimistic = reactions.value
+
+    try {
+      await run(() => viewerHasReacted
+        ? apiFetchData(`${path}/${reactionId}`, { method: 'DELETE' })
+        : apiFetchData(path, { method: 'POST', body: { reactionId } }), {
+        error: 'Something went wrong.',
+        rollback: () => {
+          // Preserve a fresh server snapshot or a newly opened article/comment.
+          if (basePath() === path && reactions.value === optimistic) reactions.value = previous
+        },
+      })
+    } finally {
+      pendingEntities.delete(path)
     }
   }
 

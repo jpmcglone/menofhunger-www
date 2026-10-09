@@ -155,7 +155,7 @@
         :height="m.height ?? undefined"
         loading="lazy"
         class="block rounded-lg max-w-[280px] max-h-[200px] object-contain object-left"
-      />
+      >
     </div>
     <div
       v-if="message.kind === 'user' && message.reactions?.length"
@@ -230,7 +230,7 @@ const isMine = computed(() => {
 
 const messageMedia = computed<SpaceChatMediaItem[]>(() => {
   if (props.message.kind !== 'user') return []
-  return (props.message as any).media ?? []
+  return (props.message as { media?: SpaceChatMediaItem[] }).media ?? []
 })
 
 // Redaction: block either direction hides the message body by default.
@@ -253,7 +253,7 @@ watch(senderId, () => { redactRevealed.value = false })
 const username = computed(() => (props.message?.sender?.username ?? '').trim() || null)
 const displayUsername = computed(() => username.value ?? 'User')
 
-const senderTier = computed(() => userColorTier(props.message?.sender as any))
+const senderTier = computed(() => userColorTier(props.message?.sender))
 const usernameClass = computed(() => {
   return userTierTextClass(senderTier.value, { fallback: 'text-gray-900 dark:text-gray-100' })
 })
@@ -352,7 +352,7 @@ const bodySegments = computed<BodySegment[]>(() => {
 
 const { tierForUsername } = useValidatedChatUsernames()
 const myUsername = computed(() => (me.value?.username ?? '').toLowerCase())
-const myTier = computed(() => userColorTier(me.value as any))
+const myTier = computed(() => userColorTier(me.value))
 const myTierColor = computed(() => userTierColorVar(myTier.value) ?? 'var(--p-primary-color)')
 
 function mentionExtraClass(uname: string): string {

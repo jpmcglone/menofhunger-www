@@ -1,10 +1,9 @@
 <template>
-  <CheckinClosedNotice v-if="!isOpen" />
+  <template v-if="isOpen">
   <!-- Verify-to-check-in: authed-but-unverified. No fetch / realtime in this mode. -->
   <section
-    v-else-if="verifyCta"
+    v-if="verifyCta"
     class="moh-checkin-row relative w-full border-b moh-border"
-    style="background: var(--moh-checkin-soft)"
     aria-labelledby="moh-checkin-hero-verify-title"
   >
     <span class="moh-checkin-row-accent" aria-hidden="true" />
@@ -37,7 +36,6 @@
   <section
     v-else-if="compact"
     class="moh-checkin-row relative w-full border-b moh-border"
-    style="background: var(--moh-checkin-soft)"
     aria-labelledby="moh-checkin-hero-compact-title"
   >
     <span class="moh-checkin-row-accent" aria-hidden="true" />
@@ -93,7 +91,6 @@
   <section
     v-else
     class="moh-checkin-row relative w-full border-b moh-border"
-    style="background: var(--moh-checkin-soft)"
     aria-labelledby="moh-checkin-hero-title"
   >
     <span class="moh-checkin-row-accent" aria-hidden="true" />
@@ -167,11 +164,12 @@
       </div>
     </div>
   </section>
+  </template>
 </template>
 
 <script setup lang="ts">
+import { isInteractiveTarget } from '~/utils/interactive-target'
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
-import CheckinClosedNotice from './CheckinClosedNotice.vue'
 import type {
   CheckinAllowedVisibility,
   CheckinCrewBlock,
@@ -305,19 +303,8 @@ const answeredAriaLabel = computed(() => {
   return `${bits.join(' · ')}. View today's check-ins`
 })
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null
-  if (!el) return false
-  return Boolean(
-    el.closest(
-      ['a', 'button', 'iframe', 'input', 'textarea', 'select',
-       '[role="menu"]', '[role="menuitem"]', '[data-pc-section]'].join(','),
-    ),
-  )
-}
-
 function onRowNavigate(href: string, e: MouseEvent) {
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'basic')) return
   if (e.metaKey || e.ctrlKey) {
     if (typeof window !== 'undefined') window.open(href, '_blank')
     return
@@ -327,7 +314,7 @@ function onRowNavigate(href: string, e: MouseEvent) {
 
 function onRowAuxNavigate(href: string, e: MouseEvent) {
   if (e.button !== 1) return
-  if (isInteractiveTarget(e.target)) return
+  if (isInteractiveTarget(e.target, 'basic')) return
   e.preventDefault()
   if (typeof window !== 'undefined') window.open(href, '_blank')
 }

@@ -1,3 +1,4 @@
+import { sleep } from '~/utils/primitives'
 import { formatCount } from '~/utils/number-format'
 import { formatLocaleDate, formatLocaleDateTime } from '~/utils/time-format'
 import type { FollowListUser, CoinTransferItem, TransferCoinsResponse  } from '~/types/api'
@@ -78,8 +79,9 @@ async function onConfirm() {
     displayCoins.value = result.senderBalanceAfter
     step.value = 'success'
     await loadTransfers()
-  } catch (e: any) {
-    const msg = e?.data?.meta?.errors?.[0]?.message ?? e?.message ?? 'Something went wrong.'
+  } catch (e: unknown) {
+    const err = e as { data?: { meta?: { errors?: Array<{ message?: string }> } }; message?: string } | null
+    const msg = err?.data?.meta?.errors?.[0]?.message ?? err?.message ?? 'Something went wrong.'
     formError.value = msg
     step.value = 'form'
   }
@@ -96,10 +98,6 @@ function onSendAnother() {
 
 function setMax() {
   amount.value = maxAmount.value
-}
-
-function sleep(ms: number) {
-  return new Promise<void>((r) => setTimeout(r, ms))
 }
 
 // --- Transaction history ---

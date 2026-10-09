@@ -2,18 +2,17 @@ import { CloudflareSfuCallTransport } from '../transport/CloudflareSfuCallTransp
 import type {
   CallSession,
   CallsAck,
-  Message,
   WsCallsIncomingPayload,
   WsCallsSeatTakenPayload,
   WsRtcSignalPayload,
 } from '~/types/api'
-import type { CallsCallback, MessagesCallback } from '~/composables/usePresence'
 import type { PublicUserEntity } from '~/composables/useUsersStore'
 import { createRingtone } from '../callRingtone'
 import { reduceCallsIncoming, reduceCallsUpdated, remotePeerIds } from '../callSessionReducer'
-import { CALL_RELOAD_KEY, readCallReloadMarker, canResumeCallSeat, type CallReloadMarker } from '../callReloadRecovery'
-import { tabCallSessionId } from '../callSessionId'
-import { enterCallPictureInPicture, exitCallPictureInPicture } from '../callPictureInPicture'
+import { CALL_RELOAD_KEY, type CallReloadMarker } from '../callReloadRecovery'
+import { exitCallPictureInPicture } from '../callPictureInPicture'
+import { peerSessionsOf, showIncomingCallNotification } from './callSignalingHelpers'
+import { bindCallLifecycle } from './useCallLifecycleBinding'
 import { callMediaLog } from '../callMediaLog'
 import { SpeakingMonitor } from '../speakingDetector'
 import type { CallTransportOptions } from '../transport/CallTransport'
@@ -47,23 +46,19 @@ export function useCallSignaling(
     speakerDeviceId,
     minimized,
     connectedAt,
-    pendingVoicemail,
     outgoingCalleeId,
     isScreenSharing,
     reactions,
     presence,
     toast,
-    router,
     meId,
     phase,
     call,
     incoming,
-    isEngaged,
   } = s
-  const { localAudioTrack, localVideoTrack, localScreenTrack, releaseLocalMedia, otherPresenterId, stopScreenShare, restoreLocalTracks } = media
+  const { localAudioTrack, localVideoTrack, localScreenTrack, releaseLocalMedia, restoreLocalTracks } = media
   const { ingestReaction, ensureReactionPrune, isGroupCall, selfHandRaised } = reactionsApi
   const { seedParticipants, joinCall } = actions
-
   // ─── Transport ──────────────────────────────────────────────────────────────
 
   function createTransport(callId: string) {
@@ -123,15 +118,10 @@ export function useCallSignaling(
     flushPendingSignals()
   }
 
-  function shouldPlayHangupChime(): boolean {
-    return phase.value === 'in_call' || phase.value === 'outgoing'
-  }
+  const shouldPlayHangupChime = (): boolean => phase.value === 'in_call' || phase.value === 'outgoing'
+  const playHangupChime = () => hangupChime.play(speakerDeviceId.value)
 
-  function playHangupChime() {
-    hangupChime.play(speakerDeviceId.value)
-  }
-
-  function clearReloadMarker() {
+  const clearReloadMarker = () => {
     try { window.sessionStorage.removeItem(CALL_RELOAD_KEY) } catch { /* Storage can be unavailable. */ }
   }
 
@@ -234,18 +224,9 @@ export function useCallSignaling(
       remotes: remotePeerIds(session, meId.value),
     })
     rt.transport?.setPeers(remotePeerIds(session, meId.value))
-    rt.transport?.syncPeerSessions(peerSessionsOf(session))
+    rt.transport?.syncPeerSessions(peerSessionsOf(session, meId.value))
     ensureReactionPrune()
   }
-
-  function peerSessionsOf(session: CallSession): Record<string, string | null> {
-    const out: Record<string, string | null> = {}
-    for (const p of session.participants) {
-      if (p.userId !== meId.value) out[p.userId] = p.sessionId ?? null
-    }
-    return out
-  }
-
 
   // ─── Realtime ───────────────────────────────────────────────────────────────
 
@@ -284,7 +265,7 @@ export function useCallSignaling(
       }
     }
     if (next.phase === 'in_call' && next.call?.id === session.id) {
-      rt.transport?.syncPeerSessions(peerSessionsOf(session))
+      rt.transport?.syncPeerSessions(peerSessionsOf(session, meId.value))
       // Self-heal the presenting flag: a Stop pressed while the socket was down (or a start
       // whose emit was lost) leaves everyone else on the wrong layout until we correct it.
       const mine = session.participants.find((p) => p.userId === meId.value)
@@ -301,7 +282,7 @@ export function useCallSignaling(
     state.value = next
     rt.ringtone = createRingtone('incoming')
     rt.ringtone.start()
-    notifyIfHidden(payload)
+    rt.incomingNotification = showIncomingCallNotification(payload) ?? rt.incomingNotification
   }
 
   function onSignal(payload: WsRtcSignalPayload) {
@@ -318,26 +299,6 @@ export function useCallSignaling(
     if (!rt.transport || rt.pendingSignals.length === 0) return
     const queued = rt.pendingSignals.splice(0)
     for (const s of queued) void rt.transport.handleSignal(s)
-  }
-
-  function notifyIfHidden(payload: WsCallsIncomingPayload) {
-    if (!import.meta.client || typeof Notification === 'undefined') return
-    if (document.visibilityState === 'visible') return
-    if (Notification.permission !== 'granted') return
-    try {
-      const name = payload.caller.name || (payload.caller.username ? `@${payload.caller.username}` : 'Someone')
-      const n = new Notification(`${name} is calling`, {
-        body: payload.call.type === 'video' ? 'Incoming video call' : 'Incoming voice call',
-        tag: `call-${payload.call.id}`,
-      })
-      n.onclick = () => {
-        window.focus()
-        n.close()
-      }
-      rt.incomingNotification = n
-    } catch {
-      // Notifications unavailable in this context.
-    }
   }
 
   /**
@@ -368,7 +329,7 @@ export function useCallSignaling(
     if (ack.call) {
       state.value = { ...state.value, call: ack.call }
       rt.transport?.setPeers(remotePeerIds(ack.call, meId.value))
-      rt.transport?.syncPeerSessions(peerSessionsOf(ack.call))
+      rt.transport?.syncPeerSessions(peerSessionsOf(ack.call, meId.value))
       rt.transport?.resumeConnections()
       // Changes made while offline never reached the server; republish what this tab really has.
       presence.emitCallsState(ack.call.id, {
@@ -387,7 +348,6 @@ export function useCallSignaling(
       toast.push({ title: ack.error?.message ?? 'Call ended.', durationMs: 3000 })
     }
   }
-
 
   async function resumeAfterForeground() {
     if (phase.value !== 'in_call' && phase.value !== 'outgoing') return
@@ -417,151 +377,12 @@ export function useCallSignaling(
    */
   function bind(): () => void {
     if (!import.meta.client || rt.unbind) return rt.unbind ?? (() => {})
-    const cb: CallsCallback = {
-      onIncoming: (p) => onIncoming(p),
-      onUpdated: (p) => onUpdated(p.call),
-      onSignal: (p) => onSignal(p),
-      onSeatTaken: (p) => onSeatTaken(p),
-    }
-    presence.addCallsCallback(cb)
-
-    const messagesCb: MessagesCallback = {
-      onMessageEdited: (payload) => {
-        const message = payload.message as Message | undefined
-        if (!message || message.id !== inst.outgoingMessageId) return
-        if (message.kind !== 'call' || message.call?.outcome !== 'missed') return
-        if (message.media?.length) return
-        pendingVoicemail.value = { conversationId: payload.conversationId ?? message.conversationId, messageId: message.id }
-      },
-    }
-    presence.addMessagesCallback(messagesCb)
-
-    // Reload and close share lifecycle events. Neither is an explicit Hang Up.
-    // Let the server hold the seat for its bounded reconnect grace instead.
-    const rememberCall = () => {
-      const current = call.value
-      if (!current || (phase.value !== 'in_call' && phase.value !== 'outgoing')) return
-      const marker: CallReloadMarker = {
-        userId: meId.value, callId: current.id, sessionId: tabCallSessionId(),
-        expiresAt: Date.now() + rt.reconnectGraceMs,
-        micEnabled: isMicEnabled.value, cameraEnabled: isCameraEnabled.value,
-      }
-      try { window.sessionStorage.setItem(CALL_RELOAD_KEY, JSON.stringify(marker)) } catch { /* Best effort. */ }
-    }
-    window.addEventListener('pagehide', rememberCall)
-    window.addEventListener('beforeunload', rememberCall)
-
-    // sessionStorage can be copied into a newly opened tab. Only a real reload may auto-rejoin.
-    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
-    let restorePending = navigation?.type === 'reload'
-    if (!restorePending) clearReloadMarker()
-    let restoring = false
-    let restoreTimer: ReturnType<typeof setTimeout> | null = null
-    const restoreReloadedCall = async () => {
-      if (!restorePending || restoring || !meId.value || !presence.isSocketConnected.value) return
-      if (phase.value !== 'idle' && phase.value !== 'in_call_elsewhere') return
-      let marker: CallReloadMarker | null = null
-      try { marker = readCallReloadMarker(window.sessionStorage, meId.value) } catch { /* Storage can be disabled. */ }
-      if (!marker) { restorePending = false; return }
-      restoring = true
-      try {
-        const ack = await presence.emitCallsStatus(marker.callId)
-        if (!restorePending || meId.value !== marker.userId) return
-        if (!ack.call && (!ack.error || ['invalid_payload', 'not_authenticated'].includes(ack.error.code))) {
-          restoreTimer = setTimeout(() => { restoreTimer = null; void restoreReloadedCall() }, 1000)
-          return
-        }
-        restorePending = false
-        if (!canResumeCallSeat(ack.call, marker) || marker.expiresAt <= Date.now()) { clearReloadMarker(); return }
-        await joinCall(ack.call!, { resume: marker })
-      } finally { restoring = false }
-    }
-    const stopReloadWatch = watch([meId, () => presence.isSocketConnected.value], () => {
-      void restoreReloadedCall()
-    }, { immediate: true })
-
-    const stopReconnectWatch = watch(
-      () => presence.isSocketConnected.value,
-      (connected, was) => {
-        if (connected) {
-          clearSocketDownTimer()
-          if (was === false) {
-            void rejoinAfterReconnect()
-            void resyncRingingCall()
-          }
-          return
-        }
-        // The server drops our seat after `rt.reconnectGraceMs`; stop spinning at the same moment.
-        if (!isEngaged.value || rt.socketDownTimer) return
-        rt.socketDownTimer = setTimeout(() => {
-          rt.socketDownTimer = null
-          if (!presence.isSocketConnected.value && isEngaged.value) connectionLost()
-        }, rt.reconnectGraceMs)
-      },
-    )
-
-    // Network came back (Wi-Fi ↔ hotspot, VPN toggle): don't wait for ICE to time out.
-    const onOnline = () => {
-      if (phase.value === 'in_call') rt.transport?.resumeConnections()
-    }
-    window.addEventListener('online', onOnline)
-
-    // Background: keep the call (PiP) instead of hanging up. Foreground: restore tracks + ICE.
-    const onVisibility = () => {
-      if (document.visibilityState !== 'visible') {
-        if (phase.value === 'in_call') void enterCallPictureInPicture()
-        return
-      }
-      if (phase.value === 'in_call' || phase.value === 'outgoing') void resumeAfterForeground()
-    }
-    document.addEventListener('visibilitychange', onVisibility)
-    const onPageShow = (event: PageTransitionEvent) => {
-      if (event.persisted && (phase.value === 'in_call' || phase.value === 'outgoing')) void resumeAfterForeground()
-    }
-    window.addEventListener('pageshow', onPageShow)
-    // Coming back to the window (not only the tab) brings the video home from PiP.
-    const onFocus = () => {
-      if (document.visibilityState === 'visible' && isEngaged.value) void exitCallPictureInPicture()
-    }
-    window.addEventListener('focus', onFocus)
-
-    const stopRouteHook = router.afterEach(() => {
-      if (phase.value === 'in_call' || phase.value === 'outgoing') minimized.value = true
+    return bindCallLifecycle({
+      s, media, inst, joinCall,
+      handlers: { onIncoming, onUpdated, onSignal, onSeatTaken },
+      clearReloadMarker, clearSocketDownTimer, connectionLost,
+      rejoinAfterReconnect, resyncRingingCall, resumeAfterForeground,
     })
-
-    // The local MediaStream object is replaced on every mic/camera swap; re-tap it each time.
-    const stopLocalSpeakingWatch = watch([localStream, isMicEnabled], ([stream, micOn]) => {
-      rt.speakingMonitor?.setStream(meId.value, stream)
-      rt.speakingMonitor?.setMuted(meId.value, !micOn)
-    })
-
-    const stopPresenterWatch = watch(
-      () => call.value?.participants,
-      () => {
-        if (isScreenSharing.value && otherPresenterId()) void stopScreenShare()
-      },
-    )
-
-    rt.unbind = () => {
-      stopPresenterWatch()
-      stopLocalSpeakingWatch()
-      presence.removeCallsCallback(cb)
-      presence.removeMessagesCallback(messagesCb)
-      restorePending = false
-      stopReloadWatch()
-      if (restoreTimer) clearTimeout(restoreTimer)
-      window.removeEventListener('pagehide', rememberCall)
-      window.removeEventListener('beforeunload', rememberCall)
-      window.removeEventListener('online', onOnline)
-      window.removeEventListener('pageshow', onPageShow)
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onVisibility)
-      stopReconnectWatch()
-      stopRouteHook()
-      clearSocketDownTimer()
-      rt.unbind = null
-    }
-    return rt.unbind
   }
 
   return {

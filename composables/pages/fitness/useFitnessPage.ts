@@ -1,3 +1,4 @@
+import { isInteractiveTarget } from '~/utils/interactive-target'
 import type { FitnessPage, FitnessSharePreview, PostVisibility } from '~/types/api'
 import { getSafeUserErrorMessage } from '~/utils/api-error'
 import { useFitnessPageCharts } from './useFitnessPageCharts'
@@ -54,19 +55,8 @@ export function useFitnessPageState() {
     return `/fitness/activities/${id}`
   }
 
-  function isInteractiveTarget(target: EventTarget | null): boolean {
-    const el = target as HTMLElement | null
-    if (!el) return false
-    return Boolean(
-      el.closest(
-        ['a', 'button', 'iframe', 'input', 'textarea', 'select',
-          '[role="menu"]', '[role="menuitem"]', '[data-pc-section]'].join(','),
-      ),
-    )
-  }
-
   function onRowClick(href: string, e: MouseEvent) {
-    if (isInteractiveTarget(e.target)) return
+    if (isInteractiveTarget(e.target, 'basic')) return
     if (e.metaKey || e.ctrlKey) {
       window.open(href, '_blank')
       return
@@ -76,7 +66,7 @@ export function useFitnessPageState() {
 
   function onRowAuxClick(href: string, e: MouseEvent) {
     if (e.button !== 1) return
-    if (isInteractiveTarget(e.target)) return
+    if (isInteractiveTarget(e.target, 'basic')) return
     e.preventDefault()
     window.open(href, '_blank')
   }
@@ -115,7 +105,7 @@ export function useFitnessPageState() {
 
   // ─── Sync ────────────────────────────────────────────────────────────────────
 
-  const syncing = ref(false)
+  const { run: runSync, pending: syncing } = useAsyncAction()
   const stravaCooldownRemaining = ref(0)
   let stravaCooldownInterval: ReturnType<typeof setInterval> | null = null
 
@@ -182,19 +172,18 @@ export function useFitnessPageState() {
 
   async function syncStrava() {
     if (syncing.value || stravaCooldownRemaining.value > 0) return
-    syncing.value = true
-    try {
+    await runSync(async () => {
       await apiFetchData<unknown>('/fitness/sync', { method: 'POST', body: { provider: 'strava' } })
       await loadPage()
       startStravaCooldown(MANUAL_SYNC_COOLDOWN_SEC)
-    } catch (e: unknown) {
-      toast.pushError(e, 'Sync failed')
-      const msg = String((e as { data?: { message?: string } })?.data?.message ?? (e as Error)?.message ?? '')
-      const match = msg.match(/(\d+) more seconds/)
-      if (match) startStravaCooldown(Number(match[1]))
-    } finally {
-      syncing.value = false
-    }
+    }, {
+      error: 'Sync failed',
+      onError: (e) => {
+        const msg = String((e as { data?: { message?: string } })?.data?.message ?? (e as Error)?.message ?? '')
+        const match = msg.match(/(\d+) more seconds/)
+        if (match) startStravaCooldown(Number(match[1]))
+      },
+    })
   }
 
   async function loadPage() {

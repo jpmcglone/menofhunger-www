@@ -48,7 +48,7 @@
                 v-else
                 class="flex h-full w-full items-center justify-center text-lg font-bold moh-text"
               >
-                {{ initials }}
+                {{ groupInitials }}
               </div>
             </div>
           </NuxtLink>
@@ -115,6 +115,7 @@
 </template>
 
 <script setup lang="ts">
+import { initials } from '~/utils/text'
 import { formatCount } from '~/utils/number-format'
 import type { CommunityGroupPreview } from '~/types/api'
 import { groupAvatarRoundClass } from '~/utils/avatar-rounding'
@@ -138,13 +139,7 @@ const avatarRoundClass = groupAvatarRoundClass()
 
 const groupPath = computed(() => `/g/${encodeURIComponent(props.preview.slug)}`)
 
-const initials = computed(() => {
-  const n = (props.preview.name ?? '').trim()
-  if (!n) return '?'
-  const parts = n.split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase()
-  return n.slice(0, 2).toUpperCase()
-})
+const groupInitials = computed(() => initials(props.preview.name))
 
 const pop = useGroupPreviewPopover()
 function onNavigate() {

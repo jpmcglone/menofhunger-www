@@ -236,7 +236,7 @@ function scheduleAfterFrame(fn: () => void) {
 }
 
 const scrollPillColor = computed(() => {
-  const tier = userColorTier(user.value as any)
+  const tier = userColorTier(user.value)
   if (tier === 'organization') return 'var(--moh-org)'
   if (tier === 'premium') return 'var(--moh-premium)'
   if (tier === 'verified') return 'var(--moh-verified)'

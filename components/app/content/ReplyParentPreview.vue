@@ -78,7 +78,7 @@
             :status="author?.verifiedStatus ?? 'none'"
             :premium="author?.premium ?? false"
             :premium-plus="author?.premiumPlus ?? false"
-            :is-organization="Boolean((author as any)?.isOrganization)"
+            :is-organization="Boolean(author?.isOrganization)"
           />
         </NuxtLink>
         <AppVerifiedBadge
@@ -86,7 +86,7 @@
           :status="author?.verifiedStatus ?? 'none'"
           :premium="author?.premium ?? false"
           :premium-plus="author?.premiumPlus ?? false"
-          :is-organization="Boolean((author as any)?.isOrganization)"
+          :is-organization="Boolean(author?.isOrganization)"
         />
         <NuxtLink
           v-if="authorProfilePath"
@@ -153,6 +153,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePresenceInterest } from '~/composables/presence/usePresenceInterest'
 import { formatLocaleDateTime } from '~/utils/time-format'
 import { postActionVisibilityColor, visibilityTagLabel } from '~/utils/post-visibility'
 import type { CommunityGroupShell, FeedPost } from '~/types/api'
@@ -234,16 +235,7 @@ const { onEnter, onMove, onLeave } = useUserPreviewTrigger({
   username: computed(() => author.value?.username ?? ''),
 })
 
-const { addInterest, removeInterest } = usePresence()
-const authorId = computed(() => props.post?.author?.id ?? null)
-onMounted(() => {
-  const id = authorId.value
-  if (id) addInterest([id])
-})
-onBeforeUnmount(() => {
-  const id = authorId.value
-  if (id) removeInterest([id])
-})
+usePresenceInterest(() => props.post?.author?.id)
 
 // SSR-safe: use shared nowMs so server and client render identical relative times.
 const { nowMs } = useNowTicker({ everyMs: 15_000 })

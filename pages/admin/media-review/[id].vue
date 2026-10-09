@@ -127,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatBytes } from '~/utils/number-format'
 import type { AdminImageReviewDeleteResponse, AdminImageReviewDetailResponse } from '~/types/api'
 import { getApiErrorMessage, hasApiErrorReason } from '~/utils/api-error'
 import { formatDateTime } from '~/utils/time-format'
@@ -259,19 +260,12 @@ const usage = computed<UsageRow[]>(() => {
   return rows
 })
 
-function formatBytes(bytes: number | null) {
-  if (bytes === null) return '—'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
-
 const fileRows = computed(() => {
   const a = data.value?.asset
   if (!a) return []
   return [
     { label: 'Type', value: a.contentType ?? a.kind ?? '—' },
-    { label: 'Size', value: formatBytes(a.bytes) },
+    { label: 'Size', value: a.bytes === null ? '—' : formatBytes(a.bytes) },
     { label: 'Dimensions', value: a.width && a.height ? `${a.width} × ${a.height}` : '—' },
     { label: 'Uploaded', value: formatDateTime(a.lastModified) },
   ]

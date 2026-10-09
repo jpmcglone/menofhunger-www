@@ -66,7 +66,7 @@ export function usePostPermalinkSeo(opts: {
       const s = seo.value
       const username = (p.author.username ?? '').trim()
       const authorUrl = username ? `${siteConfig.url}/u/${encodeURIComponent(username)}` : null
-      const poll = p.visibility === 'public' && (p as any).poll
+      const poll = p.visibility === 'public' && p.poll
       const meta: Array<{ property?: string; name?: string; content: string }> = [
         { property: 'article:published_time', content: p.createdAt },
         { property: 'article:modified_time', content: p.createdAt },

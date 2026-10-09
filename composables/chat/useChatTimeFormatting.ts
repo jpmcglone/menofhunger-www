@@ -42,8 +42,7 @@ export function useChatTimeFormatting() {
     list.forEach((message, index) => {
       // Keep keys stable for optimistic sends: server reconciliation can change `message.id`,
       // but we want the same row to stay mounted (avoid enter/leave weirdness).
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const stableId = ((message as any)?.__clientKey as string | undefined) ?? message.id
+      const stableId = (message as { __clientKey?: string }).__clientKey ?? message.id
       const key = getDayKey(message.createdAt)
       if (key !== lastDayKey) {
         output.push({

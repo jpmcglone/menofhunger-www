@@ -328,7 +328,7 @@ watch(
 )
 
 const dailyQuote = computed<DailyQuote | null>(() => dailyContent.value?.quote ?? null)
-const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value as any) : ''))
+const dailyQuoteAttribution = computed(() => (dailyQuote.value ? formatDailyQuoteAttribution(dailyQuote.value) : ''))
 
 // Refresh when the next publish boundary (9:00am ET for word, 9:30am ET for quote) is crossed.
 const { scheduleFromNextPublishAt: scheduleRightRailRefresh } = usePublishBoundaryRollover(async () => {

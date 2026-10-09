@@ -1,3 +1,4 @@
+import type { ApiFetchData } from '~/composables/useApiClient'
 /**
  * Tracks which posts the logged-in user has seen and reports them to the API.
  *
@@ -75,7 +76,7 @@ function enqueuePosts(ids: string[]): string[] {
 }
 
 async function flushBatch(
-  apiFetchData: (url: string, opts: Record<string, unknown>) => Promise<unknown>,
+  apiFetchData: ApiFetchData,
   opts: {
     isAuthed: boolean
     anonId: string | null
@@ -200,7 +201,7 @@ export function usePostViewTracker() {
   // Start the periodic flush timer once (shared across all callers on this page).
   if (import.meta.client && !flushTimer) {
     flushTimer = setInterval(() => {
-      void flushPending(apiFetchData as any, {
+      void flushPending(apiFetchData, {
         isAuthed: isAuthed.value,
         anonId: anonViewId.value,
         source: 'feed_scroll',
@@ -210,7 +211,7 @@ export function usePostViewTracker() {
     // Flush on tab hide so we don't lose views on navigation/close.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        void flushPending(apiFetchData as any, {
+        void flushPending(apiFetchData, {
           isAuthed: isAuthed.value,
           anonId: anonViewId.value,
           source: 'feed_scroll',
@@ -339,7 +340,7 @@ export function usePostViewTracker() {
     if (isAuthed.value) {
       for (const id of ids) locallyViewedPostIds.add(id)
     }
-    void flushPending(apiFetchData as any, {
+    void flushPending(apiFetchData, {
       isAuthed: isAuthed.value,
       anonId: anonViewId.value,
       source: 'feed_scroll',
@@ -366,7 +367,7 @@ export function usePostViewTracker() {
    * server has up-to-date PostView records and seen-decay applies to the very next request.
    */
   async function flush() {
-    await flushPending(apiFetchData as any, {
+    await flushPending(apiFetchData, {
       isAuthed: isAuthed.value,
       anonId: anonViewId.value,
       source: 'feed_scroll',

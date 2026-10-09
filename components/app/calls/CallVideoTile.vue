@@ -21,14 +21,14 @@
           ref="videoEl"
           class="moh-call-tile-video absolute inset-0 h-full w-full"
           :class="[showVideo ? 'opacity-100' : 'opacity-0', objectFitClass]"
+          autoplay
+          playsinline
+          muted
           @loadeddata="syncFrames"
           @loadedmetadata="syncFrames"
           @resize="syncFrames"
           @enterpictureinpicture="inPip = true"
           @leavepictureinpicture="onLeavePip"
-          autoplay
-          playsinline
-          muted
         />
       </div>
       <!-- Avatar fallback while the camera is off or the stream hasn't arrived -->
