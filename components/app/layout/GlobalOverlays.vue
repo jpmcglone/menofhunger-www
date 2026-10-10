@@ -37,7 +37,10 @@
   <AppMarvCatchUpModal />
   <AppPostSendViaChatDialog />
   <AppPostBookmarkFolderDialog />
-  <AppKeyboardShortcutsModal />
+  <AppKeyboardShortcutsModal
+    :previous-media="previousShortcutMedia"
+    :next-media="nextShortcutMedia"
+  />
 
   <!-- Global full-screen emoji float overlay — rendered outside any clipping ancestor.
        Covers both the spaces page and the radio bar in the layout. -->
@@ -118,4 +121,12 @@ const keepWatchPlayerVisible = computed(() => {
 
 const { allPositionedFloating } = useSpaceReactions()
 const lightbox = useImageLightbox()
+
+function previousShortcutMedia() {
+  if (lightbox.visible.value && lightbox.kind.value === 'media') lightbox.prev()
+}
+
+function nextShortcutMedia() {
+  if (lightbox.visible.value && lightbox.kind.value === 'media') lightbox.next()
+}
 </script>

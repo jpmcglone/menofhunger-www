@@ -75,9 +75,9 @@
 </template>
 
 <script setup lang="ts">
-import { siteConfig } from '~/config/site'
 import type { LinksPage } from '~/types/api'
-import { linksPageJoinHref, linksPageOgImagePath, linksPagePath } from '~/utils/profile-link-icons'
+import { linksPageJoinHref } from '~/utils/profile-link-icons'
+import { linksPageSeo } from '~/utils/links-page-seo'
 
 definePageMeta({
   layout: 'links',
@@ -136,24 +136,21 @@ function onReport() {
   reportOpen.value = true
 }
 
-const seoTitle = computed(() => {
-  const u = page.value?.user
-  if (!u) return 'Page not available'
-  return `${u.name?.trim() || `@${u.username}`} (@${u.username}) · Links`
-})
-const seoDescription = computed(() => {
-  const u = page.value?.user
-  if (!u) return `This page isn't available on ${siteConfig.name}.`
-  return u.bio?.trim() || `Links from ${u.name?.trim() || `@${u.username}`} on ${siteConfig.name}.`
-})
+const seo = computed(() => linksPageSeo(page.value, username.value))
 usePageSeo({
-  title: seoTitle,
-  description: seoDescription,
-  canonicalPath: computed(() => linksPagePath(page.value?.user.username ?? username.value)),
-  image: computed(() => (page.value ? linksPageOgImagePath(page.value.user.username) : undefined)),
-  imageAlt: computed(() => (page.value ? `${seoTitle.value} on ${siteConfig.name}` : undefined)),
+  title: computed(() => seo.value.title),
+  description: computed(() => seo.value.description),
+  canonicalPath: computed(() => seo.value.canonicalPath),
+  image: computed(() => seo.value.image),
+  imageAlt: computed(() => seo.value.imageAlt),
+  imageWidth: computed(() => seo.value.imageWidth),
+  imageHeight: computed(() => seo.value.imageHeight),
+  author: computed(() => seo.value.author),
   twitterCard: 'summary_large_image',
-  ogType: 'profile',
-  noindex: computed(() => !page.value),
+  ogType: computed(() => seo.value.ogType),
+  noindex: computed(() => seo.value.noindex),
+  webPageType: computed(() => seo.value.webPageType),
+  mainEntityId: computed(() => seo.value.mainEntityId),
+  jsonLdGraph: computed(() => seo.value.jsonLdGraph),
 })
 </script>

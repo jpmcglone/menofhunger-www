@@ -84,7 +84,8 @@ export function linksPagePath(username: string): string {
 }
 
 export function linksPageOgImagePath(username: string): string {
-  return `/og/links/${encodeURIComponent(username.toLowerCase())}.png`
+  // Bypass previously cached 404s from the old dotted route-parameter lookup.
+  return `/og/links/${encodeURIComponent(username.toLowerCase())}.png?v=2`
 }
 
 /** Join CTA: attributes the signup to the links page and credits the owner's referral code. */

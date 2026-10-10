@@ -1,3 +1,4 @@
+import { useOpenChat } from '~/composables/chat/useOpenChat'
 import { formatLocaleDate } from '~/utils/time-format'
 import type { ProfileHeaderProps, ProfileHeaderEmits } from './profile-header-types'
 import { userNotificationOptions, userNotificationPreference } from '~/utils/user-notification-preference'
@@ -215,6 +216,7 @@ export function useProfileHeaderProfile(props: ProfileHeaderProps, emit: Profile
     return true
   })
 
+  const { openChat } = useOpenChat()
   const startChatInfoVisible = ref(false)
   function goPremium() {
     return navigateTo('/tiers')
@@ -229,7 +231,7 @@ export function useProfileHeaderProfile(props: ProfileHeaderProps, emit: Profile
       startChatInfoVisible.value = true
       return
     }
-    void navigateTo({ path: '/chat', query: { to: username } })
+    void openChat(username)
   }
 
   const isMutualFollow = computed(() => {

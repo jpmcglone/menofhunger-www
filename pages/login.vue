@@ -9,6 +9,7 @@
       <div class="auth-content">
         <h1 class="text-[28px] leading-9 font-semibold">{{ step === 'phone' ? 'Find your people.' : 'Check your texts.' }}</h1>
         <p class="text-[15px] leading-[22px] moh-text-muted">{{ step === 'phone' ? 'A community for men building a better life.' : `Enter the code sent to ${phoneCommitted}.` }}</p>
+        <AppInlineAlert v-if="showExpiredHandoffNotice" severity="warning" role="status">This sign-in link has expired or already been used. Open verification from the app again for a new link, or sign in below.</AppInlineAlert>
         <template v-if="showDeletedNotice">
           <AppInlineAlert severity="success">Your account is unavailable. If you requested deletion, use your private receipt to check its status.</AppInlineAlert>
           <Button label="Dismiss" severity="secondary" rounded @click="dismissDeleted" />
@@ -81,6 +82,7 @@ const signupAttribution = useSignupAttribution()
 
 const showBannedNotice = computed(() => String(route.query.banned ?? '') === '1')
 const showDeletedNotice = computed(() => String(route.query.deleted ?? '') === '1')
+const showExpiredHandoffNotice = computed(() => route.query.handoffError === 'invalid_or_expired')
 
 function dismissBanned() {
   resetToPhone()

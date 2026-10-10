@@ -5,12 +5,13 @@ export function animateChatDock(from: DOMRect, target: HTMLElement, restoring: b
   if (!to.width || !to.height) return null
   let ghost: HTMLDivElement | undefined
   let animation: Animation
+  const transformOrigin = target.style.transformOrigin
   if (restoring) {
+    target.style.transformOrigin = 'top left'
     animation = target.animate([
       { transform: `translate(${from.x - to.x}px, ${from.y - to.y}px) scale(${from.width / to.width}, ${from.height / to.height})`, opacity: 0.25, borderRadius: '28px' },
       { transform: 'none', opacity: 1, borderRadius: '12px' },
     ], { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)' })
-    target.style.transformOrigin = 'top left'
   } else {
     ghost = document.createElement('div')
     ghost.setAttribute('aria-hidden', 'true')
@@ -19,9 +20,17 @@ export function animateChatDock(from: DOMRect, target: HTMLElement, restoring: b
     animation = ghost.animate([
       { transform: 'none', opacity: 0.85, borderRadius: '12px' },
       { transform: `translate(${to.x - from.x}px, ${to.y - from.y}px) scale(${to.width / from.width}, ${to.height / from.height})`, opacity: 0, borderRadius: '28px' },
-    ], { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)' })
+    ], { duration: 420, easing: 'cubic-bezier(.4,0,.2,1)' })
   }
-  const cleanup = () => { animation.cancel(); ghost?.remove(); finished() }
-  void animation.finished.then(cleanup, () => { ghost?.remove(); finished() })
+  let settled = false
+  const cleanup = () => {
+    if (settled) return
+    settled = true
+    animation.cancel()
+    ghost?.remove()
+    if (restoring) target.style.transformOrigin = transformOrigin
+    finished()
+  }
+  void animation.finished.then(cleanup, cleanup)
   return cleanup
 }

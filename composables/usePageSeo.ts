@@ -30,6 +30,10 @@ export type PageSeoOptions = {
   author?: MaybeRef<string | undefined>
   /** Extra JSON-LD objects to add to @graph */
   jsonLdGraph?: MaybeRef<unknown[] | undefined>
+  /** More specific schema type for pages centered on a public profile. */
+  webPageType?: MaybeRef<'WebPage' | 'ProfilePage' | undefined>
+  /** The JSON-LD identity described by the page, when provided in its graph. */
+  mainEntityId?: MaybeRef<string | undefined>
 }
  
 function toAbsoluteUrl(pathOrUrl: string) {
@@ -54,7 +58,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
 
   const fullTitle = computed(() => {
     // Keep landing page clean (no duplicated site name)
-    const isHome = route.path === '/' || options.canonicalPath === '/'
+    const isHome = route.path === '/' || unref(options.canonicalPath) === '/'
     if (isHome) return title.value
 
     const t = title.value
@@ -99,7 +103,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
     title: fullTitle,
     description,
  
-    ogType: unref(options.ogType) || 'website',
+    ogType: computed(() => unref(options.ogType) || 'website'),
     ogUrl: computed(() => isFeatureHandoff.value ? toAbsoluteUrl(sharePath.value) : canonical.value),
     ogSiteName: siteConfig.name,
     ogLocale: 'en_US',
@@ -120,13 +124,14 @@ export function usePageSeo(options: PageSeoOptions = {}) {
   const jsonLdGraph = computed(() => {
     const baseGraph: Array<Record<string, unknown>> = [
       {
-        '@type': 'WebPage',
+        '@type': unref(options.webPageType) || 'WebPage',
         '@id': `${canonical.value}#webpage`,
         url: canonical.value,
         name: fullTitle.value,
         description: description.value,
         isPartOf: { '@id': `${siteConfig.url}/#website` },
-        inLanguage: 'en-US'
+        inLanguage: 'en-US',
+        ...(unref(options.mainEntityId) ? { mainEntity: { '@id': unref(options.mainEntityId) } } : {}),
       }
     ]
  
@@ -250,7 +255,7 @@ export function usePageSeo(options: PageSeoOptions = {}) {
   })
 
   useHead({
-    link: [{ rel: 'canonical', href: canonical.value }],
+    link: computed(() => [{ rel: 'canonical', href: canonical.value }]),
     meta: computed(() => {
       const meta: Array<{ property?: string; name?: string; content: string }> = [
         { name: 'robots', content: robots.value },
@@ -264,14 +269,15 @@ export function usePageSeo(options: PageSeoOptions = {}) {
       }
       return meta
     }),
-    script: [
+    script: computed(() => [
       {
         type: 'application/ld+json',
-        innerHTML: JSON.stringify({ '@context': 'https://schema.org', '@graph': jsonLdGraph.value })
+        // Profile text and links are user-controlled. Never allow a literal
+        // closing script tag to escape the JSON-LD element in server HTML.
+        innerHTML: JSON.stringify({ '@context': 'https://schema.org', '@graph': jsonLdGraph.value }).replace(/</g, '\\u003c')
       }
-    ]
+    ])
   })
  
   return { title: fullTitle, description, canonical, image }
 }
-

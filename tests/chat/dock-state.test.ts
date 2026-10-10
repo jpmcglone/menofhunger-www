@@ -84,4 +84,34 @@ describe('personal desktop chat dock', () => {
     dock.open('dm'); dock.setMode('dm', 'closed')
     expect(dock.sessions.value.find(session => session.key === 'dm')?.mode).toBe('closed')
   })
+  it('requests focus for each explicit activation, including existing minimized and active chats', () => {
+    state.refs.clear()
+    const dock = useDesktopChatDock()
+    dock.width.value = 1440
+    dock.open('a')
+    expect(dock.focusedKey.value).toBe('a')
+    expect(dock.focusRequest.value).toBe(1)
+    dock.setMode('a', 'minimized')
+    dock.open('a')
+    expect(dock.sessions.value.find(session => session.key === 'a')?.mode).toBe('expanded')
+    expect(dock.focusRequest.value).toBe(2)
+    dock.open('a')
+    expect(dock.focusRequest.value).toBe(3)
+    dock.open('b', true)
+    expect(dock.focusedKey.value).toBe('a')
+    expect(dock.focusRequest.value).toBe(3)
+  })
+  it('closes a one-slot inbox and focuses the recipient draft from shared actions', () => {
+    state.refs.clear()
+    const dock = useDesktopChatDock()
+    dock.width.value = 1200
+    dock.listExpanded.value = true
+    dock.open('a')
+    expect(dock.listExpanded.value).toBe(false)
+    dock.listExpanded.value = true
+    const key = dock.openDraft([{ id: 'recipient', name: 'Recipient' } as never])
+    expect(dock.listExpanded.value).toBe(false)
+    expect(dock.focusedKey.value).toBe(key)
+    expect(dock.focusRequest.value).toBe(2)
+  })
 })

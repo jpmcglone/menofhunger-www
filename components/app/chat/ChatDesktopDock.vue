@@ -2,11 +2,12 @@
   <!-- Personal conversations only. Keyed workspaces stay mounted through minimize, overflow and full-page handoff. -->
   <div v-show="desktop && user?.id && !isPageAccount && !pageOwnsChat" class="moh-chat-dock" :style="dockStyle" aria-label="Chat dock">
     <div
-v-for="session in sessions" v-show="visibleKeys.has(session.key) && session.dockable !== false && session.mode === 'expanded' && !isFull(session)" :id="slotId(session.key)"
+v-for="session in [...sessions].reverse()" v-show="visibleKeys.has(session.key) && session.dockable !== false && session.mode === 'expanded' && !isFull(session)" :id="slotId(session.key)"
       :key="`slot:${session.key}`"
       class="moh-chat-dock-window moh-surface-2 moh-border" :class="{ 'is-marv': session.marv }"
       style="width: 380px"/>
-    <div v-show="listExpanded" class="moh-chat-dock-window moh-chat-dock-inbox moh-surface-2 moh-border" :class="{ 'is-minimized': !listExpanded }" :style="{ width: listExpanded ? '320px' : '180px' }">
+    <Transition name="dock-inbox">
+    <div v-show="listExpanded" class="moh-chat-dock-window moh-chat-dock-inbox moh-surface-2 moh-border" style="width: 320px">
       <div class="flex h-12 shrink-0 items-center">
         <button type="button" class="h-full flex-1 px-3 text-left text-sm font-semibold" :aria-expanded="listExpanded" aria-controls="moh-chat-dock-list" @click="toggleList"><Icon name="tabler:messages" class="mr-2" /> Chat</button>
         <div class="relative">
@@ -18,8 +19,9 @@ v-for="session in sessions" v-show="visibleKeys.has(session.key) && session.dock
         </div>
         <NuxtLink to="/chat" class="moh-dock-icon" aria-label="Open full chat"><Icon name="tabler:arrows-maximize" /></NuxtLink>
       </div>
-      <div v-show="listExpanded && !fullHostReady" id="moh-chat-dock-list" class="min-h-0 flex-1 overflow-hidden" />
+      <div v-show="!fullHostReady" id="moh-chat-dock-list" class="min-h-0 flex-1 overflow-hidden" />
     </div>
+    </Transition>
 
     <div class="moh-chat-avatar-rail" aria-label="Minimized chats">
       <TransitionGroup name="dock-avatar" tag="div" class="moh-chat-avatar-stack">
@@ -50,6 +52,7 @@ v-show="isFull(session) || (visibleKeys.has(session.key) && session.mode === 'ex
 :conversation-id="session.conversationId" :open-marv="session.marv && !session.conversationId" embedded
           :initial-recipients="session.draftRecipients"
           :full-page="isFull(session)"
+          :focus-request="focusRequestKey === session.key ? focusRequest : 0"
           :visible="isFull(session) || (desktop && !pageOwnsChat && visibleKeys.has(session.key) && session.mode === 'expanded')"
           :focused="focusedKey === session.key" :jump-message-id="isFull(session) && typeof route.query.m === 'string' ? route.query.m : session.jumpMessageId ?? null" @state="state => updateSession(session.key, state)">
           <template #controls>
@@ -78,12 +81,13 @@ import { useViewportIdsObserver } from '~/composables/chat/useViewportIdsObserve
 import { animateChatDock } from '~/utils/chat-dock-motion'
 import type { FollowListUser, Message } from '~/types/api'
 
-const { width, desktop, capacity, sessions, listExpanded, popupsPaused, fullHostReady, focusedKey, open: openSession, openDraft, setMode: updateMode, reset } = useDesktopChatDock()
+const { width, desktop, capacity, sessions, listExpanded, popupsPaused, fullHostReady, focusedKey, focusRequest, focusRequestKey, open: openSession, openDraft, setMode: updateMode, reset } = useDesktopChatDock()
 const { user, isPageAccount } = useAuth()
 const route = useRoute()
 const { emitMessagesScreen, isSocketConnected, addInterest, removeInterest } = usePresence()
 const sounds = useChatDockSounds()
 const motionCleanups = new Set<() => void>()
+let motionGeneration = 0
 const publishViewing = useChatScreenPresence(emitMessagesScreen)
 const inboxRef = ref<InstanceType<typeof ChatWorkspace> | null>(null)
 const inboxMounted = ref(false)
@@ -151,14 +155,16 @@ const dockStyle = computed(() => {
 
 function avatarId(key: string) { return `moh-chat-avatar-${key}` }
 function animateBetween(from: DOMRect | undefined, targetId: string, restoring: boolean) {
+  const generation = motionGeneration
   void nextTick(() => {
     const target = document.getElementById(targetId)
-    if (!from || !target || !desktop.value) return
+    if (generation !== motionGeneration || !from || !target || !desktop.value) return
     const cleanup = animateChatDock(from, target, restoring, () => cleanup && motionCleanups.delete(cleanup))
     if (cleanup) motionCleanups.add(cleanup)
   })
 }
 function cancelMotion() {
+  motionGeneration++
   for (const cleanup of [...motionCleanups]) cleanup()
   motionCleanups.clear()
 }
@@ -173,7 +179,6 @@ function open(key: string, automatic = false) {
   if (!automatic) {
     sounds.open()
     animateBetween(from, slotId(existing?.key ?? key), true)
-    if (from) void nextTick(() => document.getElementById(slotId(existing?.key ?? key))?.querySelector<HTMLElement>('[role="textbox"]')?.focus({ preventScroll: true }))
   }
 }
 function setMode(key: string, mode: DockSession['mode']) {
@@ -280,12 +285,16 @@ function refreshVisible() {
 watch(isSocketConnected, connected => { if (connected) refreshVisible() })
 watch(() => user.value?.id, () => {
   identityGeneration++
+  cancelMotion()
   seenMessages.clear()
   reset()
   inboxMounted.value = false
   void nextTick(() => { inboxMounted.value = Boolean(desktop.value && user.value?.id && !isPageAccount.value) })
 })
-watch(desktop, enabled => { if (enabled && user.value?.id && !isPageAccount.value) inboxMounted.value = true })
+watch(desktop, enabled => {
+  if (enabled && user.value?.id && !isPageAccount.value) inboxMounted.value = true
+  else cancelMotion()
+})
 function clearFocusOutside(event: Event) {
   const target = event.target
   if (target instanceof Element && !target.closest('[data-chat-session-key]')) focusedKey.value = null
@@ -303,8 +312,7 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   identityGeneration++
-  for (const cleanup of motionCleanups) cleanup()
-  motionCleanups.clear()
+  cancelMotion()
   window.removeEventListener('resize', measure)
   document.removeEventListener('pointerdown', clearFocusOutside)
   document.removeEventListener('focusin', clearFocusOutside)
@@ -323,7 +331,9 @@ onBeforeUnmount(() => {
 .moh-chat-dock-window.is-marv { border-color: color-mix(in srgb, var(--moh-premium) 48%, var(--moh-border)); }
 .moh-chat-dock-window.is-marv :deep(.moh-chat-dock-header) { background: linear-gradient(115deg, color-mix(in srgb, var(--moh-premium) 13%, transparent), transparent 85%); }
 .moh-chat-avatar.is-marv { border: 2px solid color-mix(in srgb, var(--moh-premium) 72%, var(--moh-border)); background: radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--moh-premium) 15%, var(--moh-surface-2)), var(--moh-surface-2) 75%); }
-.moh-chat-dock-inbox { overflow: visible; }
+.moh-chat-dock-inbox { overflow: visible; animation: none; }
+.dock-inbox-enter-active, .dock-inbox-leave-active { transition: transform 280ms cubic-bezier(.2,.8,.2,1), opacity 280ms ease-out; }
+.dock-inbox-enter-from, .dock-inbox-leave-to { opacity: 0; transform: translateY(16px); }
 .moh-dock-icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; border-radius: 8px; }
 .moh-dock-icon:hover { background: var(--moh-surface-hover); }
 .moh-chat-avatar-rail { position: absolute; right: -80px; bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; pointer-events: auto; }
@@ -340,7 +350,9 @@ onBeforeUnmount(() => {
 .moh-chat-avatar-item:has(.moh-chat-avatar-close):hover .moh-chat-avatar-badge, .moh-chat-avatar-item:has(.moh-chat-avatar-close):focus-within .moh-chat-avatar-badge { opacity: 0; }
 .moh-chat-avatar-item:hover .moh-chat-avatar-close, .moh-chat-avatar-item:focus-within .moh-chat-avatar-close { opacity: 1; pointer-events: auto; }
 .dock-avatar-enter-active, .dock-avatar-leave-active, .dock-avatar-move { transition: transform 320ms cubic-bezier(.2,.8,.2,1), opacity 160ms; }
-.dock-avatar-enter-from, .dock-avatar-leave-to { opacity: 0; transform: scale(.7); }
+/* Keep entering avatars at their final geometry so window handoffs aim correctly. */
+.dock-avatar-enter-from { opacity: 0; }
+.dock-avatar-leave-to { opacity: 0; transform: scale(.7); }
 /* Keep glass static: only the small surfaces blur, never the moving page beneath them. */
 @supports (backdrop-filter: blur(8px)) {
   .moh-chat-dock-window { background: color-mix(in srgb, var(--moh-surface-2) 94%, transparent); backdrop-filter: blur(8px); }
@@ -350,5 +362,5 @@ onBeforeUnmount(() => {
 }
 @keyframes badge-arrive { from { opacity: 0; transform: scale(.65); } to { opacity: 1; transform: scale(1); } }
 @keyframes dock-reveal { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .moh-chat-dock-window, .moh-chat-avatar, .moh-chat-avatar-badge, .dock-avatar-enter-active, .dock-avatar-leave-active, .dock-avatar-move { transition: none; animation: none; } }
+@media (prefers-reduced-motion: reduce) { .moh-chat-dock-window, .moh-chat-avatar, .moh-chat-avatar-badge, .dock-avatar-enter-active, .dock-avatar-leave-active, .dock-avatar-move, .dock-inbox-enter-active, .dock-inbox-leave-active { transition: none; animation: none; } }
 </style>

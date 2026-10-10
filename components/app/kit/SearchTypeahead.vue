@@ -335,6 +335,7 @@ defineExpose({
       </InputIcon>
       <InputText
         ref="inputRef"
+        data-moh-search-input
         :value="query"
         :placeholder="placeholder"
         aria-label="Search"

@@ -12,13 +12,25 @@ export function useDesktopChatDock() {
   const popupsPaused = useState('chat-dock-popups-paused', () => false)
   const fullHostReady = useState('chat-dock-full-host-ready', () => false)
   const focusedKey = useState<string | null>('chat-dock-focused-key', () => null)
+  const focusRequest = useState('chat-dock-focus-request', () => 0)
+  const focusRequestKey = useState<string | null>('chat-dock-focus-request-key', () => null)
 
   function open(key: string, automatic = false) {
     sessions.value = openDockSession(sessions.value, key, capacity.value, automatic)
+    if (!automatic) {
+      if (capacity.value === 1) listExpanded.value = false
+      focusedKey.value = sessions.value.find(session => session.key === key || session.conversationId === key)?.key ?? null
+      focusRequestKey.value = focusedKey.value
+      focusRequest.value++
+    }
   }
   function openDraft(recipients: FollowListUser[]) {
     const opened = openDockDraft(sessions.value, recipients, capacity.value)
     sessions.value = opened.sessions
+    if (capacity.value === 1) listExpanded.value = false
+    focusedKey.value = opened.key
+    focusRequestKey.value = opened.key
+    focusRequest.value++
     return opened.key
   }
   function setMode(key: string, mode: DockSession['mode']) {
@@ -30,7 +42,8 @@ export function useDesktopChatDock() {
     sessions.value = []
     listExpanded.value = false
     focusedKey.value = null
+    focusRequestKey.value = null
     popupsPaused.value = false
   }
-  return { width, desktop, capacity, sessions, listExpanded, popupsPaused, fullHostReady, focusedKey, open, openDraft, setMode, reset }
+  return { width, desktop, capacity, sessions, listExpanded, popupsPaused, fullHostReady, focusedKey, focusRequest, focusRequestKey, open, openDraft, setMode, reset }
 }

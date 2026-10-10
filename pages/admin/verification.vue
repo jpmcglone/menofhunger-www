@@ -112,6 +112,7 @@
             label="Message"
             text
             severity="secondary"
+            @click.capture="onMessageLinkClick($event, item.user.username)"
           >
             <template #icon>
               <Icon name="tabler:message-circle" aria-hidden="true" />
@@ -239,6 +240,7 @@
         label="Message"
         severity="secondary"
         text
+        @click.capture="onVerificationMessageClick($event, selected.user.username)"
       >
         <template #icon>
           <Icon name="tabler:message-circle" aria-hidden="true" />
@@ -271,12 +273,20 @@
 </template>
 
 <script setup lang="ts">
+import { useOpenChat } from '~/composables/chat/useOpenChat'
+
 import { usePresenceCallback } from '~/composables/presence/usePresenceCallback'
 import { formatDateTime } from '~/utils/time-format'
 import { useFormSubmit } from '~/composables/useFormSubmit'
 import type { AdminVerificationRequest, AdminVerificationUser, VerificationRequestStatus } from '~/types/api'
 import type { AdminCallback } from '~/composables/usePresence'
 import { useCursorFeed } from '~/composables/useCursorFeed'
+
+const { onMessageLinkClick } = useOpenChat()
+function onVerificationMessageClick(event: MouseEvent, username: string) {
+  onMessageLinkClick(event, username)
+  if (event.defaultPrevented) detailsOpen.value = false
+}
 
 definePageMeta({
   layout: 'app',

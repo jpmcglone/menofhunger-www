@@ -192,6 +192,7 @@ import AppLayoutComposerModalOverlay from '~/components/app/layout/ComposerModal
 import AppLayoutLeftRail from '~/components/app/layout/LeftRail.vue'
 import AppLayoutRightRail from '~/components/app/layout/RightRail.vue'
 import ChatDesktopDock from '~/components/app/chat/ChatDesktopDock.vue'
+import { createSearchShortcut } from '~/utils/search-shortcut'
 
 const route = useRoute()
 const colorMode = useColorMode()
@@ -289,6 +290,14 @@ const navCompactMode = computed(() => _navCompactModeBase.value || radioHasStati
 // Global keyboard shortcuts
 const rightRailSearchRef = ref<{ focus: () => void } | null>(null)
 const focusHomeComposer = inject(MOH_FOCUS_HOME_COMPOSER_KEY, null)
+const shortcutRouter = useRouter()
+const shortcutApp = useNuxtApp()
+const searchShortcut = createSearchShortcut({
+  navigate: () => shortcutRouter.push('/explore'),
+  nextRender: () => nextTick(),
+  onPageFinished: (callback) => shortcutApp.hook('page:finish', callback),
+})
+onBeforeUnmount(searchShortcut.dispose)
 useKeyboardShortcutsHandler({
   openComposer: () => {
     // If the home page's inline composer is visible, focus it directly.
@@ -299,9 +308,7 @@ useKeyboardShortcutsHandler({
       openComposerForCurrentRoute()
     }
   },
-  focusSearch: () => {
-    rightRailSearchRef.value?.focus()
-  },
+  focusSearch: () => { void searchShortcut.focus() },
 })
 
 // On /chat, force the right rail visible when the user is in a live space so they

@@ -1,3 +1,4 @@
+import { useOpenChat } from '~/composables/chat/useOpenChat'
 import type { UserPreviewCardProps } from './user-preview-card-types'
 import type { LookupMessageConversationResponse } from '~/types/api'
 import { useUserOverlay } from '~/composables/useUserOverlay'
@@ -358,37 +359,13 @@ export function useUserPreviewCard(props: UserPreviewCardProps) {
     return previewUserFollowsViewer.value ? messageFilledButtonClass.value : messageOutlineButtonClass.value
   })
 
+  const { openChat } = useOpenChat()
   function onSendMessage() {
     const username = (user.value.username ?? '').trim()
     const userId = user.value.id ?? null
     if (!username || !userId) return
     pop.close()
-    void (async () => {
-      // If we already know there's a conversation, deep-link directly to it (avoids the extra URL hop).
-      const cached = dmLookupCache.value[userId]
-      let conversationId: string | null = dmLookupConversationId.value ?? (cached !== undefined ? cached : null)
-
-      // If we haven't checked yet, do a quick lookup on click.
-      if (conversationId === null && cached === undefined && !dmLookupInflight.value) {
-        try {
-          const res = await apiFetchData<LookupMessageConversationResponse['data']>('/messages/lookup', {
-            method: 'POST',
-            body: { user_ids: [userId] },
-          })
-          conversationId = res?.conversationId ?? null
-          dmLookupCache.value = { ...dmLookupCache.value, [userId]: conversationId }
-          dmLookupConversationId.value = conversationId
-        } catch {
-          // ignore
-        }
-      }
-
-      if (conversationId) {
-        await navigateTo({ path: '/chat', query: { c: conversationId } })
-        return
-      }
-      await navigateTo({ path: '/chat', query: { to: username } })
-    })()
+    void openChat(username, dmLookupConversationId.value ?? dmLookupCache.value[userId])
   }
 
   return {

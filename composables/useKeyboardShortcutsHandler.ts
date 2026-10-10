@@ -1,3 +1,6 @@
+import type { ShortcutAction } from '~/composables/useKeyboardShortcuts'
+import { MOH_SHORTCUT_ACTIONS_KEY, type ShortcutMediaActions } from '~/utils/keyboard-shortcuts'
+
 export type KeyboardShortcutsHandlerOptions = {
   openComposer?: () => void
   focusSearch?: () => void
@@ -12,23 +15,50 @@ export function useKeyboardShortcutsHandler(opts: KeyboardShortcutsHandlerOption
   const { user } = useAuth()
   const { showModal } = useKeyboardShortcuts()
   const { focusNext, focusPrev, replyToFocused } = useKeyboardShortcutsFocusedPost()
+  const { cycleTheme } = useThemeCycle()
+  const { toggle: toggleRadio } = useSpaceAudio()
 
   function profileRoute() {
     return user.value?.username ? `/u/${encodeURIComponent(user.value.username)}` : '/settings'
   }
 
-  const G_KEY_MAP: Record<string, () => string> = {
-    H: () => '/home',
-    E: () => '/explore',
-    N: () => '/notifications',
-    C: () => '/chat',
-    S: () => '/spaces',
-    G: () => '/groups',
-    B: () => '/bookmarks',
-    P: () => profileRoute(),
-    M: () => '/only-me',
-    R: () => '/radio',
+  const routes: Partial<Record<ShortcutAction, () => string>> = {
+    home: () => '/home', explore: () => '/explore', notifications: () => '/notifications',
+    chat: () => '/chat', spaces: () => '/spaces', groups: () => '/groups',
+    bookmarks: () => '/bookmarks', profile: profileRoute, onlyMe: () => '/only-me',
+    radio: () => '/radio', settings: () => '/settings',
   }
+  const G_KEY_MAP: Record<string, ShortcutAction> = {
+    H: 'home', E: 'explore', N: 'notifications', C: 'chat', S: 'spaces',
+    G: 'groups', B: 'bookmarks', P: 'profile', M: 'onlyMe', R: 'radio',
+  }
+
+  function routeFor(action: ShortcutAction) {
+    return routes[action]?.()
+  }
+
+  function execute(action: ShortcutAction, media: ShortcutMediaActions = {}) {
+    const route = routeFor(action)
+    if (route) {
+      void router.push(route)
+      return
+    }
+    switch (action) {
+      case 'search': opts.focusSearch?.(); break
+      case 'compose': opts.openComposer?.(); break
+      case 'nextPost': focusNext(); break
+      case 'previousPost': focusPrev(); break
+      case 'reply': replyToFocused(); break
+      case 'previousMedia': media.previousMedia?.(); break
+      case 'nextMedia': media.nextMedia?.(); break
+      case 'toggleRadio': toggleRadio(); break
+      case 'theme': cycleTheme(); break
+      case 'dismiss': showModal.value = false; break
+      case 'shortcuts': showModal.value = !showModal.value; break
+    }
+  }
+
+  provide(MOH_SHORTCUT_ACTIONS_KEY, { routeFor, execute })
 
   let pendingG = false
   let pendingGTimer: ReturnType<typeof setTimeout> | null = null
@@ -64,7 +94,8 @@ export function useKeyboardShortcutsHandler(opts: KeyboardShortcutsHandlerOption
     // '?' toggles the shortcuts modal — but not when typing in a text field.
     if (e.key === '?' && !isEditableElement(document.activeElement)) {
       e.preventDefault()
-      showModal.value = !showModal.value
+      clearPendingG()
+      execute('shortcuts')
       return
     }
 
@@ -81,10 +112,10 @@ export function useKeyboardShortcutsHandler(opts: KeyboardShortcutsHandlerOption
     if (pendingG) {
       clearPendingG()
       const key = e.key.toUpperCase()
-      const routeFn = G_KEY_MAP[key]
-      if (routeFn) {
+      const action = G_KEY_MAP[key]
+      if (action) {
         e.preventDefault()
-        void router.push(routeFn())
+        execute(action)
       }
       return
     }
@@ -98,38 +129,38 @@ export function useKeyboardShortcutsHandler(opts: KeyboardShortcutsHandlerOption
 
     if (e.key === '/') {
       e.preventDefault()
-      opts.focusSearch?.()
+      execute('search')
       return
     }
 
     if (e.key === 'n' || e.key === 'N') {
       e.preventDefault()
-      opts.openComposer?.()
+      execute('compose')
       return
     }
 
     if (e.key === 'j' || e.key === 'J') {
       e.preventDefault()
-      focusNext()
+      execute('nextPost')
       return
     }
 
     if (e.key === 'k' || e.key === 'K') {
       e.preventDefault()
-      focusPrev()
+      execute('previousPost')
       return
     }
 
     if (e.key === 'r' || e.key === 'R') {
       e.preventDefault()
-      replyToFocused()
+      execute('reply')
       return
     }
 
     // '<' (Shift+,) — Settings
     if (e.key === '<') {
       e.preventDefault()
-      void router.push('/settings')
+      execute('settings')
       return
     }
   }

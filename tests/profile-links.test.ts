@@ -73,7 +73,7 @@ describe('follower count formatting', () => {
 describe('links page URLs', () => {
   it('builds the page, share image, and join links', () => {
     expect(linksPagePath('john')).toBe('/u/john/links')
-    expect(linksPageOgImagePath('John')).toBe('/og/links/john.png')
+    expect(linksPageOgImagePath('John')).toBe('/og/links/john.png?v=2')
     expect(linksPageJoinHref('JOHN1')).toBe('/login?src=links_page&ref=JOHN1')
   })
 

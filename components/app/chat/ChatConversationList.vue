@@ -107,13 +107,17 @@
       TransitionGroup gives FLIP `move` transitions when socket events reorder
       conversations (e.g. new message bubbles a thread to the top). Keys MUST
       stay on stable conversation ids so Vue reuses row state and only animates
-      position. Enter/leave are kept short in CSS; the important part is
+      position. Floating inbox rows disable both CSS and FLIP motion: hidden
+      measurements and moving dock geometry must never become row animations.
+      Enter/leave are kept short in CSS; the important part is
       `.moh-chat-row-move`. Users with `prefers-reduced-motion` get no list
       motion (see `main.css`).
     -->
     <TransitionGroup
       v-else
       name="moh-chat-row"
+      :css="animateRows"
+      :move-class="animateRows ? 'moh-chat-row-move' : 'moh-chat-row-static'"
       tag="div"
       class="moh-divide"
     >
@@ -251,6 +255,7 @@ const crewAvatarRound = crewAvatarRoundClass()
 
 const props = defineProps({
   isTinyViewport: { type: Boolean, required: true },
+  animateRows: { type: Boolean, default: true },
   canStartNew: { type: Boolean, required: true },
   activeTab: { type: String as PropType<'primary' | 'requests'>, required: true },
   activeList: { type: Array as PropType<MessageConversation[]>, required: true },

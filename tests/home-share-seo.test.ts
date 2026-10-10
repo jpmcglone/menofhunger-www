@@ -30,7 +30,7 @@ describe('homepage sharing', () => {
     expect(unref(seo.twitterCard)).toBe('summary_large_image')
     expect(unref(seo.ogImageAlt)).toBe(siteConfig.homeShare.imageAlt)
     const head = capture.head.mock.calls[0]![0]
-    expect(head.link[0].href).toBe('https://menofhunger.com/')
+    expect(unref(head.link)[0].href).toBe('https://menofhunger.com/')
     expect(unref(head.meta)).toEqual(expect.arrayContaining([
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },

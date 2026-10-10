@@ -10,6 +10,8 @@
     "/deletion-status",
     "/terms",
     "/login",
+    "/login?handoffError=invalid_or_expired",
+    "/browser-call?c=hydration-verification-conversation",
     "/home",
     "/daily/word",
     "/daily/quote",

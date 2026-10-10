@@ -100,6 +100,7 @@
               class="inline-flex shrink-0 rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-zinc-800 dark:hover:text-gray-200"
               aria-label="Message user"
               tabindex="0"
+              @click.capture="onMessageLinkClick($event, u.username)"
               @click.stop
             >
               <Icon name="tabler:message-circle" aria-hidden="true" />
@@ -165,7 +166,11 @@
 </template>
 
 <script setup lang="ts">
+import { useOpenChat } from '~/composables/chat/useOpenChat'
+
 import { useAdminUsersPage } from '~/composables/pages/admin/useAdminUsersPage'
+
+const { onMessageLinkClick } = useOpenChat()
 
 definePageMeta({
   layout: 'app',

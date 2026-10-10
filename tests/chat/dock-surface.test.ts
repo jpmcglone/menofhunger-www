@@ -23,7 +23,7 @@ mockNuxtImport('usePresence', () => () => ({ emitMessagesScreen: vi.fn(), isSock
 mockNuxtImport('useSpaceLobby', () => () => ({ selectedSpaceId: ref(null), currentSpace: ref(null) }))
 
 const Workspace = defineComponent({
-  props: { conversationId: { type: String, default: null }, listOnly: Boolean, visible: Boolean, focused: Boolean, openMarv: Boolean, embedded: Boolean, fullPage: Boolean, initialRecipients: Array, jumpMessageId: String },
+  props: { conversationId: { type: String, default: null }, listOnly: Boolean, visible: Boolean, focused: Boolean, focusRequest: Number, openMarv: Boolean, embedded: Boolean, fullPage: Boolean, initialRecipients: Array, jumpMessageId: String },
   emits: ['state', 'select', 'draft'],
   setup(props, { expose, slots, emit }) {
     const text = ref('')
@@ -47,7 +47,7 @@ function fixture() {
   const focusedKey = ref<string | null>(null)
   const listExpanded = ref(false)
   context.dock = {
-    width: ref(1440), desktop: ref(true), capacity: ref(2), sessions, focusedKey, listExpanded, popupsPaused: ref(false), fullHostReady: ref(false),
+    width: ref(1440), desktop: ref(true), capacity: ref(2), sessions, focusedKey, focusRequest: ref(0), focusRequestKey: ref(null), listExpanded, popupsPaused: ref(false), fullHostReady: ref(false),
     open: (key, automatic = false) => { sessions.value = openDockSession(sessions.value, key, 2, automatic) },
     openDraft: recipients => { const opened = openDockDraft(sessions.value, recipients, 2); sessions.value = opened.sessions; return opened.key },
     setMode: (key, mode) => { sessions.value = sessions.value.map(session => session.key === key ? { ...session, mode } : session) },
@@ -63,6 +63,16 @@ async function settle() { await nextTick(); await flushPromises(); await nextTic
 afterEach(() => { document.body.innerHTML = ''; vi.restoreAllMocks() })
 
 describe('mounted dock surfaces', () => {
+  it('places the newest expanded conversation on the far left', async () => {
+    const { wrapper, dock } = fixture()
+    await settle()
+    dock.open('a'); await settle(); dock.open('b'); await settle()
+    expect([...document.querySelectorAll('.moh-chat-dock > .moh-chat-dock-window:not(.moh-chat-dock-inbox)')].map(element => element.id)).toEqual(['moh-chat-dock-slot-b', 'moh-chat-dock-slot-a'])
+    dock.open('a'); await settle()
+    expect([...document.querySelectorAll('.moh-chat-dock > .moh-chat-dock-window:not(.moh-chat-dock-inbox)')].map(element => element.id)).toEqual(['moh-chat-dock-slot-a', 'moh-chat-dock-slot-b'])
+    wrapper.unmount()
+  })
+
   it('retains two independent composers through minimize and moves the same DOM/instance into full chat', async () => {
     const { wrapper, dock } = fixture()
     await settle()

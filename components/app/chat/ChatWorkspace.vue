@@ -22,6 +22,7 @@
           <ChatConversationList
             v-if="showListPane"
             :is-tiny-viewport="isTinyViewport"
+            :animate-rows="!props.embedded || props.fullPage"
             :can-start-new="viewerCanStartChats"
             :active-tab="activeTab"
             :active-list="props.listOnly && !props.fullPage ? activeList.filter(conversation => conversation.type !== 'crew_wall') : activeList"
@@ -237,7 +238,7 @@ import ChatMarvChatStrip from '~/components/app/chat/ChatMarvChatStrip.vue'
 import { useChatPage } from '~/composables/pages/chat/useChatPage'
 import type { FollowListUser } from '~/types/api'
 
-const props = withDefaults(defineProps<{ embedded?: boolean; fullPage?: boolean; conversationId?: string | null; jumpMessageId?: string | null; initialRecipients?: FollowListUser[]; openMarv?: boolean; listOnly?: boolean; visible?: boolean; focused?: boolean }>(), { visible: true, focused: true, conversationId: null, jumpMessageId: null, initialRecipients: () => [] })
+const props = withDefaults(defineProps<{ embedded?: boolean; fullPage?: boolean; conversationId?: string | null; jumpMessageId?: string | null; initialRecipients?: FollowListUser[]; openMarv?: boolean; listOnly?: boolean; visible?: boolean; focused?: boolean; focusRequest?: number }>(), { visible: true, focused: true, focusRequest: 0, conversationId: null, jumpMessageId: null, initialRecipients: () => [] })
 const emit = defineEmits<{ select: [id: string, jumpMessageId?: string]; draft: [recipients: FollowListUser[]]; state: [state: { conversationId: string | null; atBottom: boolean; title: string; dockable: boolean; marv: boolean }] }>()
 
 const isNarrowFullPage = useHydratedMediaQuery('(max-width: 1023px)')
@@ -356,6 +357,16 @@ const {
   onConversationRowPresenceVisible,
 } = chat
 defineExpose({ chat })
+
+// Explicit activations can arrive before data/composer mount. Focus once ready,
+// and repeat for another activation of the same mounted conversation.
+let handledFocusRequest = 0
+watch([composerBarRef, () => props.focusRequest, () => props.visible], () => {
+  if (props.embedded && !props.listOnly && props.visible && props.focused && props.focusRequest > handledFocusRequest && composerBarRef.value) {
+    handledFocusRequest = props.focusRequest
+    composerBarRef.value.focus()
+  }
+}, { flush: 'post' })
 
 onMounted(() => { if (!props.embedded && useRoute().query.new === '1') openNewDialog() })
 watch(() => props.jumpMessageId, messageId => {

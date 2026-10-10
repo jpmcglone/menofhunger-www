@@ -45,6 +45,8 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
 
   runtimeConfig: {
+    // Play App Signing production certificates only. Empty disables Android App Links.
+    androidAppSha256Fingerprints: process.env.NUXT_ANDROID_APP_SHA256_FINGERPRINTS || '',
     // Server-side base URL for calling the API during SSR.
     // Point this at the *versioned* API root (all product routes live under /v1).
     // Useful when the web server runs in a container/VM where `localhost` differs from the browser.
@@ -440,6 +442,7 @@ export default defineNuxtConfig({
     '/map': { ssr: true, headers: { 'cache-control': 'no-store' } },
     '/new-posts': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
     '/settings': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/browser-call': { headers: { 'X-Robots-Tag': 'noindex, nofollow', 'cache-control': 'no-store' } },
     '/settings/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/coins': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
     '/coins/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },

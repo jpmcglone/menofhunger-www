@@ -1,5 +1,5 @@
 export default defineNuxtPlugin(() => {
-  const colorMode = useColorMode()
+  const { cycleTheme } = useThemeCycle()
 
   const isEditableTarget = (t: EventTarget | null) => {
     const el = t as HTMLElement | null
@@ -10,14 +10,6 @@ export default defineNuxtPlugin(() => {
     return false
   }
 
-  const getPref = () => (colorMode.preference || 'system') as 'system' | 'dark' | 'light'
-  const nextPref = (p: 'system' | 'dark' | 'light'): 'system' | 'dark' | 'light' => {
-    // Cycle order: system → dark → light → system
-    if (p === 'system') return 'dark'
-    if (p === 'dark') return 'light'
-    return 'system'
-  }
-
   const onKeydown = (e: KeyboardEvent) => {
     // Shortcut: Cmd/Ctrl + Shift + .
     // Use `code` so it works even when shift changes the printed key (e.g. '>' vs '.').
@@ -26,7 +18,7 @@ export default defineNuxtPlugin(() => {
     if (isEditableTarget(e.target)) return
 
     e.preventDefault()
-    colorMode.preference = nextPref(getPref())
+    cycleTheme()
   }
 
   if (import.meta.client) {
