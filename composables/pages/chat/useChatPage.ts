@@ -15,8 +15,21 @@ import { useChatPageLifecycle } from './useChatPageLifecycle'
 /**
  * Script state for `/chat`.
  */
-export function useChatPage() {
-  const state = useChatPageState()
+export interface ChatSurfaceOptions {
+  embedded?: boolean
+  conversationId?: string | null
+  openMarv?: boolean
+  listOnly?: boolean
+  jumpMessageId?: Ref<string | null>
+  visible?: Ref<boolean>
+  focused?: Ref<boolean>
+  initialRecipients?: FollowListUser[]
+  pickConversation?: (id: string) => void
+  pickDraft?: (recipients: FollowListUser[]) => void
+}
+
+export function useChatPage(options: ChatSurfaceOptions = {}) {
+  const state = useChatPageState(options)
   const view = useChatPageView(state)
   const lifecycle = useChatPageLifecycle({ ...state, ...view })
   return { ...state, ...view, ...lifecycle }
@@ -26,8 +39,8 @@ export function useChatPage() {
  * Chat access, boot fade, realtime interest, conversations, calls, the open thread,
  * typing, and route sync.
  */
-export function useChatPageState() {
-  usePageSeo({
+export function useChatPageState(options: ChatSurfaceOptions = {}) {
+  if (!options.embedded) usePageSeo({
     title: 'Chat',
     description: 'Chat in Men of Hunger — keep conversations focused and intentional.',
     canonicalPath: '/chat',
@@ -82,7 +95,10 @@ export function useChatPageState() {
     suppressMessageUnreadBumpsForMs,
     isSocketConnected,
   } = usePresence()
-  const emitMessagesScreen = useChatScreenPresence(emitRawMessagesScreen)
+  const isViewingSurface = computed(() => (options.visible?.value ?? true) && (options.focused?.value ?? true))
+  const isLatestWindow = ref(false)
+  // The desktop shell owns the single screen-presence publisher for its surfaces.
+  const emitMessagesScreen = options.embedded ? () => {} : useChatScreenPresence(emitRawMessagesScreen)
   const { toneClass } = useMessagesBadge()
   const badgeToneClass = computed(() => toneClass.value)
   const marv = useMarv()
@@ -90,7 +106,7 @@ export function useChatPageState() {
   // ─── Selection refs (shared across the chat composables) ─────────────────────
 
   // Seed selection from URL so refresh doesn't "pop" the chat pane in after mount.
-  const selectedConversationId = ref<string | null>(typeof route.query.c === 'string' ? route.query.c : null)
+  const selectedConversationId = ref<string | null>(options.embedded ? options.conversationId ?? null : typeof route.query.c === 'string' ? route.query.c : null)
   // Two-pane layout key: either a real conversation id, 'draft' for a not-yet-created chat, or null.
   const selectedChatKey = ref<string | null>(selectedConversationId.value)
   const isDraftChat = computed(() => selectedChatKey.value === 'draft')
@@ -134,6 +150,8 @@ export function useChatPageState() {
     marv,
     selectedConversationId,
     atBottom,
+    isViewing: isViewingSurface,
+    isLatestWindow,
   })
 
   const {
@@ -293,6 +311,16 @@ export function useChatPageState() {
     handleEdit,
     handleScrollToReply,
   } = thread
+  watch([messagesNewerCursor, thread.readReady, messagesPaneState, renderedChatKey, selectedChatKey], () => {
+    const canRead = () => !messagesNewerCursor.value && thread.readReady.value && messagesPaneState.value === 'ready' && renderedChatKey.value === selectedChatKey.value
+    if (!canRead()) {
+      isLatestWindow.value = false
+      return
+    }
+    // The initial fade mounts the pane later than the request's nextTick. Wait for
+    // that render as well, and recheck a switch or catch-up before publishing read.
+    void nextTick(() => { if (canRead()) isLatestWindow.value = true })
+  }, { immediate: true, flush: 'sync' })
 
   // ─── Typing indicators (via useChatTyping) ───────────────────────────────────
 
@@ -334,6 +362,7 @@ export function useChatPageState() {
   // ─── URL ↔ selection sync (via useChatRouteSync) ─────────────────────────────
 
   const routeSync = useChatRouteSync({
+    embedded: options.embedded,
     selectedConversationId,
     selectedChatKey,
     draftRecipients,
@@ -353,6 +382,9 @@ export function useChatPageState() {
   })
 
   return {
+    surfaceOptions: options,
+    isViewingSurface,
+    isLatestWindow,
     apiFetch,
     apiFetchData,
     route,

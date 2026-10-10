@@ -5,7 +5,7 @@ import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-
 import type { NotificationsContext } from './useNotificationsState'
 
 /** Presentation helpers for notification rows: actor, tier classes, icons, titles, times and links. */
-export function useNotificationDisplay(c: NotificationsContext) {
+export function useNotificationDisplay(c: Pick<NotificationsContext, 'me' | 'usersStore'>) {
   const {
     me,
     usersStore,

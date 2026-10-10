@@ -2,7 +2,7 @@ import type { Notification, NotificationFeedItem, NotificationGroup } from '~/ty
 import type { NotificationsContext } from './useNotificationsState'
 
 /** Click-through destinations for notification rows, groups and feed items. */
-export function useNotificationLinks(c: NotificationsContext) {
+export function useNotificationLinks(c: Pick<NotificationsContext, 'me'>) {
   const { me } = c
 
   function rowHref(n: Notification): string | null {

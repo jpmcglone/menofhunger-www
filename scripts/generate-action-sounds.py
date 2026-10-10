@@ -31,7 +31,7 @@ def tone(t, frequency, length, gain=1, start=0, decay=15):
     )
 
 
-def render(name, length, sample, peak=0.32):
+def render(name, length, sample, peak=0.32, prefix="action-"):
     data = [sample(i / RATE) for i in range(round(length * RATE))]
     # Remove DC, taper both ends, then normalize to a deliberately quiet peak.
     mean = sum(data) / len(data)
@@ -39,7 +39,7 @@ def render(name, length, sample, peak=0.32):
             for i, v in enumerate(data)]
     scale = peak / max(abs(v) for v in data)
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    with wave.open(str(OUTPUT / f"action-{name}.wav"), "wb") as out:
+    with wave.open(str(OUTPUT / f"{prefix}{name}.wav"), "wb") as out:
         out.setparams((1, 2, RATE, len(data), "NONE", "not compressed"))
         out.writeframes(b"".join(struct.pack("<h", round(v * scale * 32767)) for v in data))
 
@@ -69,3 +69,25 @@ def swish(t):
 
 
 render("feed-reveal", .18, swish, .18)
+
+# Alert family: a round major third for the group feed; a lower, slower fifth for Board.
+render("group-activity", .38, lambda t: tone(t, 523.25, .25, .8, decay=13)
+       + tone(t, 659.25, .30, .6, start=.08, decay=12), .28, prefix="")
+render("board-activity", .44, lambda t: tone(t, 293.66, .32, .8, decay=10)
+       + tone(t, 440, .32, .6, start=.12, decay=11), .28, prefix="")
+
+# Shared dock and presence assets replace client-specific runtime synthesis.
+# Preserve the existing frequencies, timings, and gains; all clips have faded endpoints.
+def motif(name, notes):
+    length = max(start + duration for _, start, duration in notes)
+    render(name, length, lambda t: sum(
+        tone(t, frequency, duration, start=start, decay=9.2 / duration)
+        for frequency, start, duration in notes), .32, prefix="")
+
+motif("chat-open", [(523.25, 0, .12), (659.25, .055, .17)])
+motif("chat-minimize", [(440, 0, .12), (329.63, .06, .17)])
+motif("chat-close", [(392, 0, .16), (261.63, .07, .17)])
+motif("presence-join", [(523.25, 0, .32), (659.25, .09, .32), (783.99, .18, .5)])
+motif("presence-online", [(659.25, 0, .22), (880, .1, .34)])
+motif("presence-offline", [(440, 0, .24), (329.63, .12, .4)])
+motif("presence-follow", [(783.99, 0, .2), (1046.5, .1, .42)])

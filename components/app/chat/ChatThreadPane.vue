@@ -1,5 +1,9 @@
 <template>
   <div class="relative flex-1 min-h-0 flex flex-col">
+    <div v-if="loadError" role="alert" class="flex items-center justify-between gap-3 border-b moh-border px-4 py-3 text-sm moh-text-muted">
+      <span>{{ loadError }}</span>
+      <button type="button" class="min-h-11 shrink-0 rounded-lg px-3 font-semibold moh-text moh-surface-hover" :disabled="messagesLoading" @click="emit('retry')">Retry</button>
+    </div>
     <div
       v-if="renderedChatKey"
       :key="renderedChatKey"
@@ -9,6 +13,7 @@
       @scroll="emit('scroll')"
     >
       <ChatMessageList
+        v-if="!loadError || messagesCount > 0"
         ref="chatMessageListRef"
         :scroller-element="scrollerEl"
         :at-bottom="atBottom"
@@ -100,6 +105,7 @@ defineProps<{
   fadeMs: number
   messagesReady: boolean
   messagesLoading: boolean
+  loadError?: string | null
   messagesNextCursor: string | null
   messagesNewerCursor: string | null
   loadingOlder: boolean
@@ -134,6 +140,7 @@ const emit = defineEmits<{
   scroll: []
   loadOlder: []
   loadNewer: []
+  retry: []
   react: [message: Message, reactionId: string]
   reply: [message: Message]
   info: [message: Message]

@@ -1,4 +1,5 @@
-import { isRecord } from '~/utils/primitives'
+import { useChatConversationMetadata } from '../chat/useChatConversationMetadata'
+import { registerPresenceSoundHandlers } from './registerPresenceSoundHandlers'
 import type { Socket } from 'socket.io-client'
 import { suppressSoundsFor } from '~/utils/sound-policy'
 
@@ -7,16 +8,6 @@ const NOTIFICATIONS_UNREAD_COMMENT_COUNT_KEY = 'notifications-unread-comment-cou
 const MESSAGES_UNREAD_COUNTS_KEY = 'messages-unread-counts'
 const GROUPS_UNREAD_KEY = 'groups-unread'
 const NOTIFICATIONS_NAV_UNREAD_KEY = 'notifications-nav-unread'
-
-function getSenderIdFromMessageNewPayload(payload: unknown): string | null {
-  if (!isRecord(payload)) return null
-  const message = payload.message
-  if (!isRecord(message)) return null
-  const sender = message.sender
-  if (!isRecord(sender)) return null
-  const id = sender.id
-  return typeof id === 'string' ? id : null
-}
 
 /**
  * Badge counts (notification bell, "waiting on you" dot, message unread) and
@@ -54,11 +45,15 @@ export function usePresenceBadges() {
   const { user } = useAuth()
 
   const sounds = useSoundPolicy()
+  const metadata = useChatConversationMetadata()
+  const { acceptedConversationIds, mutedConversationIds, soundIdentity: conversationSoundViewer } = metadata
+  const chatActive = useState('messages-screen-active', () => false)
+  const viewingConversation = useState<string | null>('messages-screen-conversation-id', () => null)
 
   /** Called from the socket 'connect' handler: mute dings during backlog sync, preload sounds. */
   function onSocketConnected() {
     suppressSoundsFor(1500)
-    sounds.preload(['notification', 'message', 'channel-message', 'channel-mention'])
+    sounds.preload(['notification', 'group-activity', 'board-activity', 'message', 'channel-message', 'channel-mention'])
   }
 
   function suppressMessageUnreadBumpsForMs(ms: number) {
@@ -113,15 +108,6 @@ export function usePresenceBadges() {
       notificationUndeliveredCount.value = Math.max(0, Math.floor(raw))
     })
 
-    socket.on('notifications:new', (data: { silent?: boolean }) => {
-      // Silent events only repaint a row the viewer has already seen (e.g. a status
-      // reworded in place) — no arrival to announce.
-      if (data?.silent) return
-      // Play sound for realtime arrivals, even if viewer is on /notifications.
-      // (Count updates can be suppressed if the page marks delivered immediately.)
-      sounds.play('notification')
-    })
-
     socket.on('notifications:waitingCountChanged', (data: { unreadCommentCount?: number }) => {
       const raw = typeof data?.unreadCommentCount === 'number' ? data.unreadCommentCount : 0
       notificationUnreadCommentCount.value = Math.max(0, Math.floor(raw))
@@ -154,14 +140,16 @@ export function usePresenceBadges() {
       setGroupsUnread(data)
     })
 
-    socket.on('messages:new', (data: { conversationId?: string; message?: unknown }) => {
-      // Play sound only for realtime deliveries (not initial unread count sync).
-      // Avoid playing for your own sent message when sender id is present.
-      const meId = user.value?.id ?? null
-      const senderId = getSenderIdFromMessageNewPayload(data)
-      if (!meId || !senderId || senderId !== meId) {
-        sounds.play('message')
-      }
+    registerPresenceSoundHandlers(socket, {
+      viewerID: () => user.value?.id ?? null,
+      conversationPreferences: () => ({
+        viewerID: conversationSoundViewer.value,
+        acceptedIDs: acceptedConversationIds.value,
+        mutedIDs: mutedConversationIds.value,
+      }),
+      viewingConversationID: () => chatActive.value ? viewingConversation.value : null,
+      ensureConversation: metadata.ensureConversation,
+      play: sounds.play,
     })
   }
 

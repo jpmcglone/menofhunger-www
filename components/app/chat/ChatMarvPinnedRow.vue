@@ -8,7 +8,7 @@
     :to="conversationPath"
     class="block w-full text-left"
     :data-testid="dataTestid"
-    @click="onClick"
+    @click.capture="onClick"
   >
     <div
       :class="[
@@ -136,6 +136,8 @@ const props = defineProps({
   isSelected: { type: Boolean, default: false },
   /** When the viewer already has a marv conversation, this is its id. */
   conversationId: { type: [String, null] as PropType<string | null>, default: null },
+  /** Allow the desktop inbox to open a new Marv draft in its shared surface. */
+  selectNew: { type: Boolean, default: false },
   /** Number of unread messages from Marv. */
   unreadCount: { type: Number, default: 0 },
   /** Last message body for the preview line. */
@@ -195,9 +197,9 @@ const creditsLabel = computed(() => {
 
 function onClick(event: MouseEvent) {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
-  if (props.conversationId) {
+  if (props.conversationId || props.selectNew) {
     event.preventDefault()
-    emit('select', props.conversationId)
+    emit('select', props.conversationId ?? 'marv')
   }
 }
 </script>

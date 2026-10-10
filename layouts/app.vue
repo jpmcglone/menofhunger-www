@@ -155,6 +155,10 @@
       @open="openComposerForCurrentRoute()"
     />
 
+    <ClientOnly>
+      <ChatDesktopDock v-if="dockUser?.id && !isPageAccount" :key="dockAccountId" />
+    </ClientOnly>
+
     <!-- Composer modal + post-checkin share dialog. -->
     <AppLayoutComposerModalOverlay :composer="composer" />
 
@@ -187,6 +191,7 @@ import AppLayoutEmailUnverifiedBanner from '~/components/app/layout/EmailUnverif
 import AppLayoutComposerModalOverlay from '~/components/app/layout/ComposerModalOverlay.vue'
 import AppLayoutLeftRail from '~/components/app/layout/LeftRail.vue'
 import AppLayoutRightRail from '~/components/app/layout/RightRail.vue'
+import ChatDesktopDock from '~/components/app/chat/ChatDesktopDock.vue'
 
 const route = useRoute()
 const colorMode = useColorMode()
@@ -197,7 +202,8 @@ const safariThemeColor = computed(() => (colorMode.value === 'dark' ? '#0F1113' 
 useHead({
   meta: [{ key: 'moh-theme-color', name: 'theme-color', content: safariThemeColor }],
 })
-const { initAuth, isPageAccount } = useAuth()
+const { initAuth, isPageAccount, user: dockUser } = useAuth()
+const dockAccountId = computed(() => dockUser.value?.id ?? 'guest')
 const personOnlyBlockedFeature = computed(() =>
   isPageAccount.value ? personOnlyFeatureForPath(route.path) : null,
 )

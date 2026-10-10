@@ -5,6 +5,7 @@ import type { AuthUser } from '~/composables/useAuth'
 import { useChatConversationPresentation, type MessageConversationWithTone, type MessageTone } from './useChatConversationPresentation'
 import { useChatConversationSearch } from './useChatConversationSearch'
 import { useChatMarvRows } from './useChatMarvRows'
+import { useChatConversationMetadata } from './useChatConversationMetadata'
 
 export type { MessageTone, MessageConversationWithTone }
 
@@ -14,6 +15,9 @@ export interface UseChatConversationsOptions {
   selectedConversationId: Ref<string | null>
   /** From useChatScroll — whether the open thread is pinned to the bottom. */
   atBottom: Ref<boolean>
+  isViewing?: Ref<boolean>
+  /** False when viewing historical messages with a newer page still missing. */
+  isLatestWindow?: Ref<boolean>
 }
 
 /**
@@ -33,6 +37,16 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   const presentation = useChatConversationPresentation(me)
   const { getMessageTier } = presentation
   const search = useChatConversationSearch()
+  let disposed = false
+
+  const metadata = useChatConversationMetadata(me)
+  function syncConversationPreferences(conversation: MessageConversation) {
+    if (!disposed) metadata.sync(conversation)
+  }
+
+  const seenMessageIds = new Set<string>()
+  let refreshPromise: Promise<void> | null = null
+  let refreshAgain = false
 
   const activeTab = ref<'primary' | 'requests'>('primary')
 
@@ -82,6 +96,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   // ─── Fetching ────────────────────────────────────────────────────────────────
 
   async function fetchConversations(tab: 'primary' | 'requests', fetchOpts?: { cursor?: string | null; forceRefresh?: boolean }) {
+    const identity = me.value?.id
     const cursor = fetchOpts?.cursor ?? null
     const forceRefresh = fetchOpts?.forceRefresh ?? false
     if (!forceRefresh && !cursor && conversations.value[tab].length > 0) return
@@ -91,7 +106,9 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
       const res = await apiFetch<MessageConversationWithTone[]>('/messages/conversations', {
         query: { tab, cursor: cursor || undefined },
       })
+      if (disposed || identity !== me.value?.id) return
       const list = res.data ?? []
+      for (const conversation of list) syncConversationPreferences(conversation)
       // shallowRef won't trigger on `.value.primary = ...` — reassign the whole
       // wrapper to a fresh object instead, which IS a `.value` write.
       conversations.value = {
@@ -119,15 +136,22 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   }
 
   async function refreshAllConversationTabs() {
-    await Promise.all([
-      fetchConversations('primary', { forceRefresh: true }),
-      fetchConversations('requests', { forceRefresh: true }),
-    ])
-    // If the user is on the primary tab with nothing in it but requests has conversations,
-    // auto-switch so inbound chat requests don't silently pile up out of view.
-    if (activeTab.value === 'primary' && conversations.value.primary.length === 0 && conversations.value.requests.length > 0) {
-      activeTab.value = 'requests'
-    }
+    if (refreshPromise) { refreshAgain = true; return refreshPromise }
+    refreshPromise = (async () => {
+      do {
+        refreshAgain = false
+        await Promise.all([
+          fetchConversations('primary', { forceRefresh: true }),
+          fetchConversations('requests', { forceRefresh: true }),
+        ])
+      } while (refreshAgain && !disposed)
+      // If the user is on the primary tab with nothing in it but requests has conversations,
+      // auto-switch so inbound chat requests don't silently pile up out of view.
+      if (!disposed && activeTab.value === 'primary' && conversations.value.primary.length === 0 && conversations.value.requests.length > 0) {
+        activeTab.value = 'requests'
+      }
+    })()
+    try { await refreshPromise } finally { refreshPromise = null }
   }
 
   function setTab(tab: 'primary' | 'requests') {
@@ -156,25 +180,30 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
     patchOpts?: { moveToTop?: boolean },
   ): boolean {
     let found = false
+    let changed = false
     for (const tab of ['primary', 'requests'] as const) {
       const arr = conversations.value[tab]
       const idx = arr.findIndex((c) => c.id === conversationId)
       if (idx === -1) continue
+      found = true
       const updated = updater(arr[idx]!)
+      syncConversationPreferences(updated)
       if (patchOpts?.moveToTop && idx !== 0) {
         arr.splice(idx, 1)
         arr.unshift(updated)
-      } else {
+        changed = true
+      } else if (updated !== arr[idx]) {
         arr[idx] = updated
+        changed = true
       }
-      found = true
     }
     // shallowRef won't see in-place array mutations; trigger explicitly.
-    if (found) commitConversations()
+    if (changed) commitConversations()
     return found
   }
 
   function removeConversationFromList(conversationId: string) {
+    metadata.remove(conversationId)
     let removed = false
     for (const tab of ['primary', 'requests'] as const) {
       const idx = conversations.value[tab].findIndex((c) => c.id === conversationId)
@@ -187,12 +216,12 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   }
 
   function updateConversationParticipantRead(conversationId: string, userId: string, lastReadAt: string) {
-    patchConversation(conversationId, (c) => ({
+    patchConversation(conversationId, (c) => c.participants.some(p => p.user.id === userId && p.lastReadAt !== lastReadAt) ? ({
       ...c,
       participants: c.participants.map((p) =>
         p.user.id === userId ? { ...p, lastReadAt } : p,
       ),
-    }))
+    }) : c)
   }
 
   function updateConversationIsBlockedWith(conversationId: string, isBlockedWith: boolean) {
@@ -201,6 +230,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
 
   /** Merge a freshly fetched conversation (participants + lastReadAt) into the list. */
   function mergeConversation(conversation: MessageConversation) {
+    syncConversationPreferences(conversation)
     const found = patchConversation(conversation.id, (c) => ({
       ...c,
       ...conversation,
@@ -214,7 +244,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   }
 
   function updateConversationUnread(conversationId: string, unreadCount: number) {
-    patchConversation(conversationId, (c) => ({
+    patchConversation(conversationId, (c) => c.unreadCount === unreadCount && (unreadCount > 0 || c.unreadTone === undefined) ? c : ({
       ...c,
       unreadCount,
       // Clear the unread tone when the conversation is marked read.
@@ -223,10 +253,13 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   }
 
   function updateConversationForMessage(message: Message): void {
+    if (seenMessageIds.has(message.id)) return
+    seenMessageIds.add(message.id)
+    if (seenMessageIds.size > 256) seenMessageIds.delete(seenMessageIds.values().next().value!)
     const unreadInc = message.sender.id === me.value?.id ? 0 : 1
     const incomingTier = getMessageTier(message)
     const found = patchConversation(message.conversationId, (existing) => {
-      const isSelectedConversation = selectedConversationId.value === message.conversationId
+      const isSelectedConversation = selectedConversationId.value === message.conversationId && (opts.isViewing?.value ?? true) && (opts.isLatestWindow?.value ?? true) && (typeof document === 'undefined' || (document.visibilityState === 'visible' && document.hasFocus()))
       const isUnreadIncoming = unreadInc === 1 && (!isSelectedConversation || !atBottom.value)
       let nextUnreadCount = existing.unreadCount
       if (isSelectedConversation) {
@@ -267,7 +300,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
 
   function markConversationReadIfVisible(conversationId: string) {
     const id = (conversationId ?? '').trim()
-    if (!id) return
+    if (disposed || !id || !atBottom.value || !(opts.isViewing?.value ?? true) || !(opts.isLatestWindow?.value ?? true)) return
     if (typeof document === 'undefined' || document.visibilityState !== 'visible' || !document.hasFocus()) return
 
     // Always patch the local count to zero — cheap and keeps the badge in sync.
@@ -293,6 +326,7 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
   }
 
   async function toggleMuteConversation() {
+    const identity = me.value?.id
     const convo = selectedConversation.value
     if (!convo) return
     const newMuted = !convo.isMuted
@@ -303,12 +337,14 @@ export function useChatConversations(opts: UseChatConversationsOptions) {
         method: newMuted ? 'POST' : 'DELETE',
       })
     } catch {
+      if (disposed || identity !== me.value?.id) return
       // Revert on failure
       patchConversation(convo.id, (c) => ({ ...c, isMuted: !newMuted }))
     }
   }
 
   function teardown() {
+    disposed = true
     search.teardown()
   }
 

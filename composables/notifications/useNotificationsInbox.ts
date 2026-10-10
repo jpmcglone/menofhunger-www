@@ -2,10 +2,10 @@ import type { GetNotificationsResponse, NotificationFeedItem, NotificationKind }
 import { getApiErrorMessage } from '~/utils/api-error'
 import {
   closeAllBrowserNotifications,
-  closeBrowserNotificationsForIds,
   closeBrowserNotificationsForSubject,
 } from '~/utils/browser-notifications'
 import type { NotificationsContext } from './useNotificationsState'
+import { markNotificationReadById } from './notificationReadMutation'
 
 /** Inbox fetch, kind filter, and read/delivered/lock-screen mutations. */
 export function useNotificationsInbox(c: NotificationsContext) {
@@ -170,9 +170,7 @@ export function useNotificationsInbox(c: NotificationsContext) {
    * gives the originating tab immediate visual feedback).
    */
   async function markReadById(id: string) {
-    if (!id) return
-    await apiFetch(`/notifications/${encodeURIComponent(id)}/mark-read`, { method: 'POST' })
-    closeBrowserNotificationsForIds([id])
+    await markNotificationReadById(apiFetch, id)
   }
 
   async function markAllRead() {

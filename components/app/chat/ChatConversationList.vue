@@ -123,7 +123,7 @@
         :ref="bindPresenceRow(c)"
         :to="conversationPath(c.id)"
         class="block w-full text-left"
-        @click="onConversationClick(c, $event)"
+        @click.capture="onConversationClick(c, $event)"
       >
         <div
           :class="[
@@ -276,13 +276,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits<{
-  (e: 'select', id: string): void
+  (e: 'select' | 'search-query', id: string): void
   (e: 'select-to-message', conversationId: string, messageId: string): void
   (e: 'set-tab', tab: 'primary' | 'requests'): void
-  (e: 'open-new'): void
-  (e: 'open-blocks'): void
-  (e: 'load-more'): void
-  (e: 'search-query', q: string): void
+  (e: 'open-new' | 'open-blocks' | 'load-more'): void
   /** Fires whenever a direct conversation row enters/leaves the viewport.
    *  Parent uses this to scope presence subscriptions to visible rows only,
    *  instead of subscribing to every direct partner in the list eagerly. */

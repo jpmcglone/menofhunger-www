@@ -4,7 +4,22 @@ import type {
   MarvinUpdatePreferencesBodyDto,
   MarvCreditsUpdatedPayloadDto,
 } from '~/types/api'
-import type { MarvCallback } from '~/composables/usePresence'
+import { usePresence, type MarvCallback } from '~/composables/usePresence'
+import { useAuth } from '~/composables/useAuth'
+import { useApiClient } from '~/composables/useApiClient'
+import { getAuthGeneration } from '~/composables/auth/authState'
+
+type MarvRuntime = {
+  owners: Set<symbol>
+  callback: MarvCallback | null
+  remove: (() => void) | null
+  request: Promise<MarvinMeDto | null> | null
+  epoch: number
+  preferencesRevision: number
+  creditsRevision: number
+}
+// Runtime callbacks/promises stay outside serializable state, scoped to the Nuxt app.
+const runtimes = new WeakMap<object, MarvRuntime>()
 
 /**
  * Singleton-ish composable for the viewer's Marv state.
@@ -31,7 +46,30 @@ export function useMarv() {
   const loading = useState<boolean>(`${stateKey}:loading`, () => false)
   const error = useState<string | null>(`${stateKey}:error`, () => null)
   const hasFetched = useState<boolean>(`${stateKey}:hasFetched`, () => false)
-  const subscribedRef = useState<boolean>(`${stateKey}:subscribed`, () => false)
+  const viewerId = useState<string | null>(`${stateKey}:viewer-id`, () => null)
+  const app = useNuxtApp()
+  let runtime = runtimes.get(app)
+  if (!runtime) {
+    runtime = { owners: new Set(), callback: null, remove: null, request: null, epoch: 0, preferencesRevision: 0, creditsRevision: 0 }
+    runtimes.set(app, runtime)
+  }
+  const shared = runtime
+  const owner = Symbol('marv-consumer')
+  function syncIdentity() {
+    const identity = me.value?.id ?? null
+    if (viewerId.value === identity) return
+    viewerId.value = identity
+    shared.epoch += 1
+    shared.request = null
+    shared.preferencesRevision += 1
+    shared.creditsRevision += 1
+    me$.value = null
+    hasFetched.value = false
+    loading.value = false
+    error.value = null
+  }
+  syncIdentity()
+  watch(() => me.value?.id, syncIdentity, { flush: 'sync' })
 
   const enabled = computed(() => Boolean(me$.value?.enabled))
   const isPremium = computed(() => Boolean(me$.value?.isPremium))
@@ -50,24 +88,39 @@ export function useMarv() {
   const isAvailable = computed(() => enabled.value && isPremium.value && Boolean(marvUserId.value))
 
   async function fetchMe(opts: { forceRefresh?: boolean } = {}): Promise<MarvinMeDto | null> {
-    if (!me.value?.id) {
-      me$.value = null
-      return null
-    }
+    syncIdentity()
+    const identity = me.value?.id
+    if (!identity) return null
+    if (shared.request) return shared.request
     if (!opts.forceRefresh && hasFetched.value && me$.value) return me$.value
+    const epoch = shared.epoch
+    const authGeneration = getAuthGeneration()
+    const creditRevision = shared.creditsRevision
+    const preferencesRevision = shared.preferencesRevision
+    const current = () => me.value?.id === identity && shared.epoch === epoch && getAuthGeneration() === authGeneration
     loading.value = true
     error.value = null
-    try {
-      const data = await apiFetchData<MarvinMeDto>('/marvin/me')
-      me$.value = data
-      hasFetched.value = true
-      return data
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to load Marv'
-      return null
-    } finally {
-      loading.value = false
-    }
+    const request = (async () => {
+      try {
+        const data = await apiFetchData<MarvinMeDto>('/marvin/me')
+        if (!current()) return null
+        // A socket credit update or mode selection made during the fetch wins.
+        me$.value = {
+          ...data,
+          ...(shared.creditsRevision !== creditRevision && me$.value ? { credits: me$.value.credits } : {}),
+          ...(shared.preferencesRevision !== preferencesRevision && me$.value ? { preferredMode: me$.value.preferredMode } : {}),
+        }
+        hasFetched.value = true
+        return me$.value
+      } catch (err) {
+        if (current()) error.value = err instanceof Error ? err.message : 'Failed to load Marv'
+        return null
+      } finally {
+        if (current()) { loading.value = false; shared.request = null }
+      }
+    })()
+    shared.request = request
+    return request
   }
 
   async function ensureLoaded(): Promise<MarvinMeDto | null> {
@@ -79,12 +132,16 @@ export function useMarv() {
    * on failure restores the previous value and surfaces the error.
    */
   async function setPreferredMode(mode: MarvinModeDto): Promise<void> {
-    const current = me$.value
-    if (!current) {
-      await ensureLoaded()
-    }
-    const prev = me$.value?.preferredMode ?? 'auto'
-    if (me$.value && prev === mode) return
+    const identity = me.value?.id
+    const epoch = shared.epoch
+    const authGeneration = getAuthGeneration()
+    const validIdentity = () => Boolean(identity) && me.value?.id === identity && shared.epoch === epoch && getAuthGeneration() === authGeneration
+    if (!me$.value) await ensureLoaded()
+    if (!validIdentity() || !me$.value) return
+    const prev = me$.value.preferredMode
+    if (prev === mode) return
+    const revision = ++shared.preferencesRevision
+    const creditRevision = shared.creditsRevision
     if (me$.value) me$.value = { ...me$.value, preferredMode: mode }
     try {
       const body: MarvinUpdatePreferencesBodyDto = { preferredMode: mode }
@@ -92,8 +149,11 @@ export function useMarv() {
         method: 'PATCH',
         body,
       })
-      if (res?.data) me$.value = res.data
+      if (res?.data && validIdentity() && shared.preferencesRevision === revision) {
+        me$.value = { ...res.data, ...(creditRevision !== shared.creditsRevision && me$.value ? { credits: me$.value.credits } : {}) }
+      }
     } catch (err) {
+      if (!validIdentity() || shared.preferencesRevision !== revision) return
       if (me$.value) me$.value = { ...me$.value, preferredMode: prev }
       error.value = err instanceof Error ? err.message : 'Failed to update Marv preferences'
       throw err
@@ -106,7 +166,8 @@ export function useMarv() {
    * latest).
    */
   function applyCreditsUpdate(payload: MarvCreditsUpdatedPayloadDto) {
-    if (!me$.value) return
+    if (!me$.value || !me.value?.id || viewerId.value !== me.value.id) return
+    shared.creditsRevision += 1
     me$.value = {
       ...me$.value,
       credits: {
@@ -132,30 +193,24 @@ export function useMarv() {
     )
   }
 
-  let registeredCb: MarvCallback | null = null
-
   function startRealtime() {
     if (!import.meta.client) return
-    if (subscribedRef.value) return
-    const cb: MarvCallback = {
-      onCreditsUpdated: (payload) => applyCreditsUpdate(payload),
-    }
+    if (shared.owners.has(owner)) return
+    shared.owners.add(owner)
+    if (shared.callback) return
+    const cb: MarvCallback = { onCreditsUpdated: applyCreditsUpdate }
     addMarvCallback(cb)
-    registeredCb = cb
-    subscribedRef.value = true
+    shared.callback = cb
+    shared.remove = () => removeMarvCallback(cb)
   }
 
   function stopRealtime() {
-    if (!import.meta.client) return
-    if (!subscribedRef.value || !registeredCb) {
-      subscribedRef.value = false
-      registeredCb = null
-      return
-    }
-    removeMarvCallback(registeredCb)
-    registeredCb = null
-    subscribedRef.value = false
+    if (!shared.owners.delete(owner) || shared.owners.size) return
+    shared.remove?.()
+    shared.remove = null
+    shared.callback = null
   }
+  onScopeDispose(stopRealtime)
 
   return {
     // state

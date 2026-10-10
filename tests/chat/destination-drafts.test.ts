@@ -6,7 +6,8 @@ import type { AuthUser } from '../../composables/useAuth'
 import type { ComposerMediaItem } from '../../composables/composer/types'
 import type { Message } from '../../types/api'
 
-const mocks = vi.hoisted(() => ({ api: vi.fn(), storage: new Map<string, { revision: string; value: unknown }>() }))
+const mocks = vi.hoisted(() => ({ api: vi.fn(), sound: vi.fn(), storage: new Map<string, { revision: string; value: unknown }>() }))
+vi.mock('~/composables/useSoundPolicy', () => ({ useSoundPolicy: () => ({ play: mocks.sound }) }))
 vi.mock('~/composables/useApiClient', () => ({ useApiClient: () => ({ apiFetchData: (...args: unknown[]) => mocks.api(...args), apiFetch: (...args: unknown[]) => mocks.api(...args) }) }))
 vi.mock('~/utils/channels/drafts', async importOriginal => ({
   ...await importOriginal<typeof import('../../utils/channels/drafts')>(),
@@ -36,7 +37,7 @@ function fixture() {
   return { me, selected, media, wrapper, get thread() { return thread } }
 }
 async function settle() { await nextTick(); await flushPromises(); await nextTick(); await flushPromises() }
-beforeEach(() => { mocks.storage.clear(); mocks.api.mockReset() })
+beforeEach(() => { mocks.storage.clear(); mocks.api.mockReset(); mocks.sound.mockReset() })
 describe('Chat destination drafts', () => {
   it('restores conversation text and attachments while isolating identities', async () => {
     const f = fixture(); await settle()
@@ -59,8 +60,26 @@ describe('Chat destination drafts', () => {
     const sending = f.thread.sendCurrentMessage(); await settle()
     f.selected.value = 'two'; await settle(); f.thread.composerText.value = 'Writing in two'; await settle()
     reject(new Error('Offline')); await sending; await settle()
+    expect(mocks.sound).not.toHaveBeenCalled()
     expect(f.thread.composerText.value).toBe('Writing in two')
     f.selected.value = 'one'; await settle(); expect(f.thread.composerText.value).toBe('Send to one')
+    f.wrapper.unmount()
+  })
+  it('plays a sent cue only after acknowledgment and invalidates it after switching', async () => {
+    const f = fixture(); await settle()
+    let resolve!: (value: unknown) => void
+    mocks.api.mockImplementation(() => new Promise(done => { resolve = done }))
+    f.thread.composerText.value = 'A message'; await settle()
+    const sending = f.thread.sendCurrentMessage(); await settle()
+    expect(mocks.sound).not.toHaveBeenCalled()
+    resolve({ message: { id: 'sent', body: 'A message', conversationId: 'one', sender: { id: 'alice' } } })
+    await sending; await settle()
+    expect(mocks.sound).toHaveBeenCalledTimes(1)
+    expect(mocks.sound.mock.calls[0]![0]).toBe('message-sent')
+    const guard = mocks.sound.mock.calls[0]![1].valid
+    expect(guard()).toBe(true)
+    f.selected.value = 'two'
+    expect(guard()).toBe(false)
     f.wrapper.unmount()
   })
   it('keeps a new-message draft separate from edit text', async () => {

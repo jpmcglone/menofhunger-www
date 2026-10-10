@@ -131,7 +131,7 @@
                   <span class="h-2.5 w-2.5 rounded-full bg-[var(--moh-online)]" />
                 </span>
                 <span class="min-w-0">
-                  <span class="block font-medium">People I follow come online</span>
+                  <span class="block font-medium">People I follow come online or go offline</span>
                   <span class="block text-xs moh-text-muted">A quiet heads-up, at most once every couple of hours per person.</span>
                 </span>
               </span>

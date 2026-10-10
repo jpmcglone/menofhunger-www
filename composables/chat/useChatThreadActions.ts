@@ -11,6 +11,7 @@ import type {
 import { redactDeletedChatMessage } from '~/utils/chat-message-deletion'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useAsyncAction } from '~/composables/useAsyncAction'
+import { useSoundPolicy } from '~/composables/useSoundPolicy'
 import type { ComposerMediaItem, CreateMediaPayload } from '~/composables/composer/types'
 import type { useDestinationComposerDraft } from '~/composables/composer/useDestinationComposerDraft'
 import type { AuthUser } from '~/composables/useAuth'
@@ -116,6 +117,7 @@ export function createChatThreadActions(ctx: ChatThreadActionsCtx) {
   } = ctx
   const scrollToMessage = ctx.scrollToMessage
   const { run } = useAsyncAction()
+  const sounds = useSoundPolicy()
   const pendingReactionMessages = new Set<string>()
 
 // ─── Sending ─────────────────────────────────────────────────────────────────
@@ -171,6 +173,7 @@ async function sendFirstMessage() {
         ...(mediaPayload.length > 0 ? { media: mediaPayload } : {}),
       },
     })
+    if (res?.conversationId) sounds.play('message-sent', { valid: () => me.value?.id === identity && (draftKey.value === key || selectedConversationId.value === res.conversationId) })
     await drafts.submitted(submitted)
     if (me.value?.id !== identity || draftKey.value !== key) return
     if (drafts.unchanged(submitted)) { composerText.value = ''; composer.clearMedia() }
@@ -256,6 +259,7 @@ async function sendMessage() {
 
     const msg = res?.message
     if (msg) {
+      sounds.play('message-sent', { valid: () => me.value?.id === my.id && selectedConversationId.value === conversationId })
       // Replace the optimistic row in-place (stable key), or append if it was already reconciled away.
       if (!mergeServerMessageIntoOptimistic(localId, msg)) {
         if (!messages.value.some((m) => m.id === msg.id)) {

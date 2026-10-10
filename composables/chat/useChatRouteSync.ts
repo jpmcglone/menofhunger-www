@@ -3,6 +3,7 @@ import type { FollowListUser, LookupMessageConversationResponse, UserPreview } f
 import { userColorTier } from '~/utils/user-tier'
 
 export interface UseChatRouteSyncOptions {
+  embedded?: boolean
   selectedConversationId: Ref<string | null>
   selectedChatKey: Ref<string | null>
   draftRecipients: Ref<FollowListUser[]>
@@ -65,13 +66,13 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
     thread.beginThreadSwitch({ jumpToMessageId: targetMsgId })
     selectedConversationId.value = id
     selectedChatKey.value = id
-    emitMessagesScreen(true, id)
+    emitMessagesScreen(false, id)
     draftRecipients.value = []
 
     const replace = selectOpts?.replace ?? false
     const currentC = typeof route.query.c === 'string' ? route.query.c : null
     const currentM = typeof route.query.m === 'string' ? route.query.m : null
-    if (currentC !== id || currentM !== targetMsgId) {
+    if (!opts.embedded && (currentC !== id || currentM !== targetMsgId)) {
       const nextQuery: Record<string, string> = { ...(route.query as Record<string, string>), c: id }
       if (targetMsgId) nextQuery.m = targetMsgId
       else delete nextQuery.m
@@ -92,10 +93,11 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
     thread.resetThread()
     selectedConversationId.value = null
     selectedChatKey.value = null
-    emitMessagesScreen(true, null)
+    emitMessagesScreen(false, null)
     if (!clearOpts?.preserveDraft) {
       draftRecipients.value = []
     }
+    if (opts.embedded) return
     const replace = clearOpts?.replace ?? false
     const q = { ...route.query } as Record<string, unknown>
     delete q.c
@@ -193,7 +195,7 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
         const nextQuery: Record<string, unknown> = { ...(route.query as Record<string, unknown>), c: conversationId }
         delete nextQuery['to']
         lastHandledToUsername.value = null
-        await router.replace({ query: nextQuery as Record<string, string> })
+        if (!opts.embedded) await router.replace({ query: nextQuery as Record<string, string> })
         await selectConversation(conversationId, { replace: true })
         return
       }
@@ -204,11 +206,11 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
       await openDraftChatWithRecipients([recipient])
       // Drop `to` so a later visit with the same `?to=` re-triggers the watcher,
       // and so boot auto-select doesn't race a leftover deep-link param.
-      if (normalizeToUsernameParam(route.query.to)) {
+      if (!opts.embedded && normalizeToUsernameParam(route.query.to)) {
         const nextQuery: Record<string, unknown> = { ...(route.query as Record<string, unknown>) }
         delete nextQuery['to']
         lastHandledToUsername.value = null
-        await router.replace({ query: nextQuery as Record<string, string> })
+        if (!opts.embedded) await router.replace({ query: nextQuery as Record<string, string> })
       }
     } catch {
       // Non-fatal: ignore
@@ -243,7 +245,7 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
   watch(
     () => route.query.c,
     () => {
-      syncSelectedFromRoute()
+      if (!opts.embedded) syncSelectedFromRoute()
     },
   )
 
@@ -251,7 +253,7 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
   watch(
     () => route.query.marv === '1',
     (isMarv) => {
-      if (!isMarv) return
+      if (opts.embedded || !isMarv) return
       void handleMarvQueryParam()
     },
   )
@@ -261,7 +263,7 @@ export function useChatRouteSync(opts: UseChatRouteSyncOptions) {
   watch(
     () => normalizeToUsernameParam(route.query.to),
     (toUsername) => {
-      if (!toUsername) return
+      if (opts.embedded || !toUsername) return
       if (toUsername === lastHandledToUsername.value) return
       lastHandledToUsername.value = toUsername
       void openChatToUsername(toUsername)

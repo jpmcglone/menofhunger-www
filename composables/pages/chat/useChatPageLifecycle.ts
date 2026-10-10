@@ -12,9 +12,14 @@ export function useChatPageLifecycle(ctx: ReturnType<typeof useChatPageState> & 
     source: () => activeList.value.length ? 'network' : 'empty',
   })
   useJourneyReady('thread_ready', () => chatBootState.value === 'ready' && messagesPaneState.value === 'ready' && !messagesLoading.value, {
+    failed: () => Boolean(thread.loadError.value),
     context: () => `${selectedChatKey.value}:${jumpTargetMessageId.value}`,
     source: () => messages.value.length ? 'network' : 'empty',
   })
+
+  let disposed = false
+  const initialIdentity = ctx.me.value?.id
+  function stillCurrent() { return !disposed && (!initialIdentity || initialIdentity === ctx.me.value?.id) }
 
   // ─── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -28,6 +33,7 @@ export function useChatPageLifecycle(ctx: ReturnType<typeof useChatPageState> & 
       // Ensure auth is loaded before checking verified status — avoids missing the early-return
       // when the auth composable hasn't resolved yet at mount time.
       try { await ensureLoaded() } catch { /* ignore */ }
+      if (!stillCurrent()) return
 
       // Marv: load the viewer's Marv state (preferences, credits, marv user id) and
       // subscribe to `marv:credits-updated` so the credits chip in the chat strip /
@@ -35,23 +41,27 @@ export function useChatPageLifecycle(ctx: ReturnType<typeof useChatPageState> & 
       // the API gates non-premium responses, and the pinned row component renders a
       // CTA in that case.
       try { await marv.ensureLoaded() } catch { /* ignore */ }
-      marv.startRealtime()
+      if (!stillCurrent()) return
+      if (!ctx.surfaceOptions.embedded || ctx.surfaceOptions.listOnly || (ctx.surfaceOptions.visible?.value ?? true)) marv.startRealtime()
 
       if (!viewerCanUseChat.value) return
 
-      registerRealtime()
-      emitMessagesScreen(true, selectedConversationId.value)
+      if (!ctx.surfaceOptions.embedded || ctx.surfaceOptions.listOnly || (ctx.surfaceOptions.visible?.value ?? true)) registerRealtime()
+      emitMessagesScreen(ctx.isViewingSurface.value && ctx.isLatestWindow.value && ctx.atBottom.value, selectedConversationId.value)
 
       // Pre-fetch allowed reactions (used by the reaction picker)
       thread.loadAvailableReactions()
 
-      await fetchConversations('primary', { forceRefresh: true }).catch(() => { /* ignore */ })
+      if (!ctx.surfaceOptions.embedded || ctx.surfaceOptions.listOnly) await fetchConversations('primary', { forceRefresh: true }).catch(() => { /* ignore */ })
+      if (!stillCurrent()) return
 
-      await routeSync.handleInitialQueryParams()
+      if (!ctx.surfaceOptions.embedded) await routeSync.handleInitialQueryParams()
+      else if (ctx.surfaceOptions.openMarv) await routeSync.openMarvChat()
+      else if (!selectedConversationId.value && ctx.surfaceOptions.initialRecipients?.length) await routeSync.openDraftChatWithRecipients(ctx.surfaceOptions.initialRecipients)
 
       if (selectedConversationId.value) {
-        try { await selectConversation(selectedConversationId.value, { replace: true }) } catch { /* ignore */ }
-      } else if (!isTinyViewport.value && !isDraftChat.value) {
+        try { await selectConversation(selectedConversationId.value, { replace: true, jumpToMessageId: ctx.surfaceOptions.jumpMessageId?.value ?? undefined }) } catch { /* ignore */ }
+      } else if (!ctx.surfaceOptions.embedded && !isTinyViewport.value && !isDraftChat.value) {
         // Desktop two-pane mode: auto-select the first non-Marv conversation so the
         // right pane is never blank. Skip when `?to=` opened a draft chat (no history
         // yet) — otherwise we'd clobber the compose-to-user pane with the most recent thread.
@@ -65,6 +75,7 @@ export function useChatPageLifecycle(ctx: ReturnType<typeof useChatPageState> & 
           try { await selectConversation(first.id, { replace: true }) } catch { /* ignore */ }
         }
       }
+      if (!stillCurrent()) return
       revealChatScreenAfterFade()
 
       // Presence subscriptions are driven by ChatConversationList's
@@ -73,7 +84,8 @@ export function useChatPageLifecycle(ctx: ReturnType<typeof useChatPageState> & 
       // (See `onConversationRowPresenceVisible`.)
 
       // Fetch requests tab after revealing so the screen appears quickly.
-      await fetchConversations('requests', { forceRefresh: true }).catch(() => { /* ignore */ })
+      if (!ctx.surfaceOptions.embedded || ctx.surfaceOptions.listOnly) await fetchConversations('requests', { forceRefresh: true }).catch(() => { /* ignore */ })
+      if (!stillCurrent()) return
 
       if (selectedConversationId.value) {
         const inPrimary = conversations.value.primary.some((c) => c.id === selectedConversationId.value)
@@ -84,11 +96,13 @@ export function useChatPageLifecycle(ctx: ReturnType<typeof useChatPageState> & 
       }
 
       // Ensure screen reveals even if everything above failed.
+      if (!stillCurrent()) return
       revealChatScreenAfterFade()
     })()
   })
 
   onBeforeUnmount(() => {
+    disposed = true
     clearChatBootTimer()
     conversationsApi.teardown()
     thread.teardown()
@@ -101,8 +115,13 @@ export function useChatPageLifecycle(ctx: ReturnType<typeof useChatPageState> & 
   })
 
   watch(isSocketConnected, (connected) => {
-    if (!viewerCanUseChat.value) return
-    if (connected && route.path === '/chat') emitMessagesScreen(true, selectedConversationId.value)
+    if (!stillCurrent() || !viewerCanUseChat.value) return
+    if (ctx.surfaceOptions.embedded && !ctx.surfaceOptions.listOnly && !(ctx.surfaceOptions.visible?.value ?? true)) return
+    if (connected && (route.path === '/chat' || ctx.surfaceOptions.embedded)) {
+      if (!ctx.surfaceOptions.embedded || ctx.surfaceOptions.listOnly) void conversationsApi.refreshAllConversationTabs().catch(() => undefined)
+      if (selectedConversationId.value && (!ctx.surfaceOptions.embedded || (ctx.surfaceOptions.visible?.value ?? true))) void thread.loadThread(selectedConversationId.value, { refresh: true }).catch(() => undefined)
+      emitMessagesScreen(ctx.isViewingSurface.value && ctx.isLatestWindow.value && ctx.atBottom.value, selectedConversationId.value)
+    }
   })
 
   watch(
@@ -111,7 +130,7 @@ export function useChatPageLifecycle(ctx: ReturnType<typeof useChatPageState> & 
       if (!import.meta.client) return
       if (!viewerCanUseChat.value) return
       // Keep focus on non-mobile layouts; when the tab bar is visible, avoid opening the keyboard.
-      if (isTabBarMode.value) return
+      if (isTabBarMode.value || ctx.surfaceOptions.embedded) return
       void nextTick(() => composerBarRef.value?.focus())
     },
     { flush: 'post' },
@@ -150,7 +169,40 @@ export function useChatPageLifecycle(ctx: ReturnType<typeof useChatPageState> & 
     { flush: 'post' },
   )
 
-  return {
-
+  if (ctx.surfaceOptions.embedded && !ctx.surfaceOptions.listOnly && ctx.surfaceOptions.visible) {
+    watch(ctx.surfaceOptions.visible, visible => {
+      if (!stillCurrent() || !viewerCanUseChat.value) return
+      if (!visible) { teardownRealtime(); marv.stopRealtime(); return }
+      registerRealtime()
+      marv.startRealtime()
+      if (!ctx.surfaceOptions.embedded || ctx.surfaceOptions.listOnly) void conversationsApi.refreshAllConversationTabs().catch(() => undefined)
+      if (selectedConversationId.value) void thread.loadThread(selectedConversationId.value, { refresh: true }).catch(() => undefined)
+    })
   }
+  function catchUpOnActivation() {
+    if (!stillCurrent() || !viewerCanUseChat.value || document.visibilityState !== 'visible' || !document.hasFocus()) return
+    if (ctx.surfaceOptions.embedded && !(ctx.surfaceOptions.visible?.value ?? true)) return
+    if (!ctx.surfaceOptions.embedded || ctx.surfaceOptions.listOnly) void conversationsApi.refreshAllConversationTabs().catch(() => undefined)
+    if (selectedConversationId.value) {
+      void thread.loadThread(selectedConversationId.value, { refresh: true }).catch(() => undefined)
+      if (ctx.isViewingSurface.value && ctx.atBottom.value) conversationsApi.markConversationReadIfVisible(selectedConversationId.value)
+    }
+  }
+  onMounted(() => {
+    window.addEventListener('focus', catchUpOnActivation)
+    document.addEventListener('visibilitychange', catchUpOnActivation)
+  })
+  onBeforeUnmount(() => {
+    window.removeEventListener('focus', catchUpOnActivation)
+    document.removeEventListener('visibilitychange', catchUpOnActivation)
+  })
+
+  watch([ctx.isViewingSurface, ctx.isLatestWindow, ctx.atBottom], ([viewing, latest, bottom]) => {
+    emitMessagesScreen(viewing && latest && bottom, selectedConversationId.value)
+    if (viewing && selectedConversationId.value && ctx.atBottom.value) {
+      conversationsApi.markConversationReadIfVisible(selectedConversationId.value)
+    }
+  }, { flush: 'sync' })
+
+  return {}
 }

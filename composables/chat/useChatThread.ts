@@ -309,6 +309,8 @@ export function useChatThread(opts: UseChatThreadOptions) {
   // ─── Thread switching / loading ──────────────────────────────────────────────
 
   const {
+    readReady,
+    loadError,
     invalidateThreadLoads,
     beginThreadSwitch,
     loadThread,
@@ -410,6 +412,7 @@ export function useChatThread(opts: UseChatThreadOptions) {
   }
 
   function teardown() {
+    resetThread()
     clearMessagesPaneTimer()
     if (jumpHighlightTimer.current) { clearTimeout(jumpHighlightTimer.current); jumpHighlightTimer.current = null }
     if (stickyRafHandle !== null) {
@@ -428,6 +431,8 @@ export function useChatThread(opts: UseChatThreadOptions) {
     messagesNextCursor,
     messagesNewerCursor,
     messagesLoading,
+    readReady,
+    loadError,
     loadingOlder,
     loadingNewer,
     jumpTargetMessageId,

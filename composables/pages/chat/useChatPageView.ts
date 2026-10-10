@@ -79,7 +79,7 @@ export function useChatPageView(ctx: ReturnType<typeof useChatPageState>) {
 
   const isTabBarMode = useHydratedMediaQuery('(max-width: 639px)')
 
-  const { isTinyViewport, showListPane, showDetailPane: showChatPane, gridStyle } = useTwoPaneLayout(selectedChatKey, {
+  const layout = useTwoPaneLayout(selectedChatKey, {
     // Cap left at 22rem but never more than 45% so the chat panel is always at least as wide.
     leftCols: 'min(22rem, 45%)',
     rightCols: '1fr',
@@ -88,6 +88,11 @@ export function useChatPageView(ctx: ReturnType<typeof useChatPageState>) {
     // Only collapse when the viewport is actually narrow.
     minHeight: 0,
   })
+
+  const isTinyViewport = computed(() => ctx.surfaceOptions.embedded || layout.isTinyViewport.value)
+  const showListPane = computed(() => ctx.surfaceOptions.listOnly || (!ctx.surfaceOptions.embedded && layout.showListPane.value))
+  const showChatPane = computed(() => !ctx.surfaceOptions.listOnly && (ctx.surfaceOptions.embedded || layout.showDetailPane.value))
+  const gridStyle = computed(() => ctx.surfaceOptions.embedded ? { gridTemplateColumns: '1fr' } : layout.gridStyle.value)
 
   // ─── Header / bubble presentation ────────────────────────────────────────────
 
@@ -193,19 +198,26 @@ export function useChatPageView(ctx: ReturnType<typeof useChatPageState>) {
       return
     }
     try {
+      const identity = me.value?.id
       const recipients = [...newDialogRecipients.value]
       newDialogVisible.value = false
       const res = await apiFetchData<LookupMessageConversationResponse['data']>('/messages/lookup', {
         method: 'POST',
         body: { user_ids: recipients.map((u) => u.id) },
       })
+      if (identity !== me.value?.id) return
       const conversationId = res?.conversationId ?? null
       if (conversationId) {
+        if (ctx.surfaceOptions.listOnly && ctx.surfaceOptions.pickConversation) {
+          ctx.surfaceOptions.pickConversation(conversationId)
+          return
+        }
         await selectConversation(conversationId, { replace: true })
         return
       }
 
-      await openDraftChatWithRecipients(recipients)
+      if (ctx.surfaceOptions.listOnly && ctx.surfaceOptions.pickDraft) ctx.surfaceOptions.pickDraft(recipients)
+      else await openDraftChatWithRecipients(recipients)
     } catch (e) {
       newConversationError.value = getApiErrorMessage(e) || 'Failed to send message.'
     }
@@ -243,6 +255,12 @@ export function useChatPageView(ctx: ReturnType<typeof useChatPageState>) {
       onNewMessage(msg, isSelected, wasAtBottom) {
         updateConversationForMessage(msg)
         if (!isSelected) return
+        // A historical window must remain contiguous. Load its explicit newer
+        // pages before adding live arrivals or marking the conversation read.
+        if (thread.messagesNewerCursor.value) {
+          setAtBottomState(false)
+          return
+        }
         const shouldStick = wasAtBottom
         setAtBottomState(shouldStick)
         const reconciled = thread.reconcileOptimisticSend(msg)
@@ -258,7 +276,7 @@ export function useChatPageView(ctx: ReturnType<typeof useChatPageState>) {
           })
         }
         const isIncoming = msg.sender.id !== me.value?.id
-        if (typeof document !== 'undefined' && document.visibilityState === 'visible' && document.hasFocus() && shouldStick) {
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible' && document.hasFocus() && shouldStick && ctx.isViewingSurface.value) {
           if (isIncoming) suppressMessageUnreadBumpsForMs(900)
           // Routes through the throttled helper: bursts of incoming messages
           // collapse to one POST per 250ms per conversation; the optimistic
@@ -314,7 +332,7 @@ export function useChatPageView(ctx: ReturnType<typeof useChatPageState>) {
       },
 
       onTyping(convoId, userId, typing, status) {
-        if (route.path !== '/chat') return
+        if (!ctx.surfaceOptions.embedded && route.path !== '/chat') return
         setRemoteTyping(convoId, userId, typing, status)
       },
 

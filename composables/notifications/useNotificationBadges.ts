@@ -3,7 +3,7 @@ import { closeBrowserNotifications } from '~/utils/browser-notifications'
 import type { NotificationsContext, NotificationUnreadByKind } from './useNotificationsState'
 
 /** Unread-by-kind badge counts. */
-export function useNotificationBadges(c: NotificationsContext) {
+export function useNotificationBadges(c: Pick<NotificationsContext, 'apiFetch' | 'setNotificationUndeliveredCount' | 'unreadByKind' | 'unreadByCategory'>) {
   const {
     apiFetch,
     setNotificationUndeliveredCount,

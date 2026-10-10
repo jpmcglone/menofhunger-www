@@ -457,7 +457,8 @@ describe('hydration guardrails (structural)', () => {
     // hydration sees the same initial values on both sides.
     expect(marv).toMatch(/useState<MarvinMeDto \| null>\(`\$\{stateKey\}:me`/)
     expect(marv).toMatch(/useState<boolean>\(`\$\{stateKey\}:hasFetched`/)
-    expect(marv).toMatch(/useState<boolean>\(`\$\{stateKey\}:subscribed`/)
+    // Viewer data is hydrated; callback ownership is non-serializable runtime state.
+    expect(marv).toMatch(/useState<string \| null>\(`\$\{stateKey\}:viewer-id`/)
   })
 
   it('only registers the marv websocket subscription on the client', () => {

@@ -165,6 +165,7 @@ export type MembersMapCallback = {
 /** People this viewer follows came online (server-throttled; in-app only). */
 export type FollowedOnlineCallback = {
   onFollowedOnline?: (payload: import('~/types/api-contracts.gen').PresenceFollowedOnlinePayloadDto) => void
+  onFollowedOffline?: (payload: import('~/types/api-contracts.gen').PresenceFollowedOfflinePayloadDto) => void
 }
 
 export type BoardCallback = {

@@ -122,6 +122,11 @@ export function registerPresenceSocialHandlers(socket: Socket, d: PresenceSocket
     for (const cb of d.followedOnlineCallbacks.value) cb.onFollowedOnline?.(data)
   })
 
+  socket.on('presence:followed-offline', (data: Parameters<NonNullable<FollowedOnlineCallback['onFollowedOffline']>>[0]) => {
+    if (!Array.isArray(data?.users) || data.users.length === 0) return
+    for (const cb of d.followedOnlineCallbacks.value) cb.onFollowedOffline?.(data)
+  })
+
   socket.on('articles:liveUpdated', (data: WsArticlesLiveUpdatedPayload) => {
     if (!d.articlesCallbacks.value.size) return
     for (const cb of d.articlesCallbacks.value) {

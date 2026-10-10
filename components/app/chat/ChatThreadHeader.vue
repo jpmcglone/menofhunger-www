@@ -1,7 +1,7 @@
 <template>
-  <div class="shrink-0 border-b border-gray-200 px-4 py-2 sm:py-3 dark:border-zinc-800">
-    <div class="flex items-center justify-between gap-3">
-      <div class="flex min-w-0 items-start gap-2">
+  <div class="shrink-0 border-b border-gray-200 px-4 py-2 sm:py-3 dark:border-zinc-800" :class="{ 'moh-chat-dock-header': compact, 'moh-marv-chat-header': isMarvConversation }">
+    <div class="flex items-center justify-between gap-3" :class="compact ? 'flex-wrap' : ''">
+      <div class="flex min-w-0 items-start gap-2" :class="compact ? 'flex-1' : ''">
         <Button
           v-if="showBack"
           text
@@ -21,7 +21,8 @@
             :aria-label="headerAvatarUser.username ? `View @${headerAvatarUser.username}` : 'View profile'"
             @click="goToProfile(headerAvatarUser)"
           >
-            <AppUserAvatar :user="headerAvatarUser" size-class="h-9 w-9 sm:h-10 sm:w-10" />
+            <span v-if="isMarvConversation" class="moh-marv-chat-avatar"><AppMarvMark :size="24" /></span>
+            <AppUserAvatar v-else :user="headerAvatarUser" size-class="h-9 w-9 sm:h-10 sm:w-10" />
           </button>
           <div class="min-w-0">
             <div class="font-semibold min-w-0 flex items-center gap-2">
@@ -32,7 +33,7 @@
                   :aria-label="headerDirectUser.username ? `View @${headerDirectUser.username}` : 'View profile'"
                   @click="goToProfile(headerDirectUser)"
                 >
-                  {{ headerDirectUser.name || headerDirectUser.username || 'User' }}
+                  {{ isMarvConversation ? 'MARV' : headerDirectUser.name || headerDirectUser.username || 'User' }}
                 </button>
                 <AppVerifiedBadge
                   :status="headerDirectUser.verifiedStatus"
@@ -131,7 +132,8 @@
           </div>
         </div>
       </div>
-      <div class="flex items-center gap-2">
+      <slot name="dock-controls" />
+      <div class="flex items-center gap-2" :class="compact ? 'w-full border-t moh-border pt-1' : ''">
         <!-- Calling: two icons when idle, one "Join call" when a call is live in this thread. -->
         <template v-if="showCallControls && conversation">
           <template v-if="conversation.activeCall">
@@ -230,6 +232,7 @@ import { useCallGating } from '~/composables/calls/useCallGating'
 import { useCallSession } from '~/composables/calls/useCallSession'
 
 const props = defineProps<{
+  compact?: boolean
   conversation: MessageConversation | null
   isDraftChat: boolean
   draftRecipients: FollowListUser[]
@@ -365,3 +368,8 @@ function goToProfile(user: MessageUser | FollowListUser | null | undefined) {
   void navigateTo(`/u/${username}`)
 }
 </script>
+
+<style scoped>
+.moh-marv-chat-header { background: linear-gradient(115deg, color-mix(in srgb, var(--moh-premium) 13%, transparent), transparent 85%); }
+.moh-marv-chat-avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--moh-premium) 65%, var(--moh-border)); background: var(--moh-surface-2); }
+</style>

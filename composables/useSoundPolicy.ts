@@ -10,19 +10,23 @@ import { SOUND_CATALOG, claimSoundSlot, type CatalogSound } from '~/utils/sound-
 export function useSoundPolicy() {
   const enabled = useActionSoundsEnabled()
   const sfx = useSfx()
+  const chatDockPopupsPaused = useState('chat-dock-popups-paused', () => false)
 
-  function allowed() {
+  function allowed(id: CatalogSound) {
     return import.meta.client
       && enabled.value !== false
       && document.visibilityState === 'visible'
       && !mediaFocus.isCallActive
       && mediaFocus.currentId === null
+      && (!(id === 'message' || id === 'message-sent' || id === 'reaction') || !chatDockPopupsPaused.value)
   }
 
-  function play(id: CatalogSound): boolean {
-    if (!allowed() || !claimSoundSlot(id)) return false
+  function play(id: CatalogSound, options: { valid?: () => boolean } = {}): boolean {
+    const requestedAt = Date.now()
+    const fresh = () => allowed(id) && Date.now() - requestedAt < 600 && (options.valid?.() ?? true)
+    if (!fresh() || !claimSoundSlot(id, requestedAt)) return false
     const sound = SOUND_CATALOG[id]
-    void sfx.playUrl(sound.url, { volume: sound.volume, shouldPlay: allowed }).catch(() => undefined)
+    void sfx.playUrl(sound.url, { volume: sound.volume, shouldPlay: fresh }).catch(() => undefined)
     return true
   }
 
