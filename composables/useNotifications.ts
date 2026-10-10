@@ -1,4 +1,3 @@
-import type { NotificationsContext } from '~/composables/notifications/useNotificationsState'
 import { useNotificationsState } from '~/composables/notifications/useNotificationsState'
 import { useNotificationDisplay } from '~/composables/notifications/useNotificationDisplay'
 import { useNotificationBadges } from '~/composables/notifications/useNotificationBadges'
@@ -14,16 +13,16 @@ import { useNotificationsInbox } from '~/composables/notifications/useNotificati
  *
  * Public facade: inbox fetch/mutations in useNotificationsInbox, socket merge in
  * useNotificationsRealtime, unread counts in useNotificationBadges, row presentation in
- * useNotificationDisplay. Parts share one context and call each other late-bound.
+ * useNotificationDisplay. Dependencies are constructed in order and passed through explicit capability types.
  */
 export function useNotifications() {
-  // Late-bound members are assigned below before any of them can be called.
-  const c = useNotificationsState() as NotificationsContext
+  const c = useNotificationsState()
   const display = useNotificationDisplay(c)
   const badges = useNotificationBadges(c)
-  const realtime = useNotificationsRealtime(c)
-  const inbox = useNotificationsInbox(c)
-  Object.assign(c, display, badges, realtime, inbox)
+  const inbox = useNotificationsInbox({ ...c, normalizeUnreadByKind: badges.normalizeUnreadByKind })
+  const realtime = useNotificationsRealtime({
+    ...c, fetchList: inbox.fetchList, decrementUnreadKind: badges.decrementUnreadKind,
+  })
   const parts = { ...display, ...badges, ...realtime, ...inbox }
 
   return {

@@ -1,10 +1,9 @@
-import type { useChatPageState } from './useChatPage'
-import type { useChatPageView } from './useChatPageView'
+import type { ChatLifecycleContext } from './chat-page-context'
 
 /**
  * Realtime registration, watchers, and mount/unmount lifecycle.
  */
-export function useChatPageLifecycle(ctx: ReturnType<typeof useChatPageState> & ReturnType<typeof useChatPageView>) {
+export function useChatPageLifecycle(ctx: ChatLifecycleContext) {
   const { route, ensureLoaded, viewerCanUseChat, prefersReducedMotion, chatBootState, clearChatBootTimer, revealChatScreenAfterFade, isSocketConnected, emitMessagesScreen, marv, selectedConversationId, selectedChatKey, isDraftChat, messagesScroller, composerBarRef, scrollApi, onMessagesScrollerMounted, conversationsApi, activeTab, conversations, activeList, listLoading, listFailed, fetchConversations, thread, messages, messagesLoading, jumpTargetMessageId, renderedChatKey, messagesPaneState, routeSync, selectConversation, isTabBarMode, isTinyViewport, registerRealtime, teardownRealtime } = ctx
 
   useJourneyReady('inbox_ready', () => chatBootState.value === 'ready' && !listLoading.value, {

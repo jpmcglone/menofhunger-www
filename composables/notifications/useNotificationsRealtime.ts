@@ -1,10 +1,17 @@
 import type { Notification } from '~/types/api'
 import { notificationCategory, notificationFilterCategory } from '~/utils/notification-category'
 import type { NotificationsCallback } from '~/composables/usePresence'
-import type { NotificationsContext } from './useNotificationsState'
+import type { NotificationsState } from './useNotificationsState'
+
+import type { useNotificationBadges } from './useNotificationBadges'
+import type { useNotificationsInbox } from './useNotificationsInbox'
 
 /** Realtime inbox merge: local list patches plus one refcounted socket callback per tab. */
-export function useNotificationsRealtime(c: NotificationsContext) {
+export function useNotificationsRealtime(c: Pick<NotificationsState,
+  | 'addNotificationsCallback' | 'removeNotificationsCallback' | 'accountId' | 'revision'
+  | 'notifications' | 'loading' | 'pendingRefresh' | 'activeKind' | 'hasFetched'
+> & Pick<ReturnType<typeof useNotificationsInbox>, 'fetchList'>
+  & Pick<ReturnType<typeof useNotificationBadges>, 'decrementUnreadKind'>) {
   const {
     addNotificationsCallback,
     removeNotificationsCallback,
@@ -85,13 +92,15 @@ export function useNotificationsRealtime(c: NotificationsContext) {
     notifications.value = notifications.value.map((item) => {
       if (item.type === 'single') {
         const n = item.notification
-        if (n.readAt) return item
         const matches =
           (n.subjectPostId && cleared.has(n.subjectPostId))
           || (n.actorPostId && cleared.has(n.actorPostId))
           || (n.post?.id && cleared.has(n.post.id))
           || (n.boardThreadId && clearedThreads.has(n.boardThreadId))
         if (!matches) return item
+        // A scoped server acknowledgement owns read state even if a local action
+        // already marked this row. Replace its identity so a late failure cannot undo it.
+        if (n.readAt) return { ...item, notification: { ...n } }
         mutated = true
         c.decrementUnreadKind(n.kind)
         return {
@@ -105,7 +114,8 @@ export function useNotificationsRealtime(c: NotificationsContext) {
       }
       if (item.type === 'group') {
         const g = item.group
-        if (g.readAt || !g.subjectPostId || !cleared.has(g.subjectPostId)) return item
+        if (!g.subjectPostId || !cleared.has(g.subjectPostId)) return item
+        if (g.readAt) return { ...item, group: { ...g } }
         mutated = true
         return { ...item, group: { ...g, readAt: now, deliveredAt: g.deliveredAt ?? now } }
       }

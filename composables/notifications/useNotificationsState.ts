@@ -79,11 +79,4 @@ export function useNotificationsState() {
   }
 }
 
-/** Functions one part calls on another; bound onto the context by the useNotifications facade. */
-export type NotificationsLateBound = {
-  fetchList: (opts?: { cursor?: string | null; limit?: number; forceRefresh?: boolean }) => Promise<void>
-  normalizeUnreadByKind: (counts: NotificationUnreadByKind | null | undefined) => NotificationUnreadByKind
-  decrementUnreadKind: (kind: NotificationKind | null, amount?: number) => void
-}
-
-export type NotificationsContext = ReturnType<typeof useNotificationsState> & NotificationsLateBound
+export type NotificationsState = ReturnType<typeof useNotificationsState>

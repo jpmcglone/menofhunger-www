@@ -1,4 +1,4 @@
-import type { ChannelChangedEvent, ChannelMessagesEvent, ChannelTypingEvent, ChannelViewerEvent, CommunityGroupInviteStatus, FollowListUser, Recruit, ScheduledPostPublishedPayload, ScheduledPostFailedPayload, RadioChatMessage, RadioChatSnapshot, RadioLobbyCounts, RadioListener, SpaceChatSender, SpaceChatMessage, SpaceChatSnapshot, SpaceLobbyCounts, SpaceMember, SpaceModeChanged, SpaceReactionEvent, SpaceChatReactionEvent, WatchPartyState, WsAdminUpdatedPayload, WsArticlesLiveUpdatedPayload, BoardNewThreadPayload, WsArticlesCommentAddedPayload, WsArticlesCommentDeletedPayload, WsArticlesCommentUpdatedPayload, WsArticlesCommentReactionChangedPayload, WsFollowsChangedPayload, WsNotificationsDeletedPayload, WsNotificationsNewPayload, WsFeedNewPostPayload, WsGroupMarvChangedPayload, WsGroupNewPostPayload, WsPostsLiveUpdatedPayload, WsPostsInteractionPayload, WsPostsCommentAddedPayload, WsPostsCommentDeletedPayload, WsPostsTypingPayload, WsSpacesUpdatedPayload, WsUsersMeUpdatedPayload, WsUsersSelfUpdatedPayload, WsUsersSpaceChangedPayload, WsCheckinAnsweredTodayPayload, MarvCreditsUpdatedPayloadDto, OnlineUser, WsPresencePlatformsChangedPayload, WsAccountsBadgeUpdatedPayload, WsCallsIncomingPayload, WsCallsUpdatedPayload, WsCallsSeatTakenPayload, WsRtcSignalPayload, WsPresenceCallChangedPayload } from '~/types/api'
+import type { ChannelChangedEvent, ChannelMessagesEvent, ChannelTypingEvent, ChannelViewerEvent, CommunityGroupInviteStatus, FollowListUser, Recruit, ScheduledPostPublishedPayload, ScheduledPostFailedPayload, RadioChatMessage, RadioChatSnapshot, RadioLobbyCounts, RadioListener, SpaceChatSender, SpaceChatMessage, SpaceChatSnapshot, SpaceLobbyCounts, SpaceMember, SpaceModeChanged, SpaceReactionEvent, SpaceChatReactionEvent, WatchPartyState, WsAdminUpdatedPayload, WsArticlesLiveUpdatedPayload, BoardNewThreadPayload, WsArticlesCommentAddedPayload, WsArticlesCommentDeletedPayload, WsArticlesCommentUpdatedPayload, WsArticlesCommentReactionChangedPayload, WsFollowsChangedPayload, WsNotificationsDeletedPayload, WsNotificationsNewPayload, WsNotificationsUpdatedPayload, WsFeedNewPostPayload, WsGroupMarvChangedPayload, WsGroupNewPostPayload, WsPostsLiveUpdatedPayload, WsPostsInteractionPayload, WsPostsCommentAddedPayload, WsPostsCommentDeletedPayload, WsPostsTypingPayload, WsSpacesUpdatedPayload, WsUsersMeUpdatedPayload, WsUsersSelfUpdatedPayload, WsUsersSpaceChangedPayload, WsCheckinAnsweredTodayPayload, MarvCreditsUpdatedPayloadDto, OnlineUser, WsPresencePlatformsChangedPayload, WsAccountsBadgeUpdatedPayload, WsCallsIncomingPayload, WsCallsUpdatedPayload, WsCallsSeatTakenPayload, WsRtcSignalPayload, WsPresenceCallChangedPayload } from '~/types/api'
 
 export type ChannelCallback = (event:
   | { type: 'changed'; payload: ChannelChangedEvent }
@@ -102,13 +102,7 @@ export type CallsCallback = {
   onSeatTaken?: (payload: WsCallsSeatTakenPayload) => void
 }
 
-export type WsNotificationsUpdatedPayload = {
-  undeliveredCount?: number
-  /** Post ids whose related notifications were just marked read (subject or actor). */
-  clearedPostIds?: string[]
-  /** Board threads whose notifications (thread + every comment) were just marked read. */
-  clearedBoardThreadIds?: string[]
-}
+export type { WsNotificationsUpdatedPayload } from '~/types/api'
 
 export type NotificationsCallback = {
   /**

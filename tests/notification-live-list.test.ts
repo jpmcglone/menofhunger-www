@@ -1,11 +1,14 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { effectScope, ref, nextTick, type EffectScope } from 'vue'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { useNotificationReadMutation } from '~/composables/notifications/useNotificationReadMutation'
 import { useNotifications } from '~/composables/useNotifications'
 import { notificationCategory } from '~/utils/notification-category'
 import type { Notification, NotificationFeedItem } from '~/types/api'
 
 const mocks = vi.hoisted(() => ({ fetch: vi.fn(), add: vi.fn(), remove: vi.fn() }))
+vi.mock('~/composables/useNotificationsBadge', () => ({ useNotificationsBadge: () => ({ fetchUndeliveredCount: vi.fn() }) }))
+vi.mock('~/composables/useAppToast', () => ({ useAppToast: () => ({ push: vi.fn() }) }))
 const user = ref<{ id: string } | null>({ id: 'viewer' })
 const states = new Map<string, ReturnType<typeof ref>>()
 mockNuxtImport('useState', () => (key: string, init: () => unknown) => {
@@ -131,6 +134,58 @@ describe('session notification lifecycle', () => {
     callback().onNew({ notification: (row('follower', 'follow') as any).notification })
     expect(inbox.notifications.value).toHaveLength(2)
     expect((inbox.notifications.value[1] as any).group.count).toBe(5)
+  })
+
+  it.each(['post', 'board'])('keeps an authoritative %s clear when an optimistic read later fails', async subject => {
+    const item = row('optimistic', 'comment')
+    if (item.type !== 'single') throw new Error('fixture')
+    if (subject === 'board') {
+      item.notification.post = null
+      item.notification.boardThreadId = 'thread'
+    }
+    inbox.notifications.value = [item]
+    inbox.unreadByKind.value = { all: 1, comment: 1 }
+    let reject!: (error: Error) => void
+    mocks.fetch.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail }))
+    const action = scope.run(() => useNotificationReadMutation())!
+    const reading = action.markRead(item)
+    callback().onUpdated({ undeliveredCount: 0,
+      ...(subject === 'post' ? { clearedPostIds: ['same-post'] } : { clearedBoardThreadIds: ['thread'] }) })
+    reject(new Error('response lost'))
+    await reading
+    expect(inbox.notifications.value[0]?.type === 'single' && inbox.notifications.value[0].notification.readAt).toBeTruthy()
+    expect(inbox.unreadByKind.value).toEqual({ all: 0, comment: 0 })
+  })
+
+  it('merges post and board clears from the canonical update without double-decrementing echoes', () => {
+    const post = row('post', 'comment')
+    const board = row('board', 'comment')
+    if (board.type !== 'single') throw new Error('fixture')
+    board.notification.boardThreadId = 'thread'
+    board.notification.post = null
+    const unrelated = row('unrelated', 'follow')
+    if (unrelated.type !== 'single') throw new Error('fixture')
+    unrelated.notification.post = null
+    inbox.notifications.value = [post, board, unrelated]
+    inbox.unreadByKind.value = { all: 3, comment: 2, follow: 1 }
+    const payload = { undeliveredCount: 1, clearedPostIds: ['same-post'], clearedBoardThreadIds: ['thread'] }
+    callback().onUpdated(payload)
+    callback().onUpdated(payload)
+    expect(inbox.notifications.value.slice(0, 2).every(item => item.type === 'single' && item.notification.readAt)).toBe(true)
+    expect(inbox.notifications.value[2]).toEqual(unrelated)
+    expect(inbox.unreadByKind.value).toEqual({ all: 1, comment: 0, follow: 1 })
+    expect(mocks.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { undeliveredCount: 0 },
+    { undeliveredCount: 0, clearedPostIds: [], clearedBoardThreadIds: [] },
+    { undeliveredCount: 0, clearedPostIds: null, clearedBoardThreadIds: null },
+  ])('treats absent or empty clear lists as invalidation only: %j', payload => {
+    inbox.notifications.value = [row('keep')]
+    callback().onUpdated(payload)
+    expect(inbox.notifications.value).toEqual([row('keep')])
+    expect(mocks.fetch).toHaveBeenCalledTimes(1)
   })
 
   it('remains retryable after a failed sync without an automatic failure loop', async () => {

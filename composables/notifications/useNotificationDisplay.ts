@@ -2,10 +2,10 @@ import { formatWhen, formatWhenFull } from './notificationTime'
 import { useNotificationLinks } from './useNotificationLinks'
 import type { Notification } from '~/types/api'
 import { userColorTier, userTierBgClass, userTierTextClass } from '~/utils/user-tier'
-import type { NotificationsContext } from './useNotificationsState'
+import type { NotificationsState } from './useNotificationsState'
 
 /** Presentation helpers for notification rows: actor, tier classes, icons, titles, times and links. */
-export function useNotificationDisplay(c: Pick<NotificationsContext, 'me' | 'usersStore'>) {
+export function useNotificationDisplay(c: Pick<NotificationsState, 'me' | 'usersStore'>) {
   const {
     me,
     usersStore,

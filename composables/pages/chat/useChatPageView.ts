@@ -1,3 +1,4 @@
+import type { ChatViewContext } from './chat-page-context'
 import type { FollowListUser, LookupMessageConversationResponse, Message, MessageUser } from '~/types/api'
 import { getApiErrorMessage } from '~/utils/api-error'
 import { useChatBubbleShape } from '~/composables/chat/useChatBubbleShape'
@@ -6,13 +7,12 @@ import { useChatRealtime } from '~/composables/chat/useChatRealtime'
 import type { MessageTone } from '~/composables/chat/useChatConversations'
 import { useRefcountedInterest } from '~/composables/chat/useRefcountedInterest'
 import { userColorTier } from '~/utils/user-tier'
-import type { useChatPageState } from './useChatPage'
 
 /**
  * Selection, pending-message button, responsive panes, bubble styling, conversation
  * actions, the new-chat dialog, and presence interest.
  */
-export function useChatPageView(ctx: ReturnType<typeof useChatPageState>) {
+export function useChatPageView(ctx: ChatViewContext) {
   const { apiFetch, apiFetchData, route, me, viewerCanStartChats, addInterest, removeInterest, suppressMessageUnreadBumpsForMs, marv, selectedConversationId, selectedChatKey, atBottom, stickToBottom, setAtBottomState, scrollEventHandler, conversationsApi, selectedConversation, patchConversation, removeConversationFromList, updateConversationParticipantRead, updateConversationUnread, updateConversationForMessage, markConversationReadIfVisible, getMessageTier, getDirectUser, getConversationLastMessageTier, lastVisibleMessageSnapshot, showCantStartChat, thread, messages, infoMessage, sendingMessageIds, setRemoteTyping, routeSync } = ctx
 
   const { selectConversation, clearSelection, openDraftChatWithRecipients } = routeSync

@@ -1508,11 +1508,7 @@ export type WsNotificationsNewPayload = Contracts.NotificationsNewPayloadDto
 
 export type WsNotificationsDeletedPayload = Contracts.NotificationsDeletedPayloadDto
 
-export type WsNotificationsUpdatedPayload = {
-  undeliveredCount?: number
-  /** Post ids whose related notifications were just marked read (subject or actor). */
-  clearedPostIds?: string[]
-}
+export type WsNotificationsUpdatedPayload = Contracts.NotificationsUpdatedPayloadDto
 
 export type WsNotificationsLockScreenClearPayload = Contracts.NotificationsLockScreenClearPayloadDto
 

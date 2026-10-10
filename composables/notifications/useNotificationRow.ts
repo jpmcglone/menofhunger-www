@@ -1,3 +1,4 @@
+import { useNotificationReadMutation } from './useNotificationReadMutation'
 import type { CommunityGroupShell, FollowSummaryResponse, Notification } from '~/types/api'
 import { stableListKey } from '~/utils/stable-list-key'
 import type { MenuItem } from 'primevue/menuitem'
@@ -8,6 +9,7 @@ import type { MenuItem } from 'primevue/menuitem'
  */
 export function useNotificationRow(props: { notification: Notification; nudgeIsTopmost?: boolean }) {
   const activityBadgeTone = useActivityBadgeTone()
+  const { markRead } = useNotificationReadMutation()
 
   const {
     actorDisplay,
@@ -241,12 +243,9 @@ export function useNotificationRow(props: { notification: Notification; nudgeIsT
       }
       await crewApi.acceptInvite(inviteId)
       crewInviteLocalState.value = 'accepted'
-      localReadAt.value = new Date().toISOString()
       // Mark the underlying notification as read so the unread badge clears
       // (otherwise the bell would still bounce until next visit).
-      void apiFetchData(`/notifications/${encodeURIComponent(notification.value.id)}/mark-read`, {
-        method: 'POST',
-      }).catch(() => {})
+      void markRead(notification.value.id)
       pushToast({ title: 'Joined crew', tone: 'success' })
       // Refresh nav membership so the rail/tab label flips to "Your Crew" before
       // we navigate. Founding accepts make the inviter the owner; accepting an
@@ -277,10 +276,7 @@ export function useNotificationRow(props: { notification: Notification; nudgeIsT
       }
       await crewApi.declineInvite(inviteId)
       crewInviteLocalState.value = 'declined'
-      localReadAt.value = new Date().toISOString()
-      void apiFetchData(`/notifications/${encodeURIComponent(notification.value.id)}/mark-read`, {
-        method: 'POST',
-      }).catch(() => {})
+      void markRead(notification.value.id)
       pushToast({ title: 'Invite declined', tone: 'success' })
     } catch (e: unknown) {
       const msg = (e as { data?: { meta?: { errors?: Array<{ message?: string }> } } })?.data?.meta?.errors?.[0]?.message
@@ -319,10 +315,7 @@ export function useNotificationRow(props: { notification: Notification; nudgeIsT
     try {
       const res = await groupInvitesApi.acceptInvite(inviteId)
       groupInviteLocalState.value = 'accepted'
-      localReadAt.value = new Date().toISOString()
-      void apiFetchData(`/notifications/${encodeURIComponent(notification.value.id)}/mark-read`, {
-        method: 'POST',
-      }).catch(() => {})
+      void markRead(notification.value.id)
       pushToast({ title: 'Joined group', tone: 'success' })
       if (res?.groupSlug) {
         void navigateTo(`/g/${encodeURIComponent(res.groupSlug)}`)
@@ -349,10 +342,7 @@ export function useNotificationRow(props: { notification: Notification; nudgeIsT
     try {
       await groupInvitesApi.declineInvite(inviteId)
       groupInviteLocalState.value = 'declined'
-      localReadAt.value = new Date().toISOString()
-      void apiFetchData(`/notifications/${encodeURIComponent(notification.value.id)}/mark-read`, {
-        method: 'POST',
-      }).catch(() => {})
+      void markRead(notification.value.id)
       pushToast({ title: 'Invite declined', tone: 'success' })
     } catch (e: unknown) {
       const msg = (e as { data?: { meta?: { errors?: Array<{ message?: string }> } } })?.data?.meta?.errors?.[0]?.message

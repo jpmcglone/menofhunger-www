@@ -4,11 +4,16 @@ import {
   closeAllBrowserNotifications,
   closeBrowserNotificationsForSubject,
 } from '~/utils/browser-notifications'
-import type { NotificationsContext } from './useNotificationsState'
+import type { NotificationsState } from './useNotificationsState'
+import type { useNotificationBadges } from './useNotificationBadges'
 import { markNotificationReadById } from './notificationReadMutation'
 
 /** Inbox fetch, kind filter, and read/delivered/lock-screen mutations. */
-export function useNotificationsInbox(c: NotificationsContext) {
+export function useNotificationsInbox(c: Pick<NotificationsState,
+  | 'apiFetch' | 'me' | 'groupsUnread' | 'setGroupsUnread' | 'accountId' | 'generation'
+  | 'revision' | 'notifications' | 'nextCursor' | 'loading' | 'pendingRefresh'
+  | 'activeKind' | 'unreadByKind' | 'hasFetched' | 'fetchError' | 'unreadByCategory'
+> & Pick<ReturnType<typeof useNotificationBadges>, 'normalizeUnreadByKind'>) {
   const {
     apiFetch,
     me,

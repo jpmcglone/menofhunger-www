@@ -1,8 +1,8 @@
 import type { Notification, NotificationFeedItem, NotificationGroup } from '~/types/api'
-import type { NotificationsContext } from './useNotificationsState'
+import type { NotificationsState } from './useNotificationsState'
 
 /** Click-through destinations for notification rows, groups and feed items. */
-export function useNotificationLinks(c: Pick<NotificationsContext, 'me'>) {
+export function useNotificationLinks(c: Pick<NotificationsState, 'me'>) {
   const { me } = c
 
   function rowHref(n: Notification): string | null {

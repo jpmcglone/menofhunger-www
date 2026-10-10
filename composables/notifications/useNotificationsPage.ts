@@ -37,10 +37,8 @@ const {
   setKind,
   fetchList,
   markDelivered,
-  markReadById,
   markAllRead,
   clearUnreadKind,
-  decrementUnreadKind,
   itemHref,
 } = useNotifications()
 const notifBadge = useNotificationsBadge()
@@ -127,11 +125,7 @@ const notificationReadToast = useAppToast()
 useNotificationActorPresence(notifications)
 useNotificationInviteSync(notifications)
 const { markItemReadOptimistic, onNotificationClick, onNotificationAuxClick, onNotificationKeydown } = useNotificationReadActions({
-  notifications,
-  viewer: notificationViewer,
-  inbox: { markReadById, decrementUnreadKind, fetchList, itemHref },
-  badge: notifBadge,
-  toast: notificationReadToast,
+  itemHref,
 })
 async function onMarkAllRead() {
   const account = notificationViewer.value?.id

@@ -50,6 +50,7 @@ type _UserStatus = Satisfies<Www.UserStatus, Api.UserStatusDto>
 
 // ─── Notifications ───────────────────────────────────────────────────────────
 type _Notification = Satisfies<Www.Notification, Api.NotificationDto>
+type _NotificationsUpdated = Satisfies<Www.WsNotificationsUpdatedPayload, Api.NotificationsUpdatedPayloadDto>
 type _NotificationActor = Satisfies<Www.NotificationActor, Api.NotificationActorDto>
 type _SubjectPostPreview = Satisfies<Www.SubjectPostPreview, Api.SubjectPostPreviewDto>
 type _SubjectArticlePreview = Satisfies<Www.SubjectArticlePreview, Api.SubjectArticlePreviewDto>
