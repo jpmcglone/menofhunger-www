@@ -10,7 +10,7 @@
     <div class="relative" @paste.capture="onComposerPaste">
       <AppStyledTextarea
         ref="composerEditorEl"
-        :disabled="destinationDrafts.loading.value || submitting"
+        :disabled="destinationDrafts.blockingLoad.value || submitting"
         :model-value="draft"
         :placeholder="composerPlaceholder"
         :auto-focus="autoFocus"

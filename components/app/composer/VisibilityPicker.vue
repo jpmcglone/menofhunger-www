@@ -1,5 +1,6 @@
 <template>
-  <button type="button" class="moh-focus moh-surface-hover inline-flex min-h-11 items-center gap-2 rounded-full border moh-border px-3" :aria-label="`Select post visibility: ${label}`" aria-haspopup="dialog" :aria-expanded="open" :disabled="!viewerIsVerified" @click="open = true">
+  <!-- Preserve the pre-click focus target for Dialog's built-in focus restoration. -->
+  <button type="button" class="moh-focus moh-surface-hover inline-flex min-h-11 items-center gap-2 rounded-full border moh-border px-3" :aria-label="`Select post visibility: ${label}`" aria-haspopup="dialog" :aria-expanded="open" :disabled="!viewerIsVerified" @pointerdown.prevent @click="open = true">
     <AppComposerAudienceLabel :visibility="modelValue" />
     <Icon v-if="viewerIsVerified" name="tabler:chevron-down" class="text-base moh-text-muted" aria-hidden="true" />
   </button>

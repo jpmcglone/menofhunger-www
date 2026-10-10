@@ -1,6 +1,7 @@
 <template>
   <!-- Figma: YnuRSJB7p90n9jEY4mb4RN / 1113:3097 (trigger), 481:2265 (dialog) -->
-  <button type="button" class="inline-flex min-h-11 max-w-full items-center rounded-[10px] outline-none focus-visible:underline underline-offset-4" :aria-label="`Post to: ${selected?.name ?? visibilityLabel}`" aria-haspopup="dialog" :aria-expanded="open" @click="open = true">
+  <!-- Preserve the pre-click focus target for Dialog's built-in focus restoration. -->
+  <button type="button" class="inline-flex min-h-11 max-w-full items-center rounded-[10px] outline-none focus-visible:underline underline-offset-4" :aria-label="`Post to: ${selected?.name ?? visibilityLabel}`" aria-haspopup="dialog" :aria-expanded="open" @pointerdown.prevent @click="open = true">
     <span class="inline-flex min-w-0 items-center gap-1.5 rounded-[10px] border px-2.5 py-[5px] text-sm font-semibold leading-5" :class="chipClass">
       <span class="shrink-0">Post to:</span>
       <span class="max-w-48 truncate">{{ selected?.name ?? (modelValue ? 'Group' : visibilityLabel) }}</span>

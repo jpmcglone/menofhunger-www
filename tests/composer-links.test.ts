@@ -66,6 +66,35 @@ describe('composer uses the published preview renderer', () => {
     expect(preview.props('rowInView')).toBe(true)
   })
 
+  it('keeps the renderer mounted and updates prose immediately when preview targets are unchanged', async () => {
+    const wrapper = render('https://example.com first thought')
+    await vi.advanceTimersByTimeAsync(350)
+    const preview = wrapper.findComponent({ name: 'PublishedPreviewStub' })
+    const instance = preview.vm
+    await wrapper.setProps({ text: 'https://example.com next thought' })
+    expect(wrapper.findComponent({ name: 'PublishedPreviewStub' }).vm).toBe(instance)
+    expect(preview.props('body')).toBe('https://example.com next thought')
+    await vi.advanceTimersByTimeAsync(350)
+    expect(wrapper.findComponent({ name: 'PublishedPreviewStub' }).vm).toBe(instance)
+  })
+
+  it('does not delay a pending URL preview when prose changes', async () => {
+    const wrapper = render('https://example.com')
+    await vi.advanceTimersByTimeAsync(200)
+    await wrapper.setProps({ text: 'https://example.com more words' })
+    await vi.advanceTimersByTimeAsync(150)
+    expect(wrapper.findComponent({ name: 'PublishedPreviewStub' }).props('body')).toBe('https://example.com more words')
+  })
+
+  it('debounces changed internal embed targets even when the external URL stays the same', async () => {
+    const wrapper = render('https://example.com https://menofhunger.com/p/one')
+    await vi.advanceTimersByTimeAsync(350)
+    await wrapper.setProps({ text: 'https://example.com https://menofhunger.com/p/two' })
+    expect(wrapper.find('[data-testid="published-preview"]').exists()).toBe(false)
+    await vi.advanceTimersByTimeAsync(350)
+    expect(wrapper.text()).toContain('https://menofhunger.com/p/two')
+  })
+
   it('lets the published renderer choose previews when media is attached', async () => {
     const wrapper = render('https://menofhunger.com/p/abc')
     await wrapper.setProps({ hasMedia: true })

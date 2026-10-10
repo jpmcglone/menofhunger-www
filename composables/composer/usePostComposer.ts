@@ -330,6 +330,8 @@ export function usePostComposer(props: PostComposerProps, emit: PostComposerEmit
     clearPoll,
     onClickAddPoll,
     ...dest,
+    selectDestinationVisibility: (value: Parameters<typeof dest.selectDestinationVisibility>[0]) => destinationDrafts.changeDestination(() => dest.selectDestinationVisibility(value)),
+    selectGroup: (id: string | null) => destinationDrafts.changeDestination(() => dest.selectGroup(id)),
     ...schedule,
     ...status,
     ...tint,

@@ -26,7 +26,7 @@
       :select-visibility="selectDestinationVisibility"
       :select-group="selectGroup"
       :on-open="loadMyGroups"
-      @update:visibility="visibility = $event"
+      @update:visibility="selectDestinationVisibility"
     />
   </slot>
   <button
